@@ -11,6 +11,7 @@ Unified block explorer provider library. Normalizes balances, tx history, contra
 | etherscan | API key (free: 5 req/s) | EVM: eth, base, arb, op, polygon, bsc, avax, ftm, gnosis, linea, zksync, scroll | Most complete: full ABI/source/gas/token support |
 | blockscout | none | EVM: eth, base, arb, op, polygon, gnosis, linea, scroll, zksync, avax | Open source, no key needed, REST v2 |
 | blockchair | optional key | bitcoin, eth, base, arb, op, polygon, bsc, avax, gnosis | Bitcoin support, multi-chain dashboard |
+| mempool | none | bitcoin | Best Bitcoin data: UTXO, fee estimates, mempool, block details |
 
 ## Conventions
 
