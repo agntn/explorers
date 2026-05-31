@@ -4,3 +4,4 @@
 import './etherscan.js'
 import './blockscout.js'
 import './blockchair.js'
+import './mempool.js'

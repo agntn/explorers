@@ -9,6 +9,12 @@ const ENV_MAP: Record<string, string[]> = {
   etherscan: ['ETHERSCAN_API_KEY'],
   blockscout: [],
   blockchair: ['BLOCKCHAIR_API_KEY'],
+  mempool: [],
+}
+
+/** Provider-specific default chains */
+export const PROVIDER_DEFAULT_CHAIN: Record<string, string> = {
+  mempool: 'bitcoin',
 }
 
 /**

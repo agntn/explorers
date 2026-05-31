@@ -3,7 +3,7 @@
  */
 import { defineCommand } from 'citty'
 import consola from 'consola'
-import { resolveProvider } from '../core/resolve.js'
+import { resolveProvider, PROVIDER_DEFAULT_CHAIN } from '../core/resolve.js'
 import { create } from '../core/registry.js'
 import { normalizeChain } from '../core/types.js'
 import { resolveInput, classifyInput } from '../core/input.js'
@@ -40,7 +40,8 @@ export default defineCommand({
   async run({ args }) {
     const providerName = resolveProvider(args.provider as string | undefined)
     const provider = create(providerName)
-    const chain = normalizeChain(args.chain as string)
+    const defaultChain = PROVIDER_DEFAULT_CHAIN[providerName] ?? args.chain
+    const chain = normalizeChain(defaultChain as string)
     const rawTarget = args.target as string
 
     try {
