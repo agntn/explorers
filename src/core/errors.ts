@@ -9,14 +9,26 @@ export class BlocexError extends Error {
   }
 }
 
+/** Strip API keys from URLs for safe error messages */
+function sanitizeUrl(url: string): string {
+  return url
+    .replace(/([?&])(apikey|apiKey|api_key|key)=([^&]*)/gi, '$1$2=REDACTED')
+    .replace(/([?&])(secret|token)=([^&]*)/gi, '$1$2=REDACTED')
+}
+
 export class HTTPError extends BlocexError {
+  /** Raw URL (may contain API key — use with care) */
+  public readonly rawUrl: string
+
   constructor(
     public readonly statusCode: number,
-    public readonly url: string,
+    url: string,
     public readonly body?: string,
     provider?: string,
   ) {
-    super(`HTTP ${statusCode} from ${url}`, provider)
+    const safeUrl = sanitizeUrl(url)
+    super(`HTTP ${statusCode} from ${safeUrl}`, provider)
+    this.rawUrl = url
     this.name = 'HTTPError'
   }
 }
