@@ -71,7 +71,7 @@ interface BlockscoutAddress {
 
 interface BlockscoutTx {
   hash: string
-  block: number
+  block_number: number
   timestamp: string
   from: { hash: string }
   to: { hash: string } | null
@@ -169,7 +169,7 @@ function mapTx(raw: BlockscoutTx): Transaction {
 
   return {
     hash: raw.hash,
-    blockNumber: raw.block,
+    blockNumber: raw.block_number,
     timestamp: raw.timestamp,
     from: raw.from.hash,
     to: raw.to?.hash ?? null,
