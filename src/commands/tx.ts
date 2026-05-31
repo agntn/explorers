@@ -1,21 +1,22 @@
 /**
- * Transaction operations — history or detail
+ * Transaction operations — history or detail (supports ENS)
  */
 import { defineCommand } from 'citty'
 import consola from 'consola'
 import { resolveProvider } from '../core/resolve.js'
 import { create } from '../core/registry.js'
 import { normalizeChain } from '../core/types.js'
+import { resolveInput, classifyInput } from '../core/input.js'
 
 export default defineCommand({
   meta: {
     name: 'tx',
-    description: 'Get transaction history or detail',
+    description: 'Get transaction history or detail (supports ENS)',
   },
   args: {
     target: {
       type: 'positional',
-      description: 'Address or tx hash',
+      description: 'Address, ENS name, or tx hash',
       required: true,
     },
     chain: {
@@ -40,12 +41,13 @@ export default defineCommand({
     const providerName = resolveProvider(args.provider as string | undefined)
     const provider = create(providerName)
     const chain = normalizeChain(args.chain as string)
-    const target = args.target as string
+    const rawTarget = args.target as string
 
     try {
-      // If target looks like a tx hash (0x + 64 hex), show detail
-      if (/^0x[0-9a-fA-F]{64}$/.test(target)) {
-        const tx = await provider.getTxDetail(target, chain)
+      const { address, type } = await resolveInput(rawTarget)
+
+      if (type === 'txhash') {
+        const tx = await provider.getTxDetail(address, chain)
         consola.log(`[${providerName}] Tx ${tx.hash}`)
         consola.log(`  Block: ${tx.blockNumber}`)
         consola.log(`  From: ${tx.from}`)
@@ -58,14 +60,14 @@ export default defineCommand({
         }
       }
       else {
-        // Address — show history
-        const limit = Number.parseInt(args.limit as string, 10)
+        const limitStr = args.limit as string
+        const limit = Number.parseInt(limitStr, 10)
         if (Number.isNaN(limit)) {
           consola.error('Invalid --limit value')
           process.exit(1)
         }
-        const txs = await provider.getTxHistory(target, chain, { limit })
-        consola.log(`[${providerName}] ${txs.length} transactions for ${target} on ${chain}`)
+        const txs = await provider.getTxHistory(address, chain, { limit })
+        consola.log(`[${providerName}] ${txs.length} transactions for ${address} on ${chain}`)
         consola.log('')
         for (const tx of txs) {
           const val = tx.valueFormatted !== '0' ? ` ${tx.valueFormatted}` : ''

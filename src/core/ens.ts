@@ -1,0 +1,80 @@
+/**
+ * ENS (Ethereum Name Service) resolution
+ *
+ * Resolves .eth names to addresses via public ENS APIs.
+ * No API key, no keccak256 dependency — pure HTTP.
+ */
+
+/** Public ENS resolution endpoints (fallback chain) */
+const RESOLVERS = [
+  (name: string) => `https://api.ensideas.com/ens/resolve/${name}`,
+  (name: string) => `https://api.ensdata.net/${name}`,
+]
+
+/** Check if input looks like an ENS name */
+export function isEnsName(input: string): boolean {
+  const lower = input.toLowerCase().trim()
+  return lower.endsWith('.eth') && lower.length > 4
+}
+
+/** Check if input looks like an Ethereum address */
+export function isAddress(input: string): boolean {
+  return /^0x[0-9a-fA-F]{40}$/.test(input.trim())
+}
+
+/**
+ * Resolve an ENS name to an Ethereum address.
+ * Tries multiple APIs for resilience. Returns null if all fail.
+ */
+export async function resolveEns(name: string): Promise<string | null> {
+  const normalized = name.toLowerCase().trim()
+
+  for (const buildUrl of RESOLVERS) {
+    const url = buildUrl(normalized)
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 5000)
+
+    try {
+      const res = await fetch(url, {
+        headers: { Accept: 'application/json' },
+        signal: controller.signal,
+      })
+
+      if (!res.ok) continue
+
+      const json = await res.json() as Record<string, unknown>
+      const address = json.address as string | undefined
+
+      if (address && /^0x[0-9a-fA-F]{40}$/.test(address)) {
+        return address
+      }
+    }
+    catch {
+      // Try next resolver
+    }
+    finally {
+      clearTimeout(timeout)
+    }
+  }
+
+  return null
+}
+
+/**
+ * If input is an ENS name, resolve it. If it's already an address, pass through.
+ * Returns the address or null if resolution fails.
+ */
+export async function resolveAddress(input: string): Promise<string | null> {
+  const trimmed = input.trim()
+
+  if (isAddress(trimmed)) {
+    return trimmed
+  }
+
+  if (isEnsName(trimmed)) {
+    return resolveEns(trimmed)
+  }
+
+  // Might be a non-standard address format — return as-is and let provider validate
+  return trimmed
+}

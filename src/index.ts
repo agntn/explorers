@@ -40,6 +40,7 @@ export type {
 export {
   normalizeError,
 } from './core/errors.js'
+export { isEnsName, isAddress, resolveEns, resolveAddress } from './core/ens.js'
 export { getJSON, getRaw, buildQuery } from './core/client.js'
 export { register, create, providers, has, getDefaultURL } from './core/registry.js'
 export { resolveProvider } from './core/resolve.js'

@@ -1,21 +1,22 @@
 /**
- * List ERC-20 token holdings for an address
+ * List ERC-20 token holdings (supports ENS)
  */
 import { defineCommand } from 'citty'
 import consola from 'consola'
 import { resolveProvider } from '../core/resolve.js'
 import { create } from '../core/registry.js'
 import { normalizeChain } from '../core/types.js'
+import { resolveInput } from '../core/input.js'
 
 export default defineCommand({
   meta: {
     name: 'tokens',
-    description: 'List ERC-20 token holdings for an address',
+    description: 'List ERC-20 token holdings for an address (supports ENS)',
   },
   args: {
     address: {
       type: 'positional',
-      description: 'Blockchain address',
+      description: 'Blockchain address or ENS name',
       required: true,
     },
     chain: {
@@ -42,8 +43,9 @@ export default defineCommand({
     }
 
     try {
-      const tokens = await provider.getTokenBalances!(args.address as string, chain, { nonZeroOnly: true })
-      consola.log(`[${providerName}] ${tokens.length} tokens for ${args.address} on ${chain}`)
+      const { address } = await resolveInput(args.address as string)
+      const tokens = await provider.getTokenBalances!(address, chain, { nonZeroOnly: true })
+      consola.log(`[${providerName}] ${tokens.length} tokens for ${address} on ${chain}`)
       consola.log('')
       for (const t of tokens) {
         const usd = t.valueUsd ? ` ($${t.valueUsd.toFixed(2)})` : ''

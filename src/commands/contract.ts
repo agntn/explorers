@@ -1,21 +1,22 @@
 /**
- * Get contract info (ABI, source, verification status)
+ * Get contract info (supports ENS)
  */
 import { defineCommand } from 'citty'
 import consola from 'consola'
 import { resolveProvider } from '../core/resolve.js'
 import { create } from '../core/registry.js'
 import { normalizeChain } from '../core/types.js'
+import { resolveInput } from '../core/input.js'
 
 export default defineCommand({
   meta: {
     name: 'contract',
-    description: 'Get smart contract info',
+    description: 'Get smart contract info (supports ENS)',
   },
   args: {
     address: {
       type: 'positional',
-      description: 'Contract address',
+      description: 'Contract address or ENS name',
       required: true,
     },
     chain: {
@@ -36,7 +37,8 @@ export default defineCommand({
     const chain = normalizeChain(args.chain as string)
 
     try {
-      const info = await provider.getContractInfo(args.address as string, chain)
+      const { address } = await resolveInput(args.address as string)
+      const info = await provider.getContractInfo(address, chain)
       consola.log(`[${providerName}] Contract ${info.address}`)
       consola.log(`  Verified: ${info.isVerified}`)
       if (info.name) consola.log(`  Name: ${info.name}`)

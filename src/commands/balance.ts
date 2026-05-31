@@ -1,21 +1,22 @@
 /**
- * Get native token balance for an address
+ * Get native token balance for an address (supports ENS)
  */
 import { defineCommand } from 'citty'
 import consola from 'consola'
 import { resolveProvider } from '../core/resolve.js'
 import { create } from '../core/registry.js'
 import { normalizeChain } from '../core/types.js'
+import { resolveInput } from '../core/input.js'
 
 export default defineCommand({
   meta: {
     name: 'balance',
-    description: 'Get native token balance for an address',
+    description: 'Get native token balance for an address (supports ENS)',
   },
   args: {
     address: {
       type: 'positional',
-      description: 'Blockchain address',
+      description: 'Blockchain address or ENS name',
       required: true,
     },
     chain: {
@@ -36,7 +37,8 @@ export default defineCommand({
     const chain = normalizeChain(args.chain as string)
 
     try {
-      const balance = await provider.getBalance(args.address as string, chain)
+      const { address } = await resolveInput(args.address as string)
+      const balance = await provider.getBalance(address, chain)
       consola.log(`[${providerName}] ${balance.chain} balance for ${balance.address}`)
       consola.log(`  ${balance.balanceFormatted} ${balance.symbol}`)
       consola.log(`  Raw: ${balance.balance} wei`)
