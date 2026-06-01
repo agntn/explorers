@@ -14,6 +14,7 @@ const ENV_MAP: Record<string, string[]> = {
   ton: [],
   tron: [],
   aptos: [],
+  sui: [],
 }
 
 /** Provider-specific default chains */
@@ -23,6 +24,7 @@ export const PROVIDER_DEFAULT_CHAIN: Record<string, string> = {
   ton: 'ton',
   tron: 'tron',
   aptos: 'aptos',
+  sui: 'sui',
 }
 
 /**

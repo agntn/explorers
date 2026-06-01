@@ -8,7 +8,7 @@
 export type Chain =
   | 'eth' | 'base' | 'arbitrum' | 'optimism' | 'polygon' | 'bsc'
   | 'avalanche' | 'fantom' | 'gnosis' | 'linea' | 'zksync' | 'scroll'
-  | 'bitcoin' | 'solana' | 'ton' | 'tron' | 'aptos'
+  | 'bitcoin' | 'solana' | 'ton' | 'tron' | 'aptos' | 'sui'
 
 /** Transaction status */
 export type TxStatus = 'success' | 'failed' | 'pending'
@@ -269,6 +269,7 @@ export const CHAIN_SYMBOLS: Record<Chain, string> = {
   ton: 'TON',
   tron: 'TRX',
   aptos: 'APT',
+  sui: 'SUI',
 }
 
 /** Chain display names */
@@ -290,6 +291,7 @@ export const CHAIN_NAMES: Record<Chain, string> = {
   ton: 'TON (The Open Network)',
   tron: 'TRON',
   aptos: 'Aptos',
+  sui: 'Sui',
 }
 
 // ─── Utility ───────────────────────────────────────────────────────────────
@@ -343,6 +345,9 @@ export function normalizeChain(input?: string): Chain {
     'ftm': 'fantom',
     'btc': 'bitcoin',
     'sol': 'solana',
+    'sui': 'sui',
+    'aptos': 'aptos',
+    'trx': 'tron',
     'zksync-era': 'zksync',
   }
   if (lower in CHAIN_SYMBOLS) return lower as Chain
