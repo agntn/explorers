@@ -11,12 +11,14 @@ const ENV_MAP: Record<string, string[]> = {
   blockchair: ['BLOCKCHAIR_API_KEY'],
   mempool: [],
   solana: [],
+  ton: [],
 }
 
 /** Provider-specific default chains */
 export const PROVIDER_DEFAULT_CHAIN: Record<string, string> = {
   mempool: 'bitcoin',
   solana: 'solana',
+  ton: 'ton',
 }
 
 /**
