@@ -8,7 +8,7 @@
 export type Chain =
   | 'eth' | 'base' | 'arbitrum' | 'optimism' | 'polygon' | 'bsc'
   | 'avalanche' | 'fantom' | 'gnosis' | 'linea' | 'zksync' | 'scroll'
-  | 'bitcoin' | 'solana' | 'ton' | 'tron'
+  | 'bitcoin' | 'solana' | 'ton' | 'tron' | 'aptos'
 
 /** Transaction status */
 export type TxStatus = 'success' | 'failed' | 'pending'
@@ -268,6 +268,7 @@ export const CHAIN_SYMBOLS: Record<Chain, string> = {
   solana: 'SOL',
   ton: 'TON',
   tron: 'TRX',
+  aptos: 'APT',
 }
 
 /** Chain display names */
@@ -288,6 +289,7 @@ export const CHAIN_NAMES: Record<Chain, string> = {
   solana: 'Solana',
   ton: 'TON (The Open Network)',
   tron: 'TRON',
+  aptos: 'Aptos',
 }
 
 // ─── Utility ───────────────────────────────────────────────────────────────

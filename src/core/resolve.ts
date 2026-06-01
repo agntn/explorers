@@ -13,6 +13,7 @@ const ENV_MAP: Record<string, string[]> = {
   solana: [],
   ton: [],
   tron: [],
+  aptos: [],
 }
 
 /** Provider-specific default chains */
@@ -21,6 +22,7 @@ export const PROVIDER_DEFAULT_CHAIN: Record<string, string> = {
   solana: 'solana',
   ton: 'ton',
   tron: 'tron',
+  aptos: 'aptos',
 }
 
 /**
