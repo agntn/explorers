@@ -59,22 +59,3 @@ export async function resolveEns(name: string): Promise<string | null> {
 
   return null
 }
-
-/**
- * If input is an ENS name, resolve it. If it's already an address, pass through.
- * Returns the address or null if resolution fails.
- */
-export async function resolveAddress(input: string): Promise<string | null> {
-  const trimmed = input.trim()
-
-  if (isAddress(trimmed)) {
-    return trimmed
-  }
-
-  if (isEnsName(trimmed)) {
-    return resolveEns(trimmed)
-  }
-
-  // Might be a non-standard address format — return as-is and let provider validate
-  return trimmed
-}

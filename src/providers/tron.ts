@@ -16,7 +16,6 @@ import type {
   Transaction,
   TxHistoryOptions,
   ContractInfo,
-  GasData,
   BlockInfo,
   TxStatus,
 } from '../core/types.js'
@@ -96,14 +95,6 @@ function sunToTrx(sun: number): string {
   return (sun / SUN_PER_TRX).toFixed(6).replace(/\.?0+$/, '') || '0'
 }
 
-/** TronGrid API returns addresses already base58-encoded. Hex (41-prefixed)
- * is only seen inside `raw_data.contract[].parameter.value`. We pass the
- * base58 form through unchanged — decoding would require a base58 impl we
- * intentionally don't ship. Callers receive the format the API gave us. */
-function asTronAddress(addr: string | null | undefined): string | null {
-  return addr ?? null
-}
-
 function mapTx(raw: TronTx): Transaction {
   const contract = raw.raw_data.contract[0]
   const value = contract?.parameter.value
@@ -113,8 +104,8 @@ function mapTx(raw: TronTx): Transaction {
     hash: raw.txID,
     blockNumber: raw.blockNumber ?? 0,
     timestamp: new Date(raw.block_timestamp).toISOString(),
-    from: asTronAddress(value?.owner_address) ?? '',
-    to: asTronAddress(value?.to_address),
+    from: value?.owner_address ?? '',
+    to: value?.to_address ?? null,
     value: amount.toString(),
     valueFormatted: sunToTrx(amount),
     status: (raw.ret?.[0]?.contractRet === 'SUCCESS' ? 'success' : 'failed') as TxStatus,

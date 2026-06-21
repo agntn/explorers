@@ -2,12 +2,15 @@
  * blocex — Unified block explorer provider types
  */
 
+import { CHAIN_DATA } from 'chains'
+
 // ─── Domain Models ─────────────────────────────────────────────────────────
 
 /** Chain identifier */
 export type Chain =
   | 'eth' | 'base' | 'arbitrum' | 'optimism' | 'polygon' | 'bsc'
   | 'avalanche' | 'fantom' | 'gnosis' | 'linea' | 'zksync' | 'scroll'
+  | 'bera'
   | 'bitcoin' | 'solana' | 'ton' | 'tron' | 'aptos' | 'sui'
 
 /** Transaction status */
@@ -246,53 +249,10 @@ export interface ProviderConfig {
   defaultChain?: Chain
 }
 
-export type ProviderFactory = (config: ProviderConfig) => BlocexProvider
+type ProviderFactory = (config: ProviderConfig) => BlocexProvider
 
 // ─── Chain Utilities ───────────────────────────────────────────────────────
 
-/** Native token symbols per chain */
-export const CHAIN_SYMBOLS: Record<Chain, string> = {
-  eth: 'ETH',
-  base: 'ETH',
-  arbitrum: 'ETH',
-  optimism: 'ETH',
-  polygon: 'POL',
-  bsc: 'BNB',
-  avalanche: 'AVAX',
-  fantom: 'FTM',
-  gnosis: 'xDAI',
-  linea: 'ETH',
-  zksync: 'ETH',
-  scroll: 'ETH',
-  bitcoin: 'BTC',
-  solana: 'SOL',
-  ton: 'TON',
-  tron: 'TRX',
-  aptos: 'APT',
-  sui: 'SUI',
-}
-
-/** Chain display names */
-export const CHAIN_NAMES: Record<Chain, string> = {
-  eth: 'Ethereum',
-  base: 'Base',
-  arbitrum: 'Arbitrum One',
-  optimism: 'Optimism',
-  polygon: 'Polygon PoS',
-  bsc: 'BNB Chain',
-  avalanche: 'Avalanche C-Chain',
-  fantom: 'Fantom Opera',
-  gnosis: 'Gnosis Chain',
-  linea: 'Linea',
-  zksync: 'zkSync Era',
-  scroll: 'Scroll',
-  bitcoin: 'Bitcoin',
-  solana: 'Solana',
-  ton: 'TON (The Open Network)',
-  tron: 'TRON',
-  aptos: 'Aptos',
-  sui: 'Sui',
-}
 
 // ─── Utility ───────────────────────────────────────────────────────────────
 
@@ -315,17 +275,11 @@ export function formatWei(wei: string | bigint, decimals = 18): string {
   return negative ? `-${result}` : result
 }
 
-/** Parse hex string to number safely */
-export function hexToNumber(hex: string): number {
-  if (hex.startsWith('0x')) return Number.parseInt(hex, 16)
-  return Number.parseInt(hex, 10)
-}
-
 /** Parse hex string to wei string */
 export function hexToWei(hex: string): string {
-  if (hex.startsWith('0x')) return BigInt(hex).toString()
   return BigInt(hex).toString()
 }
+
 
 /** Normalize chain name from various input forms */
 export function normalizeChain(input?: string): Chain {
@@ -350,6 +304,8 @@ export function normalizeChain(input?: string): Chain {
     'trx': 'tron',
     'zksync-era': 'zksync',
   }
-  if (lower in CHAIN_SYMBOLS) return lower as Chain
+  // canonical keys — match any known chain key directly
+  const canonical = new Set(Object.keys(CHAIN_DATA))
+  if (canonical.has(lower)) return lower as Chain
   return aliases[lower] ?? 'eth'
 }

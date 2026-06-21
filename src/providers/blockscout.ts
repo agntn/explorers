@@ -37,7 +37,7 @@ import { normalizeError, UnsupportedChainError } from '../core/errors.js'
 import { register } from '../core/registry.js'
 import { assertSafePathSegment } from '../core/path-safety.js'
 import { CHAIN_DATA } from 'chains'
-import { formatWei, hexToNumber, hexToWei, clampMaxResults } from '../core/types.js'
+import { formatWei, clampMaxResults } from '../core/types.js'
 
 // ─── Chain → Blockscout instance mapping ───────────────────────────────────
 

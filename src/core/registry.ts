@@ -2,7 +2,8 @@
  * Self-registering provider registry for blocex
  */
 
-import type { BlocexProvider, ProviderConfig, ProviderFactory } from './types.js'
+import type { BlocexProvider, ProviderConfig } from './types.js'
+type ProviderFactory = (config: ProviderConfig) => BlocexProvider
 import { UnknownProviderError } from './errors.js'
 
 interface RegistryEntry {

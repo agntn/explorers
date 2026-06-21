@@ -22,12 +22,12 @@ import type {
   GasData,
   BlockInfo,
   TxStatus,
-  TokenTransfer,
 } from '../core/types.js'
 import { getJSON, buildQuery } from '../core/client.js'
 import { normalizeError, AuthError, UnsupportedChainError } from '../core/errors.js'
 import { register } from '../core/registry.js'
-import { formatWei, CHAIN_SYMBOLS, clampMaxResults } from '../core/types.js'
+import { CHAIN_DATA } from 'chains'
+import { formatWei, clampMaxResults } from '../core/types.js'
 
 // ─── Chain → Etherscan subdomain mapping ───────────────────────────────────
 
@@ -44,6 +44,7 @@ const CHAIN_BASES: Partial<Record<Chain, string>> = {
   linea: 'https://api.lineascan.build',
   zksync: 'https://api-era.zksync.network',
   scroll: 'https://api.scrollscan.com',
+  bera: 'https://api.berascan.com',
 }
 
 // ─── Etherscan API response types ──────────────────────────────────────────
@@ -71,19 +72,6 @@ interface EtherscanTx {
   methodId?: string
   contractAddress: string
   confirmations: string
-}
-
-interface EtherscanTokenTransfer {
-  blockNumber: string
-  timeStamp: string
-  hash: string
-  from: string
-  to: string
-  value: string
-  tokenName: string
-  tokenSymbol: string
-  tokenDecimal: string
-  contractAddress: string
 }
 
 interface EtherscanTokenBalance {
@@ -120,53 +108,24 @@ function getBase(chain: Chain): string {
   return base
 }
 
-function txStatus(isError: string, receiptStatus: string): TxStatus {
-  if (isError === '1') return 'failed'
-  if (receiptStatus === '0') return 'failed'
-  return 'success'
-}
-
-function toTimestamp(epoch: string): string {
-  return new Date(Number(epoch) * 1000).toISOString()
-}
-
 function mapTx(raw: EtherscanTx): Transaction {
-  const chain = 'eth' // caller provides chain context
-  const valueWei = raw.value
-  const transfers: TokenTransfer[] = []
-
+  const status: TxStatus = raw.isError === '1' || raw.txreceipt_status === '0' ? 'failed' : 'success'
   return {
     hash: raw.hash,
     blockNumber: Number(raw.blockNumber),
-    timestamp: toTimestamp(raw.timeStamp),
+    timestamp: new Date(Number(raw.timeStamp) * 1000).toISOString(),
     from: raw.from,
     to: raw.to || null,
-    value: valueWei,
-    valueFormatted: formatWei(valueWei),
+    value: raw.value,
+    valueFormatted: formatWei(raw.value),
     gasUsed: raw.gasUsed,
     gasPrice: raw.gasPrice,
-    status: txStatus(raw.isError, raw.txreceipt_status),
+    status,
     methodId: raw.methodId,
     functionName: raw.functionName,
     isContractInteraction: raw.input !== '0x' && raw.input.length > 2,
-    tokenTransfers: transfers,
+    tokenTransfers: [],
     raw: raw as unknown as Record<string, unknown>,
-  }
-}
-
-function mapTokenTransfer(raw: EtherscanTokenTransfer): TokenTransfer {
-  return {
-    contract: raw.contractAddress,
-    symbol: raw.tokenSymbol,
-    name: raw.tokenName,
-    decimals: Number(raw.tokenDecimal),
-    value: raw.value,
-    valueFormatted: formatWei(raw.value, Number(raw.tokenDecimal)),
-    from: raw.from,
-    to: raw.to,
-    txHash: raw.hash,
-    blockNumber: Number(raw.blockNumber),
-    timestamp: toTimestamp(raw.timeStamp),
   }
 }
 
@@ -241,7 +200,7 @@ class EtherscanProvider implements BlocexProvider {
       chain: c,
       balance: result,
       balanceFormatted: formatWei(result),
-      symbol: CHAIN_SYMBOLS[c] ?? 'ETH',
+      symbol: CHAIN_DATA[c]?.symbol ?? 'ETH',
     }
   }
 
@@ -375,7 +334,7 @@ class EtherscanProvider implements BlocexProvider {
       number: Number(result.blockNumber),
       hash: '', // Etherscan block reward endpoint doesn't return hash
       parentHash: '',
-      timestamp: toTimestamp(result.timeStamp),
+      timestamp: new Date(Number(result.timeStamp) * 1000).toISOString(),
       miner: result.blockMiner,
       gasUsed: result.gasUsed,
       gasLimit: result.gasLimit,
