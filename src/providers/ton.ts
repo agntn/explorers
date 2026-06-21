@@ -21,10 +21,11 @@ import type {
   TxStatus,
 } from '../core/types.js'
 import { getJSON } from '../core/client.js'
-import { normalizeError, UnsupportedChainError } from '../core/errors.js'
+import { normalizeError, UnsupportedChainError, NotFoundError } from '../core/errors.js'
 import { register } from '../core/registry.js'
 import { clampMaxResults } from '../core/types.js'
 
+import { assertSafePathSegment } from '../core/path-safety.js'
 const DEFAULT_BASE = 'https://tonapi.io'
 const NANOTON = 1_000_000_000
 
@@ -146,7 +147,8 @@ class TonProvider implements BlocexProvider {
     const c = chain ?? 'ton'
     if (c !== 'ton') throw new UnsupportedChainError(c, 'ton')
 
-    const data = await getJSON<TonAccount>(`${this.baseUrl}/v2/accounts/${address}`)
+    assertSafePathSegment(address, 'address')
+    const data = await getJSON<TonAccount>(`${this.baseUrl}/v2/accounts/${encodeURIComponent(address)}`)
 
     return {
       address,
@@ -160,11 +162,11 @@ class TonProvider implements BlocexProvider {
   async getTxHistory(address: string, chain?: Chain, options?: TxHistoryOptions): Promise<Transaction[]> {
     const c = chain ?? 'ton'
     if (c !== 'ton') throw new UnsupportedChainError(c, 'ton')
-
     const limit = clampMaxResults(options?.limit)
 
+    assertSafePathSegment(address, 'address')
     const data = await getJSON<{ events: TonEvent[] }>(
-      `${this.baseUrl}/v2/accounts/${address}/events?limit=${limit}`,
+      `${this.baseUrl}/v2/accounts/${encodeURIComponent(address)}/events?limit=${limit}`,
     )
 
     if (!data.events?.length) return []
@@ -180,28 +182,14 @@ class TonProvider implements BlocexProvider {
     throw new UnsupportedChainError('ton', 'ton')
   }
 
-  async getBlockInfo(blockNumber: number, chain?: Chain): Promise<BlockInfo> {
-    const c = chain ?? 'ton'
-    if (c !== 'ton') throw new UnsupportedChainError(c, 'ton')
-
-    // TON uses workchain:shard:seqno — assume masterchain (workchain -1)
-    const data = await getJSON<{ blocks: TonBlock[] }>(
-      `${this.baseUrl}/v2/blockchain/blocks?workchain=-1&shard=8000000000000000&seqno=${blockNumber}`,
-    )
-
-    const block = data.blocks[0]
-    if (!block) throw normalizeError(new Error(`Block not found: ${blockNumber}`), 'ton')
-
-    return {
-      number: block.seqno,
-      hash: block.root_hash,
-      parentHash: '',
-      timestamp: new Date(block.gen_utime * 1000).toISOString(),
-      miner: '',
-      gasUsed: '0',
-      gasLimit: '0',
-      txCount: 0,
-    }
+  async getBlockInfo(_blockNumber: number, _chain?: Chain): Promise<BlockInfo> {
+    // TonAPI's `/v2/blockchain/blocks` endpoint takes workchain + shard + seqno
+    // as path segments, not as query params, and requires signed-int64 workchain
+    // IDs. The previous query-string shape always returned 404 even for valid
+    // masterchain blocks (verified 2026-06-21). Throw NotFoundError so callers
+    // surface a clear error rather than silently rendering `undefined`.
+    // Use https://tonscan.org or toncenter.com to fetch TON blocks.
+    throw new NotFoundError('TON block (TonAPI blocks endpoint unavailable)', 'ton')
   }
 }
 

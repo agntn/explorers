@@ -25,6 +25,7 @@ import { normalizeError, UnsupportedChainError } from '../core/errors.js'
 import { register } from '../core/registry.js'
 import { clampMaxResults } from '../core/types.js'
 
+import { assertSafePathSegment } from '../core/path-safety.js'
 const DEFAULT_BASE = 'https://api.mainnet.aptoslabs.com/v1'
 const OCTAS_PER_APT = 100_000_000
 
@@ -169,8 +170,9 @@ class AptosProvider implements BlocexProvider {
 
     const limit = clampMaxResults(options?.limit)
 
+    assertSafePathSegment(address, 'address')
     const txs = await getJSON<AptosTransaction[]>(
-      `${this.baseUrl}/accounts/${address}/transactions?limit=${limit}`,
+      `${this.baseUrl}/accounts/${encodeURIComponent(address)}/transactions?limit=${limit}`,
     )
 
     if (!Array.isArray(txs)) return []
@@ -182,8 +184,9 @@ class AptosProvider implements BlocexProvider {
     const c = chain ?? 'aptos'
     if (c !== 'aptos') throw new UnsupportedChainError(c, 'aptos')
 
+    assertSafePathSegment(hash, 'tx hash')
     const tx = await getJSON<AptosTransaction>(
-      `${this.baseUrl}/transactions/by_hash/${hash}`,
+      `${this.baseUrl}/transactions/by_hash/${encodeURIComponent(hash)}`,
     )
 
     return mapTx(tx)
@@ -197,8 +200,9 @@ class AptosProvider implements BlocexProvider {
     const c = chain ?? 'aptos'
     if (c !== 'aptos') throw new UnsupportedChainError(c, 'aptos')
 
+    assertSafePathSegment(String(blockNumber), 'block number')
     const block = await getJSON<AptosBlock>(
-      `${this.baseUrl}/blocks/by_height/${blockNumber}`,
+      `${this.baseUrl}/blocks/by_height/${encodeURIComponent(String(blockNumber))}`,
     )
 
     return {

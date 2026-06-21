@@ -35,7 +35,9 @@ import type {
 import { getJSON, buildQuery } from '../core/client.js'
 import { normalizeError, UnsupportedChainError } from '../core/errors.js'
 import { register } from '../core/registry.js'
-import { formatWei, hexToNumber, hexToWei, CHAIN_SYMBOLS, clampMaxResults } from '../core/types.js'
+import { assertSafePathSegment } from '../core/path-safety.js'
+import { CHAIN_DATA } from 'chains'
+import { formatWei, hexToNumber, hexToWei, clampMaxResults } from '../core/types.js'
 
 // ─── Chain → Blockscout instance mapping ───────────────────────────────────
 
@@ -217,7 +219,8 @@ class BlockscoutProvider implements BlocexProvider {
 
   async getBalance(address: string, chain?: Chain): Promise<Balance> {
     const c = chain ?? this.defaultChain
-    const url = `${this.base(c)}/api/v2/addresses/${address}`
+    assertSafePathSegment(address, 'address')
+    const url = `${this.base(c)}/api/v2/addresses/${encodeURIComponent(address)}`
     const data = await getJSON<BlockscoutAddress>(url)
 
     return {
@@ -225,14 +228,16 @@ class BlockscoutProvider implements BlocexProvider {
       chain: c,
       balance: data.coin_balance,
       balanceFormatted: formatWei(data.coin_balance),
-      symbol: CHAIN_SYMBOLS[c] ?? 'ETH',
+      symbol: CHAIN_DATA[c]?.symbol ?? 'ETH',
     }
   }
 
   async getTxHistory(address: string, chain?: Chain, options?: TxHistoryOptions): Promise<Transaction[]> {
     const c = chain ?? this.defaultChain
+    assertSafePathSegment(address, 'address')
     const limit = clampMaxResults(options?.limit)
-    const url = `${this.base(c)}/api/v2/addresses/${address}/transactions`
+    const url = `${this.base(c)}/api/v2/addresses/${encodeURIComponent(address)}/transactions`
+
     const data = await getJSON<{ items: BlockscoutTx[] }>(url)
 
     if (!data.items?.length) return []
@@ -241,19 +246,20 @@ class BlockscoutProvider implements BlocexProvider {
 
   async getTxDetail(hash: string, chain?: Chain): Promise<Transaction> {
     const c = chain ?? this.defaultChain
-    const url = `${this.base(c)}/api/v2/transactions/${hash}`
+    assertSafePathSegment(hash, 'tx hash')
+    const url = `${this.base(c)}/api/v2/transactions/${encodeURIComponent(hash)}`
     const data = await getJSON<BlockscoutTx>(url)
     return mapTx(data)
   }
 
   async getContractInfo(address: string, chain?: Chain): Promise<ContractInfo> {
     const c = chain ?? this.defaultChain
+    assertSafePathSegment(address, 'address')
 
     // Try verified contract first
     try {
-      const url = `${this.base(c)}/api/v2/smart-contracts/${address}`
+      const url = `${this.base(c)}/api/v2/smart-contracts/${encodeURIComponent(address)}`
       const data = await getJSON<BlockscoutContractInfo>(url)
-
       const isToken = data.abi?.some(item => {
         if (item.type !== 'function') return false
         const name = item.name as string | undefined
@@ -276,7 +282,7 @@ class BlockscoutProvider implements BlocexProvider {
     }
     catch {
       // Fallback to address endpoint
-      const addrUrl = `${this.base(c)}/api/v2/addresses/${address}`
+      const addrUrl = `${this.base(c)}/api/v2/addresses/${encodeURIComponent(address)}`
       const addr = await getJSON<BlockscoutAddress>(addrUrl)
 
       return {
@@ -290,7 +296,8 @@ class BlockscoutProvider implements BlocexProvider {
 
   async getTokenBalances(address: string, chain?: Chain, options?: TokenBalanceOptions): Promise<TokenBalance[]> {
     const c = chain ?? this.defaultChain
-    const url = `${this.base(c)}/api/v2/addresses/${address}/tokens`
+    assertSafePathSegment(address, 'address')
+    const url = `${this.base(c)}/api/v2/addresses/${encodeURIComponent(address)}/tokens`
     const data = await getJSON<BlockscoutTokenBalance[]>(url)
 
     let tokens = data.map(t => ({
@@ -327,7 +334,8 @@ class BlockscoutProvider implements BlocexProvider {
 
   async getBlockInfo(blockNumber: number, chain?: Chain): Promise<BlockInfo> {
     const c = chain ?? this.defaultChain
-    const url = `${this.base(c)}/api/v2/blocks/${blockNumber}`
+    assertSafePathSegment(String(blockNumber), 'block number')
+    const url = `${this.base(c)}/api/v2/blocks/${encodeURIComponent(String(blockNumber))}`
     const data = await getJSON<BlockscoutBlock>(url)
 
     return {

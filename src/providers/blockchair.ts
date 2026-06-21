@@ -24,7 +24,10 @@ import type {
 import { getJSON, buildQuery } from '../core/client.js'
 import { normalizeError, UnsupportedChainError } from '../core/errors.js'
 import { register } from '../core/registry.js'
-import { formatWei, CHAIN_SYMBOLS, clampMaxResults } from '../core/types.js'
+import { CHAIN_DATA } from 'chains'
+import { formatWei, clampMaxResults } from '../core/types.js'
+import { decimalToWei } from '../core/wei.js'
+import { assertSafePathSegment } from '../core/path-safety.js'
 
 // ─── Chain → Blockchair chain name ─────────────────────────────────────────
 
@@ -176,38 +179,43 @@ class BlockchairProvider implements BlocexProvider {
 
   async getBalance(address: string, chain?: Chain): Promise<Balance> {
     const c = chain ?? this.defaultChain
-    const url = this.buildUrl(c, `/dashboards/address/${address}`)
+    assertSafePathSegment(address, 'address')
+    const url = this.buildUrl(c, `/dashboards/address/${encodeURIComponent(address)}`)
     const res = await getJSON<BlockchairResponse<Record<string, BlockchairAddressData>>>(url)
 
     const key = Object.keys(res.data)[0]
     if (!key) throw normalizeError(new Error(`Address not found: ${address}`), 'blockchair')
-    const data = res.data[key]!
+    const data = res.data[key]
+    if (!data) throw normalizeError(new Error(`Address data missing: ${address}`), 'blockchair')
 
     return {
       address,
       chain: c,
       balance: BigInt(data.address.balance).toString(),
       balanceFormatted: formatWei(BigInt(data.address.balance).toString()),
-      symbol: CHAIN_SYMBOLS[c] ?? 'ETH',
+      symbol: CHAIN_DATA[c]?.symbol ?? 'ETH',
     }
   }
 
   async getTxHistory(address: string, chain?: Chain, options?: TxHistoryOptions): Promise<Transaction[]> {
     const c = chain ?? this.defaultChain
+    assertSafePathSegment(address, 'address')
     const limit = clampMaxResults(options?.limit)
-    const url = this.buildUrl(c, `/dashboards/address/${address}`, {
+    const url = this.buildUrl(c, `/dashboards/address/${encodeURIComponent(address)}`, {
       limit,
     })
     const res = await getJSON<BlockchairResponse<Record<string, BlockchairAddressData>>>(url)
 
     const key = Object.keys(res.data)[0]
     if (!key) return []
-    const addrData = res.data[key]!
+    const addrData = res.data[key]
+    if (!addrData) return []
 
     if (!addrData.transactions?.length) return []
 
-    // Blockchair returns tx hashes for address; fetch details for each
-    // For efficiency, only fetch up to limit
+    // Blockchair returns tx hashes for address; fetch details for each.
+    // Cap at limit to bound N+1 calls; errors are isolated per-hash so a
+    // single bad hash doesn't drop the whole page.
     const txHashes = addrData.transactions.slice(0, limit)
     const txs: Transaction[] = []
 
@@ -216,7 +224,8 @@ class BlockchairProvider implements BlocexProvider {
         txs.push(await this.getTxDetail(hash, c))
       }
       catch {
-        // Skip failed fetches
+        // Skip failed fetches — addrData.transactions could contain
+        // unindexed hashes for chains Blockchair hasn't propagated.
       }
     }
 
@@ -225,17 +234,27 @@ class BlockchairProvider implements BlocexProvider {
 
   async getTxDetail(hash: string, chain?: Chain): Promise<Transaction> {
     const c = chain ?? this.defaultChain
-    const url = this.buildUrl(c, `/dashboards/transaction/${hash}`)
+    assertSafePathSegment(hash, 'tx hash')
+    const url = this.buildUrl(c, `/dashboards/transaction/${encodeURIComponent(hash)}`)
     const res = await getJSON<BlockchairResponse<Record<string, BlockchairTxData>>>(url)
 
     const key = Object.keys(res.data)[0]
     if (!key) throw normalizeError(new Error(`Transaction not found: ${hash}`), 'blockchair')
-    const data = res.data[key]!.transaction
+    const entry = res.data[key]
+    if (!entry) throw normalizeError(new Error(`Transaction data missing: ${hash}`), 'blockchair')
+    const data = entry.transaction
 
+    // Blockchair returns values in the native unit (ETH, BNB, BTC, ...).
+    // For BTC we get satoshis as a number; for EVM chains we get a number
+    // in ETH (already a float). Multiply by 1e18 via string to preserve
+    // precision — `number * 1e18` overflows safe-integer range above ~9 ETH.
+    // If `data.value` is missing we fall back to `output_total` for BTC.
     const isEth = c !== 'bitcoin'
     const valueStr = isEth
-      ? BigInt(Math.round((data.value ?? data.output_total) * 1e18)).toString()
-      : BigInt(data.output_total).toString()
+      ? data.value
+        ? BigInt(decimalToWei(data.value)).toString()
+        : '0'
+      : BigInt(Math.round(data.output_total)).toString()
 
     return {
       hash: data.hash,
@@ -256,12 +275,14 @@ class BlockchairProvider implements BlocexProvider {
 
   async getContractInfo(address: string, chain?: Chain): Promise<ContractInfo> {
     const c = chain ?? this.defaultChain
-    const url = this.buildUrl(c, `/dashboards/address/${address}`)
+    assertSafePathSegment(address, 'address')
+    const url = this.buildUrl(c, `/dashboards/address/${encodeURIComponent(address)}`)
     const res = await getJSON<BlockchairResponse<Record<string, BlockchairAddressData>>>(url)
 
     const key = Object.keys(res.data)[0]
     if (!key) throw normalizeError(new Error(`Address not found: ${address}`), 'blockchair')
-    const data = res.data[key]!
+    const data = res.data[key]
+    if (!data) throw normalizeError(new Error(`Address data missing: ${address}`), 'blockchair')
 
     return {
       address,
@@ -272,7 +293,8 @@ class BlockchairProvider implements BlocexProvider {
 
   async getBlockInfo(blockNumber: number, chain?: Chain): Promise<BlockInfo> {
     const c = chain ?? this.defaultChain
-    const url = this.buildUrl(c, `/dashboards/blocks/${blockNumber}`)
+    assertSafePathSegment(String(blockNumber), 'block number')
+    const url = this.buildUrl(c, `/dashboards/blocks/${encodeURIComponent(String(blockNumber))}`)
     const res = await getJSON<BlockchairResponse<BlockchairDashboardsBlocks>>(url)
 
     const block = res.data.blocks[0]

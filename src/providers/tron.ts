@@ -25,6 +25,7 @@ import { normalizeError, UnsupportedChainError } from '../core/errors.js'
 import { register } from '../core/registry.js'
 import { clampMaxResults } from '../core/types.js'
 
+import { assertSafePathSegment } from '../core/path-safety.js'
 const DEFAULT_BASE = 'https://api.trongrid.io'
 const SUN_PER_TRX = 1_000_000
 
@@ -95,12 +96,12 @@ function sunToTrx(sun: number): string {
   return (sun / SUN_PER_TRX).toFixed(6).replace(/\.?0+$/, '') || '0'
 }
 
-/** Decode base58 Tron address from hex (41-prefixed) */
-function hexToTronAddr(hex: string | null | undefined): string | null {
-  if (!hex) return null
-  // Tron addresses in API are already base58, but in raw tx they're hex
-  if (hex.startsWith('T')) return hex
-  return hex
+/** TronGrid API returns addresses already base58-encoded. Hex (41-prefixed)
+ * is only seen inside `raw_data.contract[].parameter.value`. We pass the
+ * base58 form through unchanged — decoding would require a base58 impl we
+ * intentionally don't ship. Callers receive the format the API gave us. */
+function asTronAddress(addr: string | null | undefined): string | null {
+  return addr ?? null
 }
 
 function mapTx(raw: TronTx): Transaction {
@@ -112,8 +113,8 @@ function mapTx(raw: TronTx): Transaction {
     hash: raw.txID,
     blockNumber: raw.blockNumber ?? 0,
     timestamp: new Date(raw.block_timestamp).toISOString(),
-    from: hexToTronAddr(value?.owner_address) ?? '',
-    to: hexToTronAddr(value?.to_address),
+    from: asTronAddress(value?.owner_address) ?? '',
+    to: asTronAddress(value?.to_address),
     value: amount.toString(),
     valueFormatted: sunToTrx(amount),
     status: (raw.ret?.[0]?.contractRet === 'SUCCESS' ? 'success' : 'failed') as TxStatus,
@@ -151,8 +152,9 @@ class TronProvider implements BlocexProvider {
     const c = chain ?? 'tron'
     if (c !== 'tron') throw new UnsupportedChainError(c, 'tron')
 
+    assertSafePathSegment(address, 'address')
     const data = await getJSON<{ data: TronAccount[] }>(
-      `${this.baseUrl}/v1/accounts/${address}`,
+      `${this.baseUrl}/v1/accounts/${encodeURIComponent(address)}`,
     )
 
     const account = data.data?.[0]
@@ -173,8 +175,9 @@ class TronProvider implements BlocexProvider {
 
     const limit = clampMaxResults(options?.limit)
 
+    assertSafePathSegment(address, 'address')
     const data = await getJSON<{ data: TronTx[] }>(
-      `${this.baseUrl}/v1/accounts/${address}/transactions?limit=${limit}&order_by=block_timestamp,desc`,
+      `${this.baseUrl}/v1/accounts/${encodeURIComponent(address)}/transactions?limit=${limit}&order_by=block_timestamp,desc`,
     )
 
     if (!data.data?.length) return []
@@ -194,8 +197,9 @@ class TronProvider implements BlocexProvider {
     const c = chain ?? 'tron'
     if (c !== 'tron') throw new UnsupportedChainError(c, 'tron')
 
+    assertSafePathSegment(String(blockNumber), 'block number')
     const data = await getJSON<TronBlock>(
-      `${this.baseUrl}/wallet/getblockbynum?num=${blockNumber}`,
+      `${this.baseUrl}/wallet/getblockbynum?num=${encodeURIComponent(String(blockNumber))}`,
     )
 
     const raw = data.block_header.raw_data

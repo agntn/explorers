@@ -25,6 +25,7 @@ import { getJSON } from '../core/client.js'
 import { normalizeError, UnsupportedChainError } from '../core/errors.js'
 import { register } from '../core/registry.js'
 import { clampMaxResults } from '../core/types.js'
+import { assertSafePathSegment } from '../core/path-safety.js'
 
 const DEFAULT_BASE = 'https://mempool.space'
 
@@ -215,7 +216,8 @@ class MempoolProvider implements BlocexProvider {
     const c = chain ?? 'bitcoin'
     if (c !== 'bitcoin') throw new UnsupportedChainError(c, 'mempool')
 
-    const data = await this.api<MempoolAddressSummary>(`/api/address/${address}`)
+    assertSafePathSegment(address, 'address')
+    const data = await this.api<MempoolAddressSummary>(`/api/address/${encodeURIComponent(address)}`)
 
     const fundedSat = data.chain_stats.funded_txo_sum
     const spentSat = data.chain_stats.spent_txo_sum
@@ -235,7 +237,8 @@ class MempoolProvider implements BlocexProvider {
     if (c !== 'bitcoin') throw new UnsupportedChainError(c, 'mempool')
 
     const limit = clampMaxResults(options?.limit)
-    const data = await this.api<MempoolAddressTx[]>(`/api/address/${address}/txs`)
+    assertSafePathSegment(address, 'address')
+    const data = await this.api<MempoolAddressTx[]>(`/api/address/${encodeURIComponent(address)}/txs`)
 
     return data.slice(0, limit).map(tx => mapTx(tx, address))
   }
@@ -244,7 +247,8 @@ class MempoolProvider implements BlocexProvider {
     const c = chain ?? 'bitcoin'
     if (c !== 'bitcoin') throw new UnsupportedChainError(c, 'mempool')
 
-    const data = await this.api<MempoolTx>(`/api/tx/${hash}`)
+    assertSafePathSegment(hash, 'tx hash')
+    const data = await this.api<MempoolTx>(`/api/tx/${encodeURIComponent(hash)}`)
 
     const totalOut = data.vout.reduce((sum, v) => sum + v.value, 0)
     const fromAddr = data.vin[0]?.prevout.scriptpubkey_address ?? 'unknown'
@@ -291,9 +295,12 @@ class MempoolProvider implements BlocexProvider {
     const c = chain ?? 'bitcoin'
     if (c !== 'bitcoin') throw new UnsupportedChainError(c, 'mempool')
 
-    // Get block hash from height, then fetch block details
-    const blockHash = await this.api<string>(`/api/block-height/${blockNumber}`)
-    const data = await this.api<MempoolBlock>(`/api/block/${blockHash}`)
+    // Get block hash from height, then fetch block details.
+    // Block numbers are ASCII hex from mempool.space — no traversal concern,
+    // but assert anyway for symmetry with sibling providers.
+    assertSafePathSegment(String(blockNumber), 'block number')
+    const blockHash = await this.api<string>(`/api/block-height/${encodeURIComponent(String(blockNumber))}`)
+    const data = await this.api<MempoolBlock>(`/api/block/${encodeURIComponent(blockHash)}`)
 
     return {
       number: data.height,
