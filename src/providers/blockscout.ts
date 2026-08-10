@@ -17,7 +17,6 @@
  */
 
 import type {
-  BlocexProvider,
   ProviderCapabilities,
   ProviderConfig,
   Chain,
@@ -31,132 +30,128 @@ import type {
   BlockInfo,
   TxStatus,
   TokenTransfer,
-} from '../core/types.js'
-import { getJSON, buildQuery } from '../core/client.js'
-import { normalizeError, UnsupportedChainError } from '../core/errors.js'
-import { register } from '../core/registry.js'
-import { assertSafePathSegment } from '../core/path-safety.js'
-import { CHAIN_DATA } from 'chains'
-import { formatWei, clampMaxResults } from '../core/types.js'
-
-// ─── Chain → Blockscout instance mapping ───────────────────────────────────
+} from "../core/types.js";
+import { Provider } from "../core/provider.js";
+import { NotFoundError, UnsupportedChainError } from "../core/errors.js";
+import { register } from "../core/registry.js";
+import { assertSafePathSegment } from "../core/path-safety.js";
+import { CHAIN_DATA } from "chains";
+import { clampMaxResults, formatWei, multiplyIntegerStrings } from "../core/types.js";
 
 const CHAIN_BASES: Partial<Record<Chain, string>> = {
-  eth: 'https://eth.blockscout.com',
-  base: 'https://base.blockscout.com',
-  arbitrum: 'https://arbitrum.blockscout.com',
-  optimism: 'https://optimism.blockscout.com',
-  polygon: 'https://polygon.blockscout.com',
-  gnosis: 'https://gnosis.blockscout.com',
-  linea: 'https://linea.blockscout.com',
-  scroll: 'https://scroll.blockscout.com',
-  zksync: 'https://zksync.blockscout.com',
-  avalanche: 'https://avalanche.blockscout.com',
-}
-
-// ─── Blockscout API types ──────────────────────────────────────────────────
+  eth: "https://eth.blockscout.com",
+  base: "https://base.blockscout.com",
+  arbitrum: "https://arbitrum.blockscout.com",
+  optimism: "https://optimism.blockscout.com",
+  polygon: "https://polygon.blockscout.com",
+  gnosis: "https://gnosis.blockscout.com",
+  linea: "https://linea.blockscout.com",
+  scroll: "https://scroll.blockscout.com",
+  zksync: "https://zksync.blockscout.com",
+  avalanche: "https://avalanche.blockscout.com",
+};
 
 interface BlockscoutAddress {
-  hash: string
-  coin_balance: string
-  implementation_address?: string
-  is_contract: boolean
-  is_verified: boolean
-  name?: string
+  hash: string;
+  coin_balance: string;
+  implementation_address?: string;
+  is_contract: boolean;
+  is_verified: boolean;
+  name?: string;
   token?: {
-    name: string
-    symbol: string
-    decimals: string
-    type: string
-  }
+    name: string;
+    symbol: string;
+    decimals: string;
+    type: string;
+  };
 }
 
 interface BlockscoutTx {
-  hash: string
-  block_number: number
-  timestamp: string
-  from: { hash: string }
-  to: { hash: string } | null
-  value: string
-  gas_used: string
-  gas_price: string
-  status: string
-  method?: string
-  tx_types?: string[]
-  token_transfers?: BlockscoutTokenTransfer[]
+  hash: string;
+  block_number: number;
+  timestamp: string;
+  from: { hash: string };
+  to: { hash: string } | null;
+  value: string;
+  gas_used: string;
+  gas_price: string;
+  status: string;
+  method?: string;
+  transaction_types?: string[];
+  token_transfers?: BlockscoutTokenTransfer[];
 }
 
 interface BlockscoutTokenTransfer {
   token: {
-    address: string
-    symbol: string
-    name: string
-    decimals: string
-    type: string
-  }
-  from: { hash: string }
-  to: { hash: string }
-  total: { value: string }
-  tx_hash: string
-  block_number: number
-  timestamp: string
+    address_hash: string;
+    symbol: string;
+    name: string;
+    decimals: string;
+    type: string;
+  };
+  from: { hash: string };
+  to: { hash: string };
+  total: { value: string };
+  tx_hash: string;
+  block_number: number;
+  timestamp: string;
 }
 
 interface BlockscoutTokenBalance {
   token: {
-    address: string
-    symbol: string
-    name: string
-    decimals: string
-    type: string
-  }
-  value: string
-  token_id?: string
+    address_hash: string;
+    symbol: string;
+    name: string;
+    decimals: string;
+    type: string;
+  };
+  value: string;
+  token_id?: string;
 }
 
 interface BlockscoutContractInfo {
-  is_verified: boolean
-  is_proxy?: boolean
-  implementation_address?: string
-  name?: string
-  compiler_version?: string
-  abi?: Array<Record<string, unknown>>
-  source_code?: string
-  creation_tx_hash?: string
-  deployer?: string
+  is_verified: boolean;
+  is_proxy?: boolean;
+  proxy_type?: string | null;
+  implementation_address?: string;
+  implementations?: Array<{ address_hash: string }>;
+  name?: string;
+  compiler_version?: string;
+  abi?: Array<Record<string, unknown>>;
+  source_code?: string;
+  creation_tx_hash?: string;
+  deployer?: string;
 }
 
 interface BlockscoutBlock {
-  height: number
-  hash: string
-  parent_hash: string
-  timestamp: string
-  miner: { hash: string }
-  gas_used: string
-  gas_limit: string
-  tx_count: number
-  base_fee_per_gas?: string
+  height: number;
+  hash: string;
+  parent_hash: string;
+  timestamp: string;
+  miner: { hash: string };
+  gas_used: string;
+  gas_limit: string;
+  transactions_count: number;
+  base_fee_per_gas?: string;
 }
 
 interface BlockscoutGasPrice {
-  average?: string
-  fast?: string
-  slow?: string
+  average?: string | number;
+  fast?: string | number;
+  slow?: string | number;
 }
 
-// ─── Helpers ───────────────────────────────────────────────────────────────
-
 function getBase(chain: Chain): string {
-  const base = CHAIN_BASES[chain]
-  if (!base) throw new UnsupportedChainError(chain, 'blockscout')
-  return base
+  const base = CHAIN_BASES[chain];
+  if (!base) throw new UnsupportedChainError(chain, "blockscout");
+  return base;
 }
 
 function mapTx(raw: BlockscoutTx): Transaction {
-  const valueWei = BigInt(raw.value).toString()
+  const valueWei = BigInt(raw.value).toString();
 
-  const transfers: TokenTransfer[] = (raw.token_transfers ?? []).map(tt => ({
-    contract: tt.token.address,
+  const transfers: TokenTransfer[] = (raw.token_transfers ?? []).map((tt) => ({
+    contract: tt.token.address_hash,
     symbol: tt.token.symbol,
     name: tt.token.name,
     decimals: Number(tt.token.decimals),
@@ -167,7 +162,7 @@ function mapTx(raw: BlockscoutTx): Transaction {
     txHash: tt.tx_hash,
     blockNumber: tt.block_number,
     timestamp: tt.timestamp,
-  }))
+  }));
 
   return {
     hash: raw.hash,
@@ -179,29 +174,28 @@ function mapTx(raw: BlockscoutTx): Transaction {
     valueFormatted: formatWei(valueWei),
     gasUsed: raw.gas_used,
     gasPrice: raw.gas_price,
-    status: (raw.status === 'ok' ? 'success' : 'failed') as TxStatus,
+    fee: multiplyIntegerStrings(raw.gas_used, raw.gas_price),
+    status: (raw.status === "ok" ? "success" : "failed") as TxStatus,
     methodId: undefined,
     functionName: raw.method,
-    isContractInteraction: (raw.tx_types?.includes('contract_call')) ?? false,
+    isContractInteraction: raw.transaction_types?.includes("contract_call") ?? false,
     tokenTransfers: transfers,
     raw: raw as unknown as Record<string, unknown>,
-  }
+  };
 }
 
-// ─── Provider ──────────────────────────────────────────────────────────────
-
-class BlockscoutProvider implements BlocexProvider {
-  private defaultChain: Chain
+class Blockscout extends Provider {
+  private defaultChain: Chain;
 
   constructor(config: ProviderConfig) {
-    this.defaultChain = config.defaultChain ?? 'eth'
+    super(config);
+    this.defaultChain = config.defaultChain ?? "eth";
   }
 
-  name(): string {
-    return 'blockscout'
-  }
+  static readonly providerName = "blockscout";
+  readonly name = Blockscout.providerName;
 
-  capabilities(): ProviderCapabilities {
+  get capabilities(): ProviderCapabilities {
     return {
       balances: true,
       txHistory: true,
@@ -210,67 +204,74 @@ class BlockscoutProvider implements BlocexProvider {
       tokenBalances: true,
       gasData: true,
       blockInfo: true,
-    }
+    };
   }
 
   private base(chain?: Chain): string {
-    return getBase(chain ?? this.defaultChain)
+    return getBase(chain ?? this.defaultChain);
   }
 
   async getBalance(address: string, chain?: Chain): Promise<Balance> {
-    const c = chain ?? this.defaultChain
-    assertSafePathSegment(address, 'address')
-    const url = `${this.base(c)}/api/v2/addresses/${encodeURIComponent(address)}`
-    const data = await getJSON<BlockscoutAddress>(url)
+    const c = chain ?? this.defaultChain;
+    assertSafePathSegment(address, "address");
+    const url = `${this.base(c)}/api/v2/addresses/${encodeURIComponent(address)}`;
+    const data = await this.getJSON<BlockscoutAddress>(url);
 
     return {
       address,
       chain: c,
       balance: data.coin_balance,
       balanceFormatted: formatWei(data.coin_balance),
-      symbol: CHAIN_DATA[c]?.symbol ?? 'ETH',
-    }
+      symbol: CHAIN_DATA[c]?.symbol ?? "ETH",
+    };
   }
 
-  async getTxHistory(address: string, chain?: Chain, options?: TxHistoryOptions): Promise<Transaction[]> {
-    const c = chain ?? this.defaultChain
-    assertSafePathSegment(address, 'address')
-    const limit = clampMaxResults(options?.limit)
-    const url = `${this.base(c)}/api/v2/addresses/${encodeURIComponent(address)}/transactions`
+  async getTxHistory(
+    address: string,
+    chain?: Chain,
+    options?: TxHistoryOptions,
+  ): Promise<Transaction[]> {
+    const c = chain ?? this.defaultChain;
+    assertSafePathSegment(address, "address");
+    const limit = clampMaxResults(options?.limit);
+    const url = `${this.base(c)}/api/v2/addresses/${encodeURIComponent(address)}/transactions`;
 
-    const data = await getJSON<{ items: BlockscoutTx[] }>(url)
+    const data = await this.getJSON<{ items: BlockscoutTx[] }>(url);
 
-    if (!data.items?.length) return []
-    return data.items.slice(0, limit).map(mapTx)
+    if (!data.items?.length) return [];
+    return data.items.slice(0, limit).map(mapTx);
   }
 
-  async getTxDetail(hash: string, chain?: Chain): Promise<Transaction> {
-    const c = chain ?? this.defaultChain
-    assertSafePathSegment(hash, 'tx hash')
-    const url = `${this.base(c)}/api/v2/transactions/${encodeURIComponent(hash)}`
-    const data = await getJSON<BlockscoutTx>(url)
-    return mapTx(data)
+  override async getTxDetail(hash: string, chain?: Chain): Promise<Transaction> {
+    const c = chain ?? this.defaultChain;
+    assertSafePathSegment(hash, "tx hash");
+    const url = `${this.base(c)}/api/v2/transactions/${encodeURIComponent(hash)}`;
+    const data = await this.getJSON<BlockscoutTx>(url);
+    return mapTx(data);
   }
 
-  async getContractInfo(address: string, chain?: Chain): Promise<ContractInfo> {
-    const c = chain ?? this.defaultChain
-    assertSafePathSegment(address, 'address')
+  override async getContractInfo(address: string, chain?: Chain): Promise<ContractInfo> {
+    const c = chain ?? this.defaultChain;
+    assertSafePathSegment(address, "address");
 
     // Try verified contract first
     try {
-      const url = `${this.base(c)}/api/v2/smart-contracts/${encodeURIComponent(address)}`
-      const data = await getJSON<BlockscoutContractInfo>(url)
-      const isToken = data.abi?.some(item => {
-        if (item.type !== 'function') return false
-        const name = item.name as string | undefined
-        return name === 'transfer' || name === 'balanceOf' || name === 'totalSupply'
-      }) ?? false
+      const url = `${this.base(c)}/api/v2/smart-contracts/${encodeURIComponent(address)}`;
+      const data = await this.getJSON<BlockscoutContractInfo>(url);
+      const isToken =
+        data.abi?.some((item) => {
+          if (item.type !== "function") return false;
+          const name = item.name as string | undefined;
+          return name === "transfer" || name === "balanceOf" || name === "totalSupply";
+        }) ?? false;
 
       return {
         address,
         isVerified: data.is_verified,
-        isProxy: data.is_proxy,
-        implementationAddress: data.implementation_address,
+        isProxy:
+          data.is_proxy ?? (data.proxy_type != null || (data.implementations?.length ?? 0) > 0),
+        implementationAddress:
+          data.implementation_address ?? data.implementations?.[0]?.address_hash,
         name: data.name,
         compilerVersion: data.compiler_version,
         abi: data.abi ? JSON.stringify(data.abi) : undefined,
@@ -278,65 +279,69 @@ class BlockscoutProvider implements BlocexProvider {
         isToken,
         creator: data.deployer,
         creationTxHash: data.creation_tx_hash,
-      }
-    }
-    catch {
-      // Fallback to address endpoint
-      const addrUrl = `${this.base(c)}/api/v2/addresses/${encodeURIComponent(address)}`
-      const addr = await getJSON<BlockscoutAddress>(addrUrl)
+      };
+    } catch (error) {
+      if (!(error instanceof NotFoundError)) throw error;
+      const addrUrl = `${this.base(c)}/api/v2/addresses/${encodeURIComponent(address)}`;
+      const addr = await this.getJSON<BlockscoutAddress>(addrUrl);
 
       return {
         address,
         isVerified: addr.is_verified,
         name: addr.name,
         isToken: addr.token != null,
-      }
+      };
     }
   }
 
-  async getTokenBalances(address: string, chain?: Chain, options?: TokenBalanceOptions): Promise<TokenBalance[]> {
-    const c = chain ?? this.defaultChain
-    assertSafePathSegment(address, 'address')
-    const url = `${this.base(c)}/api/v2/addresses/${encodeURIComponent(address)}/tokens`
-    const data = await getJSON<BlockscoutTokenBalance[]>(url)
+  override async getTokenBalances(
+    address: string,
+    chain?: Chain,
+    options?: TokenBalanceOptions,
+  ): Promise<TokenBalance[]> {
+    const c = chain ?? this.defaultChain;
+    assertSafePathSegment(address, "address");
+    const url = `${this.base(c)}/api/v2/addresses/${encodeURIComponent(address)}/tokens`;
+    const data = await this.getJSON<{ items: BlockscoutTokenBalance[] }>(url);
 
-    let tokens = data.map(t => ({
-      contract: t.token.address,
-      symbol: t.token.symbol,
-      name: t.token.name,
-      decimals: Number(t.token.decimals),
-      balance: t.value,
-      balanceFormatted: formatWei(t.value, Number(t.token.decimals)),
-    }))
+    let tokens = data.items.map((item) => ({
+      contract: item.token.address_hash,
+      symbol: item.token.symbol,
+      name: item.token.name,
+      decimals: Number(item.token.decimals),
+      balance: item.value,
+      balanceFormatted: formatWei(item.value, Number(item.token.decimals)),
+    }));
 
     if (options?.nonZeroOnly) {
-      tokens = tokens.filter(t => t.balance !== '0')
+      tokens = tokens.filter((t) => t.balance !== "0");
     }
 
-    return tokens
+    return tokens;
   }
 
-  async getGasData(chain?: Chain): Promise<GasData> {
-    const c = chain ?? this.defaultChain
-    const url = `${this.base(c)}/api/v2/stats`
-    const data = await getJSON<Record<string, unknown>>(url)
+  override async getGasData(chain?: Chain): Promise<GasData> {
+    const c = chain ?? this.defaultChain;
+    const url = `${this.base(c)}/api/v2/stats`;
+    const data = await this.getJSON<Record<string, unknown>>(url);
 
     // Blockscout stats endpoint varies; extract gas data if available
-    const gasPrices = data.gas_prices as BlockscoutGasPrice | undefined
+    const gasPrices = data.gas_prices as BlockscoutGasPrice | undefined;
 
     return {
       chain: c,
-      safeGasPrice: gasPrices?.slow,
-      proposedGasPrice: gasPrices?.average,
-      fastGasPrice: gasPrices?.fast,
-    }
+      unit: "gwei",
+      safeGasPrice: gasPrices?.slow === undefined ? undefined : String(gasPrices.slow),
+      proposedGasPrice: gasPrices?.average === undefined ? undefined : String(gasPrices.average),
+      fastGasPrice: gasPrices?.fast === undefined ? undefined : String(gasPrices.fast),
+    };
   }
 
-  async getBlockInfo(blockNumber: number, chain?: Chain): Promise<BlockInfo> {
-    const c = chain ?? this.defaultChain
-    assertSafePathSegment(String(blockNumber), 'block number')
-    const url = `${this.base(c)}/api/v2/blocks/${encodeURIComponent(String(blockNumber))}`
-    const data = await getJSON<BlockscoutBlock>(url)
+  override async getBlockInfo(blockNumber: number, chain?: Chain): Promise<BlockInfo> {
+    const c = chain ?? this.defaultChain;
+    assertSafePathSegment(String(blockNumber), "block number");
+    const url = `${this.base(c)}/api/v2/blocks/${encodeURIComponent(String(blockNumber))}`;
+    const data = await this.getJSON<BlockscoutBlock>(url);
 
     return {
       number: data.height,
@@ -346,13 +351,10 @@ class BlockscoutProvider implements BlocexProvider {
       miner: data.miner.hash,
       gasUsed: data.gas_used,
       gasLimit: data.gas_limit,
-      txCount: data.tx_count,
+      txCount: data.transactions_count,
       baseFee: data.base_fee_per_gas,
-    }
+    };
   }
 }
 
-// ─── Register ──────────────────────────────────────────────────────────────
-
-const factory = (config: ProviderConfig) => new BlockscoutProvider(config)
-register('blockscout', factory, 'https://eth.blockscout.com')
+register(Blockscout, "https://eth.blockscout.com");

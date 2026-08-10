@@ -3,6 +3,8 @@
   "version": "0.1.0",
   "type": "module",
   "description": "Unified block explorer provider library for AI agents — Etherscan, Blockscout, Blockchair",
+  "main": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
   "exports": {
     ".": {
       "types": "./dist/index.d.mts",
@@ -39,6 +41,7 @@
     "@types/node": "latest",
     "typebox": "latest",
     "@earendil-works/pi-coding-agent": "latest",
-    "@earendil-works/pi-tui": "latest"
+    "@earendil-works/pi-tui": "latest",
+    "chains": "file:../chains"
   }
 }

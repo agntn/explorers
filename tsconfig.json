@@ -5,6 +5,7 @@
     "moduleResolution": "Bundler",
     "strict": true,
     "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
     "skipLibCheck": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
@@ -15,5 +16,5 @@
     "declarationMap": true,
     "sourceMap": true
   },
-  "include": ["src"]
+  "include": ["src", "packages/pi/extensions"]
 }

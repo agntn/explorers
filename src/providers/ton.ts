@@ -8,130 +8,120 @@
  */
 
 import type {
-  BlocexProvider,
   ProviderCapabilities,
   ProviderConfig,
   Chain,
   Balance,
   Transaction,
   TxHistoryOptions,
-  ContractInfo,
-  GasData,
-  BlockInfo,
+  TokenTransfer,
   TxStatus,
-} from '../core/types.js'
-import { getJSON } from '../core/client.js'
-import { normalizeError, UnsupportedChainError, NotFoundError } from '../core/errors.js'
-import { register } from '../core/registry.js'
-import { clampMaxResults } from '../core/types.js'
+} from "../core/types.js";
+import { Provider } from "../core/provider.js";
+import { normalizeBaseUrl } from "../core/client.js";
+import { UnsupportedChainError } from "../core/errors.js";
+import { register } from "../core/registry.js";
+import { clampMaxResults, formatWei } from "../core/types.js";
 
-import { assertSafePathSegment } from '../core/path-safety.js'
-const DEFAULT_BASE = 'https://tonapi.io'
-const NANOTON = 1_000_000_000
-
-// ─── TON API types ─────────────────────────────────────────────────────────
+import { assertSafePathSegment } from "../core/path-safety.js";
+const DEFAULT_BASE = "https://tonapi.io";
 
 interface TonAccount {
-  address: string
-  balance: number
-  status: string
-  last_activity: number
-  name?: string
-  is_scam?: boolean
-  interfaces?: string[]
+  address: string;
+  balance: string | number;
+  status: string;
+  last_activity: number;
+  name?: string;
+  is_scam?: boolean;
+  interfaces?: string[];
 }
 
 interface TonEvent {
-  event_id: string
-  timestamp: number
+  event_id: string;
+  timestamp: number;
   actions: Array<{
-    type: string
+    type: string;
     TonTransfer?: {
-      sender: { address: string }
-      recipient: { address: string }
-      amount: number
-      comment?: string
-    }
+      sender: { address: string };
+      recipient: { address: string };
+      amount: string | number;
+      comment?: string;
+    };
     JettonTransfer?: {
-      sender: { address: string }
-      recipient: { address: string }
-      senders_wallet: string
-      recipients_wallet: string
-      amount: string
-      jetton: { address: string; name: string; symbol: string; decimals: number }
-    }
-    status: string
-  }>
-  involved: Record<string, unknown>
-}
-
-interface TonBlock {
-  workchain: number
-  shard: string
-  seqno: number
-  root_hash: string
-  file_hash: string
-  global_id: number
-  version: number
-  after_merge: boolean
-  before_split: boolean
-  after_split: boolean
-  want_merge: boolean
-  want_split: boolean
-  key_block: boolean
-  gen_utime: number
-  gen_catchain_seqno: number
-  gen_validator_list_hash_short: number
-  gen_software_version: number
-  master_ref_seqno?: number
-}
-
-// ─── Helpers ───────────────────────────────────────────────────────────────
-
-function nanotonToTon(nanotons: number): string {
-  return (nanotons / NANOTON).toFixed(9).replace(/\.?0+$/, '') || '0'
+      sender: { address: string };
+      recipient: { address: string };
+      senders_wallet: string;
+      recipients_wallet: string;
+      amount: string;
+      jetton: { address: string; name: string; symbol: string; decimals: number };
+    };
+    status: string;
+  }>;
+  involved: Record<string, unknown>;
 }
 
 function mapEventToTx(event: TonEvent): Transaction {
-  const firstAction = event.actions[0]
-  let from = ''
-  let to: string | null = null
-  let value = 0
+  const firstAction = event.actions[0];
+  const timestamp = new Date(event.timestamp * 1000).toISOString();
+  let from = "";
+  let to: string | null = null;
+  let value: string | number = 0;
 
   if (firstAction?.TonTransfer) {
-    from = firstAction.TonTransfer.sender.address
-    to = firstAction.TonTransfer.recipient.address
-    value = firstAction.TonTransfer.amount
+    from = firstAction.TonTransfer.sender.address;
+    to = firstAction.TonTransfer.recipient.address;
+    value = firstAction.TonTransfer.amount;
+  } else if (firstAction?.JettonTransfer) {
+    from = firstAction.JettonTransfer.sender.address;
+    to = firstAction.JettonTransfer.recipient.address;
   }
+
+  const tokenTransfers: TokenTransfer[] = event.actions.flatMap((action) => {
+    const transfer = action.JettonTransfer;
+    if (!transfer) return [];
+    return [
+      {
+        contract: transfer.jetton.address,
+        symbol: transfer.jetton.symbol,
+        name: transfer.jetton.name,
+        decimals: transfer.jetton.decimals,
+        value: transfer.amount,
+        valueFormatted: formatWei(transfer.amount, transfer.jetton.decimals),
+        from: transfer.sender.address,
+        to: transfer.recipient.address,
+        txHash: event.event_id,
+        blockNumber: 0,
+        timestamp,
+      },
+    ];
+  });
 
   return {
     hash: event.event_id,
     blockNumber: 0,
-    timestamp: new Date(event.timestamp * 1000).toISOString(),
+    timestamp,
     from,
     to,
     value: value.toString(),
-    valueFormatted: nanotonToTon(value),
-    status: (firstAction?.status === 'ok' ? 'success' : 'failed') as TxStatus,
-    isContractInteraction: firstAction?.type !== 'TonTransfer',
-    tokenTransfers: [],
-  }
+    valueFormatted: formatWei(String(value), 9),
+    status: (firstAction?.status === "ok" ? "success" : "failed") as TxStatus,
+    isContractInteraction: firstAction?.type !== "TonTransfer",
+    tokenTransfers,
+  };
 }
 
-// ─── Provider ──────────────────────────────────────────────────────────────
-
-class TonProvider implements BlocexProvider {
-  private baseUrl: string
+class Ton extends Provider {
+  private baseUrl: string;
 
   constructor(config: ProviderConfig) {
-    this.baseUrl = config.baseUrl ?? DEFAULT_BASE
+    super(config);
+    this.baseUrl = normalizeBaseUrl(config.baseUrl ?? DEFAULT_BASE);
   }
 
-  name(): string {
-    return 'ton'
-  }
+  static readonly providerName = "ton";
+  readonly name = Ton.providerName;
 
-  capabilities(): ProviderCapabilities {
+  get capabilities(): ProviderCapabilities {
     return {
       balances: true,
       txHistory: true,
@@ -139,61 +129,46 @@ class TonProvider implements BlocexProvider {
       contractInfo: false,
       tokenBalances: false,
       gasData: false,
-      blockInfo: true,
-    }
+      blockInfo: false,
+    };
   }
 
   async getBalance(address: string, chain?: Chain): Promise<Balance> {
-    const c = chain ?? 'ton'
-    if (c !== 'ton') throw new UnsupportedChainError(c, 'ton')
+    const c = chain ?? "ton";
+    if (c !== "ton") throw new UnsupportedChainError(c, "ton");
 
-    assertSafePathSegment(address, 'address')
-    const data = await getJSON<TonAccount>(`${this.baseUrl}/v2/accounts/${encodeURIComponent(address)}`)
+    assertSafePathSegment(address, "address");
+    const data = await this.getJSON<TonAccount>(
+      `${this.baseUrl}/v2/accounts/${encodeURIComponent(address)}`,
+    );
 
     return {
       address,
-      chain: 'ton',
+      chain: "ton",
       balance: data.balance.toString(),
-      balanceFormatted: nanotonToTon(data.balance),
-      symbol: 'TON',
-    }
+      balanceFormatted: formatWei(String(data.balance), 9),
+      symbol: "TON",
+    };
   }
 
-  async getTxHistory(address: string, chain?: Chain, options?: TxHistoryOptions): Promise<Transaction[]> {
-    const c = chain ?? 'ton'
-    if (c !== 'ton') throw new UnsupportedChainError(c, 'ton')
-    const limit = clampMaxResults(options?.limit)
+  async getTxHistory(
+    address: string,
+    chain?: Chain,
+    options?: TxHistoryOptions,
+  ): Promise<Transaction[]> {
+    const c = chain ?? "ton";
+    if (c !== "ton") throw new UnsupportedChainError(c, "ton");
+    const limit = clampMaxResults(options?.limit);
 
-    assertSafePathSegment(address, 'address')
-    const data = await getJSON<{ events: TonEvent[] }>(
+    assertSafePathSegment(address, "address");
+    const data = await this.getJSON<{ events: TonEvent[] }>(
       `${this.baseUrl}/v2/accounts/${encodeURIComponent(address)}/events?limit=${limit}`,
-    )
+    );
 
-    if (!data.events?.length) return []
+    if (!data.events?.length) return [];
 
-    return data.events.map(mapEventToTx)
-  }
-
-  async getTxDetail(_hash: string, _chain?: Chain): Promise<Transaction> {
-    throw normalizeError(new Error('TON tx detail not yet supported — use tx history'), 'ton')
-  }
-
-  async getContractInfo(_address: string, _chain?: Chain): Promise<ContractInfo> {
-    throw new UnsupportedChainError('ton', 'ton')
-  }
-
-  async getBlockInfo(_blockNumber: number, _chain?: Chain): Promise<BlockInfo> {
-    // TonAPI's `/v2/blockchain/blocks` endpoint takes workchain + shard + seqno
-    // as path segments, not as query params, and requires signed-int64 workchain
-    // IDs. The previous query-string shape always returned 404 even for valid
-    // masterchain blocks (verified 2026-06-21). Throw NotFoundError so callers
-    // surface a clear error rather than silently rendering `undefined`.
-    // Use https://tonscan.org or toncenter.com to fetch TON blocks.
-    throw new NotFoundError('TON block (TonAPI blocks endpoint unavailable)', 'ton')
+    return data.events.map(mapEventToTx);
   }
 }
 
-// ─── Register ──────────────────────────────────────────────────────────────
-
-const factory = (config: ProviderConfig) => new TonProvider(config)
-register('ton', factory, 'https://tonapi.io')
+register(Ton, "https://tonapi.io");

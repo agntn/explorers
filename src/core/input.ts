@@ -1,46 +1,53 @@
 /**
  * Address/input resolution — ENS names, raw addresses, tx hashes.
  */
-import consola from 'consola'
-import { isEnsName, isAddress, resolveEns } from './ens.js'
+import { NotFoundError } from "./errors.js";
+import type { Chain } from "./types.js";
+import { isEnsName, isAddress, resolveEns } from "./ens.js";
 
-export type InputType = 'address' | 'txhash' | 'ens'
+export type InputType = "address" | "txhash" | "ens";
 
-/** Classify raw user input */
-export function classifyInput(input: string): InputType {
-  const trimmed = input.trim()
-  if (/^0x[0-9a-fA-F]{64}$/.test(trimmed)) return 'txhash'
-  if (isEnsName(trimmed)) return 'ens'
-  if (isAddress(trimmed)) return 'address'
-  // Assume it's an address-like input
-  return 'address'
+/** Classify raw user input, using chain-specific hash shapes where unambiguous. */
+export function classifyInput(input: string, chain?: Chain): InputType {
+  const trimmed = input.trim();
+  if (chain === "sui" && /^0x[0-9a-fA-F]{64}$/.test(trimmed)) return "address";
+  if (
+    ((chain === "bitcoin" || chain === "tron") && /^[0-9a-fA-F]{64}$/.test(trimmed)) ||
+    (chain === "solana" && /^[1-9A-HJ-NP-Za-km-z]{64,88}$/.test(trimmed)) ||
+    (chain === "sui" && /^[1-9A-HJ-NP-Za-km-z]{43,44}$/.test(trimmed))
+  ) {
+    return "txhash";
+  }
+  if (/^0x[0-9a-fA-F]{64}$/.test(trimmed)) return "txhash";
+  if (isEnsName(trimmed)) return "ens";
+  if (isAddress(trimmed)) return "address";
+  return "address";
 }
 
 /**
- * Resolve user input to an Ethereum address.
- * - ENS name → resolve via public RPC
- * - 0x address → pass through
- * Returns the resolved address or exits with error.
+ * Classify an input and resolve ENS names. Addresses and transaction hashes pass
+ * through unchanged.
+ *
+ * @throws {NotFoundError} When an ENS name cannot be resolved.
  */
-export async function resolveInput(input: string): Promise<{ address: string; type: InputType }> {
-  const trimmed = input.trim()
-  const type = classifyInput(trimmed)
+export async function resolveInput(
+  input: string,
+  chain?: Chain,
+): Promise<{ address: string; type: InputType }> {
+  const trimmed = input.trim();
+  const type = classifyInput(trimmed, chain);
 
-  if (type === 'txhash') {
-    return { address: trimmed, type }
+  if (type === "txhash") {
+    return { address: trimmed, type };
   }
 
-  if (type === 'address') {
-    return { address: trimmed, type }
+  if (type === "address") {
+    return { address: trimmed, type };
   }
 
-  // ENS resolution
-  consola.info(`Resolving ENS name: ${trimmed}`)
-  const resolved = await resolveEns(trimmed)
+  const resolved = await resolveEns(trimmed);
   if (!resolved) {
-    consola.error(`Could not resolve ENS name: ${trimmed}`)
-    process.exit(1)
+    throw new NotFoundError(`ENS name ${trimmed}`);
   }
-  consola.log(`  → ${resolved}`)
-  return { address: resolved, type }
+  return { address: resolved, type };
 }

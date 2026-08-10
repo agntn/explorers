@@ -2,310 +2,296 @@
  * blocex — Unified block explorer provider types
  */
 
-import { CHAIN_DATA } from 'chains'
+import { normalizeChain as normalizeChainFromDictionary } from "chains";
+import type { Chain } from "chains";
 
-// ─── Domain Models ─────────────────────────────────────────────────────────
-
-/** Chain identifier */
-export type Chain =
-  | 'eth' | 'base' | 'arbitrum' | 'optimism' | 'polygon' | 'bsc'
-  | 'avalanche' | 'fantom' | 'gnosis' | 'linea' | 'zksync' | 'scroll'
-  | 'bera'
-  | 'bitcoin' | 'solana' | 'ton' | 'tron' | 'aptos' | 'sui'
+export type { Chain } from "chains";
 
 /** Transaction status */
-export type TxStatus = 'success' | 'failed' | 'pending'
+export type TxStatus = "success" | "failed" | "pending";
 
-/** ERC-20 token transfer */
+/** Normalized fungible-token transfer */
 export interface TokenTransfer {
   /** Token contract address */
-  contract: string
+  contract: string;
   /** Token symbol */
-  symbol: string
+  symbol: string;
   /** Token name */
-  name?: string
+  name?: string;
   /** Token decimals */
-  decimals: number
+  decimals: number;
   /** Transfer amount (raw, string to avoid float) */
-  value: string
+  value: string;
   /** Human-readable amount */
-  valueFormatted: string
+  valueFormatted: string;
   /** From address */
-  from: string
+  from: string;
   /** To address */
-  to: string
+  to: string;
   /** Transaction hash */
-  txHash: string
+  txHash: string;
   /** Block number */
-  blockNumber: number
+  blockNumber: number;
   /** Timestamp (ISO) */
-  timestamp?: string
+  timestamp?: string;
 }
 
 /** Normalized transaction */
 export interface Transaction {
   /** Transaction hash */
-  hash: string
+  hash: string;
   /** Block number */
-  blockNumber: number
+  blockNumber: number;
   /** Timestamp (ISO) */
-  timestamp?: string
+  timestamp?: string;
   /** Sender */
-  from: string
+  from: string;
   /** Recipient (null for contract creation) */
-  to: string | null
-  /** Value in wei (string) */
-  value: string
+  to: string | null;
+  /** Value in the chain's smallest native unit */
+  value: string;
   /** Human-readable value in native token */
-  valueFormatted: string
-  /** Gas used */
-  gasUsed?: string
-  /** Gas price in wei */
-  gasPrice?: string
+  valueFormatted: string;
+  /** Execution units consumed, when the chain exposes them */
+  gasUsed?: string;
+  /** Price per execution unit in the chain's smallest native unit */
+  gasPrice?: string;
+  /** Total transaction fee in the chain's smallest native unit */
+  fee?: string;
   /** Transaction status */
-  status: TxStatus
+  status: TxStatus;
   /** Method ID (first 4 bytes of input data) */
-  methodId?: string
+  methodId?: string;
   /** Function name if decoded */
-  functionName?: string
+  functionName?: string;
   /** Whether this is a contract interaction */
-  isContractInteraction: boolean
+  isContractInteraction: boolean;
   /** Token transfers within this tx */
-  tokenTransfers: TokenTransfer[]
+  tokenTransfers: TokenTransfer[];
   /** Raw provider data */
-  raw?: Record<string, unknown>
+  raw?: Record<string, unknown>;
 }
 
 /** Normalized address balance */
 export interface Balance {
   /** Address */
-  address: string
+  address: string;
   /** Chain */
-  chain: Chain
-  /** Balance in wei (string) */
-  balance: string
+  chain: Chain;
+  /** Balance in the chain's smallest native unit */
+  balance: string;
   /** Human-readable balance */
-  balanceFormatted: string
+  balanceFormatted: string;
   /** Native token symbol (ETH, BNB, etc.) */
-  symbol: string
+  symbol: string;
 }
 
 /** ERC-20 token holding for an address */
 export interface TokenBalance {
   /** Token contract address */
-  contract: string
+  contract: string;
   /** Token symbol */
-  symbol: string
+  symbol: string;
   /** Token name */
-  name?: string
+  name?: string;
   /** Token decimals */
-  decimals: number
+  decimals: number;
   /** Balance (raw string) */
-  balance: string
+  balance: string;
   /** Human-readable balance */
-  balanceFormatted: string
+  balanceFormatted: string;
   /** USD price if available */
-  priceUsd?: number
+  priceUsd?: number;
   /** USD value if available */
-  valueUsd?: number
+  valueUsd?: number;
 }
 
 /** Contract information */
 export interface ContractInfo {
   /** Contract address */
-  address: string
+  address: string;
   /** Whether verified (source code available) */
-  isVerified: boolean
+  isVerified: boolean;
   /** Whether it's a proxy contract */
-  isProxy?: boolean
+  isProxy?: boolean;
   /** Implementation address if proxy */
-  implementationAddress?: string
+  implementationAddress?: string;
   /** Contract name */
-  name?: string
+  name?: string;
   /** Compiler version */
-  compilerVersion?: string
+  compilerVersion?: string;
   /** Contract ABI (JSON string) */
-  abi?: string
+  abi?: string;
   /** Source code */
-  sourceCode?: string
+  sourceCode?: string;
   /** Whether it's a token (ERC-20/721/1155) */
-  isToken?: boolean
+  isToken?: boolean;
   /** Token standard if applicable */
-  tokenStandard?: 'ERC-20' | 'ERC-721' | 'ERC-1155'
+  tokenStandard?: "ERC-20" | "ERC-721" | "ERC-1155";
   /** Creator address */
-  creator?: string
+  creator?: string;
   /** Creation transaction hash */
-  creationTxHash?: string
+  creationTxHash?: string;
 }
 
-/** Gas price data */
+/** Unit used by a provider's fee suggestions. */
+export type GasUnit = "gwei" | "sat/vB" | "micro-lamports/CU" | "MIST";
+
+/** Gas or fee-market data in provider-native units. */
 export interface GasData {
   /** Chain */
-  chain: Chain
-  /** Safe/low gas price in gwei */
-  safeGasPrice?: string
-  /** Proposed/average gas price in gwei */
-  proposedGasPrice?: string
-  /** Fast gas price in gwei */
-  fastGasPrice?: string
-  /** Base fee (EIP-1559) in gwei */
-  baseFee?: string
-  /** Suggested priority fee in gwei */
-  priorityFee?: string
+  chain: Chain;
+  /** Unit shared by all price fields in this result. */
+  unit: GasUnit;
+  /** Safe/low price */
+  safeGasPrice?: string;
+  /** Proposed/average price */
+  proposedGasPrice?: string;
+  /** Fast price */
+  fastGasPrice?: string;
+  /** Base fee */
+  baseFee?: string;
+  /** Suggested priority fee */
+  priorityFee?: string;
 }
 
 /** Block info */
 export interface BlockInfo {
   /** Block number */
-  number: number
+  number: number;
   /** Block hash */
-  hash: string
+  hash: string;
   /** Parent hash */
-  parentHash: string
+  parentHash: string;
   /** Timestamp (ISO) */
-  timestamp: string
+  timestamp: string;
   /** Miner/validator address */
-  miner: string
+  miner: string;
   /** Gas used */
-  gasUsed: string
+  gasUsed: string;
   /** Gas limit */
-  gasLimit: string
+  gasLimit: string;
   /** Number of transactions */
-  txCount: number
+  txCount: number;
   /** Base fee per gas (EIP-1559) */
-  baseFee?: string
+  baseFee?: string;
 }
 
-// ─── Provider Interface ────────────────────────────────────────────────────
-
-/** Capabilities of a block explorer provider */
+/** Feature flags for operations available on a provider at runtime. */
 export interface ProviderCapabilities {
   /** Can get address balances */
-  balances: boolean
+  balances: boolean;
   /** Can list transaction history */
-  txHistory: boolean
+  txHistory: boolean;
   /** Can get single tx detail */
-  txDetail: boolean
+  txDetail: boolean;
   /** Can get contract info (ABI, source) */
-  contractInfo: boolean
+  contractInfo: boolean;
   /** Can get token holdings for address */
-  tokenBalances: boolean
+  tokenBalances: boolean;
   /** Can get gas estimates */
-  gasData: boolean
+  gasData: boolean;
   /** Can get block info */
-  blockInfo: boolean
+  blockInfo: boolean;
 }
 
 /** Options for tx history */
 export interface TxHistoryOptions {
   /** Start block (inclusive) */
-  startBlock?: number
+  startBlock?: number;
   /** End block (inclusive) */
-  endBlock?: number
+  endBlock?: number;
   /** Sort order */
-  sort?: 'asc' | 'desc'
+  sort?: "asc" | "desc";
   /** Max results */
-  limit?: number
+  limit?: number;
   /** Page number (1-indexed) */
-  page?: number
+  page?: number;
 }
 
 /** Options for token balances */
 export interface TokenBalanceOptions {
   /** Only include tokens with non-zero balance */
-  nonZeroOnly?: boolean
+  nonZeroOnly?: boolean;
 }
 
-/** The unified block explorer provider interface */
-export interface BlocexProvider {
-  name(): string
-  capabilities(): ProviderCapabilities
-  /** Get native token balance for address */
-  getBalance(address: string, chain?: Chain): Promise<Balance>
-  /** Get transaction history for address */
-  getTxHistory(address: string, chain?: Chain, options?: TxHistoryOptions): Promise<Transaction[]>
-  /** Get single transaction detail */
-  getTxDetail(hash: string, chain?: Chain): Promise<Transaction>
-  /** Get contract info (ABI, source, verification status) */
-  getContractInfo(address: string, chain?: Chain): Promise<ContractInfo>
-  /** Get ERC-20 token holdings for address */
-  getTokenBalances?(address: string, chain?: Chain, options?: TokenBalanceOptions): Promise<TokenBalance[]>
-  /** Get current gas prices */
-  getGasData?(chain?: Chain): Promise<GasData>
-  /** Get block info by number */
-  getBlockInfo?(blockNumber: number, chain?: Chain): Promise<BlockInfo>
-}
-
-// ─── Config & Factory ──────────────────────────────────────────────────────
-
+/** Shared construction options. Providers ignore fields they cannot use. */
 export interface ProviderConfig {
-  /** API key (etherscan, blockchair) */
-  apiKey?: string
-  /** Custom base URL override */
-  baseUrl?: string
-  /** Request timeout in ms */
-  timeout?: number
-  /** Default chain if not specified in calls */
-  defaultChain?: Chain
+  /** API key for providers that require one. */
+  apiKey?: string;
+  /** Custom API or RPC base URL when the provider supports an override. */
+  baseUrl?: string;
+  /** Request timeout in milliseconds. Defaults to 15 seconds. */
+  timeout?: number;
+  /** Fallback chain for multi-chain providers. */
+  defaultChain?: Chain;
 }
 
-type ProviderFactory = (config: ProviderConfig) => BlocexProvider
-
-// ─── Chain Utilities ───────────────────────────────────────────────────────
-
-
-// ─── Utility ───────────────────────────────────────────────────────────────
-
-/** Clamp maxResults to [1, max] */
+/**
+ * Round a requested result limit and keep it inside the provider's range.
+ *
+ * A missing or zero limit uses `max`.
+ */
 export function clampMaxResults(limit?: number, max = 100): number {
-  if (!limit) return max
-  return Math.min(Math.max(1, Math.round(limit)), max)
+  if (!limit) return max;
+  return Math.min(Math.max(1, Math.round(limit)), max);
 }
 
-/** Format wei to human-readable token amount */
+/**
+ * Format a raw integer amount using token decimals, without float rounding.
+ *
+ * @example
+ * ```ts
+ * formatWei('1234500000000000000') // '1.2345'
+ * ```
+ */
 export function formatWei(wei: string | bigint, decimals = 18): string {
-  const w = typeof wei === 'string' ? BigInt(wei) : wei
-  const negative = w < 0n
-  const abs = negative ? -w : w
-  const base = 10n ** BigInt(decimals)
-  const intPart = abs / base
-  const fracPart = abs % base
-  const fracStr = fracPart.toString().padStart(decimals, '0').replace(/0+$/, '')
-  const result = fracStr ? `${intPart}.${fracStr}` : `${intPart}`
-  return negative ? `-${result}` : result
-}
-
-/** Parse hex string to wei string */
-export function hexToWei(hex: string): string {
-  return BigInt(hex).toString()
-}
-
-
-/** Normalize chain name from various input forms */
-export function normalizeChain(input?: string): Chain {
-  if (!input) return 'eth'
-  const lower = input.toLowerCase().trim()
-  const aliases: Record<string, Chain> = {
-    ethereum: 'eth',
-    mainnet: 'eth',
-    'bnb': 'bsc',
-    'bnbchain': 'bsc',
-    'binance': 'bsc',
-    'matic': 'polygon',
-    'arb': 'arbitrum',
-    'arb1': 'arbitrum',
-    'op': 'optimism',
-    'avax': 'avalanche',
-    'ftm': 'fantom',
-    'btc': 'bitcoin',
-    'sol': 'solana',
-    'sui': 'sui',
-    'aptos': 'aptos',
-    'trx': 'tron',
-    'zksync-era': 'zksync',
+  if (!Number.isInteger(decimals) || decimals < 0 || decimals > 255) {
+    throw new RangeError(`Invalid decimals: ${decimals}`);
   }
-  // canonical keys — match any known chain key directly
-  const canonical = new Set(Object.keys(CHAIN_DATA))
-  if (canonical.has(lower)) return lower as Chain
-  return aliases[lower] ?? 'eth'
+  const w = typeof wei === "string" ? BigInt(wei) : wei;
+  const negative = w < 0n;
+  const abs = negative ? -w : w;
+  const base = 10n ** BigInt(decimals);
+  const intPart = abs / base;
+  const fracPart = abs % base;
+  const fracStr = fracPart.toString().padStart(decimals, "0").replace(/0+$/, "");
+  const result = fracStr ? `${intPart}.${fracStr}` : `${intPart}`;
+  return negative ? `-${result}` : result;
+}
+
+/**
+ * Convert a hexadecimal integer into a decimal string.
+ *
+ * @example
+ * ```ts
+ * hexToWei('0xff') // '255'
+ * ```
+ */
+export function hexToWei(hex: string): string {
+  return BigInt(hex).toString();
+}
+
+/** Multiply decimal integer strings without crossing the IEEE-754 boundary. */
+export function multiplyIntegerStrings(left: string, right: string): string {
+  return (BigInt(left) * BigInt(right)).toString();
+}
+
+/**
+ * Normalize a canonical chain key or a common CLI alias.
+ *
+ * Missing values default to `eth`; unknown non-empty values are rejected so a
+ * typo cannot silently query the wrong network.
+ *
+ * @example
+ * ```ts
+ * normalizeChain('arb') // 'arbitrum'
+ * ```
+ */
+export function normalizeChain(input?: string): Chain {
+  try {
+    return normalizeChainFromDictionary(input);
+  } catch {
+    throw new RangeError(`Unknown chain: ${input}`);
+  }
 }

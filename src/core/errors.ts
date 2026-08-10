@@ -2,23 +2,30 @@
  * blocex error hierarchy
  */
 
+import { FetchError } from "ofetch";
+
+/** Base class for failures surfaced through blocex. */
 export class BlocexError extends Error {
-  constructor(message: string, public readonly provider?: string) {
-    super(message)
-    this.name = 'BlocexError'
+  constructor(
+    message: string,
+    public readonly provider?: string,
+  ) {
+    super(message);
+    this.name = "BlocexError";
   }
 }
 
 /** Strip API keys from URLs for safe error messages */
 function sanitizeUrl(url: string): string {
   return url
-    .replace(/([?&])(apikey|apiKey|api_key|key)=([^&]*)/gi, '$1$2=REDACTED')
-    .replace(/([?&])(secret|token)=([^&]*)/gi, '$1$2=REDACTED')
+    .replace(/([?&])(apikey|apiKey|api_key|key)=([^&]*)/gi, "$1$2=REDACTED")
+    .replace(/([?&])(secret|token)=([^&]*)/gi, "$1$2=REDACTED");
 }
 
+/** HTTP failure with a redacted request URL in its message. */
 export class HTTPError extends BlocexError {
-  /** Raw URL (may contain API key — use with care) */
-  public readonly rawUrl: string
+  /** Original request URL. Deliberately non-enumerable to reduce accidental secret logging. */
+  public readonly rawUrl: string;
 
   constructor(
     public readonly statusCode: number,
@@ -26,74 +33,125 @@ export class HTTPError extends BlocexError {
     public readonly body?: string,
     provider?: string,
   ) {
-    const safeUrl = sanitizeUrl(url)
-    super(`HTTP ${statusCode} from ${safeUrl}`, provider)
-    this.rawUrl = url
-    this.name = 'HTTPError'
+    const safeUrl = sanitizeUrl(url);
+    super(`HTTP ${statusCode} from ${safeUrl}`, provider);
+    this.rawUrl = url;
+    Object.defineProperty(this, "rawUrl", { enumerable: false });
+    this.name = "HTTPError";
   }
 }
 
+/** Provider credentials were missing or rejected. */
 export class AuthError extends BlocexError {
   constructor(provider: string, detail?: string) {
-    super(`Authentication failed for ${provider}${detail ? `: ${detail}` : ''}`, provider)
-    this.name = 'AuthError'
+    super(`Authentication failed for ${provider}${detail ? `: ${detail}` : ""}`, provider);
+    this.name = "AuthError";
   }
 }
 
+/** Provider refused a request because its rate limit was reached. */
 export class RateLimitError extends BlocexError {
   constructor(
     provider: string,
     public readonly retryAfter?: number,
   ) {
-    super(`Rate limited by ${provider}${retryAfter ? ` (retry after ${retryAfter}s)` : ''}`, provider)
-    this.name = 'RateLimitError'
+    super(
+      `Rate limited by ${provider}${retryAfter ? ` (retry after ${retryAfter}s)` : ""}`,
+      provider,
+    );
+    this.name = "RateLimitError";
   }
 }
 
+/** Requested transaction, address, contract, or block was not found. */
 export class NotFoundError extends BlocexError {
   constructor(resource: string, provider?: string) {
-    super(`Not found: ${resource}`, provider)
-    this.name = 'NotFoundError'
+    super(`Not found: ${resource}`, provider);
+    this.name = "NotFoundError";
   }
 }
 
+/** Provider does not serve the requested chain. */
 export class UnsupportedChainError extends BlocexError {
   constructor(chain: string, provider: string) {
-    super(`Chain "${chain}" not supported by ${provider}`, provider)
-    this.name = 'UnsupportedChainError'
+    super(`Chain "${chain}" not supported by ${provider}`, provider);
+    this.name = "UnsupportedChainError";
   }
 }
 
+/** Registry does not contain the requested provider name. */
 export class UnknownProviderError extends BlocexError {
   constructor(provider: string) {
-    super(`Unknown provider: ${provider}`, provider)
-    this.name = 'UnknownProviderError'
+    super(`Unknown provider: ${provider}`, provider);
+    this.name = "UnknownProviderError";
+  }
+}
+function getFetchErrorUrl(error: FetchError): string | undefined {
+  const request = error.request;
+  if (typeof request === "string") return request;
+  if (request instanceof URL) return request.href;
+  if (typeof Request !== "undefined" && request instanceof Request) return request.url;
+  return request === undefined ? undefined : String(request);
+}
+
+function getFetchErrorBody(error: FetchError): string | undefined {
+  if (typeof error.data === "string") return error.data;
+  if (error.data === undefined) return undefined;
+  try {
+    return JSON.stringify(error.data);
+  } catch {
+    return String(error.data);
   }
 }
 
-export function normalizeError(error: unknown, provider?: string): BlocexError {
-  if (error instanceof BlocexError) return error
+/**
+ * Turn an unknown provider or transport failure into the blocex error hierarchy.
+ *
+ * Existing `BlocexError` instances pass through unchanged. Structured HTTP
+ * failures retain their status, response body, and redacted request URL.
+ */
+export function normalizeError(
+  error: unknown,
+  provider?: string,
+  requestUrl?: string,
+): BlocexError {
+  if (error instanceof BlocexError) return error;
 
-  const msg = error instanceof Error ? error.message : String(error)
+  const message = error instanceof Error ? error.message : String(error);
+  const lowerMessage = message.toLowerCase();
+  const fetchError = error instanceof FetchError ? error : undefined;
+  const statusMatch = message.match(/HTTP (\d{3})/i);
+  const status = fetchError?.statusCode ?? Number(statusMatch?.[1] ?? 0);
+  const url = requestUrl ?? (fetchError ? getFetchErrorUrl(fetchError) : undefined);
+  const safeResource = url ? sanitizeUrl(url) : message;
 
-  if (msg.includes('ECONNREFUSED') || msg.includes('ETIMEDOUT')) {
-    return new HTTPError(0, 'unknown', msg, provider)
+  if (status === 404 || lowerMessage.includes("not found")) {
+    return new NotFoundError(safeResource, provider);
   }
 
-  const statusMatch = msg.match(/HTTP (\d{3})/)
-  const status = statusMatch ? Number(statusMatch[1]) : 0
-
-  if (status === 404 || msg.includes('not found')) {
-    return new NotFoundError(msg, provider)
+  if (status === 429 || lowerMessage.includes("rate limit")) {
+    return new RateLimitError(provider ?? "unknown");
   }
 
-  if (status === 429 || msg.includes('429') || msg.includes('rate limit')) {
-    return new RateLimitError(provider ?? 'unknown')
+  if (status === 401 || status === 403 || lowerMessage.includes("unauthorized")) {
+    const detail = url ? `HTTP ${status} from ${sanitizeUrl(url)}` : message;
+    return new AuthError(provider ?? "unknown", detail);
   }
 
-  if (status === 401 || status === 403 || msg.includes('unauthorized')) {
-    return new AuthError(provider ?? 'unknown', msg)
+  if (
+    status > 0 ||
+    url ||
+    lowerMessage.includes("econnrefused") ||
+    lowerMessage.includes("etimedout") ||
+    lowerMessage.includes("timeouterror")
+  ) {
+    return new HTTPError(
+      status,
+      url ?? "unknown",
+      (fetchError ? getFetchErrorBody(fetchError) : undefined) ?? message,
+      provider,
+    );
   }
 
-  return new BlocexError(msg, provider)
+  return new BlocexError(message, provider);
 }

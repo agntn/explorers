@@ -1,146 +1,198 @@
 /**
- * Sui provider — Sui public JSON-RPC
+ * Sui provider — Sui public GraphQL RPC
  *
- * Public RPC, no key needed. SUI balance, tx history, tx detail, block info.
+ * Public RPC, no key needed. SUI balance, tx history, tx detail, gas, and block info.
  * Sui uses MIST: 1 SUI = 1,000,000,000 MIST.
  *
- * https://docs.sui.io/references/sui-api
+ * https://docs.sui.io/develop/accessing-data/graphql/graphql-rpc
  */
 
 import type {
-  BlocexProvider,
   ProviderCapabilities,
   ProviderConfig,
   Chain,
   Balance,
   Transaction,
   TxHistoryOptions,
-  ContractInfo,
   GasData,
   BlockInfo,
   TxStatus,
-} from '../core/types.js'
-import { normalizeError, UnsupportedChainError } from '../core/errors.js'
-import { register } from '../core/registry.js'
-import { clampMaxResults } from '../core/types.js'
+} from "../core/types.js";
+import { Provider } from "../core/provider.js";
+import { normalizeBaseUrl } from "../core/client.js";
+import { normalizeError, NotFoundError, UnsupportedChainError } from "../core/errors.js";
+import { register } from "../core/registry.js";
+import { clampMaxResults, formatWei } from "../core/types.js";
 
-const DEFAULT_RPC = 'https://fullnode.mainnet.sui.io:443'
-const MIST_PER_SUI = 1_000_000_000
+const DEFAULT_BASE = "https://graphql.mainnet.sui.io/graphql";
 
-// ─── Sui RPC types ─────────────────────────────────────────────────────────
-
-interface RpcResponse<T> {
-  jsonrpc: string
-  id: number
-  result?: T
-  error?: { code: number; message: string; data?: unknown }
+interface GraphQLResponse<T> {
+  data?: T;
+  errors?: Array<{ message: string }>;
 }
 
-interface SuiBalance {
-  coinType: string
-  coinObjectCount: number
-  totalBalance: string
-  lockedBalance: Record<string, unknown>
-}
-
-interface SuiTxBlock {
-  digest: string
-  timestampMs?: string
-  checkpoint?: string
+interface SuiTransaction {
+  digest: string;
+  sender?: { address: string } | null;
+  gasInput?: { gasPrice: string } | null;
+  kind?: { __typename: string } | null;
   effects?: {
-    status: { status: string }
-    gasUsed: { computationCost: string; storageCost: string; storageRebate: string }
-    transactionDigest: string
-    created?: Array<{ owner: unknown; reference: { objectId: string; digest: string } }>
-    mutated?: Array<{ owner: unknown; reference: { objectId: string; digest: string } }>
-  }
-  transaction?: {
-    data: {
-      message: {
-        kind: string
-        sender: string
-        gasData: { payment: unknown; owner: string; price: string; budget: string }
-        inputs: unknown[]
-        transactions: unknown[]
-      }
-    }
-  }
+    status: "SUCCESS" | "FAILURE";
+    timestamp?: string | null;
+    checkpoint?: { sequenceNumber: number } | null;
+    gasEffects?: {
+      gasSummary?: {
+        computationCost: string | number;
+        storageCost: string | number;
+        storageRebate: string | number;
+      } | null;
+    } | null;
+  } | null;
 }
 
 interface SuiCheckpoint {
-  epoch: string
-  sequenceNumber: string
-  digest: string
-  networkTotalTransactions: string
-  previousDigest?: string
-  epochRollingGasCostSummary: {
-    computationCost: string
-    storageCost: string
-    storageRebate: string
-    nonRefundableStorageFee: string
+  sequenceNumber: number;
+  digest: string;
+  previousCheckpointDigest?: string | null;
+  networkTotalTransactions: number;
+  timestamp: string;
+  rollingGasSummary: {
+    computationCost: string | number;
+    storageCost: string | number;
+  };
+}
+
+const BALANCE_QUERY = `
+  query Balance($address: SuiAddress!) {
+    address(address: $address) {
+      balance(coinType: "0x2::sui::SUI") {
+        totalBalance
+      }
+    }
   }
-  timestampMs: string
-  transactions: string[]
-  checkpointCommitments: unknown[]
-}
+`;
 
-// ─── Helpers ───────────────────────────────────────────────────────────────
-
-function mistToSui(mist: string | number): string {
-  const m = typeof mist === 'string' ? Number(mist) : mist
-  return (m / MIST_PER_SUI).toFixed(9).replace(/\.?0+$/, '') || '0'
-}
-
-async function rpcCall<T>(url: string, method: string, params: unknown[]): Promise<T> {
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }),
-  })
-  const json = await res.json() as RpcResponse<T>
-  if (json.error) {
-    throw new Error(`Sui RPC error: ${json.error.message}`)
+const TRANSACTION_FRAGMENT = `
+  fragment TransactionFields on Transaction {
+    digest
+    sender {
+      address
+    }
+    gasInput {
+      gasPrice
+    }
+    kind {
+      __typename
+    }
+    effects {
+      status
+      timestamp
+      checkpoint {
+        sequenceNumber
+      }
+      gasEffects {
+        gasSummary {
+          computationCost
+          storageRebate
+          storageCost
+        }
+      }
+    }
   }
-  return json.result as T
-}
+`;
 
-function mapTx(raw: SuiTxBlock): Transaction {
-  const sender = raw.transaction?.data.message.sender ?? ''
-  const success = raw.effects?.status.status === 'success'
-  const gasUsed = raw.effects?.gasUsed
+const TX_HISTORY_QUERY = `
+  ${TRANSACTION_FRAGMENT}
+  query TransactionHistory($address: SuiAddress!, $limit: Int!) {
+    address(address: $address) {
+      transactions(last: $limit, relation: AFFECTED) {
+        nodes {
+          ...TransactionFields
+        }
+      }
+    }
+  }
+`;
+
+const TX_DETAIL_QUERY = `
+  ${TRANSACTION_FRAGMENT}
+  query TransactionDetail($digest: String!) {
+    transaction(digest: $digest) {
+      ...TransactionFields
+    }
+  }
+`;
+
+const GAS_QUERY = `
+  query GasPrice {
+    epoch {
+      referenceGasPrice
+    }
+  }
+`;
+
+const CHECKPOINT_QUERY = `
+  query Checkpoint($number: UInt53!, $previous: UInt53!) {
+    checkpoint(sequenceNumber: $number) {
+      sequenceNumber
+      digest
+      previousCheckpointDigest
+      networkTotalTransactions
+      timestamp
+      rollingGasSummary {
+        computationCost
+        storageCost
+      }
+    }
+    previous: checkpoint(sequenceNumber: $previous) {
+      networkTotalTransactions
+    }
+  }
+`;
+
+function mapTx(raw: SuiTransaction): Transaction {
+  const gasSummary = raw.effects?.gasEffects?.gasSummary;
+  const status: TxStatus = raw.effects
+    ? raw.effects.status === "SUCCESS"
+      ? "success"
+      : "failed"
+    : "pending";
 
   return {
     hash: raw.digest,
-    blockNumber: Number(raw.checkpoint ?? 0),
-    timestamp: raw.timestampMs
-      ? new Date(Number(raw.timestampMs)).toISOString()
+    blockNumber: raw.effects?.checkpoint?.sequenceNumber ?? 0,
+    timestamp: raw.effects?.timestamp ?? undefined,
+    from: raw.sender?.address ?? "",
+    to: null,
+    value: "0",
+    valueFormatted: "0",
+    fee: gasSummary
+      ? (
+          BigInt(gasSummary.computationCost) +
+          BigInt(gasSummary.storageCost) -
+          BigInt(gasSummary.storageRebate)
+        ).toString()
       : undefined,
-    from: sender,
-    to: null, // Sui transactions are complex — no single "to"
-    value: '0',
-    valueFormatted: '0',
-    gasUsed: gasUsed ? (Number(gasUsed.computationCost) + Number(gasUsed.storageCost)).toString() : undefined,
-    gasPrice: raw.transaction?.data.message.gasData.price,
-    status: (success ? 'success' : 'failed') as TxStatus,
-    isContractInteraction: raw.transaction?.data.message.kind === 'ProgrammableTransaction',
+    gasPrice: raw.gasInput?.gasPrice,
+    status,
+    isContractInteraction: raw.kind?.__typename === "ProgrammableTransaction",
     tokenTransfers: [],
-  }
+    raw: raw as unknown as Record<string, unknown>,
+  };
 }
 
-// ─── Provider ──────────────────────────────────────────────────────────────
-
-class SuiProvider implements BlocexProvider {
-  private rpcUrl: string
+class Sui extends Provider {
+  private baseUrl: string;
 
   constructor(config: ProviderConfig) {
-    this.rpcUrl = config.baseUrl ?? DEFAULT_RPC
+    super(config);
+    this.baseUrl = normalizeBaseUrl(config.baseUrl ?? DEFAULT_BASE);
   }
 
-  name(): string {
-    return 'sui'
-  }
+  static readonly providerName = "sui";
+  readonly name = Sui.providerName;
 
-  capabilities(): ProviderCapabilities {
+  get capabilities(): ProviderCapabilities {
     return {
       balances: true,
       txHistory: true,
@@ -149,101 +201,126 @@ class SuiProvider implements BlocexProvider {
       tokenBalances: false,
       gasData: true,
       blockInfo: true,
+    };
+  }
+
+  private async queryGraphQL<T>(
+    query: string,
+    variables: Record<string, unknown> = {},
+  ): Promise<T> {
+    const response = await this.postJSON<GraphQLResponse<T>>(this.baseUrl, { query, variables });
+    const firstError = response.errors?.[0]?.message;
+    if (firstError) {
+      throw normalizeError(new Error(`Sui GraphQL error: ${firstError}`), "sui");
     }
+    if (!response.data) {
+      throw normalizeError(new Error("Sui GraphQL response did not include data"), "sui");
+    }
+    return response.data;
   }
 
   async getBalance(address: string, chain?: Chain): Promise<Balance> {
-    const c = chain ?? 'sui'
-    if (c !== 'sui') throw new UnsupportedChainError(c, 'sui')
+    const c = chain ?? "sui";
+    if (c !== "sui") throw new UnsupportedChainError(c, "sui");
 
-    const result = await rpcCall<SuiBalance>(this.rpcUrl, 'suix_getBalance', [address])
+    const result = await this.queryGraphQL<{
+      address: { balance: { totalBalance: string } | null } | null;
+    }>(BALANCE_QUERY, { address });
+    const totalBalance = result.address?.balance?.totalBalance ?? "0";
 
     return {
       address,
-      chain: 'sui',
-      balance: result.totalBalance,
-      balanceFormatted: mistToSui(result.totalBalance),
-      symbol: 'SUI',
+      chain: "sui",
+      balance: totalBalance,
+      balanceFormatted: formatWei(totalBalance, 9),
+      symbol: "SUI",
+    };
+  }
+
+  async getTxHistory(
+    address: string,
+    chain?: Chain,
+    options?: TxHistoryOptions,
+  ): Promise<Transaction[]> {
+    const c = chain ?? "sui";
+    if (c !== "sui") throw new UnsupportedChainError(c, "sui");
+
+    const result = await this.queryGraphQL<{
+      address: { transactions: { nodes: SuiTransaction[] } } | null;
+    }>(TX_HISTORY_QUERY, {
+      address,
+      limit: clampMaxResults(options?.limit, 50),
+    });
+
+    return result.address?.transactions.nodes.map(mapTx) ?? [];
+  }
+
+  override async getTxDetail(hash: string, chain?: Chain): Promise<Transaction> {
+    const c = chain ?? "sui";
+    if (c !== "sui") throw new UnsupportedChainError(c, "sui");
+
+    const result = await this.queryGraphQL<{ transaction: SuiTransaction | null }>(
+      TX_DETAIL_QUERY,
+      { digest: hash },
+    );
+    if (!result.transaction) {
+      throw new NotFoundError(`Sui transaction ${hash}`, "sui");
     }
+
+    return mapTx(result.transaction);
   }
 
-  async getTxHistory(address: string, chain?: Chain, options?: TxHistoryOptions): Promise<Transaction[]> {
-    const c = chain ?? 'sui'
-    if (c !== 'sui') throw new UnsupportedChainError(c, 'sui')
+  override async getGasData(chain?: Chain): Promise<GasData> {
+    const c = chain ?? "sui";
+    if (c !== "sui") throw new UnsupportedChainError(c, "sui");
 
-    const limit = clampMaxResults(options?.limit)
-
-    const result = await rpcCall<{ data: SuiTxBlock[]; hasNextPage: boolean; nextCursor?: string }>(
-      this.rpcUrl,
-      'suix_queryTransactionBlocks',
-      [
-        { filter: { FromAddress: address } },
-        null, // cursor
-        limit,
-        false, // showEvents
-      ],
-    )
-
-    if (!result.data?.length) return []
-
-    return result.data.map(mapTx)
-  }
-
-  async getTxDetail(hash: string, chain?: Chain): Promise<Transaction> {
-    const c = chain ?? 'sui'
-    if (c !== 'sui') throw new UnsupportedChainError(c, 'sui')
-
-    const result = await rpcCall<SuiTxBlock>(
-      this.rpcUrl,
-      'sui_getTransactionBlock',
-      [hash, 'full'],
-    )
-
-    return mapTx(result)
-  }
-
-  async getContractInfo(_address: string, _chain?: Chain): Promise<ContractInfo> {
-    throw new UnsupportedChainError('sui', 'sui')
-  }
-
-  async getGasData(chain?: Chain): Promise<GasData> {
-    const c = chain ?? 'sui'
-    if (c !== 'sui') throw new UnsupportedChainError(c, 'sui')
-
-    const price = await rpcCall<string>(this.rpcUrl, 'suix_getReferenceGasPrice', [])
+    const result = await this.queryGraphQL<{ epoch: { referenceGasPrice: string } | null }>(
+      GAS_QUERY,
+    );
+    if (!result.epoch) {
+      throw new NotFoundError("current Sui epoch", "sui");
+    }
 
     return {
-      chain: 'sui',
-      safeGasPrice: price,
-      proposedGasPrice: price,
-      fastGasPrice: price,
-    }
+      chain: "sui",
+      unit: "MIST",
+      safeGasPrice: result.epoch.referenceGasPrice,
+      proposedGasPrice: result.epoch.referenceGasPrice,
+      fastGasPrice: result.epoch.referenceGasPrice,
+    };
   }
 
-  async getBlockInfo(blockNumber: number, chain?: Chain): Promise<BlockInfo> {
-    const c = chain ?? 'sui'
-    if (c !== 'sui') throw new UnsupportedChainError(c, 'sui')
+  override async getBlockInfo(blockNumber: number, chain?: Chain): Promise<BlockInfo> {
+    const c = chain ?? "sui";
+    if (c !== "sui") throw new UnsupportedChainError(c, "sui");
 
-    const checkpoint = await rpcCall<SuiCheckpoint>(
-      this.rpcUrl,
-      'sui_getCheckpoint',
-      [blockNumber.toString()],
-    )
+    const result = await this.queryGraphQL<{
+      checkpoint: SuiCheckpoint | null;
+      previous: { networkTotalTransactions: number } | null;
+    }>(CHECKPOINT_QUERY, {
+      number: blockNumber,
+      previous: Math.max(0, blockNumber - 1),
+    });
+    if (!result.checkpoint) {
+      throw new NotFoundError(`Sui checkpoint ${blockNumber}`, "sui");
+    }
+
+    const previousTotal = blockNumber === 0 ? 0 : (result.previous?.networkTotalTransactions ?? 0);
 
     return {
-      number: Number(checkpoint.sequenceNumber),
-      hash: checkpoint.digest,
-      parentHash: checkpoint.previousDigest ?? '',
-      timestamp: new Date(Number(checkpoint.timestampMs)).toISOString(),
-      miner: '',
-      gasUsed: checkpoint.epochRollingGasCostSummary.computationCost,
-      gasLimit: checkpoint.epochRollingGasCostSummary.storageCost,
-      txCount: checkpoint.transactions.length,
-    }
+      number: result.checkpoint.sequenceNumber,
+      hash: result.checkpoint.digest,
+      parentHash: result.checkpoint.previousCheckpointDigest ?? "",
+      timestamp: result.checkpoint.timestamp,
+      miner: "",
+      gasUsed: (
+        BigInt(result.checkpoint.rollingGasSummary.computationCost) +
+        BigInt(result.checkpoint.rollingGasSummary.storageCost)
+      ).toString(),
+      gasLimit: "0",
+      txCount: result.checkpoint.networkTotalTransactions - previousTotal,
+    };
   }
 }
 
-// ─── Register ──────────────────────────────────────────────────────────────
-
-const factory = (config: ProviderConfig) => new SuiProvider(config)
-register('sui', factory, 'https://fullnode.mainnet.sui.io:443')
+register(Sui, DEFAULT_BASE);

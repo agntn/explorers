@@ -2,37 +2,67 @@
  * Self-registering provider registry for blocex
  */
 
-import type { BlocexProvider, ProviderConfig } from './types.js'
-type ProviderFactory = (config: ProviderConfig) => BlocexProvider
-import { UnknownProviderError } from './errors.js'
+import { Provider } from "./provider.js";
+import type { ProviderConstructor } from "./provider.js";
+import type { ProviderConfig } from "./types.js";
+import { UnknownProviderError } from "./errors.js";
 
 interface RegistryEntry {
-  defaultURL?: string
-  factory: ProviderFactory
+  defaultURL?: string;
+  providerClass: ProviderConstructor;
 }
 
-const factories = new Map<string, RegistryEntry>()
+const registry = new Map<string, RegistryEntry>();
 
-export function register(name: string, factory: ProviderFactory, defaultURL?: string): void {
-  factories.set(name, { defaultURL, factory })
+/**
+ * Register a provider class under its stable `providerName`.
+ *
+ * Registering the same name again replaces the previous entry. That is useful in
+ * tests, but easy to do by accident in application code.
+ */
+export function register(providerClass: ProviderConstructor, defaultURL?: string): void {
+  registry.set(providerClass.providerName, { defaultURL, providerClass });
 }
 
-export function create(name: string, config?: ProviderConfig): BlocexProvider {
-  const entry = factories.get(name)
+/**
+ * Create a registered provider with optional backend configuration.
+ *
+ * @throws {UnknownProviderError} When `name` has not been registered.
+ *
+ * @example
+ * ```ts
+ * import { create } from 'blocex'
+ *
+ * const provider = create('blockscout')
+ * const balance = await provider.getBalance(
+ *   '0x0000000000000000000000000000000000000000',
+ *   'eth',
+ * )
+ * ```
+ */
+export function create(name: string, config?: ProviderConfig): Provider {
+  const entry = registry.get(name);
   if (!entry) {
-    throw new UnknownProviderError(name)
+    throw new UnknownProviderError(name);
   }
-  return entry.factory(config ?? {})
+  return new entry.providerClass(config ?? {});
 }
 
+/** Return registered provider names in registration order. */
 export function providers(): string[] {
-  return Array.from(factories.keys())
+  return Array.from(registry.keys());
 }
 
+/** Check whether a name can be passed to `create`. */
 export function has(name: string): boolean {
-  return factories.has(name)
+  return registry.has(name);
 }
 
+/**
+ * Return the public endpoint advertised when a provider was registered.
+ *
+ * Per-instance `baseUrl` overrides are deliberately not reflected here.
+ */
 export function getDefaultURL(name: string): string | undefined {
-  return factories.get(name)?.defaultURL
+  return registry.get(name)?.defaultURL;
 }

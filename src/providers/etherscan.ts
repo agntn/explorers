@@ -1,15 +1,14 @@
 /**
- * Etherscan-family provider — unified API across all Etherscan-powered explorers
+ * Etherscan V2 provider.
  *
- * Supports: Ethereum, Base, Arbitrum, Optimism, Polygon, BSC, Avalanche,
- * Fantom, Gnosis, Linea, zkSync, Scroll
+ * Uses Etherscan's unified multichain endpoint for Ethereum, Base, Arbitrum,
+ * Optimism, Polygon, BSC, Avalanche, Gnosis, Linea, and Berachain.
  *
- * Auth: API key (free tier: 5 req/s, 100K calls/day)
+ * Auth: Etherscan API key.
  * Env: ETHERSCAN_API_KEY
  */
 
 import type {
-  BlocexProvider,
   ProviderCapabilities,
   ProviderConfig,
   Chain,
@@ -22,94 +21,100 @@ import type {
   GasData,
   BlockInfo,
   TxStatus,
-} from '../core/types.js'
-import { getJSON, buildQuery } from '../core/client.js'
-import { normalizeError, AuthError, UnsupportedChainError } from '../core/errors.js'
-import { register } from '../core/registry.js'
-import { CHAIN_DATA } from 'chains'
-import { formatWei, clampMaxResults } from '../core/types.js'
+} from "../core/types.js";
+import { Provider } from "../core/provider.js";
+import { buildQuery, normalizeBaseUrl } from "../core/client.js";
+import {
+  AuthError,
+  BlocexError,
+  NotFoundError,
+  RateLimitError,
+  UnsupportedChainError,
+} from "../core/errors.js";
+import { register } from "../core/registry.js";
+import { CHAIN_DATA } from "chains";
+import { clampMaxResults, formatWei, multiplyIntegerStrings } from "../core/types.js";
 
-// ─── Chain → Etherscan subdomain mapping ───────────────────────────────────
-
-const CHAIN_BASES: Partial<Record<Chain, string>> = {
-  eth: 'https://api.etherscan.io',
-  base: 'https://api.basescan.org',
-  arbitrum: 'https://api.arbiscan.io',
-  optimism: 'https://api-optimistic.etherscan.io',
-  polygon: 'https://api.polygonscan.com',
-  bsc: 'https://api.bscscan.com',
-  avalanche: 'https://api.snowtrace.io',
-  fantom: 'https://api.ftmscan.com',
-  gnosis: 'https://api.gnosisscan.io',
-  linea: 'https://api.lineascan.build',
-  zksync: 'https://api-era.zksync.network',
-  scroll: 'https://api.scrollscan.com',
-  bera: 'https://api.berascan.com',
-}
-
-// ─── Etherscan API response types ──────────────────────────────────────────
+const DEFAULT_BASE = "https://api.etherscan.io/v2/api";
+const SUPPORTED_CHAINS = new Set<Chain>([
+  "eth",
+  "base",
+  "arbitrum",
+  "optimism",
+  "polygon",
+  "bsc",
+  "avalanche",
+  "gnosis",
+  "linea",
+  "bera",
+]);
 
 interface EtherscanResponse<T> {
-  status: string
-  message: string
-  result: T
+  status?: string;
+  message?: string;
+  result?: T;
+  error?: { code: number; message: string };
 }
 
 interface EtherscanTx {
-  blockNumber: string
-  timeStamp: string
-  hash: string
-  from: string
-  to: string
-  value: string
-  gas: string
-  gasUsed: string
-  gasPrice: string
-  isError: string
-  txreceipt_status: string
-  input: string
-  functionName?: string
-  methodId?: string
-  contractAddress: string
-  confirmations: string
+  blockNumber: string;
+  timeStamp: string;
+  hash: string;
+  from: string;
+  to: string;
+  value: string;
+  gas: string;
+  gasUsed: string;
+  gasPrice: string;
+  isError: string;
+  txreceipt_status: string;
+  input: string;
+  functionName?: string;
+  methodId?: string;
+  contractAddress: string;
+  confirmations: string;
 }
 
 interface EtherscanTokenBalance {
-  contractAddress: string
-  tokenName: string
-  tokenSymbol: string
-  tokenDecimal: string
-  balance: string
+  TokenAddress: string;
+  TokenName: string;
+  TokenSymbol: string;
+  TokenDivisor: string;
+  TokenQuantity: string;
 }
 
 interface EtherscanGasResult {
-  LastBlock: string
-  SafeGasPrice: string
-  ProposeGasPrice: string
-  FastGasPrice: string
-  suggestBaseFee: string
-  gasUsedRatio: string
+  LastBlock: string;
+  SafeGasPrice: string;
+  ProposeGasPrice: string;
+  FastGasPrice: string;
+  suggestBaseFee: string;
+  gasUsedRatio: string;
 }
 
 interface EtherscanBlockResult {
-  blockNumber: string
-  timeStamp: string
-  blockMiner: string
-  gasLimit: string
-  gasUsed: string
-  baseFeePerGas?: string
+  number: string;
+  hash: string;
+  parentHash: string;
+  timestamp: string;
+  miner: string;
+  gasLimit: string;
+  gasUsed: string;
+  baseFeePerGas?: string;
+  transactions: string[];
 }
 
-// ─── Helpers ───────────────────────────────────────────────────────────────
-
-function getBase(chain: Chain): string {
-  const base = CHAIN_BASES[chain]
-  if (!base) throw new UnsupportedChainError(chain, 'etherscan')
-  return base
+function getChainId(chain: Chain): string {
+  const chainId = CHAIN_DATA[chain]?.chainId;
+  if (!SUPPORTED_CHAINS.has(chain) || !chainId) {
+    throw new UnsupportedChainError(chain, "etherscan");
+  }
+  return BigInt(chainId).toString();
 }
 
 function mapTx(raw: EtherscanTx): Transaction {
-  const status: TxStatus = raw.isError === '1' || raw.txreceipt_status === '0' ? 'failed' : 'success'
+  const status: TxStatus =
+    raw.isError === "1" || raw.txreceipt_status === "0" ? "failed" : "success";
   return {
     hash: raw.hash,
     blockNumber: Number(raw.blockNumber),
@@ -120,35 +125,37 @@ function mapTx(raw: EtherscanTx): Transaction {
     valueFormatted: formatWei(raw.value),
     gasUsed: raw.gasUsed,
     gasPrice: raw.gasPrice,
+    fee: multiplyIntegerStrings(raw.gasUsed, raw.gasPrice),
     status,
     methodId: raw.methodId,
     functionName: raw.functionName,
-    isContractInteraction: raw.input !== '0x' && raw.input.length > 2,
+    isContractInteraction: raw.input !== "0x" && raw.input.length > 2,
     tokenTransfers: [],
     raw: raw as unknown as Record<string, unknown>,
-  }
+  };
 }
 
-// ─── Provider ──────────────────────────────────────────────────────────────
-
-class EtherscanProvider implements BlocexProvider {
-  private apiKey: string
-  private defaultChain: Chain
+class Etherscan extends Provider {
+  private readonly apiKey: string;
+  private readonly apiUrl: string;
+  private readonly defaultChain: Chain;
 
   constructor(config: ProviderConfig) {
-    const key = config.apiKey ?? process.env.ETHERSCAN_API_KEY ?? ''
+    super(config);
+    const key = config.apiKey ?? process.env.ETHERSCAN_API_KEY ?? "";
     if (!key) {
-      throw new AuthError('etherscan', 'Set ETHERSCAN_API_KEY or pass apiKey in config')
+      throw new AuthError("etherscan", "Set ETHERSCAN_API_KEY or pass apiKey in config");
     }
-    this.apiKey = key
-    this.defaultChain = config.defaultChain ?? 'eth'
+    this.apiKey = key;
+    this.apiUrl = normalizeBaseUrl(config.baseUrl ?? DEFAULT_BASE);
+    this.defaultChain = config.defaultChain ?? "eth";
+    getChainId(this.defaultChain);
   }
 
-  name(): string {
-    return 'etherscan'
-  }
+  static readonly providerName = "etherscan";
+  readonly name = Etherscan.providerName;
 
-  capabilities(): ProviderCapabilities {
+  get capabilities(): ProviderCapabilities {
     return {
       balances: true,
       txHistory: true,
@@ -157,125 +164,140 @@ class EtherscanProvider implements BlocexProvider {
       tokenBalances: true,
       gasData: true,
       blockInfo: true,
-    }
+    };
   }
 
-  private base(chain?: Chain): string {
-    return getBase(chain ?? this.defaultChain)
-  }
-
-  private async api<T>(chain: Chain, module: string, action: string, params: Record<string, string | number | undefined> = {}): Promise<T> {
-    const base = getBase(chain)
+  private async api<T>(
+    chain: Chain,
+    module: string,
+    action: string,
+    params: Record<string, string | number | undefined> = {},
+  ): Promise<T> {
     const query = buildQuery({
+      chainid: getChainId(chain),
       module,
       action,
       apikey: this.apiKey,
       ...params,
-    })
-    const url = `${base}/api${query}`
-    const res = await getJSON<EtherscanResponse<T>>(url)
+    });
+    const response = await this.getJSON<EtherscanResponse<T>>(`${this.apiUrl}${query}`);
 
-    if (res.status === '0' && res.message === 'NOTOK') {
-      const errMsg = String(res.result)
-      if (errMsg.includes('rate limit') || errMsg.includes('Max rate limit')) {
-        throw normalizeError(new Error('429 rate limit exceeded'), 'etherscan')
-      }
-      if (errMsg.includes('Invalid API Key')) {
-        throw new AuthError('etherscan', 'Invalid API key')
-      }
+    if (response.error) {
+      throw new BlocexError(`Etherscan API error: ${response.error.message}`, "etherscan");
     }
 
-    return res.result
+    if (response.status === "0") {
+      const detail = typeof response.result === "string" ? response.result : response.message;
+      const message = detail || "Unknown Etherscan API error";
+      if (
+        (action === "txlist" && /no transactions found/i.test(message)) ||
+        (action === "addresstokenbalance" && /no (token|record)/i.test(message))
+      ) {
+        return [] as T;
+      }
+      if (/rate limit/i.test(message)) throw new RateLimitError("etherscan");
+      if (/invalid api key|missing\/invalid api key/i.test(message)) {
+        throw new AuthError("etherscan", "Invalid API key");
+      }
+      throw new BlocexError(`Etherscan API error: ${message}`, "etherscan");
+    }
+
+    if (!("result" in response)) {
+      throw new BlocexError("Etherscan API response did not include a result", "etherscan");
+    }
+    return response.result as T;
   }
 
   async getBalance(address: string, chain?: Chain): Promise<Balance> {
-    const c = chain ?? this.defaultChain
-    const result = await this.api<string>(c, 'account', 'balance', {
+    const c = chain ?? this.defaultChain;
+    const result = await this.api<string>(c, "account", "balance", {
       address,
-      tag: 'latest',
-    })
+      tag: "latest",
+    });
 
     return {
       address,
       chain: c,
       balance: result,
       balanceFormatted: formatWei(result),
-      symbol: CHAIN_DATA[c]?.symbol ?? 'ETH',
-    }
+      symbol: CHAIN_DATA[c]?.symbol ?? "ETH",
+    };
   }
 
-  async getTxHistory(address: string, chain?: Chain, options?: TxHistoryOptions): Promise<Transaction[]> {
-    const c = chain ?? this.defaultChain
-    const limit = clampMaxResults(options?.limit)
-    const result = await this.api<EtherscanTx[]>(c, 'account', 'txlist', {
+  async getTxHistory(
+    address: string,
+    chain?: Chain,
+    options?: TxHistoryOptions,
+  ): Promise<Transaction[]> {
+    const c = chain ?? this.defaultChain;
+    const limit = clampMaxResults(options?.limit);
+    const result = await this.api<EtherscanTx[]>(c, "account", "txlist", {
       address,
       startblock: options?.startBlock ?? 0,
       endblock: options?.endBlock ?? 99999999,
       page: options?.page ?? 1,
       offset: limit,
-      sort: options?.sort ?? 'desc',
-    })
+      sort: options?.sort ?? "desc",
+    });
 
-    if (!Array.isArray(result)) return []
-    return result.map(mapTx)
+    if (!Array.isArray(result)) return [];
+    return result.map(mapTx);
   }
 
-  async getTxDetail(hash: string, chain?: Chain): Promise<Transaction> {
-    const c = chain ?? this.defaultChain
-    // Etherscan doesn't have a single-tx endpoint; use proxy to get receipt + tx
-    const tx = await this.api<Record<string, string>>(c, 'proxy', 'eth_getTransactionByHash', {
-      txhash: hash,
-    })
+  override async getTxDetail(hash: string, chain?: Chain): Promise<Transaction> {
+    const c = chain ?? this.defaultChain;
+    const tx = await this.api<Record<string, string | null> | null>(
+      c,
+      "proxy",
+      "eth_getTransactionByHash",
+      { txhash: hash },
+    );
 
-    if (!tx || !tx.hash) {
-      throw normalizeError(new Error(`Transaction not found: ${hash}`), 'etherscan')
+    if (!tx?.hash) {
+      throw new NotFoundError(`Transaction ${hash}`, "etherscan");
     }
 
-    const receipt = await this.api<Record<string, string>>(c, 'proxy', 'eth_getTransactionReceipt', {
-      txhash: hash,
-    })
+    const receipt = await this.api<Record<string, string | null> | null>(
+      c,
+      "proxy",
+      "eth_getTransactionReceipt",
+      { txhash: hash },
+    );
+
+    const gasUsed = receipt?.gasUsed ? BigInt(receipt.gasUsed).toString() : undefined;
+    const gasPrice = tx.gasPrice ? BigInt(tx.gasPrice).toString() : undefined;
 
     return {
-      hash: tx.hash ?? '',
-      blockNumber: Number(tx.blockNumber ?? '0x0'),
-      from: tx.from ?? '',
+      hash: tx.hash,
+      blockNumber: Number(tx.blockNumber ?? "0x0"),
+      from: tx.from ?? "",
       to: tx.to ?? null,
-      value: tx.value ? BigInt(tx.value).toString() : '0',
-      valueFormatted: tx.value ? formatWei(BigInt(tx.value).toString()) : '0',
-      gasUsed: receipt?.gasUsed ? BigInt(receipt.gasUsed).toString() : undefined,
-      gasPrice: tx.gasPrice ? BigInt(tx.gasPrice).toString() : undefined,
-      status: receipt?.status === '0x1' ? 'success' : 'failed',
+      value: tx.value ? BigInt(tx.value).toString() : "0",
+      valueFormatted: tx.value ? formatWei(BigInt(tx.value).toString()) : "0",
+      gasUsed,
+      gasPrice,
+      fee: gasUsed && gasPrice ? multiplyIntegerStrings(gasUsed, gasPrice) : undefined,
+      status: !receipt ? "pending" : receipt.status === "0x1" ? "success" : "failed",
       methodId: tx.input ? tx.input.slice(0, 10) : undefined,
       isContractInteraction: (tx.input?.length ?? 0) > 10,
       tokenTransfers: [],
       raw: { ...tx, receipt } as Record<string, unknown>,
-    }
+    };
   }
 
-  async getContractInfo(address: string, chain?: Chain): Promise<ContractInfo> {
-    const c = chain ?? this.defaultChain
+  override async getContractInfo(address: string, chain?: Chain): Promise<ContractInfo> {
+    const c = chain ?? this.defaultChain;
 
-    // Check if verified
-    let abi: string | undefined
-    let name: string | undefined
-    let compilerVersion: string | undefined
-    let sourceCode: string | undefined
-    let isVerified = false
+    const source = await this.api<Array<Record<string, string>>>(c, "contract", "getsourcecode", {
+      address,
+    });
+    const contract = source[0];
+    const isVerified = contract?.ABI !== "Contract source code not verified" && !!contract?.ABI;
 
-    try {
-      const source = await this.api<Record<string, string>>(c, 'contract', 'getsourcecode', { address })
-      if (Array.isArray(source) && source[0]) {
-        const s = source[0]
-        isVerified = s.ABI !== 'Contract source code not verified'
-        abi = isVerified ? s.ABI : undefined
-        name = s.ContractName || undefined
-        compilerVersion = s.CompilerVersion || undefined
-        sourceCode = isVerified ? s.SourceCode : undefined
-      }
-    }
-    catch {
-      // Source not available — continue with basic info
-    }
+    const abi = isVerified ? contract.ABI : undefined;
+    const name = contract?.ContractName || undefined;
+    const compilerVersion = contract?.CompilerVersion || undefined;
+    const sourceCode = isVerified ? contract.SourceCode : undefined;
 
     return {
       address,
@@ -284,67 +306,76 @@ class EtherscanProvider implements BlocexProvider {
       compilerVersion,
       abi,
       sourceCode,
-    }
+      isProxy: contract?.Proxy === "1",
+      implementationAddress: contract?.Implementation || undefined,
+    };
   }
 
-  async getTokenBalances(address: string, chain?: Chain, options?: TokenBalanceOptions): Promise<TokenBalance[]> {
-    const c = chain ?? this.defaultChain
-    const result = await this.api<EtherscanTokenBalance[]>(c, 'account', 'tokenlist', {
+  override async getTokenBalances(
+    address: string,
+    chain?: Chain,
+    options?: TokenBalanceOptions,
+  ): Promise<TokenBalance[]> {
+    const c = chain ?? this.defaultChain;
+    const result = await this.api<EtherscanTokenBalance[]>(c, "account", "addresstokenbalance", {
       address,
-    })
+    });
 
-    if (!Array.isArray(result)) return []
-
-    let tokens = result.map(t => ({
-      contract: t.contractAddress,
-      symbol: t.tokenSymbol,
-      name: t.tokenName,
-      decimals: Number(t.tokenDecimal),
-      balance: t.balance,
-      balanceFormatted: formatWei(t.balance, Number(t.tokenDecimal)),
-    }))
+    let tokens = result.map((token) => {
+      const decimals = Number(token.TokenDivisor);
+      return {
+        contract: token.TokenAddress,
+        symbol: token.TokenSymbol,
+        name: token.TokenName,
+        decimals,
+        balance: token.TokenQuantity,
+        balanceFormatted: formatWei(token.TokenQuantity, decimals),
+      };
+    });
 
     if (options?.nonZeroOnly) {
-      tokens = tokens.filter(t => t.balance !== '0')
+      tokens = tokens.filter((t) => t.balance !== "0");
     }
 
-    return tokens
+    return tokens;
   }
 
-  async getGasData(chain?: Chain): Promise<GasData> {
-    const c = chain ?? this.defaultChain
-    const result = await this.api<EtherscanGasResult>(c, 'gastracker', 'gasoracle')
+  override async getGasData(chain?: Chain): Promise<GasData> {
+    const c = chain ?? this.defaultChain;
+    const result = await this.api<EtherscanGasResult>(c, "gastracker", "gasoracle");
 
     return {
       chain: c,
+      unit: "gwei",
       safeGasPrice: result.SafeGasPrice,
       proposedGasPrice: result.ProposeGasPrice,
       fastGasPrice: result.FastGasPrice,
       baseFee: result.suggestBaseFee,
-    }
+    };
   }
 
-  async getBlockInfo(blockNumber: number, chain?: Chain): Promise<BlockInfo> {
-    const c = chain ?? this.defaultChain
-    const result = await this.api<EtherscanBlockResult>(c, 'block', 'getblockreward', {
-      blockno: blockNumber,
-    })
+  override async getBlockInfo(blockNumber: number, chain?: Chain): Promise<BlockInfo> {
+    const c = chain ?? this.defaultChain;
+    const result = await this.api<EtherscanBlockResult | null>(c, "proxy", "eth_getBlockByNumber", {
+      tag: `0x${blockNumber.toString(16)}`,
+      boolean: "false",
+    });
+    if (!result) {
+      throw new NotFoundError(`Block ${blockNumber}`, "etherscan");
+    }
 
     return {
-      number: Number(result.blockNumber),
-      hash: '', // Etherscan block reward endpoint doesn't return hash
-      parentHash: '',
-      timestamp: new Date(Number(result.timeStamp) * 1000).toISOString(),
-      miner: result.blockMiner,
-      gasUsed: result.gasUsed,
-      gasLimit: result.gasLimit,
-      txCount: 0, // not available from this endpoint
-      baseFee: result.baseFeePerGas,
-    }
+      number: Number(result.number),
+      hash: result.hash,
+      parentHash: result.parentHash,
+      timestamp: new Date(Number(result.timestamp) * 1000).toISOString(),
+      miner: result.miner,
+      gasUsed: BigInt(result.gasUsed).toString(),
+      gasLimit: BigInt(result.gasLimit).toString(),
+      txCount: result.transactions.length,
+      baseFee: result.baseFeePerGas ? BigInt(result.baseFeePerGas).toString() : undefined,
+    };
   }
 }
 
-// ─── Register ──────────────────────────────────────────────────────────────
-
-const factory = (config: ProviderConfig) => new EtherscanProvider(config)
-register('etherscan', factory, 'https://api.etherscan.io')
+register(Etherscan, DEFAULT_BASE);

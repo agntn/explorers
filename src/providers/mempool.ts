@@ -8,162 +8,158 @@
  */
 
 import type {
-  BlocexProvider,
   ProviderCapabilities,
   ProviderConfig,
   Chain,
   Balance,
   Transaction,
   TxHistoryOptions,
-  ContractInfo,
   GasData,
   BlockInfo,
   TxStatus,
   TokenTransfer,
-} from '../core/types.js'
-import { getJSON } from '../core/client.js'
-import { normalizeError, UnsupportedChainError } from '../core/errors.js'
-import { register } from '../core/registry.js'
-import { clampMaxResults } from '../core/types.js'
-import { assertSafePathSegment } from '../core/path-safety.js'
+} from "../core/types.js";
+import { Provider } from "../core/provider.js";
+import { normalizeBaseUrl } from "../core/client.js";
+import { UnsupportedChainError } from "../core/errors.js";
+import { register } from "../core/registry.js";
+import { clampMaxResults, formatWei } from "../core/types.js";
+import { assertSafePathSegment } from "../core/path-safety.js";
 
-const DEFAULT_BASE = 'https://mempool.space'
-
-// ─── Mempool.space API types ───────────────────────────────────────────────
+const DEFAULT_BASE = "https://mempool.space";
 
 interface MempoolAddressSummary {
-  address: string
+  address: string;
   chain_stats: {
-    funded_txo_count: number
-    funded_txo_sum: number
-    spent_txo_count: number
-    spent_txo_sum: number
-    tx_count: number
-  }
+    funded_txo_count: number;
+    funded_txo_sum: number;
+    spent_txo_count: number;
+    spent_txo_sum: number;
+    tx_count: number;
+  };
   mempool_stats: {
-    funded_txo_count: number
-    funded_txo_sum: number
-    spent_txo_count: number
-    spent_txo_sum: number
-    tx_count: number
-  }
+    funded_txo_count: number;
+    funded_txo_sum: number;
+    spent_txo_count: number;
+    spent_txo_sum: number;
+    tx_count: number;
+  };
 }
 
 interface MempoolTx {
-  txid: string
-  version: number
-  locktime: number
+  txid: string;
+  version: number;
+  locktime: number;
   vin: Array<{
-    txid: string
-    vout: number
+    txid: string;
+    vout: number;
     prevout: {
-      scriptpubkey: string
-      scriptpubkey_asm: string
-      scriptpubkey_type: string
-      scriptpubkey_address?: string
-      value: number
-    }
-    scriptsig: string
-    sequence: number
-    witness?: string[]
-  }>
+      scriptpubkey: string;
+      scriptpubkey_asm: string;
+      scriptpubkey_type: string;
+      scriptpubkey_address?: string;
+      value: number;
+    };
+    scriptsig: string;
+    sequence: number;
+    witness?: string[];
+  }>;
   vout: Array<{
-    scriptpubkey: string
-    scriptpubkey_asm: string
-    scriptpubkey_type: string
-    scriptpubkey_address?: string
-    value: number
-  }>
-  size: number
-  weight: number
-  fee: number
+    scriptpubkey: string;
+    scriptpubkey_asm: string;
+    scriptpubkey_type: string;
+    scriptpubkey_address?: string;
+    value: number;
+  }>;
+  size: number;
+  weight: number;
+  fee: number;
   status: {
-    confirmed: boolean
-    block_height?: number
-    block_hash?: string
-    block_time?: number
-  }
+    confirmed: boolean;
+    block_height?: number;
+    block_hash?: string;
+    block_time?: number;
+  };
 }
 
 interface MempoolAddressTx {
-  txid: string
-  version: number
-  locktime: number
+  txid: string;
+  version: number;
+  locktime: number;
   vin: Array<{
-    txid: string
-    vout: number
+    txid: string;
+    vout: number;
     prevout: {
-      scriptpubkey_address?: string
-      value: number
-    }
-    scriptsig: string
-    sequence: number
-  }>
+      scriptpubkey_address?: string;
+      value: number;
+    };
+    scriptsig: string;
+    sequence: number;
+  }>;
   vout: Array<{
-    scriptpubkey_address?: string
-    value: number
-  }>
-  size: number
-  weight: number
-  fee: number
+    scriptpubkey_address?: string;
+    value: number;
+  }>;
+  size: number;
+  weight: number;
+  fee: number;
   status: {
-    confirmed: boolean
-    block_height?: number
-    block_time?: number
-  }
+    confirmed: boolean;
+    block_height?: number;
+    block_time?: number;
+  };
 }
 
 interface MempoolFees {
-  fastestFee: number
-  halfHourFee: number
-  hourFee: number
-  economyFee: number
-  minimumFee: number
+  fastestFee: number;
+  halfHourFee: number;
+  hourFee: number;
+  economyFee: number;
+  minimumFee: number;
 }
 
 interface MempoolBlock {
-  id: string
-  height: number
-  version: number
-  timestamp: number
-  bits: number
-  nonce: number
-  difficulty: number
-  merkle_root: string
-  tx_count: number
-  size: number
-  weight: number
-  previousblockhash: string
-  mediantime: number
+  id: string;
+  height: number;
+  version: number;
+  timestamp: number;
+  bits: number;
+  nonce: number;
+  difficulty: number;
+  merkle_root: string;
+  tx_count: number;
+  size: number;
+  weight: number;
+  previousblockhash: string;
+  mediantime: number;
 }
 
-// ─── Helpers ───────────────────────────────────────────────────────────────
-
-/** Convert satoshis to BTC string */
+/** Convert satoshis to a BTC string without floating-point arithmetic. */
 function satToBtc(sat: number): string {
-  const btc = sat / 100_000_000
-  return btc.toFixed(8).replace(/\.?0+$/, '') || '0'
+  return formatWei(String(sat), 8);
 }
 
 function mapTx(raw: MempoolAddressTx, address: string): Transaction {
   // Determine direction: is this address receiving or sending?
   const totalIn = raw.vin
-    .filter(v => v.prevout.scriptpubkey_address === address)
-    .reduce((sum, v) => sum + v.prevout.value, 0)
+    .filter((v) => v.prevout.scriptpubkey_address === address)
+    .reduce((sum, v) => sum + v.prevout.value, 0);
   const totalOut = raw.vout
-    .filter(v => v.scriptpubkey_address === address)
-    .reduce((sum, v) => sum + v.value, 0)
+    .filter((v) => v.scriptpubkey_address === address)
+    .reduce((sum, v) => sum + v.value, 0);
 
-  const netSat = totalOut - totalIn
-  const isSend = totalIn > 0
+  const netSat = totalOut - totalIn;
+  const isSend = totalIn > 0;
+  const transferredSat = isSend ? Math.max(0, Math.abs(netSat) - raw.fee) : netSat;
 
   // Find the primary counterparty
   const from = isSend
-    ? (raw.vin.find(v => v.prevout.scriptpubkey_address === address)?.prevout.scriptpubkey_address ?? address)
-    : (raw.vin[0]?.prevout.scriptpubkey_address ?? 'unknown')
+    ? (raw.vin.find((v) => v.prevout.scriptpubkey_address === address)?.prevout
+        .scriptpubkey_address ?? address)
+    : (raw.vin[0]?.prevout.scriptpubkey_address ?? "unknown");
   const to = isSend
-    ? (raw.vout.find(v => v.scriptpubkey_address !== address)?.scriptpubkey_address ?? address)
-    : address
+    ? (raw.vout.find((v) => v.scriptpubkey_address !== address)?.scriptpubkey_address ?? address)
+    : address;
 
   return {
     hash: raw.txid,
@@ -173,30 +169,28 @@ function mapTx(raw: MempoolAddressTx, address: string): Transaction {
       : undefined,
     from,
     to: to ?? null,
-    value: Math.abs(netSat).toString(),
-    valueFormatted: satToBtc(Math.abs(netSat)),
-    gasUsed: undefined,
-    gasPrice: undefined,
-    status: (raw.status.confirmed ? 'success' : 'pending') as TxStatus,
+    value: transferredSat.toString(),
+    valueFormatted: satToBtc(transferredSat),
+    fee: raw.fee.toString(),
+    status: (raw.status.confirmed ? "success" : "pending") as TxStatus,
     isContractInteraction: false,
     tokenTransfers: [] as TokenTransfer[],
-  }
+    raw: raw as unknown as Record<string, unknown>,
+  };
 }
 
-// ─── Provider ──────────────────────────────────────────────────────────────
-
-class MempoolProvider implements BlocexProvider {
-  private baseUrl: string
+class Mempool extends Provider {
+  private baseUrl: string;
 
   constructor(config: ProviderConfig) {
-    this.baseUrl = config.baseUrl ?? DEFAULT_BASE
+    super(config);
+    this.baseUrl = normalizeBaseUrl(config.baseUrl ?? DEFAULT_BASE);
   }
 
-  name(): string {
-    return 'mempool'
-  }
+  static readonly providerName = "mempool";
+  readonly name = Mempool.providerName;
 
-  capabilities(): ProviderCapabilities {
+  get capabilities(): ProviderCapabilities {
     return {
       balances: true,
       txHistory: true,
@@ -205,54 +199,62 @@ class MempoolProvider implements BlocexProvider {
       tokenBalances: false,
       gasData: true,
       blockInfo: true,
-    }
+    };
   }
 
   private async api<T>(path: string): Promise<T> {
-    return getJSON<T>(`${this.baseUrl}${path}`)
+    return this.getJSON<T>(`${this.baseUrl}${path}`);
   }
 
   async getBalance(address: string, chain?: Chain): Promise<Balance> {
-    const c = chain ?? 'bitcoin'
-    if (c !== 'bitcoin') throw new UnsupportedChainError(c, 'mempool')
+    const c = chain ?? "bitcoin";
+    if (c !== "bitcoin") throw new UnsupportedChainError(c, "mempool");
 
-    assertSafePathSegment(address, 'address')
-    const data = await this.api<MempoolAddressSummary>(`/api/address/${encodeURIComponent(address)}`)
+    assertSafePathSegment(address, "address");
+    const data = await this.api<MempoolAddressSummary>(
+      `/api/address/${encodeURIComponent(address)}`,
+    );
 
-    const fundedSat = data.chain_stats.funded_txo_sum
-    const spentSat = data.chain_stats.spent_txo_sum
-    const balanceSat = fundedSat - spentSat
+    const fundedSat = data.chain_stats.funded_txo_sum;
+    const spentSat = data.chain_stats.spent_txo_sum;
+    const balanceSat = fundedSat - spentSat;
 
     return {
       address,
-      chain: 'bitcoin',
+      chain: "bitcoin",
       balance: balanceSat.toString(),
       balanceFormatted: satToBtc(balanceSat),
-      symbol: 'BTC',
-    }
+      symbol: "BTC",
+    };
   }
 
-  async getTxHistory(address: string, chain?: Chain, options?: TxHistoryOptions): Promise<Transaction[]> {
-    const c = chain ?? 'bitcoin'
-    if (c !== 'bitcoin') throw new UnsupportedChainError(c, 'mempool')
+  async getTxHistory(
+    address: string,
+    chain?: Chain,
+    options?: TxHistoryOptions,
+  ): Promise<Transaction[]> {
+    const c = chain ?? "bitcoin";
+    if (c !== "bitcoin") throw new UnsupportedChainError(c, "mempool");
 
-    const limit = clampMaxResults(options?.limit)
-    assertSafePathSegment(address, 'address')
-    const data = await this.api<MempoolAddressTx[]>(`/api/address/${encodeURIComponent(address)}/txs`)
+    const limit = clampMaxResults(options?.limit);
+    assertSafePathSegment(address, "address");
+    const data = await this.api<MempoolAddressTx[]>(
+      `/api/address/${encodeURIComponent(address)}/txs`,
+    );
 
-    return data.slice(0, limit).map(tx => mapTx(tx, address))
+    return data.slice(0, limit).map((tx) => mapTx(tx, address));
   }
 
-  async getTxDetail(hash: string, chain?: Chain): Promise<Transaction> {
-    const c = chain ?? 'bitcoin'
-    if (c !== 'bitcoin') throw new UnsupportedChainError(c, 'mempool')
+  override async getTxDetail(hash: string, chain?: Chain): Promise<Transaction> {
+    const c = chain ?? "bitcoin";
+    if (c !== "bitcoin") throw new UnsupportedChainError(c, "mempool");
 
-    assertSafePathSegment(hash, 'tx hash')
-    const data = await this.api<MempoolTx>(`/api/tx/${encodeURIComponent(hash)}`)
+    assertSafePathSegment(hash, "tx hash");
+    const data = await this.api<MempoolTx>(`/api/tx/${encodeURIComponent(hash)}`);
 
-    const totalOut = data.vout.reduce((sum, v) => sum + v.value, 0)
-    const fromAddr = data.vin[0]?.prevout.scriptpubkey_address ?? 'unknown'
-    const toAddr = data.vout[0]?.scriptpubkey_address ?? null
+    const totalOut = data.vout.reduce((sum, v) => sum + v.value, 0);
+    const fromAddr = data.vin[0]?.prevout.scriptpubkey_address ?? "unknown";
+    const toAddr = data.vout[0]?.scriptpubkey_address ?? null;
 
     return {
       hash: data.txid,
@@ -264,58 +266,54 @@ class MempoolProvider implements BlocexProvider {
       to: toAddr,
       value: totalOut.toString(),
       valueFormatted: satToBtc(totalOut),
-      gasUsed: data.size.toString(),
-      gasPrice: data.fee.toString(),
-      status: (data.status.confirmed ? 'success' : 'pending') as TxStatus,
+      fee: data.fee.toString(),
+      status: (data.status.confirmed ? "success" : "pending") as TxStatus,
       isContractInteraction: false,
       tokenTransfers: [],
-    }
+      raw: data as unknown as Record<string, unknown>,
+    };
   }
 
-  async getContractInfo(_address: string, _chain?: Chain): Promise<ContractInfo> {
-    throw new UnsupportedChainError('bitcoin', 'mempool')
-  }
+  override async getGasData(chain?: Chain): Promise<GasData> {
+    const c = chain ?? "bitcoin";
+    if (c !== "bitcoin") throw new UnsupportedChainError(c, "mempool");
 
-  async getGasData(chain?: Chain): Promise<GasData> {
-    const c = chain ?? 'bitcoin'
-    if (c !== 'bitcoin') throw new UnsupportedChainError(c, 'mempool')
-
-    const fees = await this.api<MempoolFees>('/api/v1/fees/recommended')
+    const fees = await this.api<MempoolFees>("/api/v1/fees/recommended");
 
     return {
-      chain: 'bitcoin',
+      chain: "bitcoin",
+      unit: "sat/vB",
       safeGasPrice: fees.economyFee.toString(),
       proposedGasPrice: fees.halfHourFee.toString(),
       fastGasPrice: fees.fastestFee.toString(),
       priorityFee: fees.minimumFee.toString(),
-    }
+    };
   }
 
-  async getBlockInfo(blockNumber: number, chain?: Chain): Promise<BlockInfo> {
-    const c = chain ?? 'bitcoin'
-    if (c !== 'bitcoin') throw new UnsupportedChainError(c, 'mempool')
+  override async getBlockInfo(blockNumber: number, chain?: Chain): Promise<BlockInfo> {
+    const c = chain ?? "bitcoin";
+    if (c !== "bitcoin") throw new UnsupportedChainError(c, "mempool");
 
     // Get block hash from height, then fetch block details.
     // Block numbers are ASCII hex from mempool.space — no traversal concern,
     // but assert anyway for symmetry with sibling providers.
-    assertSafePathSegment(String(blockNumber), 'block number')
-    const blockHash = await this.api<string>(`/api/block-height/${encodeURIComponent(String(blockNumber))}`)
-    const data = await this.api<MempoolBlock>(`/api/block/${encodeURIComponent(blockHash)}`)
+    assertSafePathSegment(String(blockNumber), "block number");
+    const blockHash = await this.api<string>(
+      `/api/block-height/${encodeURIComponent(String(blockNumber))}`,
+    );
+    const data = await this.api<MempoolBlock>(`/api/block/${encodeURIComponent(blockHash)}`);
 
     return {
       number: data.height,
       hash: data.id,
       parentHash: data.previousblockhash,
       timestamp: new Date(data.timestamp * 1000).toISOString(),
-      miner: '', // Mempool doesn't provide miner directly
+      miner: "", // Mempool doesn't provide miner directly
       gasUsed: data.size.toString(),
       gasLimit: data.weight.toString(),
       txCount: data.tx_count,
-    }
+    };
   }
 }
 
-// ─── Register ──────────────────────────────────────────────────────────────
-
-const factory = (config: ProviderConfig) => new MempoolProvider(config)
-register('mempool', factory, 'https://mempool.space')
+register(Mempool, "https://mempool.space");
