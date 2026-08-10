@@ -26,7 +26,7 @@ import { Provider } from "../core/provider.js";
 import { buildQuery, normalizeBaseUrl } from "../core/client.js";
 import {
   AuthError,
-  BlocexError,
+  ExplorerError,
   NotFoundError,
   RateLimitError,
   UnsupportedChainError,
@@ -181,7 +181,7 @@ class Etherscan extends Provider {
     const response = await this.getJSON<EtherscanResponse<T>>(`${this.apiUrl}${query}`);
 
     if (response.error) {
-      throw new BlocexError(`Etherscan API error: ${response.error.message}`, "etherscan");
+      throw new ExplorerError(`Etherscan API error: ${response.error.message}`, "etherscan");
     }
 
     if (response.status === "0") {
@@ -197,11 +197,11 @@ class Etherscan extends Provider {
       if (/invalid api key|missing\/invalid api key/i.test(message)) {
         throw new AuthError("etherscan", "Invalid API key");
       }
-      throw new BlocexError(`Etherscan API error: ${message}`, "etherscan");
+      throw new ExplorerError(`Etherscan API error: ${message}`, "etherscan");
     }
 
     if (!("result" in response)) {
-      throw new BlocexError("Etherscan API response did not include a result", "etherscan");
+      throw new ExplorerError("Etherscan API response did not include a result", "etherscan");
     }
     return response.result as T;
   }

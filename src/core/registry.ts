@@ -1,5 +1,5 @@
 /**
- * Self-registering provider registry for blocex
+ * Self-registering provider registry for Explorers
  */
 
 import { Provider } from "./provider.js";
@@ -31,7 +31,7 @@ export function register(providerClass: ProviderConstructor, defaultURL?: string
  *
  * @example
  * ```ts
- * import { create } from 'blocex'
+ * import { create } from '@oritwoen/explorers'
  *
  * const provider = create('blockscout')
  * const balance = await provider.getBalance(

@@ -1,5 +1,5 @@
 /**
- * blocex — Mempool.space integration tests (Bitcoin)
+ * Explorers — Mempool.space integration tests (Bitcoin)
  *
  * Live roundtrips against public mempool.space API.
  */

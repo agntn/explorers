@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  BlocexError,
+  ExplorerError,
   HTTPError,
   AuthError,
   RateLimitError,
@@ -11,9 +11,9 @@ import {
   normalizeError,
 } from "../../src/core/errors.js";
 
-describe("BlocexError", () => {
+describe("ExplorerError", () => {
   it("base", () => {
-    const e = new BlocexError("test", "x402");
+    const e = new ExplorerError("test", "x402");
     expect(e).toBeInstanceOf(Error);
   });
   it("HTTPError", () => {
@@ -22,7 +22,7 @@ describe("BlocexError", () => {
   });
   it("AuthError", () => {
     const e = new AuthError("x402");
-    expect(e).toBeInstanceOf(BlocexError);
+    expect(e).toBeInstanceOf(ExplorerError);
   });
   it("RateLimitError", () => {
     const e = new RateLimitError("x402", 60);
@@ -30,20 +30,20 @@ describe("BlocexError", () => {
   });
   it("NotFoundError", () => {
     const e = new NotFoundError("x402", "rid");
-    expect(e).toBeInstanceOf(BlocexError);
+    expect(e).toBeInstanceOf(ExplorerError);
   });
   it("UnsupportedChainError", () => {
     const e = new UnsupportedChainError("x402", "solana");
-    expect(e).toBeInstanceOf(BlocexError);
+    expect(e).toBeInstanceOf(ExplorerError);
   });
   it("UnsupportedOperationError", () => {
     const e = new UnsupportedOperationError("getBalance", "aptos");
-    expect(e).toBeInstanceOf(BlocexError);
+    expect(e).toBeInstanceOf(ExplorerError);
     expect(e.message).toContain("getBalance");
   });
   it("UnknownProviderError", () => {
     const e = new UnknownProviderError("foo");
-    expect(e).toBeInstanceOf(BlocexError);
+    expect(e).toBeInstanceOf(ExplorerError);
   });
 });
 
@@ -54,10 +54,10 @@ describe("normalizeError", () => {
   });
   it("wraps Error", () => {
     const out = normalizeError(new Error("oops"));
-    expect(out).toBeInstanceOf(BlocexError);
+    expect(out).toBeInstanceOf(ExplorerError);
   });
   it("wraps non-Error", () => {
     const out = normalizeError("oops" as unknown);
-    expect(out).toBeInstanceOf(BlocexError);
+    expect(out).toBeInstanceOf(ExplorerError);
   });
 });

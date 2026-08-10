@@ -1,8 +1,8 @@
-# blocex — AGENTS.md
+# explorers — AGENTS.md
 
 ## Scope
 
-Unified block explorer provider library. Normalizes balances, tx history, contract info, token holdings, gas data, and block info across multiple chains and explorer APIs. Exports both CLI (`blocex` binary) and programmatic API.
+Unified block explorer provider library. Normalizes balances, tx history, contract info, token holdings, gas data, and block info across multiple chains and explorer APIs. Exports both CLI (`explorers` binary) and programmatic API.
 
 ## Providers
 
@@ -26,14 +26,14 @@ Unified block explorer provider library. Normalizes balances, tx history, contra
 - Provider registration is a class side effect: each concrete class owns a static `key`, and importing `src/providers/index.js` triggers all `register()` calls
 - Provider backends are explorer/indexer APIs only. Unsupported operations stay absent; required methods without an explorer contract throw `UnsupportedOperationError`.
 - CLI default subcommand: `balance` (for address-like input) or `providers` (no input)
-- Error hierarchy: `BlocexError` → `HTTPError`, `AuthError`, `RateLimitError`, `NotFoundError`, `UnsupportedChainError`, `UnsupportedOperationError`, `UnknownProviderError`
+- Error hierarchy: `ExplorerError` → `HTTPError`, `AuthError`, `RateLimitError`, `NotFoundError`, `UnsupportedChainError`, `UnsupportedOperationError`, `UnknownProviderError`
 - HTTP client uses `ofetch` with a 15s default timeout and preserves out-of-range JSON integers as strings
 
 ## Key files
 
 - `src/core/types.ts` — re-exports `Chain` from `chains`; owns transaction, balance, token, contract, gas, block, and provider-config types
 - `src/core/provider.ts` — abstract `Provider` base class and optional operation contract
-- `src/core/errors.ts` — BlocexError hierarchy + normalizeError
+- `src/core/errors.ts` — ExplorerError hierarchy + normalizeError
 - `src/core/registry.ts` — Self-registering provider registry (register, create, providers, has)
 - `src/core/resolve.ts` — Auto-select provider by env vars, default blockscout
 - `src/core/client.ts` — HTTP client wrapper (ofetch)
@@ -75,7 +75,7 @@ graph TB
 - **CLI Layer** (`cli.ts`, `commands/*.ts`): citty-based CLI, lazy-loads subcommands via dynamic `import()`. `cli-args.ts` normalizes bare address input to `balance` subcommand.
 - **Core Layer** (`core/*.ts`): Domain types, provider registry (side-effect registration), HTTP client (ofetch, 15s timeout), ENS resolution (public APIs), input classification, error hierarchy.
 - **Provider Layer** (`providers/*.ts`): 9 self-registering providers. Each file defines API types, helper mappers, a concrete `Provider` subclass with a static registry key, and calls `register()` with its constructor at module scope.
-- **Pi Extension** (`packages/pi/extensions/blocex.ts`): Exposes 6 tools to Pi coding agent. Lazy-loads blocex via dynamic import with fallback to source.
+- **Pi Extension** (`packages/pi/extensions/explorers.ts`): Exposes 6 tools to Pi coding agent. Lazy-loads `@oritwoen/explorers` via dynamic import with fallback to source.
 
 ### Provider categories
 
@@ -92,7 +92,7 @@ graph TB
 - **Dynamic CLI imports**: Each subcommand is lazily loaded via `() => import('./commands/X.js').then(m => m.default)`.
 - **Chain normalization**: `normalizeChain()` delegates to the shared `chains` dictionary for canonical keys and aliases (`ethereum→eth`, `btc→bitcoin`, `arb→arbitrum`). Missing input defaults to `eth`; unknown names throw.
 - **Provider auto-selection**: `resolveProvider()` checks env vars for each provider, falls back to `blockscout` (no key needed).
-- **Error sanitization**: `HTTPError` strips API keys from URLs in error messages. `normalizeError()` wraps unknown errors into typed `BlocexError` subclasses.
+- **Error sanitization**: `HTTPError` strips API keys from URLs in error messages. `normalizeError()` wraps unknown errors into typed `ExplorerError` subclasses.
 
 ## Anti-patterns to avoid
 

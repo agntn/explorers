@@ -1,16 +1,16 @@
 /**
- * Pi extension: blocex — unified block explorer tools
+ * Pi extension: Explorers — unified block explorer tools
  */
 import type { AgentToolResult, ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import type * as BlocexModule from "../../../src/index.js";
+import type * as ExplorersModule from "../../../src/index.js";
 import { Text } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
 
 /** Lazy-load the library (registers all providers on import). */
 async function loadLib() {
-  const packageName = "blocex";
+  const packageName = "@oritwoen/explorers";
   try {
-    return (await import(packageName)) as unknown as typeof BlocexModule;
+    return (await import(packageName)) as unknown as typeof ExplorersModule;
   } catch (error) {
     const code =
       typeof error === "object" && error !== null && "code" in error
@@ -20,13 +20,13 @@ async function loadLib() {
       throw error;
     }
     // @ts-expect-error — Pi runs TypeScript extension sources directly in development
-    return import("../../../src/index.ts") as Promise<typeof BlocexModule>;
+    return import("../../../src/index.ts") as Promise<typeof ExplorersModule>;
   }
 }
 
-type BlocexToolResult = AgentToolResult<undefined>;
+type ExplorersToolResult = AgentToolResult<undefined>;
 
-function textResult(text: string): BlocexToolResult {
+function textResult(text: string): ExplorersToolResult {
   return {
     content: [{ type: "text", text }],
     details: undefined,
@@ -39,14 +39,14 @@ async function getProvider(preferred?: string) {
   return { lib, name, provider: lib.create(name) };
 }
 
-function resolveToolChain(lib: typeof BlocexModule, providerName: string, requested?: string) {
+function resolveToolChain(lib: typeof ExplorersModule, providerName: string, requested?: string) {
   return lib.normalizeChain(requested ?? lib.PROVIDER_DEFAULT_CHAIN[providerName]);
 }
 
-export default function blocexExtension(pi: ExtensionAPI) {
+export default function explorersExtension(pi: ExtensionAPI) {
   pi.registerTool({
-    name: "blocex_balance",
-    label: "Blocex Balance",
+    name: "explorers_balance",
+    label: "Explorers Balance",
     description: "Get native token balance for a blockchain address",
     promptSnippet: "Use to check ETH, BTC, or other native token balances across chains.",
     promptGuidelines: [
@@ -68,7 +68,7 @@ export default function blocexExtension(pi: ExtensionAPI) {
     renderCall(args, _theme) {
       return new Text(`🔍 Balance: ${args.address} (${args.chain ?? "provider default"})`, 0, 0);
     },
-    async execute(_toolCallId, params): Promise<BlocexToolResult> {
+    async execute(_toolCallId, params): Promise<ExplorersToolResult> {
       const { lib, name, provider } = await getProvider(params.provider);
       const chain = resolveToolChain(lib, name, params.chain);
       const balance = await provider.getBalance(params.address, chain);
@@ -79,8 +79,8 @@ export default function blocexExtension(pi: ExtensionAPI) {
   });
 
   pi.registerTool({
-    name: "blocex_tx_history",
-    label: "Blocex Tx History",
+    name: "explorers_tx_history",
+    label: "Explorers Tx History",
     description: "Get transaction history for a blockchain address",
     promptSnippet: "Use to list recent transactions for any address.",
     promptGuidelines: [
@@ -97,7 +97,7 @@ export default function blocexExtension(pi: ExtensionAPI) {
     renderCall(args, _theme) {
       return new Text(`📜 Tx history: ${args.address} (limit: ${args.limit ?? 10})`, 0, 0);
     },
-    async execute(_toolCallId, params): Promise<BlocexToolResult> {
+    async execute(_toolCallId, params): Promise<ExplorersToolResult> {
       const { lib, name, provider } = await getProvider(params.provider);
       const chain = resolveToolChain(lib, name, params.chain);
       const txs = await provider.getTxHistory(params.address, chain, { limit: params.limit });
@@ -112,8 +112,8 @@ export default function blocexExtension(pi: ExtensionAPI) {
   });
 
   pi.registerTool({
-    name: "blocex_tx_detail",
-    label: "Blocex Tx Detail",
+    name: "explorers_tx_detail",
+    label: "Explorers Tx Detail",
     description: "Get detailed info about a specific transaction",
     promptSnippet: "Use to inspect a single transaction by hash.",
     promptGuidelines: [
@@ -128,7 +128,7 @@ export default function blocexExtension(pi: ExtensionAPI) {
     renderCall(args, _theme) {
       return new Text(`🔬 Tx detail: ${args.hash.slice(0, 18)}…`, 0, 0);
     },
-    async execute(_toolCallId, params): Promise<BlocexToolResult> {
+    async execute(_toolCallId, params): Promise<ExplorersToolResult> {
       const { lib, name, provider } = await getProvider(params.provider);
       const chain = resolveToolChain(lib, name, params.chain);
       if (!provider.capabilities.txDetail || !provider.getTxDetail) {
@@ -152,8 +152,8 @@ export default function blocexExtension(pi: ExtensionAPI) {
   });
 
   pi.registerTool({
-    name: "blocex_contract",
-    label: "Blocex Contract",
+    name: "explorers_contract",
+    label: "Explorers Contract",
     description: "Get smart contract info — verification, ABI, source, proxy status",
     promptSnippet: "Use to check if a contract is verified, get its ABI, or detect proxies.",
     promptGuidelines: [
@@ -168,7 +168,7 @@ export default function blocexExtension(pi: ExtensionAPI) {
     renderCall(args, _theme) {
       return new Text(`📋 Contract: ${args.address}`, 0, 0);
     },
-    async execute(_toolCallId, params): Promise<BlocexToolResult> {
+    async execute(_toolCallId, params): Promise<ExplorersToolResult> {
       const { lib, name, provider } = await getProvider(params.provider);
       const chain = resolveToolChain(lib, name, params.chain);
       if (!provider.capabilities.contractInfo || !provider.getContractInfo) {
@@ -191,8 +191,8 @@ export default function blocexExtension(pi: ExtensionAPI) {
   });
 
   pi.registerTool({
-    name: "blocex_gas",
-    label: "Blocex Gas",
+    name: "explorers_gas",
+    label: "Explorers Gas",
     description: "Get current gas prices for a chain",
     promptSnippet: "Use to check gas prices before sending a transaction.",
     promptGuidelines: [
@@ -206,7 +206,7 @@ export default function blocexExtension(pi: ExtensionAPI) {
     renderCall(args, _theme) {
       return new Text(`⛽ Gas prices: ${args.chain ?? "provider default"}`, 0, 0);
     },
-    async execute(_toolCallId, params): Promise<BlocexToolResult> {
+    async execute(_toolCallId, params): Promise<ExplorersToolResult> {
       const { lib, name, provider } = await getProvider(params.provider);
       const chain = resolveToolChain(lib, name, params.chain);
 
@@ -230,16 +230,16 @@ export default function blocexExtension(pi: ExtensionAPI) {
   });
 
   pi.registerTool({
-    name: "blocex_providers",
-    label: "Blocex Providers",
+    name: "explorers_providers",
+    label: "Explorers Providers",
     description: "List registered block explorer providers and their capabilities",
     promptSnippet: "Use to check which block explorer providers are available.",
     promptGuidelines: ["Returns provider names and their capability flags."],
     parameters: Type.Object({}),
     renderCall(_args, _theme) {
-      return new Text("🔍 List blocex providers", 0, 0);
+      return new Text("🔍 List Explorers providers", 0, 0);
     },
-    async execute(): Promise<BlocexToolResult> {
+    async execute(): Promise<ExplorersToolResult> {
       const lib = await loadLib();
       const names = lib.providers();
 

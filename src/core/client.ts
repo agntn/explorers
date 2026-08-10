@@ -1,12 +1,12 @@
 /**
- * HTTP client wrapper for blocex providers
+ * HTTP client wrapper for Explorers providers
  */
 
 import { ofetch } from "ofetch";
 import { normalizeError } from "./errors.js";
 import { version } from "../version.js";
 
-const USER_AGENT = `blocex/${version}`;
+const USER_AGENT = `explorers/${version}`;
 
 /** Request metadata shared by the HTTP helpers. */
 export interface ClientOptions {
@@ -38,7 +38,7 @@ function parseJSON(text: string): unknown {
 }
 
 /**
- * Fetch JSON with blocex headers and a 15-second default timeout.
+ * Fetch JSON with Explorers headers and a 15-second default timeout.
  *
  * Transport failures are normalized before they leave this boundary.
  */

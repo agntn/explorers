@@ -16,7 +16,7 @@ import type {
 } from "../core/types.js";
 import { Provider } from "../core/provider.js";
 import { normalizeBaseUrl, buildQuery } from "../core/client.js";
-import { AuthError, BlocexError, UnsupportedChainError } from "../core/errors.js";
+import { AuthError, ExplorerError, UnsupportedChainError } from "../core/errors.js";
 import { register } from "../core/registry.js";
 import { assertSafePathSegment } from "../core/path-safety.js";
 import { clampMaxResults, formatWei } from "../core/types.js";
@@ -144,7 +144,7 @@ class Solscan extends Provider {
     if (!response.success) {
       const detail =
         typeof response.errors === "string" ? response.errors : response.errors?.message;
-      throw new BlocexError(`Solscan API error${detail ? `: ${detail}` : ""}`, this.name);
+      throw new ExplorerError(`Solscan API error${detail ? `: ${detail}` : ""}`, this.name);
     }
     return response.data;
   }

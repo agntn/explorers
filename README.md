@@ -1,8 +1,8 @@
-# blocex
+# Explorers
 
 Nine block explorer APIs, one shape.
 
-Block explorers keep returning roughly the same data in completely different formats. `blocex` deals with that mess and gives scripts, agents and humans one TypeScript API and one CLI for balances, transactions, contracts, tokens, gas and blocks.
+Block explorers keep returning roughly the same data in completely different formats. Explorers deals with that mess and gives scripts, agents and humans one TypeScript API and one CLI for balances, transactions, contracts, tokens, gas and blocks.
 
 ## Features
 
@@ -16,7 +16,7 @@ Block explorers keep returning roughly the same data in completely different for
 ## Install
 
 ```bash
-pnpm add blocex
+pnpm add @oritwoen/explorers
 ```
 
 Requires Node.js 22 or newer.
@@ -26,24 +26,24 @@ Requires Node.js 22 or newer.
 The short path is usually enough:
 
 ```bash
-npx blocex vitalik.eth
-npx blocex tx vitalik.eth -n 5
-npx blocex providers
+npx @oritwoen/explorers vitalik.eth
+npx @oritwoen/explorers tx vitalik.eth -n 5
+npx @oritwoen/explorers providers
 ```
 
 An address-like first argument defaults to `balance`. No ceremonial subcommand needed.
 
 ### Commands
 
-| Command     | What it does                                | Example                      |
-| ----------- | ------------------------------------------- | ---------------------------- |
-| `balance`   | Native token balance, including ENS         | `blocex balance vitalik.eth` |
-| `tx`        | Transaction history or one transaction      | `blocex tx vitalik.eth -n 5` |
-| `contract`  | ABI, source and verification status         | `blocex contract 0x1f984...` |
-| `tokens`    | ERC-20 holdings                             | `blocex tokens vitalik.eth`  |
-| `gas`       | Current gas prices                          | `blocex gas -c base`         |
-| `block`     | Block data by number                        | `blocex block 18000000`      |
-| `providers` | Registered providers and their capabilities | `blocex providers`           |
+| Command     | What it does                                | Example                         |
+| ----------- | ------------------------------------------- | ------------------------------- |
+| `balance`   | Native token balance, including ENS         | `explorers balance vitalik.eth` |
+| `tx`        | Transaction history or one transaction      | `explorers tx vitalik.eth -n 5` |
+| `contract`  | ABI, source and verification status         | `explorers contract 0x1f984...` |
+| `tokens`    | ERC-20 holdings                             | `explorers tokens vitalik.eth`  |
+| `gas`       | Current gas prices                          | `explorers gas -c base`         |
+| `block`     | Block data by number                        | `explorers block 18000000`      |
+| `providers` | Registered providers and their capabilities | `explorers providers`           |
 
 ### Common options
 
@@ -54,12 +54,12 @@ An address-like first argument defaults to `balance`. No ceremonial subcommand n
 | `-n, --limit`    | Maximum number of transactions                                         |
 | `-m, --mode`     | Force `tx` into `history` or `detail` mode when the input is ambiguous |
 
-Without `--provider`, blocex first checks configured API keys and then falls back to Blockscout. It has no key requirement and is a much better default than failing before the first request.
+Without `--provider`, Explorers first checks configured API keys and then falls back to Blockscout. It has no key requirement and is a much better default than failing before the first request.
 
 ## TypeScript
 
 ```typescript
-import { create, resolveEns, resolveProvider } from "blocex";
+import { create, resolveEns, resolveProvider } from "@oritwoen/explorers";
 
 const provider = create(resolveProvider());
 const address = await resolveEns("vitalik.eth");
@@ -104,7 +104,7 @@ Wallet amounts stay as strings in the chain's smallest unit. Converting them to 
 
 `normalizeChain()` accepts practical aliases such as `mainnet`, `btc`, `coinbase` and `apt`. Unknown names fail instead of silently selecting another chain.
 
-Explorer APIs fail in enough creative ways, so errors share one hierarchy: `BlocexError`, `HTTPError`, `AuthError`, `RateLimitError`, `NotFoundError`, `UnsupportedChainError`, `UnsupportedOperationError` and `UnknownProviderError`. `normalizeError()` turns unknown transport failures into that shape and strips API keys from URLs before they reach logs.
+Explorer APIs fail in enough creative ways, so errors share one hierarchy: `ExplorerError`, `HTTPError`, `AuthError`, `RateLimitError`, `NotFoundError`, `UnsupportedChainError`, `UnsupportedOperationError` and `UnknownProviderError`. `normalizeError()` turns unknown transport failures into that shape and strips API keys from URLs before they reach logs.
 
 ## Adding a provider
 
@@ -116,7 +116,7 @@ A new backend is five steps:
 4. Register the class at module scope.
 5. Import it from `src/providers/index.ts`.
 
-Importing `blocex` loads the provider barrel and triggers registration. There is no separate registry list to forget.
+Importing `@oritwoen/explorers` loads the provider barrel and triggers registration. There is no separate registry list to forget.
 
 ## Development
 

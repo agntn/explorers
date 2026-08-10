@@ -1,5 +1,5 @@
 /**
- * blocex CLI — unified block explorer commands
+ * Explorers CLI — unified block explorer commands
  */
 import { defineCommand, runMain } from "citty";
 import { normalizeMainArgs } from "./cli-args.js";
@@ -10,7 +10,7 @@ import "./providers/index.js";
 
 const main = defineCommand({
   meta: {
-    name: "blocex",
+    name: "explorers",
     version,
     description: "Unified multi-chain block explorer CLI",
   },

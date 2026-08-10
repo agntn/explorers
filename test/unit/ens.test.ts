@@ -1,5 +1,5 @@
 /**
- * blocex — ENS resolution tests
+ * Explorers — ENS resolution tests
  *
  * Live roundtrips against public ENS APIs.
  */

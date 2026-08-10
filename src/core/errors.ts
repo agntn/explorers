@@ -1,17 +1,17 @@
 /**
- * blocex error hierarchy
+ * explorers error hierarchy
  */
 
 import { FetchError } from "ofetch";
 
-/** Base class for failures surfaced through blocex. */
-export class BlocexError extends Error {
+/** Base class for failures surfaced through Explorers. */
+export class ExplorerError extends Error {
   constructor(
     message: string,
     public readonly provider?: string,
   ) {
     super(message);
-    this.name = "BlocexError";
+    this.name = "ExplorerError";
   }
 }
 
@@ -23,7 +23,7 @@ function sanitizeUrl(url: string): string {
 }
 
 /** HTTP failure with a redacted request URL in its message. */
-export class HTTPError extends BlocexError {
+export class HTTPError extends ExplorerError {
   /** Original request URL. Deliberately non-enumerable to reduce accidental secret logging. */
   public readonly rawUrl: string;
 
@@ -42,7 +42,7 @@ export class HTTPError extends BlocexError {
 }
 
 /** Provider credentials were missing or rejected. */
-export class AuthError extends BlocexError {
+export class AuthError extends ExplorerError {
   constructor(provider: string, detail?: string) {
     super(`Authentication failed for ${provider}${detail ? `: ${detail}` : ""}`, provider);
     this.name = "AuthError";
@@ -50,7 +50,7 @@ export class AuthError extends BlocexError {
 }
 
 /** Provider refused a request because its rate limit was reached. */
-export class RateLimitError extends BlocexError {
+export class RateLimitError extends ExplorerError {
   constructor(
     provider: string,
     public readonly retryAfter?: number,
@@ -64,7 +64,7 @@ export class RateLimitError extends BlocexError {
 }
 
 /** Requested transaction, address, contract, or block was not found. */
-export class NotFoundError extends BlocexError {
+export class NotFoundError extends ExplorerError {
   constructor(resource: string, provider?: string) {
     super(`Not found: ${resource}`, provider);
     this.name = "NotFoundError";
@@ -72,7 +72,7 @@ export class NotFoundError extends BlocexError {
 }
 
 /** Provider does not serve the requested chain. */
-export class UnsupportedChainError extends BlocexError {
+export class UnsupportedChainError extends ExplorerError {
   constructor(chain: string, provider: string) {
     super(`Chain "${chain}" not supported by ${provider}`, provider);
     this.name = "UnsupportedChainError";
@@ -80,7 +80,7 @@ export class UnsupportedChainError extends BlocexError {
 }
 
 /** Explorer backend does not expose the requested operation. */
-export class UnsupportedOperationError extends BlocexError {
+export class UnsupportedOperationError extends ExplorerError {
   constructor(operation: string, provider: string) {
     super(`Operation "${operation}" not supported by ${provider}`, provider);
     this.name = "UnsupportedOperationError";
@@ -88,7 +88,7 @@ export class UnsupportedOperationError extends BlocexError {
 }
 
 /** Registry does not contain the requested provider name. */
-export class UnknownProviderError extends BlocexError {
+export class UnknownProviderError extends ExplorerError {
   constructor(provider: string) {
     super(`Unknown provider: ${provider}`, provider);
     this.name = "UnknownProviderError";
@@ -113,17 +113,17 @@ function getFetchErrorBody(error: FetchError): string | undefined {
 }
 
 /**
- * Turn an unknown provider or transport failure into the blocex error hierarchy.
+ * Turn an unknown provider or transport failure into the Explorers error hierarchy.
  *
- * Existing `BlocexError` instances pass through unchanged. Structured HTTP
+ * Existing `ExplorerError` instances pass through unchanged. Structured HTTP
  * failures retain their status, response body, and redacted request URL.
  */
 export function normalizeError(
   error: unknown,
   provider?: string,
   requestUrl?: string,
-): BlocexError {
-  if (error instanceof BlocexError) return error;
+): ExplorerError {
+  if (error instanceof ExplorerError) return error;
 
   const message = error instanceof Error ? error.message : String(error);
   const lowerMessage = message.toLowerCase();
@@ -161,5 +161,5 @@ export function normalizeError(
     );
   }
 
-  return new BlocexError(message, provider);
+  return new ExplorerError(message, provider);
 }

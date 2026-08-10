@@ -1,5 +1,5 @@
 /**
- * blocex — Unified block explorer provider types
+ * Explorers — Unified block explorer provider types
  */
 
 import { normalizeChain as normalizeChainFromDictionary } from "chains";

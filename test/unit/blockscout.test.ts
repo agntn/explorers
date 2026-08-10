@@ -1,5 +1,5 @@
 /**
- * blocex — Blockscout integration tests
+ * Explorers — Blockscout integration tests
  *
  * Tests are live roundtrips against public Blockscout API.
  * Expected values are derived from API responses, not hand-written.

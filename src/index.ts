@@ -22,7 +22,7 @@ export { Provider } from "./core/provider.js";
 export type { ProviderConstructor } from "./core/provider.js";
 export { clampMaxResults, formatWei, hexToWei, normalizeChain } from "./core/types.js";
 export {
-  BlocexError,
+  ExplorerError,
   HTTPError,
   AuthError,
   RateLimitError,

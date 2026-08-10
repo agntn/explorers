@@ -1,5 +1,5 @@
 /**
- * blocex — TON (The Open Network) integration tests
+ * Explorers — TON (The Open Network) integration tests
  *
  * Live roundtrips against tonapi.io public API.
  */
