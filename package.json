@@ -2,7 +2,15 @@
   "name": "@oritwoen/explorers",
   "version": "0.1.0",
   "description": "Unified multi-chain block explorer provider library for AI agents",
+  "homepage": "https://github.com/oritwoen/explorers#readme",
+  "bugs": {
+    "url": "https://github.com/oritwoen/explorers/issues"
+  },
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/oritwoen/explorers.git"
+  },
   "bin": {
     "explorers": "./dist/cli.mjs"
   },
