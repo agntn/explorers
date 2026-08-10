@@ -10,7 +10,7 @@ Block explorers keep returning roughly the same data in completely different for
 - **18 chains.** Ethereum, Base, Arbitrum, Optimism, Polygon, BSC, Avalanche, Gnosis, Linea, Berachain, zkSync, Scroll, Bitcoin, Solana, TON, TRON, Aptos and Sui.
 - **Explorer data stays explorer data.** A provider never quietly falls back to a fullnode RPC just to pretend an operation is supported.
 - **Amounts stay exact.** Native and token values use strings in the chain's smallest unit instead of lossy JavaScript numbers.
-- **CLI and library.** Use the same provider contract from a terminal, TypeScript or the bundled Pi extension.
+- **CLI, library and agent extensions.** Use the same provider contract from a terminal, TypeScript, OMP or Pi.
 - **ENS works where it should.** Balance and transaction commands accept `.eth` names without another dependency.
 
 ## Install
@@ -20,6 +20,24 @@ pnpm add @oritwoen/explorers
 ```
 
 Requires Node.js 22 or newer.
+
+## Agent extensions
+
+Explorers ships separate entrypoints for OMP and Pi. Installing the OMP extension does not replace or reuse the Pi integration.
+
+Install the published package in OMP:
+
+```bash
+omp install @oritwoen/explorers
+```
+
+From a source checkout, link the local package instead:
+
+```bash
+omp install .
+```
+
+OMP loads `packages/omp/extensions/explorers.ts` through the package's `omp.extensions` manifest. It registers six read-only tools for balances, transaction history and details, contract metadata, gas prices and provider discovery. The existing Pi entrypoint remains under `packages/pi/extensions/`.
 
 ## CLI
 

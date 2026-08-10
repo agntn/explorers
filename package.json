@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "Unified multi-chain block explorer provider library for AI agents",
   "keywords": [
+    "omp-extension",
     "pi-package"
   ],
   "homepage": "https://github.com/oritwoen/explorers#readme",
@@ -19,7 +20,8 @@
   },
   "files": [
     "dist",
-    "packages/pi/extensions"
+    "packages/pi/extensions",
+    "packages/omp/extensions"
   ],
   "type": "module",
   "main": "./dist/index.mjs",
@@ -51,6 +53,8 @@
   "devDependencies": {
     "@earendil-works/pi-coding-agent": "latest",
     "@earendil-works/pi-tui": "latest",
+    "@oh-my-pi/omptype": "17.2.12",
+    "@oh-my-pi/pi-coding-agent": "17.2.12",
     "@types/node": "latest",
     "chains": "file:../chains",
     "obuild": "^0.4.36",
@@ -64,6 +68,7 @@
   "peerDependencies": {
     "@earendil-works/pi-coding-agent": "*",
     "@earendil-works/pi-tui": "*",
+    "@oh-my-pi/pi-coding-agent": "*",
     "typebox": "*"
   },
   "peerDependenciesMeta": {
@@ -71,6 +76,9 @@
       "optional": true
     },
     "@earendil-works/pi-tui": {
+      "optional": true
+    },
+    "@oh-my-pi/pi-coding-agent": {
       "optional": true
     },
     "typebox": {
@@ -81,6 +89,11 @@
     "node": ">=22"
   },
   "packageManager": "pnpm@10.33.4",
+  "omp": {
+    "extensions": [
+      "./packages/omp/extensions/explorers.ts"
+    ]
+  },
   "pi": {
     "extensions": [
       "./packages/pi/extensions/*.ts"
