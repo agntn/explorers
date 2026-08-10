@@ -1,16 +1,17 @@
 # blocex
 
-Unified block explorer provider library and CLI for AI agents. Normalizes balances, transaction history, contract info, token holdings, gas data, and block info across multiple chains and explorer APIs.
+Nine block explorer APIs, one shape.
+
+Block explorers keep returning roughly the same data in completely different formats. `blocex` deals with that mess and gives scripts, agents and humans one TypeScript API and one CLI for balances, transactions, contracts, tokens, gas and blocks.
 
 ## Features
 
-- **9 providers**: Etherscan, Blockscout, Blockchair, Mempool, Solscan, TON, TRONSCAN, Aptos, Blockberry
-- **18 chains**: Ethereum, Base, Arbitrum, Optimism, Polygon, BSC, Avalanche, Fantom, Gnosis, Linea, zkSync, Scroll, Bitcoin, Solana, TON, TRON, Aptos, Sui
-- **Self-registering providers**: add new providers by creating a file in `src/providers/` — auto-register on import
-- **ENS support**: resolve `.eth` names to addresses (public APIs, no key required)
-- **Unified types**: `Balance`, `Transaction`, `TokenBalance`, `ContractInfo`, `GasData`, `BlockInfo`
-- **Explorer-only transports**: providers never fall back to direct fullnode RPC
-- **CLI + programmatic API**: use from terminal or as a library
+- **Nine providers, one contract.** Etherscan, Blockscout, Blockchair, Mempool, Solscan, TON, TRONSCAN, Aptos and Blockberry.
+- **18 chains.** Ethereum, Base, Arbitrum, Optimism, Polygon, BSC, Avalanche, Gnosis, Linea, Berachain, zkSync, Scroll, Bitcoin, Solana, TON, TRON, Aptos and Sui.
+- **Explorer data stays explorer data.** A provider never quietly falls back to a fullnode RPC just to pretend an operation is supported.
+- **Amounts stay exact.** Native and token values use strings in the chain's smallest unit instead of lossy JavaScript numbers.
+- **CLI and library.** Use the same provider contract from a terminal, TypeScript or the bundled Pi extension.
+- **ENS works where it should.** Balance and transaction commands accept `.eth` names without another dependency.
 
 ## Install
 
@@ -18,166 +19,116 @@ Unified block explorer provider library and CLI for AI agents. Normalizes balanc
 pnpm add blocex
 ```
 
-Requires Node >= 22.
+Requires Node.js 22 or newer.
 
 ## CLI
 
+The short path is usually enough:
+
 ```bash
-npx blocex <subcommand> [args]
+npx blocex vitalik.eth
+npx blocex tx vitalik.eth -n 5
+npx blocex providers
 ```
 
-If the first argument looks like an address (not a known subcommand), it defaults to `balance`.
+An address-like first argument defaults to `balance`. No ceremonial subcommand needed.
 
-### Subcommands
+### Commands
 
-| Command     | Description                                | Example                      |
-| ----------- | ------------------------------------------ | ---------------------------- |
-| `balance`   | Native token balance (supports ENS)        | `blocex balance 0xd8dA...04` |
-| `tx`        | Transaction history or detail by hash      | `blocex tx 0xd8dA...04 -n 5` |
-| `contract`  | Contract info (ABI, source, verification)  | `blocex contract 0x1f984...` |
-| `tokens`    | ERC-20 token holdings                      | `blocex tokens 0xd8dA...04`  |
-| `gas`       | Current gas prices                         | `blocex gas -c base`         |
-| `block`     | Block info by number                       | `blocex block 18000000`      |
-| `providers` | List registered providers and capabilities | `blocex providers`           |
+| Command     | What it does                                | Example                      |
+| ----------- | ------------------------------------------- | ---------------------------- |
+| `balance`   | Native token balance, including ENS         | `blocex balance vitalik.eth` |
+| `tx`        | Transaction history or one transaction      | `blocex tx vitalik.eth -n 5` |
+| `contract`  | ABI, source and verification status         | `blocex contract 0x1f984...` |
+| `tokens`    | ERC-20 holdings                             | `blocex tokens vitalik.eth`  |
+| `gas`       | Current gas prices                          | `blocex gas -c base`         |
+| `block`     | Block data by number                        | `blocex block 18000000`      |
+| `providers` | Registered providers and their capabilities | `blocex providers`           |
 
 ### Common options
 
-| Option           | Description                                                                  |
-| ---------------- | ---------------------------------------------------------------------------- |
-| `-c, --chain`    | Chain name: `eth`, `base`, `arbitrum`, `bitcoin`, etc.                       |
-| `-p, --provider` | Provider: `etherscan`, `blockscout`, `blockchair`, `mempool`, etc.           |
-| `-n, --limit`    | Max results (for `tx`)                                                       |
-| `-m, --mode`     | `tx` mode: `history` or `detail` (useful for ambiguous hash/address formats) |
+| Option           | Meaning                                                                |
+| ---------------- | ---------------------------------------------------------------------- |
+| `-c, --chain`    | Chain name or alias, for example `eth`, `mainnet`, `btc` or `arbitrum` |
+| `-p, --provider` | Explorer backend, for example `etherscan`, `blockscout` or `mempool`   |
+| `-n, --limit`    | Maximum number of transactions                                         |
+| `-m, --mode`     | Force `tx` into `history` or `detail` mode when the input is ambiguous |
 
-### Provider auto-selection
+Without `--provider`, blocex first checks configured API keys and then falls back to Blockscout. It has no key requirement and is a much better default than failing before the first request.
 
-When no `--provider` is specified, blocex picks the best available:
-
-1. First provider whose env vars are all set
-2. Falls back to `blockscout` (no API key needed)
-
-## Programmatic API
+## TypeScript
 
 ```typescript
-import { create, resolveProvider, normalizeChain } from "blocex";
+import { create, resolveEns, resolveProvider } from "blocex";
 
-// Auto-select provider (checks env vars, defaults to Blockscout)
-const providerName = resolveProvider();
-const provider = create(providerName);
+const provider = create(resolveProvider());
+const address = await resolveEns("vitalik.eth");
+if (!address) throw new Error("ENS name did not resolve");
 
-// Or explicitly create a provider
-const etherscan = create("etherscan", { apiKey: process.env.ETHERSCAN_API_KEY });
+const balance = await provider.getBalance(address, "eth");
+const transactions = await provider.getTxHistory(address, "eth", { limit: 10 });
 
-// Get balance
-const balance = await provider.getBalance("0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045", "eth");
-console.log(balance.balanceFormatted, balance.symbol);
+console.log(`${balance.balanceFormatted} ${balance.symbol}`);
+console.log(transactions.map((transaction) => transaction.hash));
 
-// Transaction history
-const txs = await provider.getTxHistory("0xd8dA...04", "eth", { limit: 10 });
-
-// Contract info is provider-dependent
 if (provider.capabilities.contractInfo && provider.getContractInfo) {
-  const contract = await provider.getContractInfo("0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984");
-}
-// Optional operations are available only on providers that advertise them
-if (provider.capabilities.tokenBalances && provider.getTokenBalances) {
-  const tokens = await provider.getTokenBalances("0xd8dA...04", "eth", {
-    nonZeroOnly: true,
-  });
-}
-
-if (provider.capabilities.gasData && provider.getGasData) {
-  const gas = await provider.getGasData("eth");
-}
-
-if (provider.capabilities.blockInfo && provider.getBlockInfo) {
-  const block = await provider.getBlockInfo(18000000, "eth");
-}
-// Chain normalization — accepts aliases like 'ethereum', 'mainnet', 'btc'
-const chain = normalizeChain("mainnet"); // → 'eth'
-```
-
-### ENS resolution
-
-```typescript
-import { isEnsName, resolveEns } from "blocex";
-
-if (isEnsName("vitalik.eth")) {
-  const address = await resolveEns("vitalik.eth");
+  const contract = await provider.getContractInfo(
+    "0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984",
+    "eth",
+  );
+  console.log(contract.isVerified, contract.name);
 }
 ```
+
+Required operations live on `Provider`. Optional operations stay absent when a backend cannot serve them, so check both `capabilities` and the method before calling. No fake fallback and no method that returns convincing nonsense.
 
 ## Providers
 
-| Provider       | Auth                            | Chains                                                                           | Capabilities                                       |
-| -------------- | ------------------------------- | -------------------------------------------------------------------------------- | -------------------------------------------------- |
-| **etherscan**  | API key (`ETHERSCAN_API_KEY`)   | eth, base, arbitrum, optimism, polygon, bsc, avalanche, gnosis, linea, bera      | Full: balances, tx, contract, tokens, gas, block   |
-| **blockscout** | None                            | eth, base, arbitrum, optimism, polygon, gnosis, linea, scroll, zksync, avalanche | Full: balances, tx, contract, tokens, gas, block   |
-| **blockchair** | Optional (`BLOCKCHAIR_API_KEY`) | bitcoin, eth                                                                     | balances, tx, block                                |
-| **mempool**    | None                            | bitcoin                                                                          | balances, tx, gas, block                           |
-| **solscan**    | API key (`SOLSCAN_API_KEY`)     | solana                                                                           | balances, tx detail/history, block                 |
-| **ton**        | None                            | ton                                                                              | balances, tx                                       |
-| **tronscan**   | API key (`TRONSCAN_API_KEY`)    | tron                                                                             | balances, tx detail/history, block                 |
-| **aptos**      | None                            | aptos                                                                            | unsupported until a documented explorer API exists |
-| **blockberry** | API key (`BLOCKBERRY_API_KEY`)  | sui                                                                              | balances, tx history                               |
+| Provider       | Auth                          | Chains                                                                           | Capabilities                               |
+| -------------- | ----------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------ |
+| **etherscan**  | `ETHERSCAN_API_KEY`           | eth, base, arbitrum, optimism, polygon, bsc, avalanche, gnosis, linea, bera      | balances, tx, contract, tokens, gas, block |
+| **blockscout** | None                          | eth, base, arbitrum, optimism, polygon, gnosis, linea, scroll, zksync, avalanche | balances, tx, contract, tokens, gas, block |
+| **blockchair** | Optional `BLOCKCHAIR_API_KEY` | bitcoin, eth                                                                     | balances, tx, block                        |
+| **mempool**    | None                          | bitcoin                                                                          | balances, tx, gas, block                   |
+| **solscan**    | `SOLSCAN_API_KEY`             | solana                                                                           | balances, tx detail/history, block         |
+| **ton**        | None                          | ton                                                                              | balances, tx                               |
+| **tronscan**   | `TRONSCAN_API_KEY`            | tron                                                                             | balances, tx detail/history, block         |
+| **aptos**      | None                          | aptos                                                                            | no supported explorer operations           |
+| **blockberry** | `BLOCKBERRY_API_KEY`          | sui                                                                              | balances, tx history                       |
 
-`aptos` remains registered so provider selection is stable, but its required methods throw
-`UnsupportedOperationError` rather than reading from Aptos fullnode REST.
+`aptos` is deliberately boring. It stays registered, advertises no capabilities and throws `UnsupportedOperationError` from required methods. Aptos Explorer has no documented account/history API, and hiding fullnode REST behind an explorer provider just to make the table look complete would be dishonest.
 
-### Adding a provider
+## Data and errors
 
-1. Create a concrete class that extends `Provider` in `src/providers/myprovider.ts`
-2. Add a unique `static readonly key = "myprovider"`; the inherited instance `name` reads it
-3. Implement required methods and advertise optional methods through `capabilities`
-4. Call `register(MyProvider, defaultURL)` at module scope
-5. Import the module in `src/providers/index.ts`
+Wallet amounts stay as strings in the chain's smallest unit. Converting them to JavaScript numbers is an easy way to lose precision without noticing. Use `formatWei(value, decimals)` for display. The default is 18 decimals, so pass `8` for BTC, `9` for SOL and whatever the actual token uses.
 
-Providers self-register through side-effect imports. Importing `blocex` loads the provider barrel and registers every built-in provider.
+`normalizeChain()` accepts practical aliases such as `mainnet`, `btc`, `coinbase` and `apt`. Unknown names fail instead of silently selecting another chain.
 
-## Types
+Explorer APIs fail in enough creative ways, so errors share one hierarchy: `BlocexError`, `HTTPError`, `AuthError`, `RateLimitError`, `NotFoundError`, `UnsupportedChainError`, `UnsupportedOperationError` and `UnknownProviderError`. `normalizeError()` turns unknown transport failures into that shape and strips API keys from URLs before they reach logs.
 
-All native and token amounts use strings in the chain's smallest unit to avoid floating-point precision loss. Pass the asset's decimal count to `formatWei(value, decimals)`; omitting it is only correct for 18-decimal assets:
+## Adding a provider
 
-```typescript
-import { formatWei } from "blocex";
+A new backend is five steps:
 
-formatWei("1000000000000000000"); // → '1'
-formatWei("1500000000000000000"); // → '1.5'
-formatWei("123456789", 8); // → '1.23456789' (BTC)
-formatWei("1500000000", 9); // → '1.5' (SOL)
-```
+1. Create a class extending `Provider` in `src/providers/`.
+2. Give it one unique `static readonly key`.
+3. Implement balances and transaction history, then advertise only the optional methods that really work.
+4. Register the class at module scope.
+5. Import it from `src/providers/index.ts`.
 
-### Chain utilities
-
-```typescript
-import { normalizeChain } from "blocex";
-
-normalizeChain("mainnet"); // → 'eth'
-normalizeChain("btc"); // → 'bitcoin'
-normalizeChain("coinbase"); // → 'base'
-normalizeChain("apt"); // → 'aptos'
-```
-
-## Error handling
-
-```typescript
-import { normalizeError } from "blocex";
-
-try {
-  await provider.getBalance(address);
-} catch (error) {
-  const blocexError = normalizeError(error, "etherscan");
-  // blocexError is one of: HTTPError, AuthError, RateLimitError, NotFoundError,
-  // UnsupportedChainError, UnsupportedOperationError
-}
-```
+Importing `blocex` loads the provider barrel and triggers registration. There is no separate registry list to forget.
 
 ## Development
 
 ```bash
 pnpm install
-pnpm build      # build dist/
-pnpm test       # vitest watch
-pnpm test:run   # single run
-pnpm typecheck  # tsc --noEmit
+pnpm fmt
+pnpm lint
+pnpm typecheck
+pnpm test:run
+pnpm build
 ```
+
+## License
+
+MIT
