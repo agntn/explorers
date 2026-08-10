@@ -4,11 +4,12 @@ Unified block explorer provider library and CLI for AI agents. Normalizes balanc
 
 ## Features
 
-- **9 providers**: Etherscan, Blockscout, Blockchair, Mempool, Solana, TON, TRON, Aptos, Sui
+- **9 providers**: Etherscan, Blockscout, Blockchair, Mempool, Solscan, TON, TRONSCAN, Aptos, Blockberry
 - **18 chains**: Ethereum, Base, Arbitrum, Optimism, Polygon, BSC, Avalanche, Fantom, Gnosis, Linea, zkSync, Scroll, Bitcoin, Solana, TON, TRON, Aptos, Sui
 - **Self-registering providers**: add new providers by creating a file in `src/providers/` — auto-register on import
 - **ENS support**: resolve `.eth` names to addresses (public APIs, no key required)
 - **Unified types**: `Balance`, `Transaction`, `TokenBalance`, `ContractInfo`, `GasData`, `BlockInfo`
+- **Explorer-only transports**: providers never fall back to direct fullnode RPC
 - **CLI + programmatic API**: use from terminal or as a library
 
 ## Install
@@ -108,22 +109,25 @@ if (isEnsName("vitalik.eth")) {
 
 ## Providers
 
-| Provider       | Auth                            | Chains                                                                           | Capabilities                                     |
-| -------------- | ------------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------ |
-| **etherscan**  | API key (`ETHERSCAN_API_KEY`)   | eth, base, arbitrum, optimism, polygon, bsc, avalanche, gnosis, linea, bera      | Full: balances, tx, contract, tokens, gas, block |
-| **blockscout** | None                            | eth, base, arbitrum, optimism, polygon, gnosis, linea, scroll, zksync, avalanche | Full: balances, tx, contract, tokens, gas, block |
-| **blockchair** | Optional (`BLOCKCHAIR_API_KEY`) | bitcoin, eth                                                                     | balances, tx, block                              |
-| **mempool**    | None                            | bitcoin                                                                          | balances, tx, gas, block                         |
-| **solana**     | None                            | solana                                                                           | balances, tx, gas, block                         |
-| **ton**        | None                            | ton                                                                              | balances, tx                                     |
-| **tron**       | None                            | tron                                                                             | balances, tx, block                              |
-| **aptos**      | None                            | aptos                                                                            | balances, tx, block                              |
-| **sui**        | None                            | sui                                                                              | balances, tx, gas, block                         |
+| Provider       | Auth                            | Chains                                                                           | Capabilities                                       |
+| -------------- | ------------------------------- | -------------------------------------------------------------------------------- | -------------------------------------------------- |
+| **etherscan**  | API key (`ETHERSCAN_API_KEY`)   | eth, base, arbitrum, optimism, polygon, bsc, avalanche, gnosis, linea, bera      | Full: balances, tx, contract, tokens, gas, block   |
+| **blockscout** | None                            | eth, base, arbitrum, optimism, polygon, gnosis, linea, scroll, zksync, avalanche | Full: balances, tx, contract, tokens, gas, block   |
+| **blockchair** | Optional (`BLOCKCHAIR_API_KEY`) | bitcoin, eth                                                                     | balances, tx, block                                |
+| **mempool**    | None                            | bitcoin                                                                          | balances, tx, gas, block                           |
+| **solscan**    | API key (`SOLSCAN_API_KEY`)     | solana                                                                           | balances, tx detail/history, block                 |
+| **ton**        | None                            | ton                                                                              | balances, tx                                       |
+| **tronscan**   | API key (`TRONSCAN_API_KEY`)    | tron                                                                             | balances, tx detail/history, block                 |
+| **aptos**      | None                            | aptos                                                                            | unsupported until a documented explorer API exists |
+| **blockberry** | API key (`BLOCKBERRY_API_KEY`)  | sui                                                                              | balances, tx history                               |
+
+`aptos` remains registered so provider selection is stable, but its required methods throw
+`UnsupportedOperationError` rather than reading from Aptos fullnode REST.
 
 ### Adding a provider
 
 1. Create a concrete class that extends `Provider` in `src/providers/myprovider.ts`
-2. Add `static readonly providerName = "myprovider"` and expose it as the instance `name`
+2. Add a unique `static readonly key = "myprovider"`; the inherited instance `name` reads it
 3. Implement required methods and advertise optional methods through `capabilities`
 4. Call `register(MyProvider, defaultURL)` at module scope
 5. Import the module in `src/providers/index.ts`
@@ -163,7 +167,8 @@ try {
   await provider.getBalance(address);
 } catch (error) {
   const blocexError = normalizeError(error, "etherscan");
-  // blocexError is one of: HTTPError, AuthError, RateLimitError, NotFoundError, UnsupportedChainError
+  // blocexError is one of: HTTPError, AuthError, RateLimitError, NotFoundError,
+  // UnsupportedChainError, UnsupportedOperationError
 }
 ```
 

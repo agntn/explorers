@@ -136,6 +136,8 @@ function mapTx(raw: EtherscanTx): Transaction {
 }
 
 class Etherscan extends Provider {
+  static readonly key = "etherscan";
+
   private readonly apiKey: string;
   private readonly apiUrl: string;
   private readonly defaultChain: Chain;
@@ -151,10 +153,6 @@ class Etherscan extends Provider {
     this.defaultChain = config.defaultChain ?? "eth";
     getChainId(this.defaultChain);
   }
-
-  static readonly providerName = "etherscan";
-  readonly name = Etherscan.providerName;
-
   get capabilities(): ProviderCapabilities {
     return {
       balances: true,

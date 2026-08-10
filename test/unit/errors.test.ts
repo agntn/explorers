@@ -6,6 +6,7 @@ import {
   RateLimitError,
   NotFoundError,
   UnsupportedChainError,
+  UnsupportedOperationError,
   UnknownProviderError,
   normalizeError,
 } from "../../src/core/errors.js";
@@ -34,6 +35,11 @@ describe("BlocexError", () => {
   it("UnsupportedChainError", () => {
     const e = new UnsupportedChainError("x402", "solana");
     expect(e).toBeInstanceOf(BlocexError);
+  });
+  it("UnsupportedOperationError", () => {
+    const e = new UnsupportedOperationError("getBalance", "aptos");
+    expect(e).toBeInstanceOf(BlocexError);
+    expect(e.message).toContain("getBalance");
   });
   it("UnknownProviderError", () => {
     const e = new UnknownProviderError("foo");

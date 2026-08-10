@@ -12,20 +12,21 @@ Unified block explorer provider library. Normalizes balances, tx history, contra
 | blockscout | none                    | eth, base, arbitrum, optimism, polygon, gnosis, linea, scroll, zksync, avalanche | Full: balances, tx, contract, tokens, gas, block |
 | blockchair | optional key            | bitcoin, eth                                                                     | balances, tx, block                              |
 | mempool    | none                    | bitcoin                                                                          | balances, tx, gas, block                         |
-| solana     | none                    | solana                                                                           | balances, tx, gas, block                         |
+| solscan    | `SOLSCAN_API_KEY`       | solana                                                                           | balances, tx detail/history, block               |
 | ton        | none                    | ton                                                                              | balances, tx                                     |
-| tron       | none                    | tron                                                                             | balances, tx, block                              |
-| aptos      | none                    | aptos                                                                            | balances, tx, block                              |
-| sui        | none                    | sui                                                                              | balances, tx, gas, block                         |
+| tronscan   | `TRONSCAN_API_KEY`      | tron                                                                             | balances, tx detail/history, block               |
+| aptos      | none                    | aptos                                                                            | none; required methods throw                     |
+| blockberry | `BLOCKBERRY_API_KEY`    | sui                                                                              | balances, tx history                             |
 
 ## Conventions
 
 - Chain names normalized via `normalizeChain()` — accepts aliases like `ethereum`, `mainnet`, `arb`, `btc`
 - Native and token amounts use strings in each chain's smallest unit — call `formatWei(value, decimals)` with the asset's decimals; its default is 18
 - `noUncheckedIndexedAccess` and `noImplicitOverride` are enabled — guard indexed access and mark overrides explicitly
-- Provider registration is a class side effect: each concrete class owns a static `providerName`, and importing `src/providers/index.js` triggers all `register()` calls
+- Provider registration is a class side effect: each concrete class owns a static `key`, and importing `src/providers/index.js` triggers all `register()` calls
+- Provider backends are explorer/indexer APIs only. Unsupported operations stay absent; required methods without an explorer contract throw `UnsupportedOperationError`.
 - CLI default subcommand: `balance` (for address-like input) or `providers` (no input)
-- Error hierarchy: `BlocexError` → `HTTPError`, `AuthError`, `RateLimitError`, `NotFoundError`, `UnsupportedChainError`, `UnknownProviderError`
+- Error hierarchy: `BlocexError` → `HTTPError`, `AuthError`, `RateLimitError`, `NotFoundError`, `UnsupportedChainError`, `UnsupportedOperationError`, `UnknownProviderError`
 - HTTP client uses `ofetch` with a 15s default timeout and preserves out-of-range JSON integers as strings
 
 ## Key files
@@ -50,8 +51,9 @@ Unified block explorer provider library. Normalizes balances, tx history, contra
 
 - Etherscan: 5 req/s free tier, needs `ETHERSCAN_API_KEY`
 - Blockchair: data format differs between BTC and EVM chains
-- Solana/TON/TRON/Aptos/Sui: single-chain providers, throw `UnsupportedChainError` for other chains
-- TON: the TonAPI block endpoint requires workchain, shard, and seqno rather than the library's single block-number contract, so `blockInfo` is unsupported
+- Solscan, TONAPI, TRONSCAN, Aptos, and Blockberry are single-chain providers and throw `UnsupportedChainError` for other chains.
+- Aptos Explorer has no documented account/history API; `aptos` remains registered with false capabilities and throws `UnsupportedOperationError` instead of using fullnode REST.
+- TONAPI and Blockberry do not expose block lookup compatible with the library's single block-number contract, so `blockInfo` is unsupported.
 - Mempool: Bitcoin only
 
 ## Architecture
@@ -80,11 +82,11 @@ graph TB
 1. **Multi-chain EVM** (etherscan, blockscout): support 10 EVM chains each
 2. **Bitcoin/Ethereum bridge** (blockchair): dashboard API for Bitcoin and Ethereum
 3. **Bitcoin** (mempool): UTXO model
-4. **Single-chain non-EVM** (solana, ton, tron, aptos, sui): all implement balances and history; optional capabilities vary by provider
+4. **Single-chain non-EVM** (solscan, ton, tronscan, aptos, blockberry): capabilities mirror only their explorer APIs; Aptos is explicitly unsupported
 
 ## Patterns
 
-- **Side-effect registration**: `import './providers/index.js'` triggers all `register()` calls. Each class owns its registry key as `static providerName`.
+- **Side-effect registration**: `import './providers/index.js'` triggers all `register()` calls. Each class owns its registry key as `static key`.
 - **String-only values**: All wei/satoshi/native amounts are strings (`Balance.balance`, `TokenBalance.balance`). The HTTP boundary preserves unsafe JSON integers as strings; `formatWei()` converts amounts for display.
 - **Optional methods**: `getTxDetail`, `getContractInfo`, `getTokenBalances`, `getGasData`, and `getBlockInfo` are optional on `Provider`. Always check both the `capabilities` getter and method presence before calling.
 - **Dynamic CLI imports**: Each subcommand is lazily loaded via `() => import('./commands/X.js').then(m => m.default)`.
@@ -103,7 +105,7 @@ graph TB
 
 **Covered** (18 test files): provider base/registry, provider resolution, HTTP client, path safety, amount formatting, errors, input classification, chain normalization, CLI argument routing, plus all nine providers.
 **Missing**: CLI command execution and the Pi extension.
-**Test style**: Focused unit tests for local contracts plus live public-API roundtrips for providers.
+**Test style**: Focused unit tests for local contracts and mocked explorer-API responses; public no-key providers may additionally use live roundtrips.
 
 ## Dependencies
 
@@ -136,7 +138,7 @@ pnpm test:run       # vitest single run
 
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **blocex** (527 symbols, 1435 relationships, 43 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **blocex** (504 symbols, 1350 relationships, 41 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > Index stale? Run `node .gitnexus/run.cjs analyze` from the project root — it auto-selects an available runner. No `.gitnexus/run.cjs` yet? `npx gitnexus analyze` (npm 11 crash → `npm i -g gitnexus`; #1939).
 
@@ -145,8 +147,9 @@ This project is indexed by GitNexus as **blocex** (527 symbols, 1435 relationshi
 - **MUST run impact analysis before editing any symbol.** Before modifying a function, class, or method, run `impact({target: "symbolName", direction: "upstream"})` and report the blast radius (direct callers, affected processes, risk level) to the user.
 - **MUST run `detect_changes()` before committing** to verify your changes only affect expected symbols and execution flows. For regression review, compare against the default branch: `detect_changes({scope: "compare", base_ref: "main"})`.
 - **MUST warn the user** if impact analysis returns HIGH or CRITICAL risk before proceeding with edits.
-- When exploring unfamiliar code, use `query({query: "concept"})` to find execution flows instead of grepping. It returns process-grouped results ranked by relevance.
+- When exploring unfamiliar code, use `query({search_query: "concept"})` to find execution flows instead of grepping. It returns process-grouped results ranked by relevance.
 - When you need full context on a specific symbol — callers, callees, which execution flows it participates in — use `context({name: "symbolName"})`.
+- For security review, `explain({target: "fileOrSymbol"})` lists taint findings (source→sink flows; needs `analyze --pdg`).
 
 ## Never Do
 

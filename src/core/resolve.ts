@@ -11,21 +11,21 @@ const ENV_MAP: Record<string, string[]> = {
   blockscout: [],
   blockchair: ["BLOCKCHAIR_API_KEY"],
   mempool: [],
-  solana: [],
+  solscan: ["SOLSCAN_API_KEY"],
   ton: [],
-  tron: [],
+  tronscan: ["TRONSCAN_API_KEY"],
   aptos: [],
-  sui: [],
+  blockberry: ["BLOCKBERRY_API_KEY"],
 };
 
 /** Provider-specific default chains */
 export const PROVIDER_DEFAULT_CHAIN: Partial<Record<string, Chain>> = {
   mempool: "bitcoin",
-  solana: "solana",
+  solscan: "solana",
   ton: "ton",
-  tron: "tron",
+  tronscan: "tron",
   aptos: "aptos",
-  sui: "sui",
+  blockberry: "sui",
 };
 
 /**

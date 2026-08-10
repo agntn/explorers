@@ -79,6 +79,14 @@ export class UnsupportedChainError extends BlocexError {
   }
 }
 
+/** Explorer backend does not expose the requested operation. */
+export class UnsupportedOperationError extends BlocexError {
+  constructor(operation: string, provider: string) {
+    super(`Operation "${operation}" not supported by ${provider}`, provider);
+    this.name = "UnsupportedOperationError";
+  }
+}
+
 /** Registry does not contain the requested provider name. */
 export class UnknownProviderError extends BlocexError {
   constructor(provider: string) {

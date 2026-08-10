@@ -3,16 +3,14 @@ import { Provider, create, register } from "../../src/index.js";
 import type { ProviderCapabilities, ProviderConfig } from "../../src/index.js";
 
 class Custom extends Provider {
+  static readonly key = "abstract-provider-test";
+
   readonly config: ProviderConfig;
 
   constructor(config: ProviderConfig) {
     super(config);
     this.config = config;
   }
-
-  static readonly providerName = "abstract-provider-test";
-  readonly name = Custom.providerName;
-
   get capabilities(): ProviderCapabilities {
     return {
       balances: false,
@@ -43,11 +41,11 @@ const BUILT_IN_PROVIDERS = [
   "blockscout",
   "blockchair",
   "mempool",
-  "solana",
+  "solscan",
   "ton",
-  "tron",
+  "tronscan",
   "aptos",
-  "sui",
+  "blockberry",
 ] as const;
 
 afterEach(() => {
@@ -80,7 +78,6 @@ describe("abstract provider registry", () => {
     expect(provider.getTokenBalances !== undefined).toBe(provider.capabilities.tokenBalances);
     expect(provider.getGasData !== undefined).toBe(provider.capabilities.gasData);
     expect(provider.getBlockInfo !== undefined).toBe(provider.capabilities.blockInfo);
-    expect(Object.hasOwn(provider, "name")).toBe(true);
   });
 
   it("keeps unsupported optional operations absent at runtime", () => {

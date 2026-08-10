@@ -115,6 +115,8 @@ function toIsoTimestamp(timestamp: string): string {
 }
 
 class Blockchair extends Provider {
+  static readonly key = "blockchair";
+
   private apiKey: string | undefined;
   private readonly baseUrl: string;
   private defaultChain: Chain;
@@ -125,10 +127,6 @@ class Blockchair extends Provider {
     this.baseUrl = normalizeBaseUrl(config.baseUrl ?? "https://api.blockchair.com");
     this.defaultChain = config.defaultChain ?? "eth";
   }
-
-  static readonly providerName = "blockchair";
-  readonly name = Blockchair.providerName;
-
   get capabilities(): ProviderCapabilities {
     return {
       balances: true,

@@ -180,16 +180,14 @@ function mapTx(raw: MempoolAddressTx, address: string): Transaction {
 }
 
 class Mempool extends Provider {
+  static readonly key = "mempool";
+
   private baseUrl: string;
 
   constructor(config: ProviderConfig) {
     super(config);
     this.baseUrl = normalizeBaseUrl(config.baseUrl ?? DEFAULT_BASE);
   }
-
-  static readonly providerName = "mempool";
-  readonly name = Mempool.providerName;
-
   get capabilities(): ProviderCapabilities {
     return {
       balances: true,

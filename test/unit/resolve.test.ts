@@ -19,6 +19,9 @@ describe("resolveProvider", () => {
   it("prefers configured credentials before the free fallback", () => {
     vi.stubEnv("ETHERSCAN_API_KEY", "");
     vi.stubEnv("BLOCKCHAIR_API_KEY", "configured");
+    vi.stubEnv("SOLSCAN_API_KEY", "");
+    vi.stubEnv("TRONSCAN_API_KEY", "");
+    vi.stubEnv("BLOCKBERRY_API_KEY", "");
 
     expect(resolveProvider()).toBe("blockchair");
   });
@@ -26,6 +29,9 @@ describe("resolveProvider", () => {
   it("defaults to Blockscout when no credentials are configured", () => {
     vi.stubEnv("ETHERSCAN_API_KEY", "");
     vi.stubEnv("BLOCKCHAIR_API_KEY", "");
+    vi.stubEnv("SOLSCAN_API_KEY", "");
+    vi.stubEnv("TRONSCAN_API_KEY", "");
+    vi.stubEnv("BLOCKBERRY_API_KEY", "");
 
     expect(resolveProvider()).toBe("blockscout");
   });

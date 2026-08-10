@@ -23,7 +23,7 @@ export default defineCommand({
           .filter(([, v]) => v)
           .map(([k]) => k)
           .join(", ");
-        consola.log(`  ${name}: ${capList}`);
+        consola.log(`  ${name}: ${capList || "(no supported explorer operations)"}`);
       } catch {
         consola.log(`  ${name}: (requires API key — set env var to activate)`);
       }

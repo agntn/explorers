@@ -185,16 +185,14 @@ function mapTx(raw: BlockscoutTx): Transaction {
 }
 
 class Blockscout extends Provider {
+  static readonly key = "blockscout";
+
   private defaultChain: Chain;
 
   constructor(config: ProviderConfig) {
     super(config);
     this.defaultChain = config.defaultChain ?? "eth";
   }
-
-  static readonly providerName = "blockscout";
-  readonly name = Blockscout.providerName;
-
   get capabilities(): ProviderCapabilities {
     return {
       balances: true,

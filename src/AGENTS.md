@@ -16,14 +16,14 @@ src/
 ## Conventions
 
 - **Import paths**: Always use `.js` extension (`from './types.js'`) — ESM with Bundler resolution
-- **Provider registration**: Each concrete class owns a unique static `providerName` and passes itself to `register()` at module scope. Barrel `providers/index.ts` imports all.
+- **Provider registration**: Each concrete class owns a unique static `key` and passes itself to `register()` at module scope. Barrel `providers/index.ts` imports all.
 - **Command pattern**: Each command exports a `defineCommand()` result as default export
 - **Type imports**: Always `import type { ... }` for types, separate from value imports
 - **Error handling**: Providers throw typed errors (`UnsupportedChainError`, `HTTPError`, etc.). Commands catch and `process.exit(1)`.
 
 ## Key contracts
 
-- `Provider` — abstract base class all providers extend. Each concrete class owns a static `providerName` and exposes it as readonly instance `name`. Required getter: `capabilities`. Required methods: `getBalance()`, `getTxHistory()`. Optional: `getTxDetail()`, `getContractInfo()`, `getTokenBalances()`, `getGasData()`, `getBlockInfo()`.
+- `Provider` — abstract base class all providers extend. Each concrete class owns a static `key`; the inherited instance `name` reads it. Required getter: `capabilities`. Required methods: `getBalance()`, `getTxHistory()`. Optional: `getTxDetail()`, `getContractInfo()`, `getTokenBalances()`, `getGasData()`, `getBlockInfo()`.
 - `ProviderCapabilities` — boolean flags for what a provider supports
 - `ProviderConfig` — `{ apiKey?, baseUrl?, timeout?, defaultChain? }`
 

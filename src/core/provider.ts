@@ -11,6 +11,7 @@ import type {
   TxHistoryOptions,
 } from "./types.js";
 import { getJSON, postJSON } from "./client.js";
+import type { ClientOptions } from "./client.js";
 import type { ProviderConfig } from "./types.js";
 
 /**
@@ -27,8 +28,10 @@ export abstract class Provider {
     this.timeout = config.timeout;
   }
 
-  /** Registry key used to create and identify this provider. */
-  abstract readonly name: string;
+  /** Registry key owned by the concrete class. */
+  get name(): string {
+    return (this.constructor as ProviderConstructor).key;
+  }
 
   /** Operations this provider can actually serve. */
   abstract get capabilities(): ProviderCapabilities;
@@ -44,8 +47,11 @@ export abstract class Provider {
   ): Promise<Transaction[]>;
 
   /** Execute a provider-attributed GET request using the configured timeout. */
-  protected getJSON<T>(url: string): Promise<T> {
-    return getJSON<T>(url, { timeout: this.timeout, provider: this.name });
+  protected getJSON<T>(
+    url: string,
+    options?: Omit<ClientOptions, "provider" | "timeout">,
+  ): Promise<T> {
+    return getJSON<T>(url, { ...options, timeout: this.timeout, provider: this.name });
   }
 
   /** Execute a provider-attributed JSON POST request using the configured timeout. */
@@ -57,7 +63,7 @@ export abstract class Provider {
 /** Concrete provider class accepted by the registry. */
 export interface ProviderConstructor {
   /** Stable registry key owned by the concrete class. */
-  readonly providerName: string;
+  readonly key: string;
   new (config: ProviderConfig): Provider;
 }
 

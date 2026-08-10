@@ -15,13 +15,13 @@ interface RegistryEntry {
 const registry = new Map<string, RegistryEntry>();
 
 /**
- * Register a provider class under its stable `providerName`.
+ * Register a provider class under its stable `key`.
  *
  * Registering the same name again replaces the previous entry. That is useful in
  * tests, but easy to do by accident in application code.
  */
 export function register(providerClass: ProviderConstructor, defaultURL?: string): void {
-  registry.set(providerClass.providerName, { defaultURL, providerClass });
+  registry.set(providerClass.key, { defaultURL, providerClass });
 }
 
 /**

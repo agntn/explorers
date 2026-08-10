@@ -28,6 +28,7 @@ export {
   RateLimitError,
   NotFoundError,
   UnsupportedChainError,
+  UnsupportedOperationError,
   UnknownProviderError,
   normalizeError,
 } from "./core/errors.js";

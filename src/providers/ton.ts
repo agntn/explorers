@@ -111,16 +111,14 @@ function mapEventToTx(event: TonEvent): Transaction {
 }
 
 class Ton extends Provider {
+  static readonly key = "ton";
+
   private baseUrl: string;
 
   constructor(config: ProviderConfig) {
     super(config);
     this.baseUrl = normalizeBaseUrl(config.baseUrl ?? DEFAULT_BASE);
   }
-
-  static readonly providerName = "ton";
-  readonly name = Ton.providerName;
-
   get capabilities(): ProviderCapabilities {
     return {
       balances: true,
