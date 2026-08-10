@@ -59,7 +59,7 @@ interface MempoolTx {
       scriptpubkey_type: string;
       scriptpubkey_address?: string;
       value: number;
-    };
+    } | null;
     scriptsig: string;
     sequence: number;
     witness?: string[];
@@ -92,7 +92,7 @@ interface MempoolAddressTx {
     prevout: {
       scriptpubkey_address?: string;
       value: number;
-    };
+    } | null;
     scriptsig: string;
     sequence: number;
   }>;
@@ -142,8 +142,8 @@ function satToBtc(sat: number): string {
 function mapTx(raw: MempoolAddressTx, address: string): Transaction {
   // Determine direction: is this address receiving or sending?
   const totalIn = raw.vin
-    .filter((v) => v.prevout.scriptpubkey_address === address)
-    .reduce((sum, v) => sum + v.prevout.value, 0);
+    .filter((v) => v.prevout?.scriptpubkey_address === address)
+    .reduce((sum, v) => sum + (v.prevout?.value ?? 0), 0);
   const totalOut = raw.vout
     .filter((v) => v.scriptpubkey_address === address)
     .reduce((sum, v) => sum + v.value, 0);
@@ -154,9 +154,9 @@ function mapTx(raw: MempoolAddressTx, address: string): Transaction {
 
   // Find the primary counterparty
   const from = isSend
-    ? (raw.vin.find((v) => v.prevout.scriptpubkey_address === address)?.prevout
-        .scriptpubkey_address ?? address)
-    : (raw.vin[0]?.prevout.scriptpubkey_address ?? "unknown");
+    ? (raw.vin.find((v) => v.prevout?.scriptpubkey_address === address)?.prevout
+        ?.scriptpubkey_address ?? address)
+    : (raw.vin[0]?.prevout?.scriptpubkey_address ?? "unknown");
   const to = isSend
     ? (raw.vout.find((v) => v.scriptpubkey_address !== address)?.scriptpubkey_address ?? address)
     : address;
@@ -251,7 +251,7 @@ class Mempool extends Provider {
     const data = await this.api<MempoolTx>(`/api/tx/${encodeURIComponent(hash)}`);
 
     const totalOut = data.vout.reduce((sum, v) => sum + v.value, 0);
-    const fromAddr = data.vin[0]?.prevout.scriptpubkey_address ?? "unknown";
+    const fromAddr = data.vin[0]?.prevout?.scriptpubkey_address ?? "unknown";
     const toAddr = data.vout[0]?.scriptpubkey_address ?? null;
 
     return {

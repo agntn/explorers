@@ -96,6 +96,39 @@ describe("mempool provider", () => {
     });
   });
 
+  it("handles coinbase transactions with a null prevout", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              txid: "4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b",
+              vin: [{ prevout: null }],
+              vout: [{ value: 5_000_000_000 }],
+              fee: 0,
+              status: { confirmed: true, block_height: 0, block_time: 1_231_006_505 },
+            }),
+            { headers: { "Content-Type": "application/json" } },
+          ),
+      ),
+    );
+
+    const transaction = await provider.getTxDetail!(
+      "4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b",
+      "bitcoin",
+    );
+
+    expect(transaction).toMatchObject({
+      from: "unknown",
+      to: null,
+      value: "5000000000",
+      valueFormatted: "50",
+      fee: "0",
+      status: "success",
+    });
+  });
+
   it("getTxHistory returns BTC transactions", async () => {
     const txs = await provider.getTxHistory(KNOWN_BTC, "bitcoin", { limit: 3 });
 
