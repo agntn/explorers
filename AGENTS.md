@@ -6,31 +6,32 @@ Unified block explorer provider library. Normalizes balances, tx history, contra
 
 ## Providers
 
-| Provider | Auth | Chains | Capabilities |
-|---|---|---|---|
-| etherscan | API key (free: 5 req/s) | eth, base, arbitrum, optimism, polygon, bsc, avalanche, fantom, gnosis, linea, zksync, scroll | Full: balances, tx, contract, tokens, gas, block |
-| blockscout | none | eth, base, arbitrum, optimism, polygon, gnosis, linea, scroll, zksync, avalanche | Full: balances, tx, contract, tokens, gas, block |
-| blockchair | optional key | bitcoin, eth, base, arbitrum, optimism, polygon, bsc, avalanche, gnosis | balances, tx, contract, block |
-| mempool | none | bitcoin | balances, tx, gas, block |
-| solana | none | solana | balances, tx, gas, block |
-| ton | none | ton | balances, tx, block |
-| tron | none | tron | balances, tx, block |
-| aptos | none | aptos | balances, tx, block |
-| sui | none | sui | balances, tx, gas, block |
+| Provider   | Auth                    | Chains                                                                           | Capabilities                                     |
+| ---------- | ----------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------ |
+| etherscan  | API key (free: 5 req/s) | eth, base, arbitrum, optimism, polygon, bsc, avalanche, gnosis, linea, bera      | Full: balances, tx, contract, tokens, gas, block |
+| blockscout | none                    | eth, base, arbitrum, optimism, polygon, gnosis, linea, scroll, zksync, avalanche | Full: balances, tx, contract, tokens, gas, block |
+| blockchair | optional key            | bitcoin, eth                                                                     | balances, tx, block                              |
+| mempool    | none                    | bitcoin                                                                          | balances, tx, gas, block                         |
+| solana     | none                    | solana                                                                           | balances, tx, gas, block                         |
+| ton        | none                    | ton                                                                              | balances, tx                                     |
+| tron       | none                    | tron                                                                             | balances, tx, block                              |
+| aptos      | none                    | aptos                                                                            | balances, tx, block                              |
+| sui        | none                    | sui                                                                              | balances, tx, gas, block                         |
 
 ## Conventions
 
 - Chain names normalized via `normalizeChain()` — accepts aliases like `ethereum`, `mainnet`, `arb`, `btc`
-- All values in wei as strings (never float) — `formatWei()` for display
-- `noUncheckedIndexedAccess: true` — Record access gives `| undefined`, use `?? ''` for required fields
-- Provider registration is side-effect: importing `src/providers/index.js` triggers all `register()` calls
+- Native and token amounts use strings in each chain's smallest unit — call `formatWei(value, decimals)` with the asset's decimals; its default is 18
+- `noUncheckedIndexedAccess` and `noImplicitOverride` are enabled — guard indexed access and mark overrides explicitly
+- Provider registration is a class side effect: each concrete class owns a static `providerName`, and importing `src/providers/index.js` triggers all `register()` calls
 - CLI default subcommand: `balance` (for address-like input) or `providers` (no input)
 - Error hierarchy: `BlocexError` → `HTTPError`, `AuthError`, `RateLimitError`, `NotFoundError`, `UnsupportedChainError`, `UnknownProviderError`
-- HTTP client uses `ofetch` with 15s default timeout
+- HTTP client uses `ofetch` with a 15s default timeout and preserves out-of-range JSON integers as strings
 
 ## Key files
 
-- `src/core/types.ts` — Chain, Transaction, Balance, TokenBalance, ContractInfo, GasData, BlockInfo, BlocexProvider interface
+- `src/core/types.ts` — re-exports `Chain` from `chains`; owns transaction, balance, token, contract, gas, block, and provider-config types
+- `src/core/provider.ts` — abstract `Provider` base class and optional operation contract
 - `src/core/errors.ts` — BlocexError hierarchy + normalizeError
 - `src/core/registry.ts` — Self-registering provider registry (register, create, providers, has)
 - `src/core/resolve.ts` — Auto-select provider by env vars, default blockscout
@@ -43,15 +44,15 @@ Unified block explorer provider library. Normalizes balances, tx history, contra
 
 ## CLI subcommands
 
-`balance`, `tx`, `contract`, `tokens`, `gas`, `block`, `providers` — all support `-c` (chain), `-p` (provider). `tx` and `balance` support ENS.
+`balance`, `tx`, `contract`, `tokens`, `gas`, `block`, `providers` — all support `-c` (chain), `-p` (provider). `tx` accepts `-m history|detail` to resolve ambiguous hash/address formats. `tx` and `balance` support ENS.
 
 ## Constraints
 
 - Etherscan: 5 req/s free tier, needs `ETHERSCAN_API_KEY`
 - Blockchair: data format differs between BTC and EVM chains
 - Solana/TON/TRON/Aptos/Sui: single-chain providers, throw `UnsupportedChainError` for other chains
+- TON: the TonAPI block endpoint requires workchain, shard, and seqno rather than the library's single block-number contract, so `blockInfo` is unsupported
 - Mempool: Bitcoin only
-- No LICENSE file yet
 
 ## Architecture
 
@@ -71,41 +72,42 @@ graph TB
 
 - **CLI Layer** (`cli.ts`, `commands/*.ts`): citty-based CLI, lazy-loads subcommands via dynamic `import()`. `cli-args.ts` normalizes bare address input to `balance` subcommand.
 - **Core Layer** (`core/*.ts`): Domain types, provider registry (side-effect registration), HTTP client (ofetch, 15s timeout), ENS resolution (public APIs), input classification, error hierarchy.
-- **Provider Layer** (`providers/*.ts`): 9 self-registering providers. Each file defines API types, helper mappers, a class implementing `BlocexProvider`, and calls `register()` at module scope.
+- **Provider Layer** (`providers/*.ts`): 9 self-registering providers. Each file defines API types, helper mappers, a concrete `Provider` subclass with a static registry key, and calls `register()` with its constructor at module scope.
 - **Pi Extension** (`packages/pi/extensions/blocex.ts`): Exposes 6 tools to Pi coding agent. Lazy-loads blocex via dynamic import with fallback to source.
 
 ### Provider categories
 
-1. **Multi-chain EVM** (etherscan, blockscout, blockchair): support 9-12 EVM chains each
-2. **Bitcoin** (mempool, blockchair): UTXO model, different data shape
-3. **Single-chain non-EVM** (solana, ton, tron, aptos, sui): each implements full `BlocexProvider` for one chain only
+1. **Multi-chain EVM** (etherscan, blockscout): support 10 EVM chains each
+2. **Bitcoin/Ethereum bridge** (blockchair): dashboard API for Bitcoin and Ethereum
+3. **Bitcoin** (mempool): UTXO model
+4. **Single-chain non-EVM** (solana, ton, tron, aptos, sui): all implement balances and history; optional capabilities vary by provider
 
 ## Patterns
 
-- **Side-effect registration**: `import './providers/index.js'` triggers all `register()` calls. Never import individual providers without going through the barrel.
-- **String-only values**: All wei/satoshi/native amounts are strings (`Balance.balance`, `TokenBalance.balance`). `formatWei()` converts to human-readable. No floats in domain types.
-- **Optional methods**: `getTokenBalances`, `getGasData`, `getBlockInfo` are optional on `BlocexProvider`. Always check `capabilities()` before calling.
+- **Side-effect registration**: `import './providers/index.js'` triggers all `register()` calls. Each class owns its registry key as `static providerName`.
+- **String-only values**: All wei/satoshi/native amounts are strings (`Balance.balance`, `TokenBalance.balance`). The HTTP boundary preserves unsafe JSON integers as strings; `formatWei()` converts amounts for display.
+- **Optional methods**: `getTxDetail`, `getContractInfo`, `getTokenBalances`, `getGasData`, and `getBlockInfo` are optional on `Provider`. Always check both the `capabilities` getter and method presence before calling.
 - **Dynamic CLI imports**: Each subcommand is lazily loaded via `() => import('./commands/X.js').then(m => m.default)`.
-- **Chain normalization**: `normalizeChain()` accepts canonical keys (from `CHAIN_DATA`) and aliases (`ethereum→eth`, `btc→bitcoin`, `arb→arbitrum`). Falls back to `eth`.
+- **Chain normalization**: `normalizeChain()` delegates to the shared `chains` dictionary for canonical keys and aliases (`ethereum→eth`, `btc→bitcoin`, `arb→arbitrum`). Missing input defaults to `eth`; unknown names throw.
 - **Provider auto-selection**: `resolveProvider()` checks env vars for each provider, falls back to `blockscout` (no key needed).
 - **Error sanitization**: `HTTPError` strips API keys from URLs in error messages. `normalizeError()` wraps unknown errors into typed `BlocexError` subclasses.
 
 ## Anti-patterns to avoid
 
 - Importing individual provider files without the barrel — breaks registration chain
-- Using `getTokenBalances`/`getGasData`/`getBlockInfo` without checking `capabilities()` first — will throw TypeError on providers that don't implement them
+- Calling an optional provider method without checking `capabilities` and method presence — unsupported operations stay absent at runtime
 - Assuming EVM address formats work on non-EVM chains (Solana base58, TON base64, TRON base58/hex)
 - Hardcoding chain names — always use `normalizeChain()` for user input
 
 ## Test coverage gaps
 
-**Covered** (8 test files): blockscout, ens, solana, mempool, sui, aptos, tron, ton
-**Missing**: etherscan, blockchair, core/types utilities, core/registry, core/resolve, core/client, core/input, CLI commands
-**Test style**: Live roundtrips against public APIs (no mocks). Tests verify structure + sanity (balance > 0, tx count > 0).
+**Covered** (18 test files): provider base/registry, provider resolution, HTTP client, path safety, amount formatting, errors, input classification, chain normalization, CLI argument routing, plus all nine providers.
+**Missing**: CLI command execution and the Pi extension.
+**Test style**: Focused unit tests for local contracts plus live public-API roundtrips for providers.
 
 ## Dependencies
 
-- `chains` (workspace dep via `file:../chains`): provides `CHAIN_DATA` for chain metadata
+- `chains` (bundled workspace dev dependency via `file:../chains`): canonical chain metadata, types, and aliases
 - `citty`: CLI framework
 - `consola`: Logging
 - `ofetch`: HTTP client
@@ -131,9 +133,10 @@ pnpm test:run       # vitest single run
 - [x] Phase 5: EVOLVE — updated AGENTS.md, created src/AGENTS.md, updated wiki entity
 
 <!-- gitnexus:start -->
+
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **blocex** (479 symbols, 1343 relationships, 40 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **blocex** (527 symbols, 1435 relationships, 43 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > Index stale? Run `node .gitnexus/run.cjs analyze` from the project root — it auto-selects an available runner. No `.gitnexus/run.cjs` yet? `npx gitnexus analyze` (npm 11 crash → `npm i -g gitnexus`; #1939).
 
@@ -154,22 +157,22 @@ This project is indexed by GitNexus as **blocex** (479 symbols, 1343 relationshi
 
 ## Resources
 
-| Resource | Use for |
-|----------|---------|
-| `gitnexus://repo/blocex/context` | Codebase overview, check index freshness |
-| `gitnexus://repo/blocex/clusters` | All functional areas |
-| `gitnexus://repo/blocex/processes` | All execution flows |
-| `gitnexus://repo/blocex/process/{name}` | Step-by-step execution trace |
+| Resource                                | Use for                                  |
+| --------------------------------------- | ---------------------------------------- |
+| `gitnexus://repo/blocex/context`        | Codebase overview, check index freshness |
+| `gitnexus://repo/blocex/clusters`       | All functional areas                     |
+| `gitnexus://repo/blocex/processes`      | All execution flows                      |
+| `gitnexus://repo/blocex/process/{name}` | Step-by-step execution trace             |
 
 ## CLI
 
-| Task | Read this skill file |
-|------|---------------------|
-| Understand architecture / "How does X work?" | `.claude/skills/gitnexus/gitnexus-exploring/SKILL.md` |
-| Blast radius / "What breaks if I change X?" | `.claude/skills/gitnexus/gitnexus-impact-analysis/SKILL.md` |
-| Trace bugs / "Why is X failing?" | `.claude/skills/gitnexus/gitnexus-debugging/SKILL.md` |
-| Rename / extract / split / refactor | `.claude/skills/gitnexus/gitnexus-refactoring/SKILL.md` |
-| Tools, resources, schema reference | `.claude/skills/gitnexus/gitnexus-guide/SKILL.md` |
-| Index, status, clean, wiki CLI commands | `.claude/skills/gitnexus/gitnexus-cli/SKILL.md` |
+| Task                                         | Read this skill file                                        |
+| -------------------------------------------- | ----------------------------------------------------------- |
+| Understand architecture / "How does X work?" | `.claude/skills/gitnexus/gitnexus-exploring/SKILL.md`       |
+| Blast radius / "What breaks if I change X?"  | `.claude/skills/gitnexus/gitnexus-impact-analysis/SKILL.md` |
+| Trace bugs / "Why is X failing?"             | `.claude/skills/gitnexus/gitnexus-debugging/SKILL.md`       |
+| Rename / extract / split / refactor          | `.claude/skills/gitnexus/gitnexus-refactoring/SKILL.md`     |
+| Tools, resources, schema reference           | `.claude/skills/gitnexus/gitnexus-guide/SKILL.md`           |
+| Index, status, clean, wiki CLI commands      | `.claude/skills/gitnexus/gitnexus-cli/SKILL.md`             |
 
 <!-- gitnexus:end -->
