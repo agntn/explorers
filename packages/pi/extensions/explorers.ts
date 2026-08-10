@@ -1,28 +1,46 @@
 /**
  * Pi extension: Explorers — unified block explorer tools
  */
+import { fileURLToPath } from "node:url";
 import type { AgentToolResult, ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import type * as ExplorersModule from "../../../src/index.js";
 import { Text } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
 
-/** Lazy-load the library (registers all providers on import). */
-async function loadLib() {
-  const packageName = "@oritwoen/explorers";
-  try {
-    return (await import(packageName)) as unknown as typeof ExplorersModule;
-  } catch (error) {
-    const code =
-      typeof error === "object" && error !== null && "code" in error
-        ? String(error.code)
-        : undefined;
-    if (code !== "ERR_MODULE_NOT_FOUND" && code !== "MODULE_NOT_FOUND") {
-      throw error;
-    }
-    // @ts-expect-error — Pi runs TypeScript extension sources directly in development
-    return import("../../../src/index.ts") as Promise<typeof ExplorersModule>;
-  }
+const sourceModulePath = fileURLToPath(new URL("../../../src/index.ts", import.meta.url));
+let explorersModulePromise: Promise<typeof ExplorersModule> | undefined;
+
+function isMissingSourceModule(error: unknown): boolean {
+  if (typeof error !== "object" || error === null || !("code" in error)) return false;
+  const code = String(error.code);
+  if (code !== "ERR_MODULE_NOT_FOUND" && code !== "MODULE_NOT_FOUND") return false;
+
+  const message = error instanceof Error ? error.message : "";
+  return (
+    message.includes(`Cannot find module '${sourceModulePath}'`) ||
+    message.includes(`Cannot find module "${sourceModulePath}"`)
+  );
 }
+
+/** Load current source in development and fall back to the installed package in distributions. */
+function loadLib(): Promise<typeof ExplorersModule> {
+  if (explorersModulePromise) return explorersModulePromise;
+
+  // @ts-expect-error — Pi runs TypeScript extension sources directly in development
+  const loaded = import("../../../src/index.ts").catch((error: unknown) => {
+    if (!isMissingSourceModule(error)) throw error;
+    return import("@oritwoen/explorers") as unknown as Promise<typeof ExplorersModule>;
+  });
+  explorersModulePromise = loaded;
+  return loaded;
+}
+
+interface TxDetailToolDetails {
+  provider: string;
+  transaction: ExplorersModule.Transaction;
+}
+
+type TxDetailToolResult = AgentToolResult<TxDetailToolDetails>;
 
 type ExplorersToolResult = AgentToolResult<undefined>;
 
@@ -47,12 +65,12 @@ export default function explorersExtension(pi: ExtensionAPI) {
   pi.registerTool({
     name: "explorers_balance",
     label: "Explorers Balance",
-    description: "Get native token balance for a blockchain address",
-    promptSnippet: "Use to check ETH, BTC, or other native token balances across chains.",
+    description: "Get a native-token balance for a blockchain address",
+    promptSnippet: "Use to check ETH, BTC, or other native-token balances across chains.",
     promptGuidelines: [
-      "Provide a blockchain address and optionally a chain (eth, base, bitcoin, ...)",
-      "Without an explicit provider or chain, defaults to Ethereum mainnet",
-      "Returns raw base-unit and human-readable balances",
+      "Use explorers_balance with a blockchain address and optionally a chain.",
+      "explorers_balance defaults to Ethereum mainnet when neither provider nor chain is explicit.",
+      "explorers_balance returns raw base-unit and human-readable balances.",
     ],
     parameters: Type.Object({
       address: Type.String({ description: "Blockchain address" }),
@@ -62,7 +80,10 @@ export default function explorersExtension(pi: ExtensionAPI) {
         }),
       ),
       provider: Type.Optional(
-        Type.String({ description: "Provider (etherscan, blockscout, blockchair)" }),
+        Type.String({
+          description:
+            "Registered provider key, for example blockscout, etherscan, mempool, or solscan; use explorers_providers to list all providers",
+        }),
       ),
     }),
     renderCall(args, _theme) {
@@ -84,14 +105,21 @@ export default function explorersExtension(pi: ExtensionAPI) {
     description: "Get transaction history for a blockchain address",
     promptSnippet: "Use to list recent transactions for any address.",
     promptGuidelines: [
-      "Provide a blockchain address and optionally a chain and limit",
-      "Returns normalized tx list with from/to/value/status",
-      "Default limit is 10",
+      "Use explorers_tx_history with a blockchain address and optionally a chain and limit.",
+      "explorers_tx_history returns normalized transactions with from, to, value, and status.",
+      "explorers_tx_history defaults to 10 results.",
     ],
     parameters: Type.Object({
       address: Type.String({ description: "Blockchain address" }),
       chain: Type.Optional(Type.String({ description: "Chain" })),
-      limit: Type.Optional(Type.Number({ description: "Max results", default: 10 })),
+      limit: Type.Optional(
+        Type.Integer({
+          description: "Maximum number of results",
+          minimum: 1,
+          maximum: 100,
+          default: 10,
+        }),
+      ),
       provider: Type.Optional(Type.String({ description: "Provider" })),
     }),
     renderCall(args, _theme) {
@@ -117,8 +145,8 @@ export default function explorersExtension(pi: ExtensionAPI) {
     description: "Get detailed info about a specific transaction",
     promptSnippet: "Use to inspect a single transaction by hash.",
     promptGuidelines: [
-      "Provide a chain-native transaction hash and optionally a chain",
-      "Returns full tx details including fees, status, method, and token transfers",
+      "Use explorers_tx_detail with a chain-native transaction hash and optionally a chain.",
+      "explorers_tx_detail returns fees, status, method, and token-transfer count.",
     ],
     parameters: Type.Object({
       hash: Type.String({ description: "Transaction hash" }),
@@ -128,11 +156,11 @@ export default function explorersExtension(pi: ExtensionAPI) {
     renderCall(args, _theme) {
       return new Text(`🔬 Tx detail: ${args.hash.slice(0, 18)}…`, 0, 0);
     },
-    async execute(_toolCallId, params): Promise<ExplorersToolResult> {
+    async execute(_toolCallId, params): Promise<TxDetailToolResult> {
       const { lib, name, provider } = await getProvider(params.provider);
       const chain = resolveToolChain(lib, name, params.chain);
       if (!provider.capabilities.txDetail || !provider.getTxDetail) {
-        return textResult(`Provider "${name}" does not support transaction details`);
+        throw new lib.UnsupportedOperationError("getTxDetail", name);
       }
       const tx = await provider.getTxDetail(params.hash, chain);
 
@@ -147,18 +175,57 @@ export default function explorersExtension(pi: ExtensionAPI) {
         tx.tokenTransfers.length > 0 ? `Token transfers: ${tx.tokenTransfers.length}` : null,
       ].filter(Boolean);
 
-      return textResult(parts.join("\n"));
+      return {
+        content: [{ type: "text", text: parts.join("\n") }],
+        details: { provider: name, transaction: tx },
+      };
+    },
+    renderResult(result, { expanded, isPartial }, theme) {
+      if (isPartial) return new Text(theme.fg("warning", "Loading transaction…"), 0, 0);
+
+      const details = result.details;
+      if (!details) {
+        const content = result.content.find((part) => part.type === "text");
+        return new Text(
+          theme.fg("error", content?.text ?? "Transaction details unavailable"),
+          0,
+          0,
+        );
+      }
+
+      const tx = details.transaction;
+      const statusColor =
+        tx.status === "success" ? "success" : tx.status === "failed" ? "error" : "warning";
+      const lines = [
+        `${theme.fg("muted", `[${details.provider}]`)} ${theme.fg("accent", tx.hash)}`,
+        `${theme.fg("muted", "Block")} ${tx.blockNumber}  ${theme.fg("muted", "Status")} ${theme.fg(statusColor, tx.status)}`,
+        `${theme.fg("muted", "Value")} ${tx.valueFormatted}`,
+      ];
+
+      if (expanded) {
+        if (tx.fee) lines.push(`${theme.fg("muted", "Fee")} ${tx.fee} base units`);
+        lines.push(`${theme.fg("muted", "From")} ${tx.from}`);
+        lines.push(`${theme.fg("muted", "To")} ${tx.to ?? "contract creation"}`);
+        if (tx.functionName) lines.push(`${theme.fg("muted", "Method")} ${tx.functionName}`);
+        if (tx.tokenTransfers.length > 0) {
+          lines.push(
+            `${theme.fg("muted", "Token transfers")} ${tx.tokenTransfers.length.toString()}`,
+          );
+        }
+      }
+
+      return new Text(lines.join("\n"), 0, 0);
     },
   });
 
   pi.registerTool({
     name: "explorers_contract",
     label: "Explorers Contract",
-    description: "Get smart contract info — verification, ABI, source, proxy status",
-    promptSnippet: "Use to check if a contract is verified, get its ABI, or detect proxies.",
+    description: "Get smart-contract metadata, verification, and proxy status",
+    promptSnippet: "Use to check whether a contract is verified or acts as a proxy.",
     promptGuidelines: [
-      "Provide a contract address and optionally a chain",
-      "Returns verification status, name, compiler, ABI (if verified), proxy info",
+      "Use explorers_contract with a contract address and optionally a chain.",
+      "explorers_contract returns verification, compiler, token, creator, and proxy metadata.",
     ],
     parameters: Type.Object({
       address: Type.String({ description: "Contract address" }),
@@ -172,7 +239,7 @@ export default function explorersExtension(pi: ExtensionAPI) {
       const { lib, name, provider } = await getProvider(params.provider);
       const chain = resolveToolChain(lib, name, params.chain);
       if (!provider.capabilities.contractInfo || !provider.getContractInfo) {
-        return textResult(`Provider "${name}" does not support contract info`);
+        throw new lib.UnsupportedOperationError("getContractInfo", name);
       }
       const info = await provider.getContractInfo(params.address, chain);
 
@@ -196,8 +263,8 @@ export default function explorersExtension(pi: ExtensionAPI) {
     description: "Get current gas prices for a chain",
     promptSnippet: "Use to check gas prices before sending a transaction.",
     promptGuidelines: [
-      "Provide a chain or use the selected provider's default",
-      "Returns safe/average/fast prices with the provider-native unit",
+      "Use explorers_gas with a chain or the selected provider's default.",
+      "explorers_gas returns safe, average, fast, priority, and base prices when available.",
     ],
     parameters: Type.Object({
       chain: Type.Optional(Type.String({ description: "Chain" })),
@@ -212,7 +279,7 @@ export default function explorersExtension(pi: ExtensionAPI) {
 
       const caps = provider.capabilities;
       if (!caps.gasData || !provider.getGasData) {
-        return textResult(`Provider "${name}" does not support gas data`);
+        throw new lib.UnsupportedOperationError("getGasData", name);
       }
 
       const gas = await provider.getGasData(chain);
@@ -232,9 +299,11 @@ export default function explorersExtension(pi: ExtensionAPI) {
   pi.registerTool({
     name: "explorers_providers",
     label: "Explorers Providers",
-    description: "List registered block explorer providers and their capabilities",
+    description: "List registered block explorer providers",
     promptSnippet: "Use to check which block explorer providers are available.",
-    promptGuidelines: ["Returns provider names and their capability flags."],
+    promptGuidelines: [
+      "Use explorers_providers to list provider keys accepted by the other explorer tools.",
+    ],
     parameters: Type.Object({}),
     renderCall(_args, _theme) {
       return new Text("🔍 List Explorers providers", 0, 0);
@@ -242,17 +311,7 @@ export default function explorersExtension(pi: ExtensionAPI) {
     async execute(): Promise<ExplorersToolResult> {
       const lib = await loadLib();
       const names = lib.providers();
-
-      const lines = names.map((name) => {
-        const provider = lib.create(name);
-        const caps = provider.capabilities;
-        const active = Object.entries(caps)
-          .filter(([, v]) => v)
-          .map(([k]) => k);
-        return `  ${name}: ${active.join(", ")}`;
-      });
-
-      return textResult(`Registered providers (${names.length}):\n${lines.join("\n")}`);
+      return textResult(`Registered providers (${names.length}):\n  ${names.join("\n  ")}`);
     },
   });
 }
