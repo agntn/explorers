@@ -1,6 +1,4 @@
-/**
- * List ERC-20 token holdings (supports ENS)
- */
+/** List ERC-20 token holdings (supports ENS) */
 import { defineCommand } from "citty";
 import consola from "consola";
 import { resolveProvider, PROVIDER_DEFAULT_CHAIN } from "../core/resolve.js";

@@ -1,6 +1,4 @@
-/**
- * OMP extension: Explorers — unified block explorer tools.
- */
+/** OMP extension: Explorers — unified block explorer tools. */
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import type { ExtensionAPI } from "@oh-my-pi/pi-coding-agent";

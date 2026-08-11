@@ -1,6 +1,4 @@
-/**
- * Address/input resolution — ENS names, raw addresses, tx hashes.
- */
+/** Address/input resolution — ENS names, raw addresses, tx hashes. */
 import { NotFoundError } from "./errors.js";
 import type { Chain } from "./types.js";
 import { isEnsName, isAddress, resolveEns } from "./ens.js";
@@ -25,8 +23,7 @@ export function classifyInput(input: string, chain?: Chain): InputType {
 }
 
 /**
- * Classify an input and resolve ENS names. Addresses and transaction hashes pass
- * through unchanged.
+ * Classify an input and resolve ENS names. Addresses and transaction hashes pass through unchanged.
  *
  * @throws {NotFoundError} When an ENS name cannot be resolved.
  */

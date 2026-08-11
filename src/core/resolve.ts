@@ -1,6 +1,4 @@
-/**
- * Auto-select provider by checking env vars
- */
+/** Auto-select provider by checking env vars */
 
 import { providers, has } from "./registry.js";
 import { UnknownProviderError } from "./errors.js";
@@ -31,8 +29,8 @@ export const PROVIDER_DEFAULT_CHAIN: Partial<Record<string, Chain>> = {
 /**
  * Choose a registered provider for the current environment.
  *
- * An explicit preference wins. Without one, a provider with configured credentials
- * is selected first, followed by Blockscout and then the first registry entry.
+ * An explicit preference wins. Without one, a provider with configured credentials is selected
+ * first, followed by Blockscout and then the first registry entry.
  *
  * @throws {UnknownProviderError} When an explicit preference is not registered.
  */

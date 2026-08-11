@@ -1,8 +1,8 @@
 /**
  * Aptos provider — explicit unsupported explorer contract.
  *
- * Aptos Explorer does not publish a documented account-history API. Direct
- * fullnode REST is deliberately not used: unsupported operations fail clearly.
+ * Aptos Explorer does not publish a documented account-history API. Direct fullnode REST is
+ * deliberately not used: unsupported operations fail clearly.
  */
 
 import type {

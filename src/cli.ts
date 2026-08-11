@@ -1,6 +1,4 @@
-/**
- * Explorers CLI — unified block explorer commands
- */
+/** Explorers CLI — unified block explorer commands */
 import { defineCommand, runMain } from "citty";
 import { normalizeMainArgs } from "./cli-args.js";
 import { version } from "./version.js";

@@ -1,6 +1,4 @@
-/**
- * Get contract info (supports ENS)
- */
+/** Get contract info (supports ENS) */
 import { defineCommand } from "citty";
 import consola from "consola";
 import { resolveProvider, PROVIDER_DEFAULT_CHAIN } from "../core/resolve.js";

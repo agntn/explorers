@@ -1,6 +1,4 @@
-/**
- * List registered providers and their capabilities
- */
+/** List registered providers and their capabilities */
 import { defineCommand } from "citty";
 import consola from "consola";
 import { create, providers as listProviders } from "../core/registry.js";

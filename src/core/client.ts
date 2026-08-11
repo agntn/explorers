@@ -1,6 +1,4 @@
-/**
- * HTTP client wrapper for Explorers providers
- */
+/** HTTP client wrapper for Explorers providers */
 
 import { ofetch } from "ofetch";
 import { normalizeError } from "./errors.js";
@@ -86,9 +84,9 @@ export async function postJSON<T>(url: string, body: unknown, options?: ClientOp
  * Build a query string while dropping parameters whose value is `undefined`.
  *
  * @example
- * ```ts
- * buildQuery({ page: 2, cursor: undefined }) // '?page=2'
- * ```
+ *   ```ts
+ *   buildQuery({ page: 2, cursor: undefined }); // '?page=2'
+ *   ```
  */
 export function buildQuery(params: Record<string, string | number | undefined>): string {
   const usp = new URLSearchParams();

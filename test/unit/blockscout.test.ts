@@ -1,8 +1,8 @@
 /**
  * Explorers — Blockscout integration tests
  *
- * Tests are live roundtrips against public Blockscout API.
- * Expected values are derived from API responses, not hand-written.
+ * Tests are live roundtrips against public Blockscout API. Expected values are derived from API
+ * responses, not hand-written.
  */
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { create } from "../../src/core/registry.js";

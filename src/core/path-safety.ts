@@ -4,16 +4,17 @@ import { ExplorerError } from "./errors.js";
  * Validate a string is safe to interpolate into a URL path segment.
  *
  * Rejects:
- *   - empty / whitespace-only inputs
- *   - path traversal sequences (`..`, `.`)
- *   - path separators (`/`, `\`)
- *   - URL-encoded separators and control characters
- *   - control characters / NUL bytes
  *
- * Use for `address`, `hash`, `txhash`, `account`, `blockHeight`-style params
- * that go into URL paths. NOT for query params (use encodeURIComponent instead).
+ * - Empty / whitespace-only inputs
+ * - Path traversal sequences (`..`, `.`)
+ * - Path separators (`/`, `\`)
+ * - URL-encoded separators and control characters
+ * - Control characters / NUL bytes
  *
- * @throws {ExplorerError} when the input is unsafe.
+ * Use for `address`, `hash`, `txhash`, `account`, `blockHeight`-style params that go into URL
+ * paths. NOT for query params (use encodeURIComponent instead).
+ *
+ * @throws {ExplorerError} When the input is unsafe.
  */
 export function assertSafePathSegment(value: string, label = "value"): void {
   if (typeof value !== "string") {

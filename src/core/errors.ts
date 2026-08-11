@@ -1,6 +1,4 @@
-/**
- * explorers error hierarchy
- */
+/** Explorers error hierarchy */
 
 import { FetchError } from "ofetch";
 
@@ -115,8 +113,8 @@ function getFetchErrorBody(error: FetchError): string | undefined {
 /**
  * Turn an unknown provider or transport failure into the Explorers error hierarchy.
  *
- * Existing `ExplorerError` instances pass through unchanged. Structured HTTP
- * failures retain their status, response body, and redacted request URL.
+ * Existing `ExplorerError` instances pass through unchanged. Structured HTTP failures retain their
+ * status, response body, and redacted request URL.
  */
 export function normalizeError(
   error: unknown,

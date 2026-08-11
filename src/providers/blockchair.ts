@@ -1,9 +1,8 @@
 /**
  * Blockchair provider — multi-chain block explorer
  *
- * Supports Bitcoin and Ethereum.
- * Free tier: limited requests, dashboard queries.
- * Auth: optional BLOCKCHAIR_API_KEY for higher limits.
+ * Supports Bitcoin and Ethereum. Free tier: limited requests, dashboard queries. Auth: optional
+ * BLOCKCHAIR_API_KEY for higher limits.
  */
 
 import type {

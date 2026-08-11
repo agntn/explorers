@@ -1,6 +1,4 @@
-/**
- * CLI argument normalization — default to 'balance' subcommand
- */
+/** CLI argument normalization — default to 'balance' subcommand */
 
 const SUBCOMMANDS = ["balance", "tx", "contract", "tokens", "gas", "block", "providers"];
 

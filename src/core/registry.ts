@@ -1,6 +1,4 @@
-/**
- * Self-registering provider registry for Explorers
- */
+/** Self-registering provider registry for Explorers */
 
 import { Provider } from "./provider.js";
 import type { ProviderConstructor } from "./provider.js";
@@ -17,8 +15,8 @@ const registry = new Map<string, RegistryEntry>();
 /**
  * Register a provider class under its stable `key`.
  *
- * Registering the same name again replaces the previous entry. That is useful in
- * tests, but easy to do by accident in application code.
+ * Registering the same name again replaces the previous entry. That is useful in tests, but easy to
+ * do by accident in application code.
  */
 export function register(providerClass: ProviderConstructor, defaultURL?: string): void {
   registry.set(providerClass.key, { defaultURL, providerClass });
@@ -27,18 +25,15 @@ export function register(providerClass: ProviderConstructor, defaultURL?: string
 /**
  * Create a registered provider with optional backend configuration.
  *
- * @throws {UnknownProviderError} When `name` has not been registered.
- *
  * @example
- * ```ts
- * import { create } from '@oritwoen/explorers'
+ *   ```ts
+ *   import { create } from "@oritwoen/explorers";
  *
- * const provider = create('blockscout')
- * const balance = await provider.getBalance(
- *   '0x0000000000000000000000000000000000000000',
- *   'eth',
- * )
- * ```
+ *   const provider = create("blockscout");
+ *   const balance = await provider.getBalance("0x0000000000000000000000000000000000000000", "eth");
+ *   ```
+ *
+ * @throws {UnknownProviderError} When `name` has not been registered.
  */
 export function create(name: string, config?: ProviderConfig): Provider {
   const entry = registry.get(name);

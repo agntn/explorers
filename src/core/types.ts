@@ -1,6 +1,4 @@
-/**
- * Explorers — Unified block explorer provider types
- */
+/** Explorers — Unified block explorer provider types */
 
 import { normalizeChain as normalizeChainFromDictionary } from "chains";
 import type { Chain } from "chains";
@@ -241,9 +239,9 @@ export function clampMaxResults(limit?: number, max = 100): number {
  * Format a raw integer amount using token decimals, without float rounding.
  *
  * @example
- * ```ts
- * formatWei('1234500000000000000') // '1.2345'
- * ```
+ *   ```ts
+ *   formatWei("1234500000000000000"); // '1.2345'
+ *   ```
  */
 export function formatWei(wei: string | bigint, decimals = 18): string {
   if (!Number.isInteger(decimals) || decimals < 0 || decimals > 255) {
@@ -264,9 +262,9 @@ export function formatWei(wei: string | bigint, decimals = 18): string {
  * Convert a hexadecimal integer into a decimal string.
  *
  * @example
- * ```ts
- * hexToWei('0xff') // '255'
- * ```
+ *   ```ts
+ *   hexToWei("0xff"); // '255'
+ *   ```
  */
 export function hexToWei(hex: string): string {
   return BigInt(hex).toString();
@@ -280,13 +278,13 @@ export function multiplyIntegerStrings(left: string, right: string): string {
 /**
  * Normalize a canonical chain key or a common CLI alias.
  *
- * Missing values default to `eth`; unknown non-empty values are rejected so a
- * typo cannot silently query the wrong network.
+ * Missing values default to `eth`; unknown non-empty values are rejected so a typo cannot silently
+ * query the wrong network.
  *
  * @example
- * ```ts
- * normalizeChain('arb') // 'arbitrum'
- * ```
+ *   ```ts
+ *   normalizeChain("arb"); // 'arbitrum'
+ *   ```
  */
 export function normalizeChain(input?: string): Chain {
   try {

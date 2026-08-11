@@ -1,8 +1,8 @@
 /**
  * Mempool.space provider — Bitcoin block explorer
  *
- * Public API, no key needed. Best-in-class Bitcoin data:
- * address balances, tx history, UTXO info, fee estimates, block info.
+ * Public API, no key needed. Best-in-class Bitcoin data: address balances, tx history, UTXO info,
+ * fee estimates, block info.
  *
  * https://mempool.space/docs/api
  */

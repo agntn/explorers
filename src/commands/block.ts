@@ -1,6 +1,4 @@
-/**
- * Get block info by number
- */
+/** Get block info by number */
 import { defineCommand } from "citty";
 import consola from "consola";
 import { resolveProvider, PROVIDER_DEFAULT_CHAIN } from "../core/resolve.js";

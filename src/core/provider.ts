@@ -17,8 +17,8 @@ import type { ProviderConfig } from "./types.js";
 /**
  * Common API for block explorer backends.
  *
- * A provider holds backend configuration, not an address. Pass addresses to the
- * relevant methods and check `capabilities` before using optional operations.
+ * A provider holds backend configuration, not an address. Pass addresses to the relevant methods
+ * and check `capabilities` before using optional operations.
  */
 // oxlint-disable-next-line typescript/no-unsafe-declaration-merging -- Optional methods stay absent at runtime.
 export abstract class Provider {

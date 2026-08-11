@@ -1,6 +1,4 @@
-/**
- * Get current gas prices
- */
+/** Get current gas prices */
 import { defineCommand } from "citty";
 import consola from "consola";
 import { resolveProvider, PROVIDER_DEFAULT_CHAIN } from "../core/resolve.js";

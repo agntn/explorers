@@ -1,6 +1,4 @@
-/**
- * Get native token balance for an address (supports ENS)
- */
+/** Get native token balance for an address (supports ENS) */
 import { defineCommand } from "citty";
 import consola from "consola";
 import { resolveProvider, PROVIDER_DEFAULT_CHAIN } from "../core/resolve.js";

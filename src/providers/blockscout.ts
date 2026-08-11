@@ -1,19 +1,11 @@
 /**
  * Blockscout provider — open-source block explorer
  *
- * No API key needed. Deployed on many chains.
- * REST API v2.
+ * No API key needed. Deployed on many chains. REST API v2.
  *
- * Public instances:
- *   - eth.blockscout.com
- *   - base.blockscout.com
- *   - optimism.blockscout.com
- *   - arbitrum.blockscout.com
- *   - gnosis.blockscout.com
- *   - polygon.blockscout.com
- *   - linea.blockscout.com
- *   - scroll.blockscout.com
- *   - zksync.blockscout.com
+ * Public instances: - eth.blockscout.com - base.blockscout.com - optimism.blockscout.com -
+ * arbitrum.blockscout.com - gnosis.blockscout.com - polygon.blockscout.com - linea.blockscout.com -
+ * scroll.blockscout.com - zksync.blockscout.com
  */
 
 import type {

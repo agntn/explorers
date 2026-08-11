@@ -1,8 +1,8 @@
 /**
  * ENS (Ethereum Name Service) resolution
  *
- * Resolves .eth names to addresses via public ENS APIs.
- * No API key, no keccak256 dependency — pure HTTP.
+ * Resolves .eth names to addresses via public ENS APIs. No API key, no keccak256 dependency — pure
+ * HTTP.
  */
 
 /** Public ENS resolution endpoints (fallback chain) */

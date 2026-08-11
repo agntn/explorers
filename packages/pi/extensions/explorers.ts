@@ -1,6 +1,4 @@
-/**
- * Pi extension: Explorers — unified block explorer tools
- */
+/** Pi extension: Explorers — unified block explorer tools */
 import { fileURLToPath } from "node:url";
 import type { AgentToolResult, ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import type * as ExplorersModule from "../../../src/index.js";

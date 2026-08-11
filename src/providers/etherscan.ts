@@ -1,11 +1,10 @@
 /**
  * Etherscan V2 provider.
  *
- * Uses Etherscan's unified multichain endpoint for Ethereum, Base, Arbitrum,
- * Optimism, Polygon, BSC, Avalanche, Gnosis, Linea, and Berachain.
+ * Uses Etherscan's unified multichain endpoint for Ethereum, Base, Arbitrum, Optimism, Polygon,
+ * BSC, Avalanche, Gnosis, Linea, and Berachain.
  *
- * Auth: Etherscan API key.
- * Env: ETHERSCAN_API_KEY
+ * Auth: Etherscan API key. Env: ETHERSCAN_API_KEY
  */
 
 import type {

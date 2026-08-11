@@ -1,8 +1,7 @@
 /**
  * TON provider — The Open Network (Telegram blockchain)
  *
- * Public API via tonapi.io, no key needed.
- * TON balance, tx history, tx detail, block info.
+ * Public API via tonapi.io, no key needed. TON balance, tx history, tx detail, block info.
  *
  * https://tonapi.io/api-docs
  */
