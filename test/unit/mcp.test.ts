@@ -1,14 +1,21 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { Provider } from "../../src/core/provider.js";
-import type { Balance } from "../../src/core/types.js";
-import { register } from "../../src/core/registry.js";
+import type { ProviderConstructor } from "../../src/core/provider.js";
+import { create, getDefaultURL, register } from "../../src/core/registry.js";
+import type { ContractInfo } from "../../src/core/types.js";
 import { createMcpServer } from "../../src/mcp.js";
 
 const openConnections: Array<{ close(): Promise<void> }> = [];
 
+// SAFETY: create() instantiates the ProviderConstructor registered for this key.
+const blockscoutConstructor = create("blockscout").constructor as ProviderConstructor;
+const blockscoutDefaultURL = getDefaultURL("blockscout");
+
 afterEach(async () => {
+  register(blockscoutConstructor, blockscoutDefaultURL);
+  vi.unstubAllGlobals();
   await Promise.all(openConnections.splice(0).map((connection) => connection.close()));
 });
 
@@ -21,13 +28,13 @@ async function connectTestClient(): Promise<Client> {
   return client;
 }
 
-class DisabledBlockProvider extends Provider {
-  static readonly key = "disabled-block";
+class DisabledProvider extends Provider {
+  static readonly key = "blockscout";
 
   override get capabilities() {
     return {
-      balances: true,
-      txHistory: true,
+      balances: false,
+      txHistory: false,
       txDetail: false,
       contractInfo: false,
       tokenBalances: false,
@@ -36,18 +43,12 @@ class DisabledBlockProvider extends Provider {
     };
   }
 
-  override async getBalance(): Promise<Balance> {
-    return {
-      address: "0x1",
-      chain: "eth",
-      balance: "1",
-      balanceFormatted: "0.000000000000000001",
-      symbol: "ETH",
-    };
+  override async getBalance(): Promise<never> {
+    throw new Error("capability gate bypassed");
   }
 
   override async getTxHistory(): Promise<never> {
-    throw new Error("not used");
+    throw new Error("capability gate bypassed");
   }
 
   override async getBlockInfo() {
@@ -61,6 +62,24 @@ class DisabledBlockProvider extends Provider {
       gasLimit: "0",
       txCount: 0,
     };
+  }
+}
+
+class ContractProvider extends DisabledProvider {
+  override get capabilities() {
+    return {
+      balances: false,
+      txHistory: false,
+      txDetail: false,
+      contractInfo: true,
+      tokenBalances: false,
+      gasData: false,
+      blockInfo: false,
+    };
+  }
+
+  override async getContractInfo(address: string): Promise<ContractInfo> {
+    return { address, isVerified: true };
   }
 }
 
@@ -106,52 +125,116 @@ describe("Explorers MCP server", () => {
     ]);
   });
 
-  it("rejects an explicitly empty provider instead of selecting a default", async () => {
-    const client = await connectTestClient();
+  it.each(["", "   "])(
+    "rejects an empty-like provider instead of selecting a default",
+    async (provider) => {
+      const client = await connectTestClient();
 
-    const response = await client.callTool({
-      name: "explorers_block",
-      arguments: { blockNumber: 1, chain: "bitcoin", provider: "" },
-    });
-    expect(response.isError).toBe(true);
-    expect(response.content).toEqual([
-      {
-        type: "text",
-        text: expect.not.stringContaining("blockscout"),
-      },
-    ]);
-  });
+      const response = await client.callTool({
+        name: "explorers_block",
+        arguments: { blockNumber: 1, chain: "bitcoin", provider },
+      });
+      expect(response.isError).toBe(true);
+      expect(response.content).toEqual([
+        {
+          type: "text",
+          text: expect.not.stringContaining("blockscout"),
+        },
+      ]);
+    },
+  );
 
   it("includes the selected provider in operation results", async () => {
-    register(DisabledBlockProvider);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        return new Response(JSON.stringify({ coin_balance: "1" }), {
+          headers: { "content-type": "application/json" },
+        });
+      }),
+    );
     const client = await connectTestClient();
 
     const response = await client.callTool({
       name: "explorers_balance",
-      arguments: { address: "0x1", provider: DisabledBlockProvider.key },
+      arguments: {
+        address: "0x0000000000000000000000000000000000000001",
+        provider: "blockscout",
+      },
     });
     expect(response.isError).not.toBe(true);
     expect(response.content).toEqual([
       {
         type: "text",
-        text: expect.stringMatching(/"provider": "disabled-block"[\s\S]*"balance": "1"/),
+        text: expect.stringMatching(/"provider": "blockscout"[\s\S]*"balance": "1"/),
       },
     ]);
   });
 
-  it("honors a provider capability disabled despite a method being present", async () => {
-    register(DisabledBlockProvider);
+  it.each([
+    {
+      tool: "explorers_balance",
+      operation: "getBalance",
+      arguments: { address: "0x1", provider: DisabledProvider.key },
+    },
+    {
+      tool: "explorers_tx_history",
+      operation: "getTxHistory",
+      arguments: { address: "0x1", provider: DisabledProvider.key },
+    },
+  ])("honors the disabled capability for $tool", async ({ tool, operation, arguments: args }) => {
+    register(DisabledProvider);
+    const client = await connectTestClient();
+
+    const response = await client.callTool({ name: tool, arguments: args });
+    expect(response.isError).toBe(true);
+    expect(response.content).toEqual([
+      {
+        type: "text",
+        text: expect.stringContaining(`Operation "${operation}" not supported by blockscout`),
+      },
+    ]);
+  });
+
+  it("honors a disabled optional capability despite a method being present", async () => {
+    register(DisabledProvider);
     const client = await connectTestClient();
 
     const response = await client.callTool({
       name: "explorers_block",
-      arguments: { blockNumber: 1, provider: DisabledBlockProvider.key },
+      arguments: { blockNumber: 1, provider: DisabledProvider.key },
     });
     expect(response.isError).toBe(true);
     expect(response.content).toEqual([
       {
         type: "text",
-        text: expect.stringContaining('Operation "getBlockInfo" not supported by disabled-block'),
+        text: expect.stringContaining('Operation "getBlockInfo" not supported by blockscout'),
+      },
+    ]);
+  });
+
+  it("resolves ENS names before contract lookup", async () => {
+    const resolvedAddress = "0x0000000000000000000000000000000000000001";
+    register(ContractProvider);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        return new Response(JSON.stringify({ address: resolvedAddress }), {
+          headers: { "content-type": "application/json" },
+        });
+      }),
+    );
+    const client = await connectTestClient();
+
+    const response = await client.callTool({
+      name: "explorers_contract",
+      arguments: { address: "vitalik.eth", chain: "eth", provider: ContractProvider.key },
+    });
+    expect(response.isError).not.toBe(true);
+    expect(response.content).toEqual([
+      {
+        type: "text",
+        text: expect.stringContaining(`"address": "${resolvedAddress}"`),
       },
     ]);
   });

@@ -12,22 +12,26 @@ import { version } from "./version.js";
 import "./providers/index.js";
 
 const providerInput = {
-  chain: z.string().min(1).optional().describe("Chain name or alias"),
-  provider: z.string().min(1).optional().describe("Explorer provider key"),
+  chain: z.string().trim().min(1).optional().describe("Chain name or alias"),
+  provider: z.string().trim().min(1).optional().describe("Explorer provider key"),
 };
-type OptionalOperation =
+type ProviderOperation =
+  | "getBalance"
+  | "getTxHistory"
   | "getTxDetail"
   | "getContractInfo"
   | "getTokenBalances"
   | "getGasData"
   | "getBlockInfo";
 const OPERATION_CAPABILITIES = {
+  getBalance: "balances",
+  getTxHistory: "txHistory",
   getTxDetail: "txDetail",
   getContractInfo: "contractInfo",
   getTokenBalances: "tokenBalances",
   getGasData: "gasData",
   getBlockInfo: "blockInfo",
-} as const satisfies Record<OptionalOperation, keyof ProviderCapabilities>;
+} as const satisfies Record<ProviderOperation, keyof ProviderCapabilities>;
 
 function selectedProvider(providerName?: string, chainName?: string) {
   const name = resolveProvider(providerName);
@@ -50,7 +54,7 @@ async function addressForChain(address: string, chain: Parameters<typeof resolve
   return (await resolveInput(address, chain)).address;
 }
 
-function requireOperation<K extends OptionalOperation>(
+function requireOperation<K extends ProviderOperation>(
   provider: Provider,
   operation: K,
 ): NonNullable<Provider[K]> {
@@ -102,10 +106,8 @@ export function createMcpServer(): McpServer {
     async ({ address, chain, provider }) => {
       const selected = selectedProvider(provider, chain);
       const resolvedAddress = await addressForChain(address, selected.chain);
-      return providerResult(
-        selected.name,
-        await selected.provider.getBalance(resolvedAddress, selected.chain),
-      );
+      const getBalance = requireOperation(selected.provider, "getBalance");
+      return providerResult(selected.name, await getBalance(resolvedAddress, selected.chain));
     },
   );
 
@@ -127,9 +129,10 @@ export function createMcpServer(): McpServer {
     async ({ address, chain, provider, ...options }) => {
       const selected = selectedProvider(provider, chain);
       const resolvedAddress = await addressForChain(address, selected.chain);
+      const getTxHistory = requireOperation(selected.provider, "getTxHistory");
       return providerResult(
         selected.name,
-        await selected.provider.getTxHistory(resolvedAddress, selected.chain, options),
+        await getTxHistory(resolvedAddress, selected.chain, options),
       );
     },
   );
@@ -158,7 +161,8 @@ export function createMcpServer(): McpServer {
     async ({ address, chain, provider }) => {
       const selected = selectedProvider(provider, chain);
       const getContractInfo = requireOperation(selected.provider, "getContractInfo");
-      return providerResult(selected.name, await getContractInfo(address, selected.chain));
+      const resolvedAddress = await addressForChain(address, selected.chain);
+      return providerResult(selected.name, await getContractInfo(resolvedAddress, selected.chain));
     },
   );
 
