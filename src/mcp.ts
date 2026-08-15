@@ -1,0 +1,219 @@
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import { z } from "zod";
+import { UnsupportedOperationError } from "./core/errors.js";
+import { resolveInput } from "./core/input.js";
+import type { Provider } from "./core/provider.js";
+import { create, getDefaultURL, providers } from "./core/registry.js";
+import { PROVIDER_DEFAULT_CHAIN, resolveProvider } from "./core/resolve.js";
+import { normalizeChain } from "./core/types.js";
+import type { ProviderCapabilities } from "./core/types.js";
+import { version } from "./version.js";
+import "./providers/index.js";
+
+const providerInput = {
+  chain: z.string().min(1).optional().describe("Chain name or alias"),
+  provider: z.string().min(1).optional().describe("Explorer provider key"),
+};
+type OptionalOperation =
+  | "getTxDetail"
+  | "getContractInfo"
+  | "getTokenBalances"
+  | "getGasData"
+  | "getBlockInfo";
+const OPERATION_CAPABILITIES = {
+  getTxDetail: "txDetail",
+  getContractInfo: "contractInfo",
+  getTokenBalances: "tokenBalances",
+  getGasData: "gasData",
+  getBlockInfo: "blockInfo",
+} as const satisfies Record<OptionalOperation, keyof ProviderCapabilities>;
+
+function selectedProvider(providerName?: string, chainName?: string) {
+  const name = resolveProvider(providerName);
+  const provider = create(name);
+  const chain = normalizeChain(chainName ?? PROVIDER_DEFAULT_CHAIN[name]);
+  return { chain, name, provider };
+}
+
+function result(value: unknown): CallToolResult {
+  return {
+    content: [{ type: "text", text: JSON.stringify(value, null, 2) }],
+  };
+}
+
+function providerResult(provider: string, value: unknown): CallToolResult {
+  return result({ provider, data: value });
+}
+
+async function addressForChain(address: string, chain: Parameters<typeof resolveInput>[1]) {
+  return (await resolveInput(address, chain)).address;
+}
+
+function requireOperation<K extends OptionalOperation>(
+  provider: Provider,
+  operation: K,
+): NonNullable<Provider[K]> {
+  const method = provider[operation];
+  if (!provider.capabilities[OPERATION_CAPABILITIES[operation]] || typeof method !== "function") {
+    throw new UnsupportedOperationError(operation, provider.name);
+  }
+  return method.bind(provider) as NonNullable<Provider[K]>;
+}
+
+/** Create an MCP server exposing the normalized explorer operations. */
+export function createMcpServer(): McpServer {
+  const server = new McpServer({ name: "explorers", version });
+
+  server.registerTool(
+    "explorers_providers",
+    {
+      description: "List registered block explorer providers and their capabilities",
+      annotations: { readOnlyHint: true },
+    },
+    () =>
+      result(
+        providers().map((name) => {
+          try {
+            const provider = create(name);
+            return {
+              name,
+              defaultUrl: getDefaultURL(name),
+              capabilities: provider.capabilities,
+            };
+          } catch {
+            return {
+              name,
+              defaultUrl: getDefaultURL(name),
+              requiresConfiguration: true,
+            };
+          }
+        }),
+      ),
+  );
+
+  server.registerTool(
+    "explorers_balance",
+    {
+      description: "Get the native-token balance for a blockchain address or ENS name",
+      inputSchema: { address: z.string().min(1), ...providerInput },
+      annotations: { readOnlyHint: true },
+    },
+    async ({ address, chain, provider }) => {
+      const selected = selectedProvider(provider, chain);
+      const resolvedAddress = await addressForChain(address, selected.chain);
+      return providerResult(
+        selected.name,
+        await selected.provider.getBalance(resolvedAddress, selected.chain),
+      );
+    },
+  );
+
+  server.registerTool(
+    "explorers_tx_history",
+    {
+      description: "List normalized transactions involving a blockchain address",
+      inputSchema: {
+        address: z.string().min(1),
+        ...providerInput,
+        startBlock: z.number().int().nonnegative().optional(),
+        endBlock: z.number().int().nonnegative().optional(),
+        sort: z.enum(["asc", "desc"]).optional(),
+        limit: z.number().int().positive().max(100).optional(),
+        page: z.number().int().positive().optional(),
+      },
+      annotations: { readOnlyHint: true },
+    },
+    async ({ address, chain, provider, ...options }) => {
+      const selected = selectedProvider(provider, chain);
+      const resolvedAddress = await addressForChain(address, selected.chain);
+      return providerResult(
+        selected.name,
+        await selected.provider.getTxHistory(resolvedAddress, selected.chain, options),
+      );
+    },
+  );
+
+  server.registerTool(
+    "explorers_tx_detail",
+    {
+      description: "Get one normalized transaction by hash",
+      inputSchema: { hash: z.string().min(1), ...providerInput },
+      annotations: { readOnlyHint: true },
+    },
+    async ({ hash, chain, provider }) => {
+      const selected = selectedProvider(provider, chain);
+      const getTxDetail = requireOperation(selected.provider, "getTxDetail");
+      return providerResult(selected.name, await getTxDetail(hash, selected.chain));
+    },
+  );
+
+  server.registerTool(
+    "explorers_contract",
+    {
+      description: "Get verification, compiler, creator, proxy, ABI, and source metadata",
+      inputSchema: { address: z.string().min(1), ...providerInput },
+      annotations: { readOnlyHint: true },
+    },
+    async ({ address, chain, provider }) => {
+      const selected = selectedProvider(provider, chain);
+      const getContractInfo = requireOperation(selected.provider, "getContractInfo");
+      return providerResult(selected.name, await getContractInfo(address, selected.chain));
+    },
+  );
+
+  server.registerTool(
+    "explorers_tokens",
+    {
+      description: "List token holdings for a blockchain address",
+      inputSchema: {
+        address: z.string().min(1),
+        ...providerInput,
+        nonZeroOnly: z.boolean().optional(),
+      },
+      annotations: { readOnlyHint: true },
+    },
+    async ({ address, chain, provider, nonZeroOnly }) => {
+      const selected = selectedProvider(provider, chain);
+      const resolvedAddress = await addressForChain(address, selected.chain);
+      const getTokenBalances = requireOperation(selected.provider, "getTokenBalances");
+      return providerResult(
+        selected.name,
+        await getTokenBalances(resolvedAddress, selected.chain, { nonZeroOnly }),
+      );
+    },
+  );
+
+  server.registerTool(
+    "explorers_gas",
+    {
+      description: "Get current gas or fee-market suggestions",
+      inputSchema: providerInput,
+      annotations: { readOnlyHint: true },
+    },
+    async ({ chain, provider }) => {
+      const selected = selectedProvider(provider, chain);
+      const getGasData = requireOperation(selected.provider, "getGasData");
+      return providerResult(selected.name, await getGasData(selected.chain));
+    },
+  );
+
+  server.registerTool(
+    "explorers_block",
+    {
+      description: "Get normalized block information by block number",
+      inputSchema: {
+        blockNumber: z.number().int().nonnegative(),
+        ...providerInput,
+      },
+      annotations: { readOnlyHint: true },
+    },
+    async ({ blockNumber, chain, provider }) => {
+      const selected = selectedProvider(provider, chain);
+      const getBlockInfo = requireOperation(selected.provider, "getBlockInfo");
+      return providerResult(selected.name, await getBlockInfo(blockNumber, selected.chain));
+    },
+  );
+
+  return server;
+}

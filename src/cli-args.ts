@@ -1,6 +1,6 @@
 /** CLI argument normalization — default to 'balance' subcommand */
 
-const SUBCOMMANDS = ["balance", "tx", "contract", "tokens", "gas", "block", "providers"];
+const SUBCOMMANDS = ["balance", "tx", "contract", "tokens", "gas", "block", "providers", "mcp"];
 
 export function normalizeMainArgs(argv: string[]): string[] {
   if (argv.length === 0) return ["providers"];
