@@ -20,6 +20,7 @@ const main = defineCommand({
     gas: () => import("./commands/gas.js").then((m) => m.default),
     block: () => import("./commands/block.js").then((m) => m.default),
     providers: () => import("./commands/providers.js").then((m) => m.default),
+    mcp: () => import("./commands/mcp.js").then((m) => m.default),
   },
 });
 

@@ -15,7 +15,7 @@ describe("normalizeMainArgs", () => {
     ]);
   });
 
-  it.each(["balance", "tx", "contract", "tokens", "gas", "block", "providers"])(
+  it.each(["balance", "tx", "contract", "tokens", "gas", "block", "providers", "mcp"])(
     "preserves the %s subcommand",
     (subcommand) => {
       expect(normalizeMainArgs([subcommand, "value"])).toEqual([subcommand, "value"]);
