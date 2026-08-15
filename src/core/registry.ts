@@ -27,7 +27,7 @@ export function register(providerClass: ProviderConstructor, defaultURL?: string
  *
  * @example
  *   ```ts
- *   import { create } from "@oritwoen/explorers";
+ *   import { create } from "@agntn/explorers";
  *
  *   const provider = create("blockscout");
  *   const balance = await provider.getBalance("0x0000000000000000000000000000000000000000", "eth");

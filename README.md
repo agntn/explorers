@@ -16,7 +16,7 @@ Block explorers keep returning roughly the same data in completely different for
 ## Install
 
 ```bash
-pnpm add @oritwoen/explorers
+pnpm add @agntn/explorers
 ```
 
 Requires Node.js 22 or newer.
@@ -28,7 +28,7 @@ Explorers ships separate entrypoints for OMP and Pi. Installing the OMP extensio
 Install the published package in OMP:
 
 ```bash
-omp install @oritwoen/explorers
+omp install @agntn/explorers
 ```
 
 From a source checkout, link the local package instead:
@@ -44,9 +44,9 @@ OMP loads `packages/omp/extensions/explorers.ts` through the package's `omp.exte
 The short path is usually enough:
 
 ```bash
-npx @oritwoen/explorers vitalik.eth
-npx @oritwoen/explorers tx vitalik.eth -n 5
-npx @oritwoen/explorers providers
+npx @agntn/explorers vitalik.eth
+npx @agntn/explorers tx vitalik.eth -n 5
+npx @agntn/explorers providers
 ```
 
 An address-like first argument defaults to `balance`. No ceremonial subcommand needed.
@@ -77,7 +77,7 @@ Without `--provider`, Explorers first checks configured API keys and then falls 
 ## TypeScript
 
 ```typescript
-import { create, resolveEns, resolveProvider } from "@oritwoen/explorers";
+import { create, resolveEns, resolveProvider } from "@agntn/explorers";
 
 const provider = create(resolveProvider());
 const address = await resolveEns("vitalik.eth");
@@ -134,7 +134,7 @@ A new backend is five steps:
 4. Register the class at module scope.
 5. Import it from `src/providers/index.ts`.
 
-Importing `@oritwoen/explorers` loads the provider barrel and triggers registration. There is no separate registry list to forget.
+Importing `@agntn/explorers` loads the provider barrel and triggers registration. There is no separate registry list to forget.
 
 ## Development
 

@@ -1,19 +1,19 @@
 {
-  "name": "@oritwoen/explorers",
+  "name": "@agntn/explorers",
   "version": "0.2.0",
   "description": "Unified multi-chain block explorer provider library for AI agents",
   "keywords": [
     "omp-extension",
     "pi-package"
   ],
-  "homepage": "https://github.com/oritwoen/explorers#readme",
+  "homepage": "https://github.com/agntn/explorers#readme",
   "bugs": {
-    "url": "https://github.com/oritwoen/explorers/issues"
+    "url": "https://github.com/agntn/explorers/issues"
   },
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/oritwoen/explorers.git"
+    "url": "git+https://github.com/agntn/explorers.git"
   },
   "bin": {
     "explorers": "./dist/cli.mjs"

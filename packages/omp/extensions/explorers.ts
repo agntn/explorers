@@ -14,7 +14,7 @@ function loadLib(): Promise<typeof ExplorersModule> {
   const loaded: Promise<typeof ExplorersModule> = existsSync(sourceModulePath)
     ? // @ts-expect-error — OMP runs TypeScript extension sources directly in development
       import("../../../src/index.ts")
-    : (import("@oritwoen/explorers") as unknown as Promise<typeof ExplorersModule>);
+    : (import("@agntn/explorers") as unknown as Promise<typeof ExplorersModule>);
   explorersModulePromise = loaded;
   return loaded;
 }
