@@ -27,7 +27,7 @@ function loadLib(): Promise<typeof ExplorersModule> {
   // @ts-expect-error — Pi runs TypeScript extension sources directly in development
   const loaded = import("../../../src/index.ts").catch((error: unknown) => {
     if (!isMissingSourceModule(error)) throw error;
-    return import("@oritwoen/explorers") as unknown as Promise<typeof ExplorersModule>;
+    return import("@agntn/explorers") as unknown as Promise<typeof ExplorersModule>;
   });
   explorersModulePromise = loaded;
   return loaded;
