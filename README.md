@@ -19,7 +19,7 @@ Block explorers keep returning roughly the same data in completely different for
 pnpm add @agntn/explorers
 ```
 
-Requires Node.js 22 or newer.
+Requires Node.js 24 or newer.
 
 ## Agent extensions
 
