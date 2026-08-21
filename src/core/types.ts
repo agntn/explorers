@@ -1,9 +1,9 @@
 /** Explorers — Unified block explorer provider types */
 
-import { normalizeChain as normalizeChainFromDictionary } from "chains";
-import type { Chain } from "chains";
+import { getChain } from "@agntn/chains";
+import type { ChainKey } from "@agntn/chains";
 
-export type { Chain } from "chains";
+export type { ChainKey } from "@agntn/chains";
 
 /** Transaction status */
 export type TxStatus = "success" | "failed" | "pending";
@@ -75,7 +75,7 @@ export interface Balance {
   /** Address */
   address: string;
   /** Chain */
-  chain: Chain;
+  chain: ChainKey;
   /** Balance in the chain's smallest native unit */
   balance: string;
   /** Human-readable balance */
@@ -138,7 +138,7 @@ export type GasUnit = "gwei" | "sat/vB" | "micro-lamports/CU" | "MIST";
 /** Gas or fee-market data in provider-native units. */
 export interface GasData {
   /** Chain */
-  chain: Chain;
+  chain: ChainKey;
   /** Unit shared by all price fields in this result. */
   unit: GasUnit;
   /** Safe/low price */
@@ -222,7 +222,7 @@ export interface ProviderConfig {
   /** Request timeout in milliseconds. Defaults to 15 seconds. */
   timeout?: number;
   /** Fallback chain for multi-chain providers. */
-  defaultChain?: Chain;
+  defaultChain?: ChainKey;
 }
 
 /**
@@ -276,19 +276,19 @@ export function multiplyIntegerStrings(left: string, right: string): string {
 }
 
 /**
- * Normalize a canonical chain key or a common CLI alias.
+ * Normalize a canonical chain key, display name, or common CLI alias.
  *
- * Missing values default to `eth`; unknown non-empty values are rejected so a typo cannot silently
- * query the wrong network.
+ * Missing values default to `eth`. Unknown values are rejected, an empty string included, so a
+ * typo cannot silently query the wrong network.
  *
  * @example
  *   ```ts
  *   normalizeChain("arb"); // 'arbitrum'
  *   ```
  */
-export function normalizeChain(input?: string): Chain {
+export function normalizeChain(input?: string): ChainKey {
   try {
-    return normalizeChainFromDictionary(input);
+    return getChain(input).key;
   } catch {
     throw new RangeError(`Unknown chain: ${input}`);
   }

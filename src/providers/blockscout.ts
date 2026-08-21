@@ -11,7 +11,7 @@
 import type {
   ProviderCapabilities,
   ProviderConfig,
-  Chain,
+  ChainKey,
   Balance,
   Transaction,
   TxHistoryOptions,
@@ -27,10 +27,10 @@ import { Provider } from "../core/provider.js";
 import { NotFoundError, UnsupportedChainError } from "../core/errors.js";
 import { register } from "../core/registry.js";
 import { assertSafePathSegment } from "../core/path-safety.js";
-import { CHAIN_DATA } from "chains";
+import { create as createChain } from "@agntn/chains";
 import { clampMaxResults, formatWei, multiplyIntegerStrings } from "../core/types.js";
 
-const CHAIN_BASES: Partial<Record<Chain, string>> = {
+const CHAIN_BASES: Partial<Record<ChainKey, string>> = {
   eth: "https://eth.blockscout.com",
   base: "https://base.blockscout.com",
   arbitrum: "https://arbitrum.blockscout.com",
@@ -133,7 +133,7 @@ interface BlockscoutGasPrice {
   slow?: string | number;
 }
 
-function getBase(chain: Chain): string {
+function getBase(chain: ChainKey): string {
   const base = CHAIN_BASES[chain];
   if (!base) throw new UnsupportedChainError(chain, "blockscout");
   return base;
@@ -179,7 +179,7 @@ function mapTx(raw: BlockscoutTx): Transaction {
 class Blockscout extends Provider {
   static readonly key = "blockscout";
 
-  private defaultChain: Chain;
+  private defaultChain: ChainKey;
 
   constructor(config: ProviderConfig) {
     super(config);
@@ -197,11 +197,11 @@ class Blockscout extends Provider {
     };
   }
 
-  private base(chain?: Chain): string {
+  private base(chain?: ChainKey): string {
     return getBase(chain ?? this.defaultChain);
   }
 
-  async getBalance(address: string, chain?: Chain): Promise<Balance> {
+  async getBalance(address: string, chain?: ChainKey): Promise<Balance> {
     const c = chain ?? this.defaultChain;
     assertSafePathSegment(address, "address");
     const url = `${this.base(c)}/api/v2/addresses/${encodeURIComponent(address)}`;
@@ -212,13 +212,13 @@ class Blockscout extends Provider {
       chain: c,
       balance: data.coin_balance,
       balanceFormatted: formatWei(data.coin_balance),
-      symbol: CHAIN_DATA[c]?.symbol ?? "ETH",
+      symbol: createChain(c).symbol,
     };
   }
 
   async getTxHistory(
     address: string,
-    chain?: Chain,
+    chain?: ChainKey,
     options?: TxHistoryOptions,
   ): Promise<Transaction[]> {
     const c = chain ?? this.defaultChain;
@@ -232,7 +232,7 @@ class Blockscout extends Provider {
     return data.items.slice(0, limit).map(mapTx);
   }
 
-  override async getTxDetail(hash: string, chain?: Chain): Promise<Transaction> {
+  override async getTxDetail(hash: string, chain?: ChainKey): Promise<Transaction> {
     const c = chain ?? this.defaultChain;
     assertSafePathSegment(hash, "tx hash");
     const url = `${this.base(c)}/api/v2/transactions/${encodeURIComponent(hash)}`;
@@ -240,7 +240,7 @@ class Blockscout extends Provider {
     return mapTx(data);
   }
 
-  override async getContractInfo(address: string, chain?: Chain): Promise<ContractInfo> {
+  override async getContractInfo(address: string, chain?: ChainKey): Promise<ContractInfo> {
     const c = chain ?? this.defaultChain;
     assertSafePathSegment(address, "address");
 
@@ -286,7 +286,7 @@ class Blockscout extends Provider {
 
   override async getTokenBalances(
     address: string,
-    chain?: Chain,
+    chain?: ChainKey,
     options?: TokenBalanceOptions,
   ): Promise<TokenBalance[]> {
     const c = chain ?? this.defaultChain;
@@ -310,7 +310,7 @@ class Blockscout extends Provider {
     return tokens;
   }
 
-  override async getGasData(chain?: Chain): Promise<GasData> {
+  override async getGasData(chain?: ChainKey): Promise<GasData> {
     const c = chain ?? this.defaultChain;
     const url = `${this.base(c)}/api/v2/stats`;
     const data = await this.getJSON<Record<string, unknown>>(url);
@@ -327,7 +327,7 @@ class Blockscout extends Provider {
     };
   }
 
-  override async getBlockInfo(blockNumber: number, chain?: Chain): Promise<BlockInfo> {
+  override async getBlockInfo(blockNumber: number, chain?: ChainKey): Promise<BlockInfo> {
     const c = chain ?? this.defaultChain;
     assertSafePathSegment(String(blockNumber), "block number");
     const url = `${this.base(c)}/api/v2/blocks/${encodeURIComponent(String(blockNumber))}`;

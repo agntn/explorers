@@ -6,7 +6,7 @@
 
 import type {
   Balance,
-  Chain,
+  ChainKey,
   ProviderCapabilities,
   ProviderConfig,
   Transaction,
@@ -98,7 +98,7 @@ class Blockberry extends Provider {
     });
   }
 
-  async getBalance(address: string, chain?: Chain): Promise<Balance> {
+  async getBalance(address: string, chain?: ChainKey): Promise<Balance> {
     const c = chain ?? "sui";
     if (c !== "sui") throw new UnsupportedChainError(c, this.name);
     assertSafePathSegment(address, "address");
@@ -122,7 +122,7 @@ class Blockberry extends Provider {
 
   async getTxHistory(
     address: string,
-    chain?: Chain,
+    chain?: ChainKey,
     options?: TxHistoryOptions,
   ): Promise<Transaction[]> {
     const c = chain ?? "sui";

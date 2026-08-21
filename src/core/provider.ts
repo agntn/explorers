@@ -1,7 +1,7 @@
 import type {
   Balance,
   BlockInfo,
-  Chain,
+  ChainKey,
   ContractInfo,
   GasData,
   ProviderCapabilities,
@@ -37,12 +37,12 @@ export abstract class Provider {
   abstract get capabilities(): ProviderCapabilities;
 
   /** Fetch the native-token balance for an address. */
-  abstract getBalance(address: string, chain?: Chain): Promise<Balance>;
+  abstract getBalance(address: string, chain?: ChainKey): Promise<Balance>;
 
   /** List transactions involving an address. */
   abstract getTxHistory(
     address: string,
-    chain?: Chain,
+    chain?: ChainKey,
     options?: TxHistoryOptions,
   ): Promise<Transaction[]>;
 
@@ -74,21 +74,21 @@ export interface ProviderConstructor {
  */
 export interface Provider {
   /** Fetch one transaction by its hash. */
-  getTxDetail?(hash: string, chain?: Chain): Promise<Transaction>;
+  getTxDetail?(hash: string, chain?: ChainKey): Promise<Transaction>;
 
   /** Fetch available metadata, ABI, and source for a contract address. */
-  getContractInfo?(address: string, chain?: Chain): Promise<ContractInfo>;
+  getContractInfo?(address: string, chain?: ChainKey): Promise<ContractInfo>;
 
   /** List token holdings for an address. */
   getTokenBalances?(
     address: string,
-    chain?: Chain,
+    chain?: ChainKey,
     options?: TokenBalanceOptions,
   ): Promise<TokenBalance[]>;
 
   /** Fetch the provider's current gas-price suggestions. */
-  getGasData?(chain?: Chain): Promise<GasData>;
+  getGasData?(chain?: ChainKey): Promise<GasData>;
 
   /** Fetch a block by number. */
-  getBlockInfo?(blockNumber: number, chain?: Chain): Promise<BlockInfo>;
+  getBlockInfo?(blockNumber: number, chain?: ChainKey): Promise<BlockInfo>;
 }

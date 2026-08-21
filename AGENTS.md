@@ -20,7 +20,7 @@ Unified block explorer provider library. Normalizes balances, tx history, contra
 
 ## Conventions
 
-- Chain names normalized via `normalizeChain()` — accepts aliases like `ethereum`, `mainnet`, `arb`, `btc`
+- Chain names normalized via `normalizeChain()`, which takes display names as well as aliases like `ethereum`, `mainnet`, `arb`, `btc`
 - Native and token amounts use strings in each chain's smallest unit — call `formatWei(value, decimals)` with the asset's decimals; its default is 18
 - `noUncheckedIndexedAccess` and `noImplicitOverride` are enabled — guard indexed access and mark overrides explicitly
 - Provider registration is a class side effect: each concrete class owns a static `key`, and importing `src/providers/index.js` triggers all `register()` calls
@@ -31,7 +31,7 @@ Unified block explorer provider library. Normalizes balances, tx history, contra
 
 ## Key files
 
-- `src/core/types.ts` — re-exports `Chain` from `chains`; owns transaction, balance, token, contract, gas, block, and provider-config types
+- `src/core/types.ts` - re-exports `ChainKey` from `@agntn/chains`; owns transaction, balance, token, contract, gas, block, and provider-config types
 - `src/core/provider.ts` — abstract `Provider` base class and optional operation contract
 - `src/core/errors.ts` — ExplorerError hierarchy + normalizeError
 - `src/core/registry.ts` — Self-registering provider registry (register, create, providers, has)
@@ -67,7 +67,7 @@ graph TB
   Providers --> External["External APIs"]
   PiExt["Pi Extension"] -.-> Core
   PiExt -.-> Providers
-  Types["types.ts"] -.-> Chains["chains (workspace dep)"]
+  Types["types.ts"] -.-> Chains["@agntn/chains (runtime dep)"]
 ```
 
 ### Layer breakdown
@@ -90,7 +90,7 @@ graph TB
 - **String-only values**: All wei/satoshi/native amounts are strings (`Balance.balance`, `TokenBalance.balance`). The HTTP boundary preserves unsafe JSON integers as strings; `formatWei()` converts amounts for display.
 - **Optional methods**: `getTxDetail`, `getContractInfo`, `getTokenBalances`, `getGasData`, and `getBlockInfo` are optional on `Provider`. Always check both the `capabilities` getter and method presence before calling.
 - **Dynamic CLI imports**: Each subcommand is lazily loaded via `() => import('./commands/X.js').then(m => m.default)`.
-- **Chain normalization**: `normalizeChain()` delegates to the shared `chains` dictionary for canonical keys and aliases (`ethereum→eth`, `btc→bitcoin`, `arb→arbitrum`). Missing input defaults to `eth`; unknown names throw.
+- **Chain normalization**: `normalizeChain()` delegates to `getChain()` from `@agntn/chains` and returns the canonical `ChainKey`. Aliases and display names both resolve (`ethereum→eth`, `btc→bitcoin`, `arb→arbitrum`). Missing input defaults to `eth`; unknown names and the empty string throw.
 - **Provider auto-selection**: `resolveProvider()` checks env vars for each provider, falls back to `blockscout` (no key needed).
 - **Error sanitization**: `HTTPError` strips API keys from URLs in error messages. `normalizeError()` wraps unknown errors into typed `ExplorerError` subclasses.
 
@@ -109,7 +109,7 @@ graph TB
 
 ## Dependencies
 
-- `chains` (bundled workspace dev dependency via `file:../chains`): canonical chain metadata, types, and aliases
+- `@agntn/chains`: canonical chain registry. `ChainKey` for keys, `getChain()` for alias resolution, `create(key)` for per-chain metadata like symbol and chain ID. Stays external to the bundle, so a consumer and this library share one registry instead of two.
 - `citty`: CLI framework
 - `consola`: Logging
 - `ofetch`: HTTP client

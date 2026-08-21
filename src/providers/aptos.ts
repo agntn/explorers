@@ -7,7 +7,7 @@
 
 import type {
   Balance,
-  Chain,
+  ChainKey,
   ProviderCapabilities,
   Transaction,
   TxHistoryOptions,
@@ -31,7 +31,7 @@ class Aptos extends Provider {
     };
   }
 
-  async getBalance(_address: string, chain?: Chain): Promise<Balance> {
+  async getBalance(_address: string, chain?: ChainKey): Promise<Balance> {
     const c = chain ?? "aptos";
     if (c !== "aptos") throw new UnsupportedChainError(c, this.name);
     throw new UnsupportedOperationError("getBalance", this.name);
@@ -39,7 +39,7 @@ class Aptos extends Provider {
 
   async getTxHistory(
     _address: string,
-    chain?: Chain,
+    chain?: ChainKey,
     _options?: TxHistoryOptions,
   ): Promise<Transaction[]> {
     const c = chain ?? "aptos";

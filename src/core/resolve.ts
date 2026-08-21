@@ -2,7 +2,7 @@
 
 import { providers, has } from "./registry.js";
 import { UnknownProviderError } from "./errors.js";
-import type { Chain } from "./types.js";
+import type { ChainKey } from "./types.js";
 
 const ENV_MAP: Record<string, string[]> = {
   etherscan: ["ETHERSCAN_API_KEY"],
@@ -17,7 +17,7 @@ const ENV_MAP: Record<string, string[]> = {
 };
 
 /** Provider-specific default chains */
-export const PROVIDER_DEFAULT_CHAIN: Partial<Record<string, Chain>> = {
+export const PROVIDER_DEFAULT_CHAIN: Partial<Record<string, ChainKey>> = {
   mempool: "bitcoin",
   solscan: "solana",
   ton: "ton",

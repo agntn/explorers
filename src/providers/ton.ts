@@ -9,7 +9,7 @@
 import type {
   ProviderCapabilities,
   ProviderConfig,
-  Chain,
+  ChainKey,
   Balance,
   Transaction,
   TxHistoryOptions,
@@ -130,7 +130,7 @@ class Ton extends Provider {
     };
   }
 
-  async getBalance(address: string, chain?: Chain): Promise<Balance> {
+  async getBalance(address: string, chain?: ChainKey): Promise<Balance> {
     const c = chain ?? "ton";
     if (c !== "ton") throw new UnsupportedChainError(c, "ton");
 
@@ -150,7 +150,7 @@ class Ton extends Provider {
 
   async getTxHistory(
     address: string,
-    chain?: Chain,
+    chain?: ChainKey,
     options?: TxHistoryOptions,
   ): Promise<Transaction[]> {
     const c = chain ?? "ton";
