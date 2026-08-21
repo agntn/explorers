@@ -7,7 +7,7 @@
 import type {
   Balance,
   BlockInfo,
-  Chain,
+  ChainKey,
   ProviderCapabilities,
   ProviderConfig,
   Transaction,
@@ -149,7 +149,7 @@ class Solscan extends Provider {
     return response.data;
   }
 
-  async getBalance(address: string, chain?: Chain): Promise<Balance> {
+  async getBalance(address: string, chain?: ChainKey): Promise<Balance> {
     const c = chain ?? "solana";
     if (c !== "solana") throw new UnsupportedChainError(c, this.name);
     assertSafePathSegment(address, "address");
@@ -167,7 +167,7 @@ class Solscan extends Provider {
 
   async getTxHistory(
     address: string,
-    chain?: Chain,
+    chain?: ChainKey,
     options?: TxHistoryOptions,
   ): Promise<Transaction[]> {
     const c = chain ?? "solana";
@@ -181,7 +181,7 @@ class Solscan extends Provider {
     return transactions.map(mapAccountTransaction);
   }
 
-  override async getTxDetail(hash: string, chain?: Chain): Promise<Transaction> {
+  override async getTxDetail(hash: string, chain?: ChainKey): Promise<Transaction> {
     const c = chain ?? "solana";
     if (c !== "solana") throw new UnsupportedChainError(c, this.name);
     assertSafePathSegment(hash, "tx hash");
@@ -192,7 +192,7 @@ class Solscan extends Provider {
     return mapTransactionDetail(transaction);
   }
 
-  override async getBlockInfo(blockNumber: number, chain?: Chain): Promise<BlockInfo> {
+  override async getBlockInfo(blockNumber: number, chain?: ChainKey): Promise<BlockInfo> {
     const c = chain ?? "solana";
     if (c !== "solana") throw new UnsupportedChainError(c, this.name);
     assertSafePathSegment(String(blockNumber), "block number");

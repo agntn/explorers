@@ -10,7 +10,7 @@
 import type {
   ProviderCapabilities,
   ProviderConfig,
-  Chain,
+  ChainKey,
   Balance,
   Transaction,
   TxHistoryOptions,
@@ -204,7 +204,7 @@ class Mempool extends Provider {
     return this.getJSON<T>(`${this.baseUrl}${path}`);
   }
 
-  async getBalance(address: string, chain?: Chain): Promise<Balance> {
+  async getBalance(address: string, chain?: ChainKey): Promise<Balance> {
     const c = chain ?? "bitcoin";
     if (c !== "bitcoin") throw new UnsupportedChainError(c, "mempool");
 
@@ -228,7 +228,7 @@ class Mempool extends Provider {
 
   async getTxHistory(
     address: string,
-    chain?: Chain,
+    chain?: ChainKey,
     options?: TxHistoryOptions,
   ): Promise<Transaction[]> {
     const c = chain ?? "bitcoin";
@@ -243,7 +243,7 @@ class Mempool extends Provider {
     return data.slice(0, limit).map((tx) => mapTx(tx, address));
   }
 
-  override async getTxDetail(hash: string, chain?: Chain): Promise<Transaction> {
+  override async getTxDetail(hash: string, chain?: ChainKey): Promise<Transaction> {
     const c = chain ?? "bitcoin";
     if (c !== "bitcoin") throw new UnsupportedChainError(c, "mempool");
 
@@ -272,7 +272,7 @@ class Mempool extends Provider {
     };
   }
 
-  override async getGasData(chain?: Chain): Promise<GasData> {
+  override async getGasData(chain?: ChainKey): Promise<GasData> {
     const c = chain ?? "bitcoin";
     if (c !== "bitcoin") throw new UnsupportedChainError(c, "mempool");
 
@@ -288,7 +288,7 @@ class Mempool extends Provider {
     };
   }
 
-  override async getBlockInfo(blockNumber: number, chain?: Chain): Promise<BlockInfo> {
+  override async getBlockInfo(blockNumber: number, chain?: ChainKey): Promise<BlockInfo> {
     const c = chain ?? "bitcoin";
     if (c !== "bitcoin") throw new UnsupportedChainError(c, "mempool");
 

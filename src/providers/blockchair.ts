@@ -8,7 +8,7 @@
 import type {
   ProviderCapabilities,
   ProviderConfig,
-  Chain,
+  ChainKey,
   Balance,
   Transaction,
   TxHistoryOptions,
@@ -18,11 +18,11 @@ import { Provider } from "../core/provider.js";
 import { NotFoundError, UnsupportedChainError } from "../core/errors.js";
 import { buildQuery, normalizeBaseUrl } from "../core/client.js";
 import { register } from "../core/registry.js";
-import { CHAIN_DATA } from "chains";
+import { create as createChain } from "@agntn/chains";
 import { formatWei, clampMaxResults } from "../core/types.js";
 import { assertSafePathSegment } from "../core/path-safety.js";
 
-const CHAIN_NAMES: Partial<Record<Chain, string>> = {
+const CHAIN_NAMES: Partial<Record<ChainKey, string>> = {
   bitcoin: "bitcoin",
   eth: "ethereum",
 };
@@ -103,7 +103,7 @@ interface BlockchairDashboardsBlocks {
   }>;
 }
 
-function chainName(chain: Chain): string {
+function chainName(chain: ChainKey): string {
   const name = CHAIN_NAMES[chain];
   if (!name) throw new UnsupportedChainError(chain, "blockchair");
   return name;
@@ -118,7 +118,7 @@ class Blockchair extends Provider {
 
   private apiKey: string | undefined;
   private readonly baseUrl: string;
-  private defaultChain: Chain;
+  private defaultChain: ChainKey;
 
   constructor(config: ProviderConfig) {
     super(config);
@@ -139,7 +139,7 @@ class Blockchair extends Provider {
   }
 
   private buildUrl(
-    chain: Chain,
+    chain: ChainKey,
     path: string,
     params: Record<string, string | number | undefined> = {},
   ): string {
@@ -152,7 +152,7 @@ class Blockchair extends Provider {
     return `${base}${path}${query}`;
   }
 
-  async getBalance(address: string, chain?: Chain): Promise<Balance> {
+  async getBalance(address: string, chain?: ChainKey): Promise<Balance> {
     const c = chain ?? this.defaultChain;
     assertSafePathSegment(address, "address");
     const url = this.buildUrl(c, `/dashboards/address/${encodeURIComponent(address)}`);
@@ -169,13 +169,13 @@ class Blockchair extends Provider {
       chain: c,
       balance,
       balanceFormatted: formatWei(balance, c === "bitcoin" ? 8 : 18),
-      symbol: CHAIN_DATA[c]?.symbol ?? "ETH",
+      symbol: createChain(c).symbol,
     };
   }
 
   async getTxHistory(
     address: string,
-    chain?: Chain,
+    chain?: ChainKey,
     options?: TxHistoryOptions,
   ): Promise<Transaction[]> {
     const c = chain ?? this.defaultChain;
@@ -210,7 +210,7 @@ class Blockchair extends Provider {
     return txs;
   }
 
-  override async getTxDetail(hash: string, chain?: Chain): Promise<Transaction> {
+  override async getTxDetail(hash: string, chain?: ChainKey): Promise<Transaction> {
     const c = chain ?? this.defaultChain;
     assertSafePathSegment(hash, "tx hash");
     const url = this.buildUrl(c, `/dashboards/transaction/${encodeURIComponent(hash)}`);
@@ -241,7 +241,7 @@ class Blockchair extends Provider {
     };
   }
 
-  override async getBlockInfo(blockNumber: number, chain?: Chain): Promise<BlockInfo> {
+  override async getBlockInfo(blockNumber: number, chain?: ChainKey): Promise<BlockInfo> {
     const c = chain ?? this.defaultChain;
     assertSafePathSegment(String(blockNumber), "block number");
     const url = this.buildUrl(c, `/dashboards/blocks/${encodeURIComponent(String(blockNumber))}`);

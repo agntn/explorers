@@ -10,7 +10,7 @@
 import type {
   ProviderCapabilities,
   ProviderConfig,
-  Chain,
+  ChainKey,
   Balance,
   Transaction,
   TxHistoryOptions,
@@ -31,11 +31,11 @@ import {
   UnsupportedChainError,
 } from "../core/errors.js";
 import { register } from "../core/registry.js";
-import { CHAIN_DATA } from "chains";
+import { create as createChain } from "@agntn/chains";
 import { clampMaxResults, formatWei, multiplyIntegerStrings } from "../core/types.js";
 
 const DEFAULT_BASE = "https://api.etherscan.io/v2/api";
-const SUPPORTED_CHAINS = new Set<Chain>([
+const SUPPORTED_CHAINS = new Set<ChainKey>([
   "eth",
   "base",
   "arbitrum",
@@ -103,9 +103,12 @@ interface EtherscanBlockResult {
   transactions: string[];
 }
 
-function getChainId(chain: Chain): string {
-  const chainId = CHAIN_DATA[chain]?.chainId;
-  if (!SUPPORTED_CHAINS.has(chain) || !chainId) {
+function getChainId(chain: ChainKey): string {
+  if (!SUPPORTED_CHAINS.has(chain)) {
+    throw new UnsupportedChainError(chain, "etherscan");
+  }
+  const { chainId } = createChain(chain);
+  if (!chainId) {
     throw new UnsupportedChainError(chain, "etherscan");
   }
   return BigInt(chainId).toString();
@@ -139,7 +142,7 @@ class Etherscan extends Provider {
 
   private readonly apiKey: string;
   private readonly apiUrl: string;
-  private readonly defaultChain: Chain;
+  private readonly defaultChain: ChainKey;
 
   constructor(config: ProviderConfig) {
     super(config);
@@ -165,7 +168,7 @@ class Etherscan extends Provider {
   }
 
   private async api<T>(
-    chain: Chain,
+    chain: ChainKey,
     module: string,
     action: string,
     params: Record<string, string | number | undefined> = {},
@@ -205,7 +208,7 @@ class Etherscan extends Provider {
     return response.result as T;
   }
 
-  async getBalance(address: string, chain?: Chain): Promise<Balance> {
+  async getBalance(address: string, chain?: ChainKey): Promise<Balance> {
     const c = chain ?? this.defaultChain;
     const result = await this.api<string>(c, "account", "balance", {
       address,
@@ -217,13 +220,13 @@ class Etherscan extends Provider {
       chain: c,
       balance: result,
       balanceFormatted: formatWei(result),
-      symbol: CHAIN_DATA[c]?.symbol ?? "ETH",
+      symbol: createChain(c).symbol,
     };
   }
 
   async getTxHistory(
     address: string,
-    chain?: Chain,
+    chain?: ChainKey,
     options?: TxHistoryOptions,
   ): Promise<Transaction[]> {
     const c = chain ?? this.defaultChain;
@@ -241,7 +244,7 @@ class Etherscan extends Provider {
     return result.map(mapTx);
   }
 
-  override async getTxDetail(hash: string, chain?: Chain): Promise<Transaction> {
+  override async getTxDetail(hash: string, chain?: ChainKey): Promise<Transaction> {
     const c = chain ?? this.defaultChain;
     const tx = await this.api<Record<string, string | null> | null>(
       c,
@@ -282,7 +285,7 @@ class Etherscan extends Provider {
     };
   }
 
-  override async getContractInfo(address: string, chain?: Chain): Promise<ContractInfo> {
+  override async getContractInfo(address: string, chain?: ChainKey): Promise<ContractInfo> {
     const c = chain ?? this.defaultChain;
 
     const source = await this.api<Array<Record<string, string>>>(c, "contract", "getsourcecode", {
@@ -310,7 +313,7 @@ class Etherscan extends Provider {
 
   override async getTokenBalances(
     address: string,
-    chain?: Chain,
+    chain?: ChainKey,
     options?: TokenBalanceOptions,
   ): Promise<TokenBalance[]> {
     const c = chain ?? this.defaultChain;
@@ -337,7 +340,7 @@ class Etherscan extends Provider {
     return tokens;
   }
 
-  override async getGasData(chain?: Chain): Promise<GasData> {
+  override async getGasData(chain?: ChainKey): Promise<GasData> {
     const c = chain ?? this.defaultChain;
     const result = await this.api<EtherscanGasResult>(c, "gastracker", "gasoracle");
 
@@ -351,7 +354,7 @@ class Etherscan extends Provider {
     };
   }
 
-  override async getBlockInfo(blockNumber: number, chain?: Chain): Promise<BlockInfo> {
+  override async getBlockInfo(blockNumber: number, chain?: ChainKey): Promise<BlockInfo> {
     const c = chain ?? this.defaultChain;
     const result = await this.api<EtherscanBlockResult | null>(c, "proxy", "eth_getBlockByNumber", {
       tag: `0x${blockNumber.toString(16)}`,

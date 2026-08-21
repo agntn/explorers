@@ -3,7 +3,7 @@ import "./providers/index.js";
 
 export { version } from "./version.js";
 export type {
-  Chain,
+  ChainKey,
   TxStatus,
   TokenTransfer,
   Transaction,

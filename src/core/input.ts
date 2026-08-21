@@ -1,12 +1,12 @@
 /** Address/input resolution — ENS names, raw addresses, tx hashes. */
 import { NotFoundError } from "./errors.js";
-import type { Chain } from "./types.js";
+import type { ChainKey } from "./types.js";
 import { isEnsName, isAddress, resolveEns } from "./ens.js";
 
 export type InputType = "address" | "txhash" | "ens";
 
 /** Classify raw user input, using chain-specific hash shapes where unambiguous. */
-export function classifyInput(input: string, chain?: Chain): InputType {
+export function classifyInput(input: string, chain?: ChainKey): InputType {
   const trimmed = input.trim();
   if (chain === "sui" && /^0x[0-9a-fA-F]{64}$/.test(trimmed)) return "address";
   if (
@@ -29,7 +29,7 @@ export function classifyInput(input: string, chain?: Chain): InputType {
  */
 export async function resolveInput(
   input: string,
-  chain?: Chain,
+  chain?: ChainKey,
 ): Promise<{ address: string; type: InputType }> {
   const trimmed = input.trim();
   const type = classifyInput(trimmed, chain);

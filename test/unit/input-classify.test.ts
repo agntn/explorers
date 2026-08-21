@@ -59,7 +59,16 @@ describe("normalizeChain", () => {
     expect(normalizeChain()).toBe("eth");
   });
 
+  it("resolves display names as well as aliases", () => {
+    expect(normalizeChain("Arbitrum One")).toBe("arbitrum");
+  });
+
   it("rejects unknown names instead of silently choosing Ethereum", () => {
     expect(() => normalizeChain("bitcion")).toThrow("Unknown chain: bitcion");
+  });
+
+  it("rejects a blank chain rather than reading it as a missing value", () => {
+    expect(() => normalizeChain("")).toThrow("Unknown chain:");
+    expect(() => normalizeChain("   ")).toThrow("Unknown chain:");
   });
 });

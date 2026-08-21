@@ -7,7 +7,7 @@
 import type {
   Balance,
   BlockInfo,
-  Chain,
+  ChainKey,
   ProviderCapabilities,
   ProviderConfig,
   Transaction,
@@ -107,7 +107,7 @@ class Tronscan extends Provider {
     });
   }
 
-  async getBalance(address: string, chain?: Chain): Promise<Balance> {
+  async getBalance(address: string, chain?: ChainKey): Promise<Balance> {
     const c = chain ?? "tron";
     if (c !== "tron") throw new UnsupportedChainError(c, this.name);
     assertSafePathSegment(address, "address");
@@ -125,7 +125,7 @@ class Tronscan extends Provider {
 
   async getTxHistory(
     address: string,
-    chain?: Chain,
+    chain?: ChainKey,
     options?: TxHistoryOptions,
   ): Promise<Transaction[]> {
     const c = chain ?? "tron";
@@ -141,7 +141,7 @@ class Tronscan extends Provider {
     return response.data.map(mapTransaction);
   }
 
-  override async getTxDetail(hash: string, chain?: Chain): Promise<Transaction> {
+  override async getTxDetail(hash: string, chain?: ChainKey): Promise<Transaction> {
     const c = chain ?? "tron";
     if (c !== "tron") throw new UnsupportedChainError(c, this.name);
     assertSafePathSegment(hash, "tx hash");
@@ -151,7 +151,7 @@ class Tronscan extends Provider {
     return mapTransaction(transaction);
   }
 
-  override async getBlockInfo(blockNumber: number, chain?: Chain): Promise<BlockInfo> {
+  override async getBlockInfo(blockNumber: number, chain?: ChainKey): Promise<BlockInfo> {
     const c = chain ?? "tron";
     if (c !== "tron") throw new UnsupportedChainError(c, this.name);
     assertSafePathSegment(String(blockNumber), "block number");
