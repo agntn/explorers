@@ -210,6 +210,44 @@ describe("blockscout provider", () => {
     ]);
   });
 
+  it("walks keyset pages until the requested limit is reached", async () => {
+    const transfer = (block: number) => ({
+      token: {
+        address_hash: USDC_BASE,
+        symbol: "USDC",
+        name: "USD Coin",
+        decimals: "6",
+        type: "ERC-20",
+      },
+      from: { hash: "0x1111111111111111111111111111111111111111" },
+      to: { hash: VITALIK },
+      total: { value: "1000000" },
+      transaction_hash: "0x3333333333333333333333333333333333333333333333333333333333333333",
+      block_number: block,
+      timestamp: "2026-08-22T18:24:59.000000Z",
+    });
+    const page = (items: unknown[], next: Record<string, number> | null) =>
+      new Response(JSON.stringify({ items, next_page_params: next }), {
+        headers: { "Content-Type": "application/json" },
+      });
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(
+        page([transfer(12), transfer(11)], { block_number: 11, index: 1, items_count: 50 }),
+      )
+      .mockResolvedValueOnce(page([transfer(10)], null));
+    vi.stubGlobal("fetch", fetch);
+
+    const transfers = await provider.getTokenTransfers!(VITALIK, "eth", { limit: 3 });
+
+    expect(transfers.map((t) => t.blockNumber)).toEqual([12, 11, 10]);
+    expect(fetch).toHaveBeenCalledTimes(2);
+    const second = new URL(String(fetch.mock.calls[1]?.[0]));
+    expect(second.searchParams.get("block_number")).toBe("11");
+    expect(second.searchParams.get("index")).toBe("1");
+    expect(second.searchParams.get("type")).toBe("ERC-20");
+  });
+
   it("maps embedded token transfers and skips non-fungible items", async () => {
     // Field names taken from a live /api/v2/transactions/{hash} response: transfers
     // carry transaction_hash, and ERC-721 items have total.token_id without value.
