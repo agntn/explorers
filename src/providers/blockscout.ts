@@ -60,14 +60,16 @@ interface BlockscoutAddress {
 
 interface BlockscoutTx {
   hash: string;
-  block_number: number;
-  timestamp: string;
+  /** Null until the transaction is mined. */
+  block_number: number | null;
+  timestamp: string | null;
   from: { hash: string };
   to: { hash: string } | null;
   value: string;
-  gas_used: string;
-  gas_price: string;
-  status: string;
+  gas_used: string | null;
+  gas_price: string | null;
+  /** "ok", "error", or null while the transaction is still pending. */
+  status: string | null;
   method?: string;
   transaction_types?: string[];
   token_transfers?: BlockscoutTokenTransfer[];
@@ -158,16 +160,23 @@ function mapTx(raw: BlockscoutTx): Transaction {
 
   return {
     hash: raw.hash,
-    blockNumber: raw.block_number,
-    timestamp: raw.timestamp,
+    blockNumber: raw.block_number ?? 0,
+    timestamp: raw.timestamp ?? undefined,
     from: raw.from.hash,
     to: raw.to?.hash ?? null,
     value: valueWei,
     valueFormatted: formatWei(valueWei),
-    gasUsed: raw.gas_used,
-    gasPrice: raw.gas_price,
-    fee: multiplyIntegerStrings(raw.gas_used, raw.gas_price),
-    status: (raw.status === "ok" ? "success" : "failed") as TxStatus,
+    gasUsed: raw.gas_used ?? undefined,
+    gasPrice: raw.gas_price ?? undefined,
+    fee:
+      raw.gas_used != null && raw.gas_price != null
+        ? multiplyIntegerStrings(raw.gas_used, raw.gas_price)
+        : undefined,
+    status: (raw.status === "ok"
+      ? "success"
+      : raw.status == null
+        ? "pending"
+        : "failed") as TxStatus,
     methodId: undefined,
     functionName: raw.method,
     isContractInteraction: raw.transaction_types?.includes("contract_call") ?? false,
