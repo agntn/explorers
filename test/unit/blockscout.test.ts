@@ -134,6 +134,36 @@ describe("blockscout provider", () => {
     });
   });
 
+  it("maps a pending transaction instead of crashing on null fields", async () => {
+    // Shape taken from a live /api/v2/transactions?filter=pending item:
+    // status, block_number, timestamp, and gas_used are null until the tx is mined.
+    stubJSON({
+      hash: "0x8c31d3b73176853e0731d97c1fcef1300c234a2c4046ca6f9dfcb3a0e691b127",
+      block_number: null,
+      timestamp: null,
+      from: { hash: "0x1111111111111111111111111111111111111111" },
+      to: { hash: "0x2222222222222222222222222222222222222222" },
+      value: "0",
+      gas_used: null,
+      gas_price: "182783318",
+      status: null,
+      transaction_types: ["contract_call"],
+    });
+
+    await expect(
+      provider.getTxDetail!(
+        "0x8c31d3b73176853e0731d97c1fcef1300c234a2c4046ca6f9dfcb3a0e691b127",
+        "eth",
+      ),
+    ).resolves.toMatchObject({
+      status: "pending",
+      blockNumber: 0,
+      timestamp: undefined,
+      gasUsed: undefined,
+      fee: undefined,
+    });
+  });
+
   it("maps the current block transaction count field", async () => {
     stubJSON({
       height: 123,
