@@ -160,6 +160,8 @@ function mapTx(raw: BlockscoutTx): Transaction {
 
   return {
     hash: raw.hash,
+    // Transaction.blockNumber is required, so pending txs get 0, the same
+    // sentinel the etherscan and mempool providers use.
     blockNumber: raw.block_number ?? 0,
     timestamp: raw.timestamp ?? undefined,
     from: raw.from.hash,
