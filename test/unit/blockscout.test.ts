@@ -164,6 +164,77 @@ describe("blockscout provider", () => {
     });
   });
 
+  it("maps embedded token transfers and skips non-fungible items", async () => {
+    // Field names taken from a live /api/v2/transactions/{hash} response: transfers
+    // carry transaction_hash, and ERC-721 items have total.token_id without value.
+    stubJSON({
+      hash: "0x3333333333333333333333333333333333333333333333333333333333333333",
+      block_number: 10,
+      timestamp: "2026-08-22T18:24:59.000000Z",
+      from: { hash: "0x1111111111111111111111111111111111111111" },
+      to: { hash: "0x2222222222222222222222222222222222222222" },
+      value: "0",
+      gas_used: "21000",
+      gas_price: "1",
+      status: "ok",
+      token_transfers: [
+        {
+          token: {
+            address_hash: USDC_BASE,
+            symbol: "USDC",
+            name: "USD Coin",
+            decimals: "6",
+            type: "ERC-20",
+          },
+          from: { hash: "0x1111111111111111111111111111111111111111" },
+          to: { hash: "0x2222222222222222222222222222222222222222" },
+          total: { value: "1250000" },
+          transaction_hash:
+            "0x3333333333333333333333333333333333333333333333333333333333333333",
+          block_number: 10,
+          timestamp: "2026-08-22T18:24:59.000000Z",
+        },
+        {
+          token: {
+            address_hash: "0x4444444444444444444444444444444444444444",
+            symbol: "NFT",
+            name: "Some NFT",
+            decimals: null,
+            type: "ERC-721",
+          },
+          from: { hash: "0x1111111111111111111111111111111111111111" },
+          to: { hash: "0x2222222222222222222222222222222222222222" },
+          total: { token_id: "4565" },
+          transaction_hash:
+            "0x3333333333333333333333333333333333333333333333333333333333333333",
+          block_number: 10,
+          timestamp: "2026-08-22T18:24:59.000000Z",
+        },
+      ],
+    });
+
+    const tx = await provider.getTxDetail!(
+      "0x3333333333333333333333333333333333333333333333333333333333333333",
+      "eth",
+    );
+
+    expect(tx.tokenTransfers).toEqual([
+      {
+        contract: USDC_BASE,
+        symbol: "USDC",
+        name: "USD Coin",
+        decimals: 6,
+        value: "1250000",
+        valueFormatted: "1.25",
+        from: "0x1111111111111111111111111111111111111111",
+        to: "0x2222222222222222222222222222222222222222",
+        txHash: "0x3333333333333333333333333333333333333333333333333333333333333333",
+        blockNumber: 10,
+        timestamp: "2026-08-22T18:24:59.000000Z",
+      },
+    ]);
+  });
+
   it("maps the current block transaction count field", async () => {
     stubJSON({
       height: 123,

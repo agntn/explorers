@@ -85,8 +85,9 @@ interface BlockscoutTokenTransfer {
   };
   from: { hash: string };
   to: { hash: string };
-  total: { value: string };
-  tx_hash: string;
+  /** ERC-721/1155 transfers carry token_id here instead of value. */
+  total: { value?: string };
+  transaction_hash: string;
   block_number: number;
   timestamp: string;
 }
@@ -141,22 +142,31 @@ function getBase(chain: ChainKey): string {
   return base;
 }
 
+/** Map fungible transfers to the domain shape; ERC-721/1155 items have no value and are skipped. */
+function mapTokenTransfers(raw: BlockscoutTokenTransfer[] | undefined): TokenTransfer[] {
+  const transfers: TokenTransfer[] = [];
+  for (const tt of raw ?? []) {
+    if (tt.total.value == null) continue;
+    const decimals = Number(tt.token.decimals);
+    transfers.push({
+      contract: tt.token.address_hash,
+      symbol: tt.token.symbol,
+      name: tt.token.name,
+      decimals,
+      value: tt.total.value,
+      valueFormatted: formatWei(tt.total.value, decimals),
+      from: tt.from.hash,
+      to: tt.to.hash,
+      txHash: tt.transaction_hash,
+      blockNumber: tt.block_number,
+      timestamp: tt.timestamp,
+    });
+  }
+  return transfers;
+}
+
 function mapTx(raw: BlockscoutTx): Transaction {
   const valueWei = BigInt(raw.value).toString();
-
-  const transfers: TokenTransfer[] = (raw.token_transfers ?? []).map((tt) => ({
-    contract: tt.token.address_hash,
-    symbol: tt.token.symbol,
-    name: tt.token.name,
-    decimals: Number(tt.token.decimals),
-    value: tt.total.value,
-    valueFormatted: formatWei(tt.total.value, Number(tt.token.decimals)),
-    from: tt.from.hash,
-    to: tt.to.hash,
-    txHash: tt.tx_hash,
-    blockNumber: tt.block_number,
-    timestamp: tt.timestamp,
-  }));
 
   return {
     hash: raw.hash,
@@ -182,7 +192,7 @@ function mapTx(raw: BlockscoutTx): Transaction {
     methodId: undefined,
     functionName: raw.method,
     isContractInteraction: raw.transaction_types?.includes("contract_call") ?? false,
-    tokenTransfers: transfers,
+    tokenTransfers: mapTokenTransfers(raw.token_transfers),
     raw: raw as unknown as Record<string, unknown>,
   };
 }
