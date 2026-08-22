@@ -38,6 +38,7 @@ class DisabledProvider extends Provider {
       txDetail: false,
       contractInfo: false,
       tokenBalances: false,
+      tokenTransfers: false,
       gasData: false,
       blockInfo: false,
     };
@@ -73,6 +74,7 @@ class ContractProvider extends DisabledProvider {
       txDetail: false,
       contractInfo: true,
       tokenBalances: false,
+      tokenTransfers: false,
       gasData: false,
       blockInfo: false,
     };
@@ -95,6 +97,7 @@ describe("Explorers MCP server", () => {
       "explorers_tx_detail",
       "explorers_contract",
       "explorers_tokens",
+      "explorers_token_transfers",
       "explorers_gas",
       "explorers_block",
     ]);

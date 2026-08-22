@@ -8,8 +8,8 @@ Unified block explorer provider library. Normalizes balances, tx history, contra
 
 | Provider   | Auth                    | Chains                                                                           | Capabilities                                     |
 | ---------- | ----------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------ |
-| etherscan  | API key (free: 5 req/s) | eth, base, arbitrum, optimism, polygon, bsc, avalanche, gnosis, linea, bera      | Full: balances, tx, contract, tokens, gas, block |
-| blockscout | none                    | eth, base, arbitrum, optimism, polygon, gnosis, linea, scroll, zksync, avalanche | Full: balances, tx, contract, tokens, gas, block |
+| etherscan  | API key (free: 5 req/s) | eth, base, arbitrum, optimism, polygon, bsc, avalanche, gnosis, linea, bera      | Full: balances, tx, transfers, contract, tokens, gas, block |
+| blockscout | none                    | eth, base, arbitrum, optimism, polygon, gnosis, linea, scroll, zksync, avalanche | Full: balances, tx, transfers, contract, tokens, gas, block |
 | blockchair | optional key            | bitcoin, eth                                                                     | balances, tx, block                              |
 | mempool    | none                    | bitcoin                                                                          | balances, tx, gas, block                         |
 | solscan    | `SOLSCAN_API_KEY`       | solana                                                                           | balances, tx detail/history, block               |
@@ -40,12 +40,12 @@ Unified block explorer provider library. Normalizes balances, tx history, contra
 - `src/core/ens.ts` — ENS resolution (public APIs, no keccak dependency)
 - `src/core/input.ts` — User input classification (address/txhash/ens)
 - `src/providers/*.ts` — One file per provider, self-registering via `register()`
-- `src/commands/*.ts` — CLI subcommands (balance, tx, contract, tokens, gas, block, providers)
+- `src/commands/*.ts` - CLI subcommands (balance, tx, contract, tokens, transfers, gas, block, providers)
 - `src/cli.ts` — Citty CLI entry point
 
 ## CLI subcommands
 
-`balance`, `tx`, `contract`, `tokens`, `gas`, `block`, `providers` — all support `-c` (chain), `-p` (provider). `tx` accepts `-m history|detail` to resolve ambiguous hash/address formats. `tx` and `balance` support ENS.
+`balance`, `tx`, `contract`, `tokens`, `transfers`, `gas`, `block`, `providers` - all support `-c` (chain), `-p` (provider). `tx` accepts `-m history|detail` to resolve ambiguous hash/address formats. `transfers` accepts `-t` to limit results to one token contract. `tx`, `balance`, `tokens` and `transfers` support ENS.
 
 ## Constraints
 
@@ -88,7 +88,7 @@ graph TB
 
 - **Side-effect registration**: `import './providers/index.js'` triggers all `register()` calls. Each class owns its registry key as `static key`.
 - **String-only values**: All wei/satoshi/native amounts are strings (`Balance.balance`, `TokenBalance.balance`). The HTTP boundary preserves unsafe JSON integers as strings; `formatWei()` converts amounts for display.
-- **Optional methods**: `getTxDetail`, `getContractInfo`, `getTokenBalances`, `getGasData`, and `getBlockInfo` are optional on `Provider`. Always check both the `capabilities` getter and method presence before calling.
+- **Optional methods**: `getTxDetail`, `getContractInfo`, `getTokenBalances`, `getTokenTransfers`, `getGasData`, and `getBlockInfo` are optional on `Provider`. Always check both the `capabilities` getter and method presence before calling.
 - **Dynamic CLI imports**: Each subcommand is lazily loaded via `() => import('./commands/X.js').then(m => m.default)`.
 - **Chain normalization**: `normalizeChain()` delegates to `getChain()` from `@agntn/chains` and returns the canonical `ChainKey`. Aliases and display names both resolve (`ethereum→eth`, `btc→bitcoin`, `arb→arbitrum`). Missing input defaults to `eth`; unknown names and the empty string throw.
 - **Provider auto-selection**: `resolveProvider()` checks env vars for each provider, falls back to `blockscout` (no key needed).

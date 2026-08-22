@@ -18,6 +18,7 @@ class Custom extends Provider {
       txDetail: false,
       contractInfo: false,
       tokenBalances: false,
+      tokenTransfers: false,
       gasData: false,
       blockInfo: false,
     };
@@ -76,6 +77,7 @@ describe("abstract provider registry", () => {
     expect(provider.getTxDetail !== undefined).toBe(provider.capabilities.txDetail);
     expect(provider.getContractInfo !== undefined).toBe(provider.capabilities.contractInfo);
     expect(provider.getTokenBalances !== undefined).toBe(provider.capabilities.tokenBalances);
+    expect(provider.getTokenTransfers !== undefined).toBe(provider.capabilities.tokenTransfers);
     expect(provider.getGasData !== undefined).toBe(provider.capabilities.gasData);
     expect(provider.getBlockInfo !== undefined).toBe(provider.capabilities.blockInfo);
   });
@@ -85,6 +87,7 @@ describe("abstract provider registry", () => {
     expect(provider.getTxDetail).toBeUndefined();
     expect(provider.getContractInfo).toBeUndefined();
     expect(provider.getTokenBalances).toBeUndefined();
+    expect(provider.getTokenTransfers).toBeUndefined();
     expect(provider.getGasData).toBeUndefined();
   });
 

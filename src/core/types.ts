@@ -187,6 +187,8 @@ export interface ProviderCapabilities {
   contractInfo: boolean;
   /** Can get token holdings for address */
   tokenBalances: boolean;
+  /** Can list token transfers involving an address */
+  tokenTransfers: boolean;
   /** Can get gas estimates */
   gasData: boolean;
   /** Can get block info */
@@ -205,6 +207,12 @@ export interface TxHistoryOptions {
   limit?: number;
   /** Page number (1-indexed) */
   page?: number;
+}
+
+/** Options for token transfer history */
+export interface TokenTransferOptions extends TxHistoryOptions {
+  /** Only include transfers of this token contract */
+  token?: string;
 }
 
 /** Options for token balances */

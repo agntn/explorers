@@ -18,12 +18,14 @@ import type {
   ContractInfo,
   TokenBalance,
   TokenBalanceOptions,
+  TokenTransferOptions,
   GasData,
   BlockInfo,
   TxStatus,
   TokenTransfer,
 } from "../core/types.js";
 import { Provider } from "../core/provider.js";
+import { buildQuery } from "../core/client.js";
 import { NotFoundError, UnsupportedChainError } from "../core/errors.js";
 import { register } from "../core/registry.js";
 import { assertSafePathSegment } from "../core/path-safety.js";
@@ -213,6 +215,7 @@ class Blockscout extends Provider {
       txDetail: true,
       contractInfo: true,
       tokenBalances: true,
+      tokenTransfers: true,
       gasData: true,
       blockInfo: true,
     };
@@ -329,6 +332,23 @@ class Blockscout extends Provider {
     }
 
     return tokens;
+  }
+
+  override async getTokenTransfers(
+    address: string,
+    chain?: ChainKey,
+    options?: TokenTransferOptions,
+  ): Promise<TokenTransfer[]> {
+    const c = chain ?? this.defaultChain;
+    assertSafePathSegment(address, "address");
+    const limit = clampMaxResults(options?.limit);
+    const query = buildQuery({ type: "ERC-20", token: options?.token });
+    const url = `${this.base(c)}/api/v2/addresses/${encodeURIComponent(address)}/token-transfers${query}`;
+
+    const data = await this.getJSON<{ items: BlockscoutTokenTransfer[] }>(url);
+
+    if (!data.items?.length) return [];
+    return mapTokenTransfers(data.items).slice(0, limit);
   }
 
   override async getGasData(chain?: ChainKey): Promise<GasData> {
