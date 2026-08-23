@@ -37,9 +37,10 @@ function textResult(text: string) {
   };
 }
 
-async function getProvider(preferred?: string) {
+async function getProvider(preferred?: string, requestedChain?: string) {
   const lib = await loadLib();
-  const name = lib.resolveProvider(preferred);
+  const chain = requestedChain === undefined ? undefined : lib.normalizeChain(requestedChain);
+  const name = lib.resolveProvider(preferred, chain);
   return { lib, name, provider: lib.create(name) };
 }
 
@@ -83,7 +84,7 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
       );
     },
     async execute(_toolCallId, params) {
-      const { lib, name, provider } = await getProvider(params.provider);
+      const { lib, name, provider } = await getProvider(params.provider, params.chain);
       const chain = resolveToolChain(lib, name, params.chain);
       const balance = await provider.getBalance(params.address, chain);
       return textResult(
@@ -121,7 +122,7 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
       );
     },
     async execute(_toolCallId, params) {
-      const { lib, name, provider } = await getProvider(params.provider);
+      const { lib, name, provider } = await getProvider(params.provider, params.chain);
       const chain = resolveToolChain(lib, name, params.chain);
       const txs = await provider.getTxHistory(params.address, chain, { limit: params.limit });
 
@@ -151,7 +152,7 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
       return new Text(sanitizeTerminalText(`Tx detail: ${args.hash.slice(0, 18)}…`), 0, 0);
     },
     async execute(_toolCallId, params) {
-      const { lib, name, provider } = await getProvider(params.provider);
+      const { lib, name, provider } = await getProvider(params.provider, params.chain);
       const chain = resolveToolChain(lib, name, params.chain);
       if (!provider.capabilities.txDetail || !provider.getTxDetail) {
         throw new lib.UnsupportedOperationError("getTxDetail", name);
@@ -238,7 +239,7 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
       return new Text(sanitizeTerminalText(`Contract: ${args.address}`), 0, 0);
     },
     async execute(_toolCallId, params) {
-      const { lib, name, provider } = await getProvider(params.provider);
+      const { lib, name, provider } = await getProvider(params.provider, params.chain);
       const chain = resolveToolChain(lib, name, params.chain);
       if (!provider.capabilities.contractInfo || !provider.getContractInfo) {
         throw new lib.UnsupportedOperationError("getContractInfo", name);
@@ -279,7 +280,7 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
       );
     },
     async execute(_toolCallId, params) {
-      const { lib, name, provider } = await getProvider(params.provider);
+      const { lib, name, provider } = await getProvider(params.provider, params.chain);
       const chain = resolveToolChain(lib, name, params.chain);
 
       const caps = provider.capabilities;

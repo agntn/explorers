@@ -18,6 +18,7 @@ import { register } from "../core/registry.js";
 
 class Aptos extends Provider {
   static readonly key = "aptos";
+  static readonly chains: readonly ChainKey[] = ["aptos"];
 
   get capabilities(): ProviderCapabilities {
     return {

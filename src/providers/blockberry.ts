@@ -67,6 +67,7 @@ function mapActivity(raw: BlockberryActivity): Transaction {
 
 class Blockberry extends Provider {
   static readonly key = "blockberry";
+  static readonly chains: readonly ChainKey[] = ["sui"];
 
   private readonly apiKey: string;
   private readonly baseUrl: string;

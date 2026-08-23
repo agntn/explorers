@@ -115,6 +115,7 @@ function toIsoTimestamp(timestamp: string): string {
 
 class Blockchair extends Provider {
   static readonly key = "blockchair";
+  static readonly chains = Object.keys(CHAIN_NAMES) as readonly ChainKey[];
 
   private apiKey: string | undefined;
   private readonly baseUrl: string;

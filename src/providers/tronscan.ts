@@ -76,6 +76,7 @@ function mapTransaction(raw: TronscanTransaction): Transaction {
 
 class Tronscan extends Provider {
   static readonly key = "tronscan";
+  static readonly chains: readonly ChainKey[] = ["tron"];
 
   private readonly apiKey: string;
   private readonly baseUrl: string;

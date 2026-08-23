@@ -65,6 +65,7 @@ function mapTransaction(raw: HeliusTransaction): Transaction {
 
 class Helius extends Provider {
   static readonly key = "helius";
+  static readonly chains: readonly ChainKey[] = ["solana"];
 
   private readonly apiKey: string;
   private readonly baseUrl: string;
