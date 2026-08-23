@@ -36,7 +36,7 @@ Unified block explorer provider library. Normalizes balances, tx history, contra
 - `src/core/provider.ts` — abstract `Provider` base class and optional operation contract
 - `src/core/errors.ts` — ExplorerError hierarchy + normalizeError
 - `src/core/registry.ts` — Self-registering provider registry (register, create, providers, has)
-- `src/core/resolve.ts` — Auto-select provider by env vars, default blockscout
+- `src/core/resolve.ts` - Auto-select provider by env vars and the requested chain, default blockscout
 - `src/core/client.ts` — HTTP client wrapper (ofetch)
 - `src/core/ens.ts` — ENS resolution (public APIs, no keccak dependency)
 - `src/core/input.ts` — User input classification (address/txhash/ens)

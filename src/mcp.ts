@@ -36,9 +36,10 @@ const OPERATION_CAPABILITIES = {
 } as const satisfies Record<ProviderOperation, keyof ProviderCapabilities>;
 
 function selectedProvider(providerName?: string, chainName?: string) {
-  const name = resolveProvider(providerName);
+  const requestedChain = chainName === undefined ? undefined : normalizeChain(chainName);
+  const name = resolveProvider(providerName, requestedChain);
   const provider = create(name);
-  const chain = normalizeChain(chainName ?? PROVIDER_DEFAULT_CHAIN[name]);
+  const chain = requestedChain ?? normalizeChain(PROVIDER_DEFAULT_CHAIN[name]);
   return { chain, name, provider };
 }
 

@@ -30,10 +30,11 @@ export default defineCommand({
   },
   async run({ args }) {
     try {
-      const providerName = resolveProvider(args.provider as string | undefined);
+      const chainInput = args.chain as string | undefined;
+      const requestedChain = chainInput === undefined ? undefined : normalizeChain(chainInput);
+      const providerName = resolveProvider(args.provider as string | undefined, requestedChain);
       const provider = create(providerName);
-      const requestedChain = args.chain as string | undefined;
-      const chain = normalizeChain(requestedChain ?? PROVIDER_DEFAULT_CHAIN[providerName]);
+      const chain = requestedChain ?? normalizeChain(PROVIDER_DEFAULT_CHAIN[providerName]);
       if (!provider.capabilities.contractInfo || !provider.getContractInfo) {
         consola.error(`Provider "${providerName}" does not support contract info`);
         process.exit(1);

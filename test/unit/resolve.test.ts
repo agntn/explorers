@@ -37,4 +37,64 @@ describe("resolveProvider", () => {
 
     expect(resolveProvider()).toBe("blockscout");
   });
+
+  it("skips a configured provider that cannot serve the requested chain", () => {
+    vi.stubEnv("ETHERSCAN_API_KEY", "configured");
+    vi.stubEnv("BLOCKCHAIR_API_KEY", "");
+    vi.stubEnv("SOLSCAN_API_KEY", "");
+    vi.stubEnv("HELIUS_API_KEY", "");
+    vi.stubEnv("TRONSCAN_API_KEY", "");
+    vi.stubEnv("BLOCKBERRY_API_KEY", "");
+
+    expect(resolveProvider(undefined, "bitcoin")).toBe("mempool");
+  });
+
+  it("keeps a configured provider that serves the requested chain", () => {
+    vi.stubEnv("ETHERSCAN_API_KEY", "configured");
+    vi.stubEnv("BLOCKCHAIR_API_KEY", "");
+    vi.stubEnv("SOLSCAN_API_KEY", "");
+    vi.stubEnv("HELIUS_API_KEY", "");
+    vi.stubEnv("TRONSCAN_API_KEY", "");
+    vi.stubEnv("BLOCKBERRY_API_KEY", "");
+
+    expect(resolveProvider(undefined, "eth")).toBe("etherscan");
+  });
+
+  it("prefers configured credentials among chain-capable providers", () => {
+    vi.stubEnv("ETHERSCAN_API_KEY", "");
+    vi.stubEnv("BLOCKCHAIR_API_KEY", "");
+    vi.stubEnv("SOLSCAN_API_KEY", "");
+    vi.stubEnv("HELIUS_API_KEY", "configured");
+    vi.stubEnv("TRONSCAN_API_KEY", "");
+    vi.stubEnv("BLOCKBERRY_API_KEY", "");
+
+    expect(resolveProvider(undefined, "solana")).toBe("helius");
+  });
+
+  it("falls back to a chain-capable provider even without credentials", () => {
+    vi.stubEnv("ETHERSCAN_API_KEY", "");
+    vi.stubEnv("BLOCKCHAIR_API_KEY", "");
+    vi.stubEnv("SOLSCAN_API_KEY", "");
+    vi.stubEnv("HELIUS_API_KEY", "");
+    vi.stubEnv("TRONSCAN_API_KEY", "");
+    vi.stubEnv("BLOCKBERRY_API_KEY", "");
+
+    expect(resolveProvider(undefined, "solana")).toBe("solscan");
+  });
+
+  it("routes keyless single-chain networks to their explorer", () => {
+    vi.stubEnv("ETHERSCAN_API_KEY", "");
+    vi.stubEnv("BLOCKCHAIR_API_KEY", "");
+    vi.stubEnv("SOLSCAN_API_KEY", "");
+    vi.stubEnv("HELIUS_API_KEY", "");
+    vi.stubEnv("TRONSCAN_API_KEY", "");
+    vi.stubEnv("BLOCKBERRY_API_KEY", "");
+
+    expect(resolveProvider(undefined, "ton")).toBe("ton");
+    expect(resolveProvider(undefined, "aptos")).toBe("aptos");
+  });
+
+  it("lets an explicit provider win over the requested chain", () => {
+    expect(resolveProvider("etherscan", "bitcoin")).toBe("etherscan");
+  });
 });
