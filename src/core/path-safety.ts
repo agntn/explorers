@@ -8,6 +8,7 @@ import { ExplorerError } from "./errors.js";
  * - Empty / whitespace-only inputs
  * - Path traversal sequences (`..`, `.`)
  * - Path separators (`/`, `\`)
+ * - Query and fragment delimiters (`?`, `#`)
  * - URL-encoded separators and control characters
  * - Control characters / NUL bytes
  *
@@ -41,7 +42,7 @@ export function assertSafePathSegment(value: string, label = "value"): void {
   }
 
   // oxlint-disable-next-line no-control-regex -- Control chars are precisely what this boundary rejects.
-  if (/[/\x00-\x1f\\]/.test(decoded)) {
+  if (/[/\x00-\x1f\\?#]/.test(decoded)) {
     throw new ExplorerError(`${label} contains path separator or control char`);
   }
   // Reject `..` (any segment traversal) and bare `.`

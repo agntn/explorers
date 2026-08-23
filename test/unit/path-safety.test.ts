@@ -54,6 +54,18 @@ describe("assertSafePathSegment", () => {
     expect(() => assertSafePathSegment("foo\x00bar", "address")).toThrow(/separator|control/);
   });
 
+  it("rejects `?` (query injection rewrites the request)", () => {
+    expect(() => assertSafePathSegment("foo?api-key=evil", "address")).toThrow(/separator/);
+  });
+
+  it("rejects `#` (fragment cuts off appended query params)", () => {
+    expect(() => assertSafePathSegment("foo#frag", "address")).toThrow(/separator/);
+  });
+
+  it("rejects URL-encoded `?`", () => {
+    expect(() => assertSafePathSegment("foo%3Fbar", "address")).toThrow(/separator/);
+  });
+
   it("rejects malformed percent-encoding", () => {
     expect(() => assertSafePathSegment("foo%E0%A4%A", "address")).toThrow(/percent-encoding/);
   });
