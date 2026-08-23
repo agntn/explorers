@@ -20,6 +20,11 @@ describe("ExplorerError", () => {
     const e = new HTTPError(500, "https://api.example.com", "body", "x402");
     expect(e.statusCode).toBe(500);
   });
+  it("HTTPError redacts hyphenated api-key query params", () => {
+    const e = new HTTPError(500, "https://api.example.com/v0/txs?api-key=secret&limit=5");
+    expect(e.message).toContain("api-key=REDACTED");
+    expect(e.message).not.toContain("secret");
+  });
   it("AuthError", () => {
     const e = new AuthError("x402");
     expect(e).toBeInstanceOf(ExplorerError);

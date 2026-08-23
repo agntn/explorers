@@ -16,7 +16,7 @@ export class ExplorerError extends Error {
 /** Strip API keys from URLs for safe error messages */
 function sanitizeUrl(url: string): string {
   return url
-    .replace(/([?&])(apikey|apiKey|api_key|key)=([^&]*)/gi, "$1$2=REDACTED")
+    .replace(/([?&])(apikey|apiKey|api_key|api-key|key)=([^&]*)/gi, "$1$2=REDACTED")
     .replace(/([?&])(secret|token)=([^&]*)/gi, "$1$2=REDACTED");
 }
 
