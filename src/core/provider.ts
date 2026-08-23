@@ -7,6 +7,8 @@ import type {
   ProviderCapabilities,
   TokenBalance,
   TokenBalanceOptions,
+  TokenTransfer,
+  TokenTransferOptions,
   Transaction,
   TxHistoryOptions,
 } from "./types.js";
@@ -85,6 +87,13 @@ export interface Provider {
     chain?: ChainKey,
     options?: TokenBalanceOptions,
   ): Promise<TokenBalance[]>;
+
+  /** List fungible-token transfers involving an address. */
+  getTokenTransfers?(
+    address: string,
+    chain?: ChainKey,
+    options?: TokenTransferOptions,
+  ): Promise<TokenTransfer[]>;
 
   /** Fetch the provider's current gas-price suggestions. */
   getGasData?(chain?: ChainKey): Promise<GasData>;

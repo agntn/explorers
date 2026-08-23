@@ -16,6 +16,7 @@ export type {
   ProviderCapabilities,
   TxHistoryOptions,
   TokenBalanceOptions,
+  TokenTransferOptions,
   ProviderConfig,
 } from "./core/types.js";
 export { Provider } from "./core/provider.js";

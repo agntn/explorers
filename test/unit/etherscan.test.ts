@@ -71,6 +71,58 @@ describe("etherscan provider", () => {
     ]);
   });
 
+  it("maps V2 address token transfers and forwards the token filter", async () => {
+    const fetch = stubJSON({
+      status: "1",
+      message: "OK",
+      result: [
+        {
+          blockNumber: "18000000",
+          timeStamp: "100",
+          hash: "0xabc",
+          from: "0x1111111111111111111111111111111111111111",
+          to: "0x2222222222222222222222222222222222222222",
+          value: "1250000",
+          contractAddress: "0x0000000000000000000000000000000000000001",
+          tokenName: "Example Token",
+          tokenSymbol: "EXT",
+          tokenDecimal: "6",
+        },
+      ],
+    });
+    const provider = create("etherscan", { apiKey: "secret" });
+
+    const transfers = await provider.getTokenTransfers!(ADDRESS, "eth", {
+      token: "0x0000000000000000000000000000000000000001",
+    });
+
+    const params = new URL(String(fetch.mock.calls[0]?.[0])).searchParams;
+    expect(params.get("action")).toBe("tokentx");
+    expect(params.get("contractaddress")).toBe("0x0000000000000000000000000000000000000001");
+    expect(transfers).toEqual([
+      {
+        contract: "0x0000000000000000000000000000000000000001",
+        symbol: "EXT",
+        name: "Example Token",
+        decimals: 6,
+        value: "1250000",
+        valueFormatted: "1.25",
+        from: "0x1111111111111111111111111111111111111111",
+        to: "0x2222222222222222222222222222222222222222",
+        txHash: "0xabc",
+        blockNumber: 18_000_000,
+        timestamp: new Date(100_000).toISOString(),
+      },
+    ]);
+  });
+
+  it("returns an empty transfer list for Etherscan's no-transactions response", async () => {
+    stubJSON({ status: "0", message: "No transactions found", result: [] });
+    const provider = create("etherscan", { apiKey: "secret" });
+
+    await expect(provider.getTokenTransfers!(ADDRESS, "eth")).resolves.toEqual([]);
+  });
+
   it("returns complete block identity through the proxy API", async () => {
     stubJSON({
       jsonrpc: "2.0",

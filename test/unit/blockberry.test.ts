@@ -38,6 +38,7 @@ describe("blockberry provider", () => {
       txDetail: false,
       contractInfo: false,
       tokenBalances: false,
+      tokenTransfers: false,
       gasData: false,
       blockInfo: false,
     });

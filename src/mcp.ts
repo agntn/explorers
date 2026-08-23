@@ -21,6 +21,7 @@ type ProviderOperation =
   | "getTxDetail"
   | "getContractInfo"
   | "getTokenBalances"
+  | "getTokenTransfers"
   | "getGasData"
   | "getBlockInfo";
 const OPERATION_CAPABILITIES = {
@@ -29,6 +30,7 @@ const OPERATION_CAPABILITIES = {
   getTxDetail: "txDetail",
   getContractInfo: "contractInfo",
   getTokenBalances: "tokenBalances",
+  getTokenTransfers: "tokenTransfers",
   getGasData: "gasData",
   getBlockInfo: "blockInfo",
 } as const satisfies Record<ProviderOperation, keyof ProviderCapabilities>;
@@ -184,6 +186,39 @@ export function createMcpServer(): McpServer {
       return providerResult(
         selected.name,
         await getTokenBalances(resolvedAddress, selected.chain, { nonZeroOnly }),
+      );
+    },
+  );
+
+  server.registerTool(
+    "explorers_token_transfers",
+    {
+      description:
+        "List fungible-token transfers involving a blockchain address, including transfers sent to it by third parties that never show up in its native transaction history",
+      inputSchema: {
+        address: z.string().min(1),
+        ...providerInput,
+        token: z
+          .string()
+          .trim()
+          .min(1)
+          .optional()
+          .describe("Only transfers of this token contract"),
+        startBlock: z.number().int().nonnegative().optional(),
+        endBlock: z.number().int().nonnegative().optional(),
+        sort: z.enum(["asc", "desc"]).optional(),
+        limit: z.number().int().positive().max(100).optional(),
+        page: z.number().int().positive().optional(),
+      },
+      annotations: { readOnlyHint: true },
+    },
+    async ({ address, chain, provider, ...options }) => {
+      const selected = selectedProvider(provider, chain);
+      const resolvedAddress = await addressForChain(address, selected.chain);
+      const getTokenTransfers = requireOperation(selected.provider, "getTokenTransfers");
+      return providerResult(
+        selected.name,
+        await getTokenTransfers(resolvedAddress, selected.chain, options),
       );
     },
   );

@@ -18,12 +18,14 @@ import type {
   ContractInfo,
   TokenBalance,
   TokenBalanceOptions,
+  TokenTransferOptions,
   GasData,
   BlockInfo,
   TxStatus,
   TokenTransfer,
 } from "../core/types.js";
 import { Provider } from "../core/provider.js";
+import { buildQuery } from "../core/client.js";
 import { NotFoundError, UnsupportedChainError } from "../core/errors.js";
 import { register } from "../core/registry.js";
 import { assertSafePathSegment } from "../core/path-safety.js";
@@ -85,8 +87,9 @@ interface BlockscoutTokenTransfer {
   };
   from: { hash: string };
   to: { hash: string };
-  total: { value: string };
-  tx_hash: string;
+  /** ERC-721/1155 transfers carry token_id here instead of value. */
+  total: { value?: string };
+  transaction_hash: string;
   block_number: number;
   timestamp: string;
 }
@@ -141,22 +144,31 @@ function getBase(chain: ChainKey): string {
   return base;
 }
 
+/** Map fungible transfers to the domain shape; ERC-721/1155 items have no value and are skipped. */
+function mapTokenTransfers(raw: BlockscoutTokenTransfer[] | undefined): TokenTransfer[] {
+  const transfers: TokenTransfer[] = [];
+  for (const tt of raw ?? []) {
+    if (tt.total.value == null) continue;
+    const decimals = Number(tt.token.decimals);
+    transfers.push({
+      contract: tt.token.address_hash,
+      symbol: tt.token.symbol,
+      name: tt.token.name,
+      decimals,
+      value: tt.total.value,
+      valueFormatted: formatWei(tt.total.value, decimals),
+      from: tt.from.hash,
+      to: tt.to.hash,
+      txHash: tt.transaction_hash,
+      blockNumber: tt.block_number,
+      timestamp: tt.timestamp,
+    });
+  }
+  return transfers;
+}
+
 function mapTx(raw: BlockscoutTx): Transaction {
   const valueWei = BigInt(raw.value).toString();
-
-  const transfers: TokenTransfer[] = (raw.token_transfers ?? []).map((tt) => ({
-    contract: tt.token.address_hash,
-    symbol: tt.token.symbol,
-    name: tt.token.name,
-    decimals: Number(tt.token.decimals),
-    value: tt.total.value,
-    valueFormatted: formatWei(tt.total.value, Number(tt.token.decimals)),
-    from: tt.from.hash,
-    to: tt.to.hash,
-    txHash: tt.tx_hash,
-    blockNumber: tt.block_number,
-    timestamp: tt.timestamp,
-  }));
 
   return {
     hash: raw.hash,
@@ -182,7 +194,7 @@ function mapTx(raw: BlockscoutTx): Transaction {
     methodId: undefined,
     functionName: raw.method,
     isContractInteraction: raw.transaction_types?.includes("contract_call") ?? false,
-    tokenTransfers: transfers,
+    tokenTransfers: mapTokenTransfers(raw.token_transfers),
     raw: raw as unknown as Record<string, unknown>,
   };
 }
@@ -203,6 +215,7 @@ class Blockscout extends Provider {
       txDetail: true,
       contractInfo: true,
       tokenBalances: true,
+      tokenTransfers: true,
       gasData: true,
       blockInfo: true,
     };
@@ -319,6 +332,40 @@ class Blockscout extends Provider {
     }
 
     return tokens;
+  }
+
+  /**
+   * Walk the keyset-paginated ERC-20 transfer list until `limit` is reached.
+   *
+   * The endpoint accepts only a token filter and a `next_page_params` cursor. Block range, sort,
+   * and page have no server-side equivalent and are ignored, the same way `getTxHistory` ignores
+   * them.
+   */
+  override async getTokenTransfers(
+    address: string,
+    chain?: ChainKey,
+    options?: TokenTransferOptions,
+  ): Promise<TokenTransfer[]> {
+    const c = chain ?? this.defaultChain;
+    assertSafePathSegment(address, "address");
+    const limit = clampMaxResults(options?.limit);
+    const baseUrl = `${this.base(c)}/api/v2/addresses/${encodeURIComponent(address)}/token-transfers`;
+
+    const transfers: TokenTransfer[] = [];
+    let cursor: Record<string, string | number> = {};
+    // Pages hold 50 items and the limit clamps at 100, so 4 fetches always cover it.
+    for (let fetches = 0; fetches < 4 && transfers.length < limit; fetches++) {
+      const query = buildQuery({ type: "ERC-20", token: options?.token, ...cursor });
+      const data = await this.getJSON<{
+        items?: BlockscoutTokenTransfer[];
+        next_page_params?: Record<string, string | number> | null;
+      }>(`${baseUrl}${query}`);
+      if (!data.items?.length) break;
+      transfers.push(...mapTokenTransfers(data.items));
+      if (!data.next_page_params) break;
+      cursor = data.next_page_params;
+    }
+    return transfers.slice(0, limit);
   }
 
   override async getGasData(chain?: ChainKey): Promise<GasData> {

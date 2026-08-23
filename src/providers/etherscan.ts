@@ -17,6 +17,8 @@ import type {
   ContractInfo,
   TokenBalance,
   TokenBalanceOptions,
+  TokenTransfer,
+  TokenTransferOptions,
   GasData,
   BlockInfo,
   TxStatus,
@@ -72,6 +74,19 @@ interface EtherscanTx {
   methodId?: string;
   contractAddress: string;
   confirmations: string;
+}
+
+interface EtherscanTokenTx {
+  blockNumber: string;
+  timeStamp: string;
+  hash: string;
+  from: string;
+  to: string;
+  value: string;
+  contractAddress: string;
+  tokenName: string;
+  tokenSymbol: string;
+  tokenDecimal: string;
 }
 
 interface EtherscanTokenBalance {
@@ -162,6 +177,7 @@ class Etherscan extends Provider {
       txDetail: true,
       contractInfo: true,
       tokenBalances: true,
+      tokenTransfers: true,
       gasData: true,
       blockInfo: true,
     };
@@ -190,7 +206,7 @@ class Etherscan extends Provider {
       const detail = typeof response.result === "string" ? response.result : response.message;
       const message = detail || "Unknown Etherscan API error";
       if (
-        (action === "txlist" && /no transactions found/i.test(message)) ||
+        ((action === "txlist" || action === "tokentx") && /no transactions found/i.test(message)) ||
         (action === "addresstokenbalance" && /no (token|record)/i.test(message))
       ) {
         return [] as T;
@@ -338,6 +354,42 @@ class Etherscan extends Provider {
     }
 
     return tokens;
+  }
+
+  override async getTokenTransfers(
+    address: string,
+    chain?: ChainKey,
+    options?: TokenTransferOptions,
+  ): Promise<TokenTransfer[]> {
+    const c = chain ?? this.defaultChain;
+    const limit = clampMaxResults(options?.limit);
+    const result = await this.api<EtherscanTokenTx[]>(c, "account", "tokentx", {
+      address,
+      contractaddress: options?.token,
+      startblock: options?.startBlock ?? 0,
+      endblock: options?.endBlock ?? 99999999,
+      page: options?.page ?? 1,
+      offset: limit,
+      sort: options?.sort ?? "desc",
+    });
+
+    if (!Array.isArray(result)) return [];
+    return result.map((raw) => {
+      const decimals = Number(raw.tokenDecimal);
+      return {
+        contract: raw.contractAddress,
+        symbol: raw.tokenSymbol,
+        name: raw.tokenName,
+        decimals,
+        value: raw.value,
+        valueFormatted: formatWei(raw.value, decimals),
+        from: raw.from,
+        to: raw.to,
+        txHash: raw.hash,
+        blockNumber: Number(raw.blockNumber),
+        timestamp: new Date(Number(raw.timeStamp) * 1000).toISOString(),
+      };
+    });
   }
 
   override async getGasData(chain?: ChainKey): Promise<GasData> {

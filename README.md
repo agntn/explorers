@@ -2,7 +2,7 @@
 
 Nine block explorer APIs, one shape.
 
-Block explorers keep returning roughly the same data in completely different formats. Explorers deals with that mess and gives scripts, agents and humans one TypeScript API and one CLI for balances, transactions, contracts, tokens, gas and blocks.
+Block explorers keep returning roughly the same data in completely different formats. Explorers deals with that mess and gives scripts, agents and humans one TypeScript API and one CLI for balances, transactions, token transfers, contracts, tokens, gas and blocks.
 
 ## Features
 
@@ -59,6 +59,7 @@ An address-like first argument defaults to `balance`. No ceremonial subcommand n
 | `tx`        | Transaction history or one transaction      | `explorers tx vitalik.eth -n 5` |
 | `contract`  | ABI, source and verification status         | `explorers contract 0x1f984...` |
 | `tokens`    | ERC-20 holdings                             | `explorers tokens vitalik.eth`  |
+| `transfers` | ERC-20 transfer history for an address      | `explorers transfers vitalik.eth` |
 | `gas`       | Current gas prices                          | `explorers gas -c base`         |
 | `block`     | Block data by number                        | `explorers block 18000000`      |
 | `providers` | Registered providers and their capabilities | `explorers providers`           |
@@ -71,6 +72,7 @@ An address-like first argument defaults to `balance`. No ceremonial subcommand n
 | `-p, --provider` | Explorer backend, for example `etherscan`, `blockscout` or `mempool`   |
 | `-n, --limit`    | Maximum number of transactions                                         |
 | `-m, --mode`     | Force `tx` into `history` or `detail` mode when the input is ambiguous |
+| `-t, --token`    | Limit `transfers` to one token contract                                |
 
 Without `--provider`, Explorers first checks configured API keys and then falls back to Blockscout. It has no key requirement and is a much better default than failing before the first request.
 
@@ -104,8 +106,8 @@ Required operations live on `Provider`. Optional operations stay absent when a b
 
 | Provider       | Auth                          | Chains                                                                           | Capabilities                               |
 | -------------- | ----------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------ |
-| **etherscan**  | `ETHERSCAN_API_KEY`           | eth, base, arbitrum, optimism, polygon, bsc, avalanche, gnosis, linea, bera      | balances, tx, contract, tokens, gas, block |
-| **blockscout** | None                          | eth, base, arbitrum, optimism, polygon, gnosis, linea, scroll, zksync, avalanche | balances, tx, contract, tokens, gas, block |
+| **etherscan**  | `ETHERSCAN_API_KEY`           | eth, base, arbitrum, optimism, polygon, bsc, avalanche, gnosis, linea, bera      | balances, tx, transfers, contract, tokens, gas, block |
+| **blockscout** | None                          | eth, base, arbitrum, optimism, polygon, gnosis, linea, scroll, zksync, avalanche | balances, tx, transfers, contract, tokens, gas, block |
 | **blockchair** | Optional `BLOCKCHAIR_API_KEY` | bitcoin, eth                                                                     | balances, tx, block                        |
 | **mempool**    | None                          | bitcoin                                                                          | balances, tx, gas, block                   |
 | **solscan**    | `SOLSCAN_API_KEY`             | solana                                                                           | balances, tx detail/history, block         |

@@ -17,6 +17,7 @@ function stubJSON(body: unknown) {
       new Response(JSON.stringify(body), { headers: { "Content-Type": "application/json" } }),
   );
   vi.stubGlobal("fetch", fetch);
+  return fetch;
 }
 
 afterEach(() => {
@@ -37,6 +38,7 @@ describe("blockscout provider", () => {
     expect(caps.txDetail).toBe(true);
     expect(caps.contractInfo).toBe(true);
     expect(caps.tokenBalances).toBe(true);
+    expect(caps.tokenTransfers).toBe(true);
     expect(caps.gasData).toBe(true);
     expect(caps.blockInfo).toBe(true);
   });
@@ -162,6 +164,157 @@ describe("blockscout provider", () => {
       gasUsed: undefined,
       fee: undefined,
     });
+  });
+
+  it("requests ERC-20 address transfers and maps the list envelope", async () => {
+    const fetch = stubJSON({
+      items: [
+        {
+          token: {
+            address_hash: USDC_BASE,
+            symbol: "USDC",
+            name: "USD Coin",
+            decimals: "6",
+            type: "ERC-20",
+          },
+          from: { hash: "0x1111111111111111111111111111111111111111" },
+          to: { hash: VITALIK },
+          total: { value: "1250000" },
+          transaction_hash: "0x3333333333333333333333333333333333333333333333333333333333333333",
+          block_number: 10,
+          timestamp: "2026-08-22T18:24:59.000000Z",
+        },
+      ],
+    });
+
+    const transfers = await provider.getTokenTransfers!(VITALIK, "eth", { token: USDC_BASE });
+
+    const url = new URL(String(fetch.mock.calls[0]?.[0]));
+    expect(url.pathname).toBe(`/api/v2/addresses/${VITALIK}/token-transfers`);
+    expect(url.searchParams.get("type")).toBe("ERC-20");
+    expect(url.searchParams.get("token")).toBe(USDC_BASE);
+    expect(transfers).toEqual([
+      {
+        contract: USDC_BASE,
+        symbol: "USDC",
+        name: "USD Coin",
+        decimals: 6,
+        value: "1250000",
+        valueFormatted: "1.25",
+        from: "0x1111111111111111111111111111111111111111",
+        to: VITALIK,
+        txHash: "0x3333333333333333333333333333333333333333333333333333333333333333",
+        blockNumber: 10,
+        timestamp: "2026-08-22T18:24:59.000000Z",
+      },
+    ]);
+  });
+
+  it("walks keyset pages until the requested limit is reached", async () => {
+    const transfer = (block: number) => ({
+      token: {
+        address_hash: USDC_BASE,
+        symbol: "USDC",
+        name: "USD Coin",
+        decimals: "6",
+        type: "ERC-20",
+      },
+      from: { hash: "0x1111111111111111111111111111111111111111" },
+      to: { hash: VITALIK },
+      total: { value: "1000000" },
+      transaction_hash: "0x3333333333333333333333333333333333333333333333333333333333333333",
+      block_number: block,
+      timestamp: "2026-08-22T18:24:59.000000Z",
+    });
+    const page = (items: unknown[], next: Record<string, number> | null) =>
+      new Response(JSON.stringify({ items, next_page_params: next }), {
+        headers: { "Content-Type": "application/json" },
+      });
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(
+        page([transfer(12), transfer(11)], { block_number: 11, index: 1, items_count: 50 }),
+      )
+      .mockResolvedValueOnce(page([transfer(10)], null));
+    vi.stubGlobal("fetch", fetch);
+
+    const transfers = await provider.getTokenTransfers!(VITALIK, "eth", { limit: 3 });
+
+    expect(transfers.map((t) => t.blockNumber)).toEqual([12, 11, 10]);
+    expect(fetch).toHaveBeenCalledTimes(2);
+    const second = new URL(String(fetch.mock.calls[1]?.[0]));
+    expect(second.searchParams.get("block_number")).toBe("11");
+    expect(second.searchParams.get("index")).toBe("1");
+    expect(second.searchParams.get("type")).toBe("ERC-20");
+  });
+
+  it("maps embedded token transfers and skips non-fungible items", async () => {
+    // Field names taken from a live /api/v2/transactions/{hash} response: transfers
+    // carry transaction_hash, and ERC-721 items have total.token_id without value.
+    stubJSON({
+      hash: "0x3333333333333333333333333333333333333333333333333333333333333333",
+      block_number: 10,
+      timestamp: "2026-08-22T18:24:59.000000Z",
+      from: { hash: "0x1111111111111111111111111111111111111111" },
+      to: { hash: "0x2222222222222222222222222222222222222222" },
+      value: "0",
+      gas_used: "21000",
+      gas_price: "1",
+      status: "ok",
+      token_transfers: [
+        {
+          token: {
+            address_hash: USDC_BASE,
+            symbol: "USDC",
+            name: "USD Coin",
+            decimals: "6",
+            type: "ERC-20",
+          },
+          from: { hash: "0x1111111111111111111111111111111111111111" },
+          to: { hash: "0x2222222222222222222222222222222222222222" },
+          total: { value: "1250000" },
+          transaction_hash: "0x3333333333333333333333333333333333333333333333333333333333333333",
+          block_number: 10,
+          timestamp: "2026-08-22T18:24:59.000000Z",
+        },
+        {
+          token: {
+            address_hash: "0x4444444444444444444444444444444444444444",
+            symbol: "NFT",
+            name: "Some NFT",
+            decimals: null,
+            type: "ERC-721",
+          },
+          from: { hash: "0x1111111111111111111111111111111111111111" },
+          to: { hash: "0x2222222222222222222222222222222222222222" },
+          total: { token_id: "4565" },
+          transaction_hash: "0x3333333333333333333333333333333333333333333333333333333333333333",
+          block_number: 10,
+          timestamp: "2026-08-22T18:24:59.000000Z",
+        },
+      ],
+    });
+
+    const tx = await provider.getTxDetail!(
+      "0x3333333333333333333333333333333333333333333333333333333333333333",
+      "eth",
+    );
+
+    expect(tx.tokenTransfers).toEqual([
+      {
+        contract: USDC_BASE,
+        symbol: "USDC",
+        name: "USD Coin",
+        decimals: 6,
+        value: "1250000",
+        valueFormatted: "1.25",
+        from: "0x1111111111111111111111111111111111111111",
+        to: "0x2222222222222222222222222222222222222222",
+        txHash: "0x3333333333333333333333333333333333333333333333333333333333333333",
+        blockNumber: 10,
+        timestamp: "2026-08-22T18:24:59.000000Z",
+      },
+    ]);
   });
 
   it("maps the current block transaction count field", async () => {

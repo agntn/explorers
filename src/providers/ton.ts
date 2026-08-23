@@ -125,6 +125,7 @@ class Ton extends Provider {
       txDetail: false,
       contractInfo: false,
       tokenBalances: false,
+      tokenTransfers: false,
       gasData: false,
       blockInfo: false,
     };

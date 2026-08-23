@@ -128,6 +128,7 @@ class Solscan extends Provider {
       txDetail: true,
       contractInfo: false,
       tokenBalances: false,
+      tokenTransfers: false,
       gasData: false,
       blockInfo: true,
     };

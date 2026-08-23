@@ -23,7 +23,7 @@ src/
 
 ## Key contracts
 
-- `Provider` — abstract base class all providers extend. Each concrete class owns a static `key`; the inherited instance `name` reads it. Required getter: `capabilities`. Required methods: `getBalance()`, `getTxHistory()`. Optional: `getTxDetail()`, `getContractInfo()`, `getTokenBalances()`, `getGasData()`, `getBlockInfo()`.
+- `Provider` - abstract base class all providers extend. Each concrete class owns a static `key`; the inherited instance `name` reads it. Required getter: `capabilities`. Required methods: `getBalance()`, `getTxHistory()`. Optional: `getTxDetail()`, `getContractInfo()`, `getTokenBalances()`, `getTokenTransfers()`, `getGasData()`, `getBlockInfo()`.
 - `ProviderCapabilities` — boolean flags for what a provider supports
 - `ProviderConfig` — `{ apiKey?, baseUrl?, timeout?, defaultChain? }`
 
