@@ -66,6 +66,8 @@ export abstract class Provider {
 export interface ProviderConstructor {
   /** Stable registry key owned by the concrete class. */
   readonly key: string;
+  /** Chains the concrete class can serve, consulted during auto-selection. */
+  readonly chains: readonly ChainKey[];
   new (config: ProviderConfig): Provider;
 }
 

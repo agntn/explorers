@@ -104,6 +104,7 @@ function mapTransactionDetail(raw: SolscanTransactionDetail): Transaction {
 
 class Solscan extends Provider {
   static readonly key = "solscan";
+  static readonly chains: readonly ChainKey[] = ["solana"];
 
   private readonly apiKey: string;
   private readonly baseUrl: string;

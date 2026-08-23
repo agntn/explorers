@@ -201,6 +201,7 @@ function mapTx(raw: BlockscoutTx): Transaction {
 
 class Blockscout extends Provider {
   static readonly key = "blockscout";
+  static readonly chains = Object.keys(CHAIN_BASES) as readonly ChainKey[];
 
   private defaultChain: ChainKey;
 

@@ -2,7 +2,7 @@
 
 import { Provider } from "./provider.js";
 import type { ProviderConstructor } from "./provider.js";
-import type { ProviderConfig } from "./types.js";
+import type { ChainKey, ProviderConfig } from "./types.js";
 import { UnknownProviderError } from "./errors.js";
 
 interface RegistryEntry {
@@ -51,6 +51,12 @@ export function providers(): string[] {
 /** Check whether a name can be passed to `create`. */
 export function has(name: string): boolean {
   return registry.has(name);
+}
+
+/** Check whether a registered provider declares support for `chain`. */
+export function supportsChain(name: string, chain: ChainKey): boolean {
+  const entry = registry.get(name);
+  return entry !== undefined && entry.providerClass.chains.includes(chain);
 }
 
 /**

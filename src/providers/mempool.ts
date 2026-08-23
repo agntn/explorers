@@ -181,6 +181,7 @@ function mapTx(raw: MempoolAddressTx, address: string): Transaction {
 
 class Mempool extends Provider {
   static readonly key = "mempool";
+  static readonly chains: readonly ChainKey[] = ["bitcoin"];
 
   private baseUrl: string;
 

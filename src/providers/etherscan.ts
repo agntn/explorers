@@ -154,6 +154,7 @@ function mapTx(raw: EtherscanTx): Transaction {
 
 class Etherscan extends Provider {
   static readonly key = "etherscan";
+  static readonly chains: readonly ChainKey[] = [...SUPPORTED_CHAINS];
 
   private readonly apiKey: string;
   private readonly apiUrl: string;

@@ -111,6 +111,7 @@ function mapEventToTx(event: TonEvent): Transaction {
 
 class Ton extends Provider {
   static readonly key = "ton";
+  static readonly chains: readonly ChainKey[] = ["ton"];
 
   private baseUrl: string;
 
