@@ -19,7 +19,7 @@ import { normalizeBaseUrl, buildQuery } from "../core/client.js";
 import { AuthError, ExplorerError, UnsupportedChainError } from "../core/errors.js";
 import { register } from "../core/registry.js";
 import { assertSafePathSegment } from "../core/path-safety.js";
-import { clampMaxResults, formatWei } from "../core/types.js";
+import { clampMaxResults, formatWei, toTimestamp } from "../core/types.js";
 
 const DEFAULT_BASE = "https://pro-api.solscan.io/v2.0";
 
@@ -63,10 +63,6 @@ interface SolscanBlock {
   block_time: number;
   blockhash: string;
   parent_slot: number;
-}
-
-function toTimestamp(seconds: number): string {
-  return new Date(seconds * 1000).toISOString();
 }
 
 function mapAccountTransaction(raw: SolscanAccountTransaction): Transaction {
