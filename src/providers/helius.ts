@@ -1,5 +1,5 @@
 /**
- * Helius provider — enhanced Solana transaction indexer behind the XRAY explorer.
+ * Helius provider - enhanced Solana transaction indexer behind the XRAY explorer.
  *
  * https://www.helius.dev/docs/api-reference/enhanced-transactions
  */
