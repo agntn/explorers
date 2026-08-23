@@ -25,6 +25,13 @@ describe("ExplorerError", () => {
     expect(e.message).toContain("api-key=REDACTED");
     expect(e.message).not.toContain("secret");
   });
+  it("normalizeError redacts keys in the fallback body", () => {
+    const url = "https://api.example.com/v0/txs?api-key=secret&limit=5";
+    const e = normalizeError(new Error(`HTTP 500 from ${url}`), "helius", url);
+    expect(e).toBeInstanceOf(HTTPError);
+    expect((e as HTTPError).body).not.toContain("secret");
+    expect(e.message).not.toContain("secret");
+  });
   it("AuthError", () => {
     const e = new AuthError("x402");
     expect(e).toBeInstanceOf(ExplorerError);

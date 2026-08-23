@@ -129,7 +129,7 @@ export function normalizeError(
   const statusMatch = message.match(/HTTP (\d{3})/i);
   const status = fetchError?.statusCode ?? Number(statusMatch?.[1] ?? 0);
   const url = requestUrl ?? (fetchError ? getFetchErrorUrl(fetchError) : undefined);
-  const safeResource = url ? sanitizeUrl(url) : message;
+  const safeResource = url ? sanitizeUrl(url) : sanitizeUrl(message);
 
   if (status === 404 || lowerMessage.includes("not found")) {
     return new NotFoundError(safeResource, provider);
@@ -154,7 +154,7 @@ export function normalizeError(
     return new HTTPError(
       status,
       url ?? "unknown",
-      (fetchError ? getFetchErrorBody(fetchError) : undefined) ?? message,
+      (fetchError ? getFetchErrorBody(fetchError) : undefined) ?? sanitizeUrl(message),
       provider,
     );
   }
