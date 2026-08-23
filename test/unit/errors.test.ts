@@ -25,6 +25,11 @@ describe("ExplorerError", () => {
     expect(e.message).toContain("api-key=REDACTED");
     expect(e.message).not.toContain("secret");
   });
+  it("HTTPError keeps no unredacted key on rawUrl", () => {
+    const e = new HTTPError(500, "https://x/v0/txs?api-key=secret&limit=5");
+    expect(e.rawUrl).toContain("api-key=REDACTED");
+    expect(e.rawUrl).not.toContain("secret");
+  });
   it("HTTPError redacts keys in a server-echoed body", () => {
     const e = new HTTPError(500, "https://x", "echo of https://x?api-key=secret");
     expect(e.body).toContain("api-key=REDACTED");

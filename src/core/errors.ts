@@ -25,7 +25,10 @@ function sanitizeUrl(url: string): string {
 
 /** HTTP failure with a redacted request URL in its message and a redacted response body. */
 export class HTTPError extends ExplorerError {
-  /** Original request URL. Deliberately non-enumerable to reduce accidental secret logging. */
+  /**
+   * Request URL with secret query params redacted. Non-enumerable to keep serialized errors
+   * compact.
+   */
   public readonly rawUrl: string;
 
   /** Response body, redacted in case the server echoes the request URL. */
@@ -39,7 +42,7 @@ export class HTTPError extends ExplorerError {
   ) {
     super(`HTTP ${statusCode} from ${url}`, provider);
     if (body !== undefined) this.body = sanitizeUrl(body);
-    this.rawUrl = url;
+    this.rawUrl = sanitizeUrl(url);
     Object.defineProperty(this, "rawUrl", { enumerable: false });
     this.name = "HTTPError";
   }
