@@ -6,17 +6,18 @@ Unified block explorer provider library. Normalizes balances, tx history, contra
 
 ## Providers
 
-| Provider   | Auth                    | Chains                                                                           | Capabilities                                     |
-| ---------- | ----------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------ |
+| Provider   | Auth                    | Chains                                                                           | Capabilities                                                |
+| ---------- | ----------------------- | -------------------------------------------------------------------------------- | ----------------------------------------------------------- |
 | etherscan  | API key (free: 5 req/s) | eth, base, arbitrum, optimism, polygon, bsc, avalanche, gnosis, linea, bera      | Full: balances, tx, transfers, contract, tokens, gas, block |
 | blockscout | none                    | eth, base, arbitrum, optimism, polygon, gnosis, linea, scroll, zksync, avalanche | Full: balances, tx, transfers, contract, tokens, gas, block |
-| blockchair | optional key            | bitcoin, eth                                                                     | balances, tx, block                              |
-| mempool    | none                    | bitcoin                                                                          | balances, tx, gas, block                         |
-| solscan    | `SOLSCAN_API_KEY`       | solana                                                                           | balances, tx detail/history, block               |
-| ton        | none                    | ton                                                                              | balances, tx                                     |
-| tronscan   | `TRONSCAN_API_KEY`      | tron                                                                             | balances, tx detail/history, block               |
-| aptos      | none                    | aptos                                                                            | none; required methods throw                     |
-| blockberry | `BLOCKBERRY_API_KEY`    | sui                                                                              | balances, tx history                             |
+| blockchair | optional key            | bitcoin, eth                                                                     | balances, tx, block                                         |
+| mempool    | none                    | bitcoin                                                                          | balances, tx, gas, block                                    |
+| solscan    | `SOLSCAN_API_KEY`       | solana                                                                           | balances, tx detail/history, block                          |
+| helius     | `HELIUS_API_KEY`        | solana                                                                           | tx detail/history; no balance endpoint                      |
+| ton        | none                    | ton                                                                              | balances, tx                                                |
+| tronscan   | `TRONSCAN_API_KEY`      | tron                                                                             | balances, tx detail/history, block                          |
+| aptos      | none                    | aptos                                                                            | none; required methods throw                                |
+| blockberry | `BLOCKBERRY_API_KEY`    | sui                                                                              | balances, tx history                                        |
 
 ## Conventions
 
@@ -51,7 +52,8 @@ Unified block explorer provider library. Normalizes balances, tx history, contra
 
 - Etherscan: 5 req/s free tier, needs `ETHERSCAN_API_KEY`
 - Blockchair: data format differs between BTC and EVM chains
-- Solscan, TONAPI, TRONSCAN, Aptos, and Blockberry are single-chain providers and throw `UnsupportedChainError` for other chains.
+- Solscan, Helius, TONAPI, TRONSCAN, Aptos, and Blockberry are single-chain providers and throw `UnsupportedChainError` for other chains.
+- Helius Enhanced Transactions v0 exposes no REST balance endpoint, so `getBalance` throws `UnsupportedOperationError`; the key travels as the `api-key` query parameter, which `sanitizeUrl` redacts.
 - Aptos Explorer has no documented account/history API; `aptos` remains registered with false capabilities and throws `UnsupportedOperationError` instead of using fullnode REST.
 - TONAPI and Blockberry do not expose block lookup compatible with the library's single block-number contract, so `blockInfo` is unsupported.
 - Mempool: Bitcoin only
@@ -74,7 +76,7 @@ graph TB
 
 - **CLI Layer** (`cli.ts`, `commands/*.ts`): citty-based CLI, lazy-loads subcommands via dynamic `import()`. `cli-args.ts` normalizes bare address input to `balance` subcommand.
 - **Core Layer** (`core/*.ts`): Domain types, provider registry (side-effect registration), HTTP client (ofetch, 15s timeout), ENS resolution (public APIs), input classification, error hierarchy.
-- **Provider Layer** (`providers/*.ts`): 9 self-registering providers. Each file defines API types, helper mappers, a concrete `Provider` subclass with a static registry key, and calls `register()` with its constructor at module scope.
+- **Provider Layer** (`providers/*.ts`): 10 self-registering providers. Each file defines API types, helper mappers, a concrete `Provider` subclass with a static registry key, and calls `register()` with its constructor at module scope.
 - **Pi Extension** (`packages/pi/extensions/explorers.ts`): Exposes 6 tools to Pi coding agent. Lazy-loads `@agntn/explorers` via dynamic import with fallback to source.
 
 ### Provider categories
@@ -82,7 +84,7 @@ graph TB
 1. **Multi-chain EVM** (etherscan, blockscout): support 10 EVM chains each
 2. **Bitcoin/Ethereum bridge** (blockchair): dashboard API for Bitcoin and Ethereum
 3. **Bitcoin** (mempool): UTXO model
-4. **Single-chain non-EVM** (solscan, ton, tronscan, aptos, blockberry): capabilities mirror only their explorer APIs; Aptos is explicitly unsupported
+4. **Single-chain non-EVM** (solscan, helius, ton, tronscan, aptos, blockberry): capabilities mirror only their explorer APIs; Aptos is explicitly unsupported
 
 ## Patterns
 
@@ -103,7 +105,7 @@ graph TB
 
 ## Test coverage gaps
 
-**Covered** (18 test files): provider base/registry, provider resolution, HTTP client, path safety, amount formatting, errors, input classification, chain normalization, CLI argument routing, plus all nine providers.
+**Covered** (19 test files): provider base/registry, provider resolution, HTTP client, path safety, amount formatting, errors, input classification, chain normalization, CLI argument routing, plus all ten providers.
 **Missing**: CLI command execution and the Pi extension.
 **Test style**: Focused unit tests for local contracts and mocked explorer-API responses; public no-key providers may additionally use live roundtrips.
 

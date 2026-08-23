@@ -4,6 +4,7 @@ import "./blockscout.js";
 import "./blockchair.js";
 import "./mempool.js";
 import "./solscan.js";
+import "./helius.js";
 import "./ton.js";
 import "./tronscan.js";
 import "./aptos.js";
