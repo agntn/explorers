@@ -2,38 +2,47 @@
 
 import { FetchError } from "ofetch";
 
-/** Base class for failures surfaced through Explorers. */
+/**
+ * Base class for failures surfaced through Explorers.
+ *
+ * Every message passes through `sanitizeUrl` here, so secret query params are redacted at one
+ * boundary instead of at each construction site.
+ */
 export class ExplorerError extends Error {
   constructor(
     message: string,
     public readonly provider?: string,
   ) {
-    super(message);
+    super(sanitizeUrl(message));
     this.name = "ExplorerError";
   }
 }
 
-/** Strip API keys from URLs for safe error messages */
+/** Strip API keys from URLs and URL-bearing text for safe error messages */
 function sanitizeUrl(url: string): string {
-  return url
-    .replace(/([?&])(apikey|apiKey|api_key|key)=([^&]*)/gi, "$1$2=REDACTED")
-    .replace(/([?&])(secret|token)=([^&]*)/gi, "$1$2=REDACTED");
+  return url.replace(/([?&])(api[-_]?key|key|secret|token)=[^&#]*/gi, "$1$2=REDACTED");
 }
 
-/** HTTP failure with a redacted request URL in its message. */
+/** HTTP failure with a redacted request URL in its message and a redacted response body. */
 export class HTTPError extends ExplorerError {
-  /** Original request URL. Deliberately non-enumerable to reduce accidental secret logging. */
+  /**
+   * Request URL with secret query params redacted. Non-enumerable to keep serialized errors
+   * compact.
+   */
   public readonly rawUrl: string;
+
+  /** Response body, redacted in case the server echoes the request URL. */
+  public readonly body?: string;
 
   constructor(
     public readonly statusCode: number,
     url: string,
-    public readonly body?: string,
+    body?: string,
     provider?: string,
   ) {
-    const safeUrl = sanitizeUrl(url);
-    super(`HTTP ${statusCode} from ${safeUrl}`, provider);
-    this.rawUrl = url;
+    super(`HTTP ${statusCode} from ${url}`, provider);
+    if (body !== undefined) this.body = sanitizeUrl(body);
+    this.rawUrl = sanitizeUrl(url);
     Object.defineProperty(this, "rawUrl", { enumerable: false });
     this.name = "HTTPError";
   }
@@ -129,10 +138,10 @@ export function normalizeError(
   const statusMatch = message.match(/HTTP (\d{3})/i);
   const status = fetchError?.statusCode ?? Number(statusMatch?.[1] ?? 0);
   const url = requestUrl ?? (fetchError ? getFetchErrorUrl(fetchError) : undefined);
-  const safeResource = url ? sanitizeUrl(url) : message;
+  const resource = url ?? message;
 
   if (status === 404 || lowerMessage.includes("not found")) {
-    return new NotFoundError(safeResource, provider);
+    return new NotFoundError(resource, provider);
   }
 
   if (status === 429 || lowerMessage.includes("rate limit")) {
@@ -140,7 +149,7 @@ export function normalizeError(
   }
 
   if (status === 401 || status === 403 || lowerMessage.includes("unauthorized")) {
-    const detail = url ? `HTTP ${status} from ${sanitizeUrl(url)}` : message;
+    const detail = url ? `HTTP ${status} from ${url}` : message;
     return new AuthError(provider ?? "unknown", detail);
   }
 

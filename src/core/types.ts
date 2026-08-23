@@ -243,6 +243,11 @@ export function clampMaxResults(limit?: number, max = 100): number {
   return Math.min(Math.max(1, Math.round(limit)), max);
 }
 
+/** Convert a unix timestamp in seconds to an ISO 8601 string. */
+export function toTimestamp(seconds: number): string {
+  return new Date(seconds * 1000).toISOString();
+}
+
 /**
  * Format a raw integer amount using token decimals, without float rounding.
  *

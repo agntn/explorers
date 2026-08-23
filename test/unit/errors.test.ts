@@ -20,6 +20,28 @@ describe("ExplorerError", () => {
     const e = new HTTPError(500, "https://api.example.com", "body", "x402");
     expect(e.statusCode).toBe(500);
   });
+  it("HTTPError redacts hyphenated api-key query params", () => {
+    const e = new HTTPError(500, "https://api.example.com/v0/txs?api-key=secret&limit=5");
+    expect(e.message).toContain("api-key=REDACTED");
+    expect(e.message).not.toContain("secret");
+  });
+  it("HTTPError keeps no unredacted key on rawUrl", () => {
+    const e = new HTTPError(500, "https://x/v0/txs?api-key=secret&limit=5");
+    expect(e.rawUrl).toContain("api-key=REDACTED");
+    expect(e.rawUrl).not.toContain("secret");
+  });
+  it("HTTPError redacts keys in a server-echoed body", () => {
+    const e = new HTTPError(500, "https://x", "echo of https://x?api-key=secret");
+    expect(e.body).toContain("api-key=REDACTED");
+    expect(e.body).not.toContain("secret");
+  });
+  it("normalizeError redacts keys in the fallback body", () => {
+    const url = "https://api.example.com/v0/txs?api-key=secret&limit=5";
+    const e = normalizeError(new Error(`HTTP 500 from ${url}`), "helius", url);
+    expect(e).toBeInstanceOf(HTTPError);
+    expect((e as HTTPError).body).not.toContain("secret");
+    expect(e.message).not.toContain("secret");
+  });
   it("AuthError", () => {
     const e = new AuthError("x402");
     expect(e).toBeInstanceOf(ExplorerError);

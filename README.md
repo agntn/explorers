@@ -1,12 +1,12 @@
 # Explorers
 
-Nine block explorer APIs, one shape.
+Ten block explorer APIs, one shape.
 
 Block explorers keep returning roughly the same data in completely different formats. Explorers deals with that mess and gives scripts, agents and humans one TypeScript API and one CLI for balances, transactions, token transfers, contracts, tokens, gas and blocks.
 
 ## Features
 
-- **Nine providers, one contract.** Etherscan, Blockscout, Blockchair, Mempool, Solscan, TON, TRONSCAN, Aptos and Blockberry.
+- **Ten providers, one contract.** Etherscan, Blockscout, Blockchair, Mempool, Solscan, Helius, TON, TRONSCAN, Aptos and Blockberry.
 - **18 chains.** Ethereum, Base, Arbitrum, Optimism, Polygon, BSC, Avalanche, Gnosis, Linea, Berachain, zkSync, Scroll, Bitcoin, Solana, TON, TRON, Aptos and Sui.
 - **Explorer data stays explorer data.** A provider never quietly falls back to a fullnode RPC just to pretend an operation is supported.
 - **Amounts stay exact.** Native and token values use strings in the chain's smallest unit instead of lossy JavaScript numbers.
@@ -53,16 +53,16 @@ An address-like first argument defaults to `balance`. No ceremonial subcommand n
 
 ### Commands
 
-| Command     | What it does                                | Example                         |
-| ----------- | ------------------------------------------- | ------------------------------- |
-| `balance`   | Native token balance, including ENS         | `explorers balance vitalik.eth` |
-| `tx`        | Transaction history or one transaction      | `explorers tx vitalik.eth -n 5` |
-| `contract`  | ABI, source and verification status         | `explorers contract 0x1f984...` |
-| `tokens`    | ERC-20 holdings                             | `explorers tokens vitalik.eth`  |
+| Command     | What it does                                | Example                           |
+| ----------- | ------------------------------------------- | --------------------------------- |
+| `balance`   | Native token balance, including ENS         | `explorers balance vitalik.eth`   |
+| `tx`        | Transaction history or one transaction      | `explorers tx vitalik.eth -n 5`   |
+| `contract`  | ABI, source and verification status         | `explorers contract 0x1f984...`   |
+| `tokens`    | ERC-20 holdings                             | `explorers tokens vitalik.eth`    |
 | `transfers` | ERC-20 transfer history for an address      | `explorers transfers vitalik.eth` |
-| `gas`       | Current gas prices                          | `explorers gas -c base`         |
-| `block`     | Block data by number                        | `explorers block 18000000`      |
-| `providers` | Registered providers and their capabilities | `explorers providers`           |
+| `gas`       | Current gas prices                          | `explorers gas -c base`           |
+| `block`     | Block data by number                        | `explorers block 18000000`        |
+| `providers` | Registered providers and their capabilities | `explorers providers`             |
 
 ### Common options
 
@@ -104,17 +104,18 @@ Required operations live on `Provider`. Optional operations stay absent when a b
 
 ## Providers
 
-| Provider       | Auth                          | Chains                                                                           | Capabilities                               |
-| -------------- | ----------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------ |
+| Provider       | Auth                          | Chains                                                                           | Capabilities                                          |
+| -------------- | ----------------------------- | -------------------------------------------------------------------------------- | ----------------------------------------------------- |
 | **etherscan**  | `ETHERSCAN_API_KEY`           | eth, base, arbitrum, optimism, polygon, bsc, avalanche, gnosis, linea, bera      | balances, tx, transfers, contract, tokens, gas, block |
 | **blockscout** | None                          | eth, base, arbitrum, optimism, polygon, gnosis, linea, scroll, zksync, avalanche | balances, tx, transfers, contract, tokens, gas, block |
-| **blockchair** | Optional `BLOCKCHAIR_API_KEY` | bitcoin, eth                                                                     | balances, tx, block                        |
-| **mempool**    | None                          | bitcoin                                                                          | balances, tx, gas, block                   |
-| **solscan**    | `SOLSCAN_API_KEY`             | solana                                                                           | balances, tx detail/history, block         |
-| **ton**        | None                          | ton                                                                              | balances, tx                               |
-| **tronscan**   | `TRONSCAN_API_KEY`            | tron                                                                             | balances, tx detail/history, block         |
-| **aptos**      | None                          | aptos                                                                            | no supported explorer operations           |
-| **blockberry** | `BLOCKBERRY_API_KEY`          | sui                                                                              | balances, tx history                       |
+| **blockchair** | Optional `BLOCKCHAIR_API_KEY` | bitcoin, eth                                                                     | balances, tx, block                                   |
+| **mempool**    | None                          | bitcoin                                                                          | balances, tx, gas, block                              |
+| **solscan**    | `SOLSCAN_API_KEY`             | solana                                                                           | balances, tx detail/history, block                    |
+| **helius**     | `HELIUS_API_KEY`              | solana                                                                           | tx detail/history                                     |
+| **ton**        | None                          | ton                                                                              | balances, tx                                          |
+| **tronscan**   | `TRONSCAN_API_KEY`            | tron                                                                             | balances, tx detail/history, block                    |
+| **aptos**      | None                          | aptos                                                                            | no supported explorer operations                      |
+| **blockberry** | `BLOCKBERRY_API_KEY`          | sui                                                                              | balances, tx history                                  |
 
 `aptos` is deliberately boring. It stays registered, advertises no capabilities and throws `UnsupportedOperationError` from required methods. Aptos Explorer has no documented account/history API, and hiding fullnode REST behind an explorer provider just to make the table look complete would be dishonest.
 
