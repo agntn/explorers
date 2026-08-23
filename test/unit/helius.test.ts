@@ -13,10 +13,7 @@ const SYSTEM_TRANSFER = {
   timestamp: 1_656_442_333,
   fee: 5000,
   feePayer: ADDRESS,
-  type: "TRANSFER",
-  source: "SYSTEM_PROGRAM",
   transactionError: null,
-  nativeTransfers: [{ fromUserAccount: ADDRESS, toUserAccount: "other", amount: 1_500_000_000 }],
   instructions: [{ programId: "11111111111111111111111111111111" }],
 };
 

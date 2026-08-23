@@ -1,5 +1,5 @@
 /**
- * Helius provider - enhanced Solana transaction indexer behind the XRAY explorer.
+ * Helius provider - enhanced Solana transaction indexer API.
  *
  * https://www.helius.dev/docs/api-reference/enhanced-transactions
  */
@@ -23,7 +23,7 @@ import {
 } from "../core/errors.js";
 import { register } from "../core/registry.js";
 import { assertSafePathSegment } from "../core/path-safety.js";
-import { clampMaxResults } from "../core/types.js";
+import { clampMaxResults, toTimestamp } from "../core/types.js";
 
 const DEFAULT_BASE = "https://mainnet.helius-rpc.com";
 
@@ -33,36 +33,20 @@ const SYSTEM_PROGRAMS = new Set([
   "ComputeBudget111111111111111111111111111111",
 ]);
 
-interface HeliusNativeTransfer {
-  fromUserAccount: string | null;
-  toUserAccount: string | null;
-  amount: string | number;
-}
-
-interface HeliusInstruction {
-  programId: string;
-}
-
 interface HeliusTransaction {
   signature: string;
   slot: number;
   timestamp: number;
   fee: string | number;
   feePayer: string;
-  type?: string;
-  source?: string;
-  description?: string;
   transactionError?: unknown;
-  nativeTransfers?: HeliusNativeTransfer[];
-  instructions?: HeliusInstruction[];
+  instructions?: { programId: string }[];
 }
 
-function toTimestamp(seconds: number): string {
-  return new Date(seconds * 1000).toISOString();
-}
+const isNonSystemProgram = (instruction: { programId: string }): boolean =>
+  !SYSTEM_PROGRAMS.has(instruction.programId);
 
 function mapTransaction(raw: HeliusTransaction): Transaction {
-  const programs = raw.instructions ?? [];
   return {
     hash: raw.signature,
     blockNumber: raw.slot,
@@ -73,7 +57,7 @@ function mapTransaction(raw: HeliusTransaction): Transaction {
     valueFormatted: "0",
     fee: String(raw.fee),
     status: (raw.transactionError == null ? "success" : "failed") as TxStatus,
-    isContractInteraction: programs.some((i) => !SYSTEM_PROGRAMS.has(i.programId)),
+    isContractInteraction: raw.instructions?.some(isNonSystemProgram) ?? false,
     tokenTransfers: [],
     raw: raw as unknown as Record<string, unknown>,
   };
@@ -108,6 +92,22 @@ class Helius extends Provider {
     };
   }
 
+  private api<T>(
+    path: string,
+    params: Record<string, string | number | undefined> = {},
+  ): Promise<T> {
+    return this.getJSON<T>(
+      `${this.baseUrl}${path}${buildQuery({ "api-key": this.apiKey, ...params })}`,
+    );
+  }
+
+  private apiPost<T>(path: string, body: unknown): Promise<T> {
+    return this.postJSON<T>(
+      `${this.baseUrl}${path}${buildQuery({ "api-key": this.apiKey })}`,
+      body,
+    );
+  }
+
   async getBalance(_address: string, chain?: ChainKey): Promise<Balance> {
     const c = chain ?? "solana";
     if (c !== "solana") throw new UnsupportedChainError(c, this.name);
@@ -123,11 +123,9 @@ class Helius extends Provider {
     if (c !== "solana") throw new UnsupportedChainError(c, this.name);
     assertSafePathSegment(address, "address");
 
-    const transactions = await this.getJSON<HeliusTransaction[]>(
-      `${this.baseUrl}/v0/addresses/${address}/transactions${buildQuery({
-        "api-key": this.apiKey,
-        limit: clampMaxResults(options?.limit, 100),
-      })}`,
+    const transactions = await this.api<HeliusTransaction[]>(
+      `/v0/addresses/${encodeURIComponent(address)}/transactions`,
+      { limit: clampMaxResults(options?.limit, 100) },
     );
     return transactions.map(mapTransaction);
   }
@@ -136,10 +134,9 @@ class Helius extends Provider {
     const c = chain ?? "solana";
     if (c !== "solana") throw new UnsupportedChainError(c, this.name);
 
-    const transactions = await this.postJSON<HeliusTransaction[]>(
-      `${this.baseUrl}/v0/transactions${buildQuery({ "api-key": this.apiKey })}`,
-      { transactions: [hash] },
-    );
+    const transactions = await this.apiPost<HeliusTransaction[]>("/v0/transactions", {
+      transactions: [hash],
+    });
     const transaction = transactions[0];
     if (!transaction) throw new NotFoundError(hash, this.name);
     return mapTransaction(transaction);
