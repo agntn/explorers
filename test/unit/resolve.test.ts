@@ -20,6 +20,7 @@ describe("resolveProvider", () => {
     vi.stubEnv("ETHERSCAN_API_KEY", "");
     vi.stubEnv("BLOCKCHAIR_API_KEY", "configured");
     vi.stubEnv("SOLSCAN_API_KEY", "");
+    vi.stubEnv("HELIUS_API_KEY", "");
     vi.stubEnv("TRONSCAN_API_KEY", "");
     vi.stubEnv("BLOCKBERRY_API_KEY", "");
 
@@ -30,6 +31,7 @@ describe("resolveProvider", () => {
     vi.stubEnv("ETHERSCAN_API_KEY", "");
     vi.stubEnv("BLOCKCHAIR_API_KEY", "");
     vi.stubEnv("SOLSCAN_API_KEY", "");
+    vi.stubEnv("HELIUS_API_KEY", "");
     vi.stubEnv("TRONSCAN_API_KEY", "");
     vi.stubEnv("BLOCKBERRY_API_KEY", "");
 
