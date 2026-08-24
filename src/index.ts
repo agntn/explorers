@@ -6,6 +6,7 @@ export type {
   ChainKey,
   TxStatus,
   TokenTransfer,
+  OpReturnPayload,
   Transaction,
   Balance,
   TokenBalance,
