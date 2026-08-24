@@ -172,8 +172,10 @@ const FORMAT_CHARACTER = /\p{Cf}/u;
  *
  * A payload anyone can pay to publish must not steer a terminal, reorder the line that renders it,
  * or hide bytes behind characters nobody can see, because the CLI prints this text straight out.
- * Out of the C0 and C1 control blocks only tab and newline survive. The trade is that a joiner
- * carries meaning in Persian spelling and in emoji sequences, and those payloads arrive as hex.
+ * Out of the C0 and C1 control blocks only tab and newline survive: real messages write paragraphs
+ * with them, and the renderers indent a continuation line so it cannot pose as another field. The
+ * trade is that a joiner carries meaning in Persian spelling and in emoji sequences, and those
+ * payloads arrive as hex.
  */
 function isPrintable(text: string): boolean {
   if (FORMAT_CHARACTER.test(text)) return false;

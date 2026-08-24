@@ -214,7 +214,9 @@ export default function explorersExtension(pi: ExtensionAPI) {
           );
         }
         for (const payload of tx.opReturn ?? []) {
-          lines.push(`${theme.fg("muted", "OP_RETURN")} ${payload.text ?? payload.hex}`);
+          const [first = "", ...rest] = (payload.text ?? payload.hex).split("\n");
+          lines.push(`${theme.fg("muted", "OP_RETURN")} ${first}`);
+          for (const line of rest) lines.push(`  ${line}`);
         }
       }
 

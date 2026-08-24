@@ -218,9 +218,10 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
           );
         }
         for (const payload of tx.opReturn ?? []) {
-          lines.push(
-            `${theme.fg("muted", "OP_RETURN")} ${sanitizeTerminalText(payload.text ?? payload.hex)}`,
-          );
+          const message = sanitizeTerminalText(payload.text ?? payload.hex);
+          const [first = "", ...rest] = message.split("\n");
+          lines.push(`${theme.fg("muted", "OP_RETURN")} ${first}`);
+          for (const line of rest) lines.push(`  ${line}`);
         }
       }
 

@@ -165,6 +165,7 @@ describe("explorers OMP extension", () => {
           hex: "6869",
           text: `hi${String.fromCodePoint(0x1b)}]52;c;SGVsbG8=${String.fromCodePoint(0x07)}`,
         },
+        { hex: "6f6e650a74776f", text: "one\nStatus: forged" },
       ],
     } as unknown as Transaction;
     type RenderResult = NonNullable<ToolDefinition["renderResult"]>;
@@ -192,6 +193,8 @@ describe("explorers OMP extension", () => {
       "To 0xto",
       "Method transfer",
       "OP_RETURN hi]52;c;SGVsbG8=",
+      "OP_RETURN one",
+      "  Status: forged",
     ]);
     // oxlint-disable-next-line no-control-regex -- The assertion proves external result fields were sanitized.
     expect(rendered.join("\n")).not.toMatch(/[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/u);
