@@ -143,18 +143,26 @@ function satToBtc(sat: number): string {
 
 const OP_RETURN = 0x6a;
 const MAX_DIRECT_PUSH = 0x4b;
+
 const OP_PUSHDATA1 = 0x4c;
 const OP_PUSHDATA2 = 0x4d;
 const OP_PUSHDATA4 = 0x4e;
+
+/** Push opcodes that spell their length out, and how many bytes that length takes. */
+const PUSHDATA_WIDTH: Record<number, number> = {
+  [OP_PUSHDATA1]: 1,
+  [OP_PUSHDATA2]: 2,
+  [OP_PUSHDATA4]: 4,
+};
 
 const utf8 = new TextDecoder("utf-8", { fatal: true });
 
 /**
  * Decide whether decoded chain data is safe to print.
  *
- * Keeps only tab and newline out of the C0 and C1 control blocks, matching what the agent
- * extensions strip at the terminal boundary, and rejects the bidi overrides on top. A payload
- * anyone can pay to publish must not steer a terminal or reorder the line that renders it.
+ * Out of the C0 and C1 control blocks only tab and newline survive, and the bidi overrides go with
+ * them. A payload anyone can pay to publish must not steer a terminal or reorder the line that
+ * renders it, and the CLI prints this text straight out.
  */
 function isPrintable(text: string): boolean {
   for (const char of text) {
@@ -183,27 +191,23 @@ function toHex(bytes: Uint8Array): string {
   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
-/** Read a little-endian push length, or -1 when the script ends inside it. */
+/** Read a little-endian push length. Callers check first that all `width` bytes are there. */
 function readPushLength(script: Uint8Array, offset: number, width: number): number {
   let length = 0;
   for (let i = 0; i < width; i += 1) {
-    const byte = script[offset + i];
-    if (byte === undefined) return -1;
-    length += byte * 256 ** i;
+    length += (script[offset + i] ?? 0) * 256 ** i;
   }
   return length;
 }
 
 /** Read a payload as text, leaving binary carriers (Runes, Omni, hashes) without a text reading. */
 function decodeText(payload: Uint8Array): string | undefined {
-  let text: string;
   try {
-    text = utf8.decode(payload);
+    const text = utf8.decode(payload);
+    return isPrintable(text) ? text : undefined;
   } catch {
     return undefined;
   }
-
-  return isPrintable(text) ? text : undefined;
 }
 
 /**
@@ -220,27 +224,20 @@ function parseOpReturn(scriptHex: string): OpReturnPayload[] {
   let cursor = 1;
 
   while (cursor < script.length) {
-    const opcode = script[cursor];
-    if (opcode === undefined) break;
+    const opcode = script[cursor]!;
     cursor += 1;
 
     let length: number;
     if (opcode >= 1 && opcode <= MAX_DIRECT_PUSH) {
       length = opcode;
-    } else if (opcode === OP_PUSHDATA1) {
-      length = readPushLength(script, cursor, 1);
-      cursor += 1;
-    } else if (opcode === OP_PUSHDATA2) {
-      length = readPushLength(script, cursor, 2);
-      cursor += 2;
-    } else if (opcode === OP_PUSHDATA4) {
-      length = readPushLength(script, cursor, 4);
-      cursor += 4;
     } else {
-      break;
+      const width = PUSHDATA_WIDTH[opcode];
+      if (width === undefined || cursor + width > script.length) break;
+      length = readPushLength(script, cursor, width);
+      cursor += width;
     }
 
-    if (length < 0 || cursor + length > script.length) break;
+    if (cursor + length > script.length) break;
 
     const payload = script.subarray(cursor, cursor + length);
     cursor += length;
