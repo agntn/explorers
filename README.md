@@ -123,6 +123,8 @@ Required operations live on `Provider`. Optional operations stay absent when a b
 
 Wallet amounts stay as strings in the chain's smallest unit. Converting them to JavaScript numbers is an easy way to lose precision without noticing. Use `formatWei(value, decimals)` for display. The default is 18 decimals, so pass `8` for BTC, `9` for SOL and whatever the actual token uses.
 
+Bitcoin transactions from `mempool` expose their OP_RETURN data in `opReturn`. Every push arrives as raw `hex`, plus a `text` reading when the bytes are printable UTF-8. Binary carriers such as Runes or Omni keep the hex and skip the text instead of handing you mojibake.
+
 `normalizeChain()` accepts practical aliases such as `mainnet`, `btc`, `coinbase` and `apt`. Unknown names fail instead of silently selecting another chain.
 
 Explorer APIs fail in enough creative ways, so errors share one hierarchy: `ExplorerError`, `HTTPError`, `AuthError`, `RateLimitError`, `NotFoundError`, `UnsupportedChainError`, `UnsupportedOperationError` and `UnknownProviderError`. `normalizeError()` turns unknown transport failures into that shape and strips API keys from URLs before they reach logs.
