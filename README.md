@@ -37,7 +37,7 @@ From a source checkout, link the local package instead:
 omp install .
 ```
 
-OMP loads `packages/omp/extensions/explorers.ts` through the package's `omp.extensions` manifest. It registers six read-only tools for balances, transaction history and details, contract metadata, gas prices and provider discovery. The existing Pi entrypoint remains under `packages/pi/extensions/`.
+OMP loads `packages/omp/extensions/explorers.ts` through the package's `omp.extensions` manifest. It registers nine read-only tools for balances, transaction history and details, contract metadata, token holdings, token transfers, gas prices, blocks and provider discovery. The existing Pi entrypoint remains under `packages/pi/extensions/` and registers the same nine.
 
 ## CLI
 

@@ -267,6 +267,104 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
     },
   });
 
+  const tokensParameters = Type.Object({
+    address: Type.String({ description: "Blockchain address" }),
+    chain: Type.Optional(Type.String({ description: "Chain" })),
+    nonZeroOnly: Type.Optional(
+      Type.Boolean({
+        description: "Drop holdings whose balance is zero",
+        default: true,
+      }),
+    ),
+    provider: Type.Optional(Type.String({ description: "Provider" })),
+  });
+
+  pi.registerTool({
+    name: "explorers_tokens",
+    label: "Explorers Tokens",
+    description:
+      "List token holdings for a blockchain address, each with its contract, symbol, human-readable balance, and USD value when the explorer prices it. Zero balances are dropped unless nonZeroOnly is false.",
+    parameters: tokensParameters,
+    approval: "read",
+    renderCall(args, _options, _theme) {
+      return new Text(
+        sanitizeTerminalText(`Tokens: ${args.address} (${args.chain ?? "provider default"})`),
+        0,
+        0,
+      );
+    },
+    async execute(_toolCallId, params) {
+      const { lib, name, provider } = await getProvider(params.provider, params.chain);
+      const chain = resolveToolChain(lib, name, params.chain);
+      if (!provider.capabilities.tokenBalances || !provider.getTokenBalances) {
+        throw new lib.UnsupportedOperationError("getTokenBalances", name);
+      }
+      const tokens = await provider.getTokenBalances(params.address, chain, {
+        nonZeroOnly: params.nonZeroOnly ?? true,
+      });
+
+      const lines = tokens.map((token) => {
+        const usd = token.valueUsd ? ` ($${token.valueUsd.toFixed(2)})` : "";
+        return `  ${token.symbol}: ${token.balanceFormatted}${usd}  [${token.contract.slice(0, 10)}…]`;
+      });
+
+      return textResult(
+        `[${name}] ${tokens.length} tokens for ${params.address} on ${chain}:\n${lines.join("\n")}`,
+      );
+    },
+  });
+
+  const tokenTransfersParameters = Type.Object({
+    address: Type.String({ description: "Blockchain address" }),
+    chain: Type.Optional(Type.String({ description: "Chain" })),
+    limit: Type.Optional(
+      Type.Integer({
+        description: "Maximum number of results",
+        minimum: 1,
+        maximum: 100,
+        default: 10,
+      }),
+    ),
+    provider: Type.Optional(Type.String({ description: "Provider" })),
+    token: Type.Optional(Type.String({ description: "Only transfers of this token contract" })),
+  });
+
+  pi.registerTool({
+    name: "explorers_token_transfers",
+    label: "Explorers Token Transfers",
+    description:
+      "List fungible-token transfers involving a blockchain address, including transfers a third party sent to it that never show up in its native transaction history. Returns 10 transfers by default and at most 100.",
+    parameters: tokenTransfersParameters,
+    approval: "read",
+    renderCall(args, _options, _theme) {
+      return new Text(
+        sanitizeTerminalText(`Token transfers: ${args.address} (limit: ${args.limit ?? 10})`),
+        0,
+        0,
+      );
+    },
+    async execute(_toolCallId, params) {
+      const { lib, name, provider } = await getProvider(params.provider, params.chain);
+      const chain = resolveToolChain(lib, name, params.chain);
+      if (!provider.capabilities.tokenTransfers || !provider.getTokenTransfers) {
+        throw new lib.UnsupportedOperationError("getTokenTransfers", name);
+      }
+      const transfers = await provider.getTokenTransfers(params.address, chain, {
+        limit: params.limit ?? 10,
+        token: params.token,
+      });
+
+      const lines = transfers.map(
+        (transfer) =>
+          `  ${transfer.txHash.slice(0, 18)}… ${transfer.from.slice(0, 10)}…→${transfer.to.slice(0, 10)}… ${transfer.valueFormatted} ${transfer.symbol}`,
+      );
+
+      return textResult(
+        `[${name}] ${transfers.length} token transfers for ${params.address} on ${chain}:\n${lines.join("\n")}`,
+      );
+    },
+  });
+
   const gasParameters = Type.Object({
     chain: Type.Optional(Type.String({ description: "Chain" })),
     provider: Type.Optional(Type.String({ description: "Provider" })),
@@ -303,6 +401,48 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
         gas.priorityFee ? `  Priority: ${gas.priorityFee} ${gas.unit}` : null,
         gas.fastGasPrice ? `  Fast: ${gas.fastGasPrice} ${gas.unit}` : null,
         gas.baseFee ? `  Base fee: ${gas.baseFee} ${gas.unit}` : null,
+      ].filter(Boolean);
+
+      return textResult(parts.join("\n"));
+    },
+  });
+
+  const blockParameters = Type.Object({
+    blockNumber: Type.Integer({ description: "Block number", minimum: 0 }),
+    chain: Type.Optional(Type.String({ description: "Chain" })),
+    provider: Type.Optional(Type.String({ description: "Provider" })),
+  });
+
+  pi.registerTool({
+    name: "explorers_block",
+    label: "Explorers Block",
+    description:
+      "Get one block by number: hash, timestamp, miner, gas used against the limit, transaction count, and base fee when the chain has one.",
+    parameters: blockParameters,
+    approval: "read",
+    renderCall(args, _options, _theme) {
+      return new Text(
+        sanitizeTerminalText(`Block: #${args.blockNumber} (${args.chain ?? "provider default"})`),
+        0,
+        0,
+      );
+    },
+    async execute(_toolCallId, params) {
+      const { lib, name, provider } = await getProvider(params.provider, params.chain);
+      const chain = resolveToolChain(lib, name, params.chain);
+      if (!provider.capabilities.blockInfo || !provider.getBlockInfo) {
+        throw new lib.UnsupportedOperationError("getBlockInfo", name);
+      }
+      const block = await provider.getBlockInfo(params.blockNumber, chain);
+
+      const parts = [
+        `[${name}] Block #${block.number} on ${chain}`,
+        `Hash: ${block.hash}`,
+        `Timestamp: ${block.timestamp}`,
+        `Miner: ${block.miner}`,
+        `Gas used/limit: ${block.gasUsed} / ${block.gasLimit}`,
+        `Transactions: ${block.txCount}`,
+        block.baseFee ? `Base fee per gas: ${block.baseFee}` : null,
       ].filter(Boolean);
 
       return textResult(parts.join("\n"));
