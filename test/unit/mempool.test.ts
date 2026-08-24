@@ -251,6 +251,19 @@ describe("mempool provider", () => {
     expect(tx.opReturn).toEqual([{ hex: "48656c6c6f", text: "Hello" }]);
   });
 
+  it("refuses a text reading for payloads carrying invisible bidi controls", async () => {
+    const arabicLetterMark = "6a0461d89c62";
+    const rightToLeftOverride = "6a0561e280ae62";
+    stubTxDetail([
+      { scriptpubkey: arabicLetterMark, value: 0 },
+      { scriptpubkey: rightToLeftOverride, value: 0 },
+    ]);
+
+    const tx = await provider.getTxDetail!("a".repeat(64), "bitcoin");
+
+    expect(tx.opReturn).toEqual([{ hex: "61d89c62" }, { hex: "61e280ae62" }]);
+  });
+
   it("leaves a payload without a text reading when the bytes are not valid UTF-8", async () => {
     stubTxDetail([{ scriptpubkey: "6a04ff00ff00", value: 0 }]);
 
