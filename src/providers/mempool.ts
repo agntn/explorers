@@ -18,6 +18,7 @@ import type {
   BlockInfo,
   TxStatus,
   TokenTransfer,
+  OpReturnPayload,
 } from "../core/types.js";
 import { Provider } from "../core/provider.js";
 import { normalizeBaseUrl } from "../core/client.js";
@@ -97,6 +98,7 @@ interface MempoolAddressTx {
     sequence: number;
   }>;
   vout: Array<{
+    scriptpubkey?: string;
     scriptpubkey_address?: string;
     value: number;
   }>;
@@ -139,6 +141,120 @@ function satToBtc(sat: number): string {
   return formatWei(String(sat), 8);
 }
 
+const OP_RETURN = 0x6a;
+const MAX_DIRECT_PUSH = 0x4b;
+const OP_PUSHDATA1 = 0x4c;
+const OP_PUSHDATA2 = 0x4d;
+const OP_PUSHDATA4 = 0x4e;
+
+const utf8 = new TextDecoder("utf-8", { fatal: true });
+
+/**
+ * Decide whether decoded chain data is safe to print.
+ *
+ * Rejects control characters other than tab and the line breaks, plus the bidi overrides, so a
+ * payload cannot steer a terminal or reorder the line that renders it.
+ */
+function isPrintable(text: string): boolean {
+  for (const char of text) {
+    const code = char.codePointAt(0) ?? 0;
+    if (code < 0x20 && code !== 0x09 && code !== 0x0a && code !== 0x0d) return false;
+    if (code === 0x7f) return false;
+    if (code >= 0x200e && code <= 0x200f) return false;
+    if (code >= 0x202a && code <= 0x202e) return false;
+    if (code >= 0x2066 && code <= 0x2069) return false;
+  }
+
+  return true;
+}
+
+function hexToBytes(hex: string): Uint8Array | undefined {
+  if (hex.length % 2 !== 0 || !/^[0-9a-f]*$/i.test(hex)) return undefined;
+
+  const bytes = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < bytes.length; i += 1) {
+    bytes[i] = Number.parseInt(hex.slice(i * 2, i * 2 + 2), 16);
+  }
+  return bytes;
+}
+
+function toHex(bytes: Uint8Array): string {
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+/** Read a little-endian push length, or -1 when the script ends inside it. */
+function readPushLength(script: Uint8Array, offset: number, width: number): number {
+  let length = 0;
+  for (let i = 0; i < width; i += 1) {
+    const byte = script[offset + i];
+    if (byte === undefined) return -1;
+    length += byte * 256 ** i;
+  }
+  return length;
+}
+
+/** Read a payload as text, leaving binary carriers (Runes, Omni, hashes) without a text reading. */
+function decodeText(payload: Uint8Array): string | undefined {
+  let text: string;
+  try {
+    text = utf8.decode(payload);
+  } catch {
+    return undefined;
+  }
+
+  return isPrintable(text) ? text : undefined;
+}
+
+/**
+ * Read the data pushes of an OP_RETURN output.
+ *
+ * Any other output yields nothing. The walk stops at the first byte that is not a data push, so a
+ * truncated or non-standard tail still returns whatever was pushed before it.
+ */
+function parseOpReturn(scriptHex: string): OpReturnPayload[] {
+  const script = hexToBytes(scriptHex);
+  if (!script || script[0] !== OP_RETURN) return [];
+
+  const payloads: OpReturnPayload[] = [];
+  let cursor = 1;
+
+  while (cursor < script.length) {
+    const opcode = script[cursor];
+    if (opcode === undefined) break;
+    cursor += 1;
+
+    let length: number;
+    if (opcode >= 1 && opcode <= MAX_DIRECT_PUSH) {
+      length = opcode;
+    } else if (opcode === OP_PUSHDATA1) {
+      length = readPushLength(script, cursor, 1);
+      cursor += 1;
+    } else if (opcode === OP_PUSHDATA2) {
+      length = readPushLength(script, cursor, 2);
+      cursor += 2;
+    } else if (opcode === OP_PUSHDATA4) {
+      length = readPushLength(script, cursor, 4);
+      cursor += 4;
+    } else {
+      break;
+    }
+
+    if (length < 0 || cursor + length > script.length) break;
+
+    const payload = script.subarray(cursor, cursor + length);
+    cursor += length;
+    payloads.push({ hex: toHex(payload), text: decodeText(payload) });
+  }
+
+  return payloads;
+}
+
+/** Gather the OP_RETURN payloads of all outputs, or nothing when the transaction carries none. */
+function collectOpReturns(vout: Array<{ scriptpubkey?: string }>): OpReturnPayload[] | undefined {
+  const payloads = vout.flatMap((out) => (out.scriptpubkey ? parseOpReturn(out.scriptpubkey) : []));
+  return payloads.length > 0 ? payloads : undefined;
+}
+
 function mapTx(raw: MempoolAddressTx, address: string): Transaction {
   // Determine direction: is this address receiving or sending?
   const totalIn = raw.vin
@@ -175,6 +291,7 @@ function mapTx(raw: MempoolAddressTx, address: string): Transaction {
     status: (raw.status.confirmed ? "success" : "pending") as TxStatus,
     isContractInteraction: false,
     tokenTransfers: [] as TokenTransfer[],
+    opReturn: collectOpReturns(raw.vout),
     raw: raw as unknown as Record<string, unknown>,
   };
 }
@@ -270,6 +387,7 @@ class Mempool extends Provider {
       status: (data.status.confirmed ? "success" : "pending") as TxStatus,
       isContractInteraction: false,
       tokenTransfers: [],
+      opReturn: collectOpReturns(data.vout),
       raw: data as unknown as Record<string, unknown>,
     };
   }

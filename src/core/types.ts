@@ -34,6 +34,14 @@ export interface TokenTransfer {
   timestamp?: string;
 }
 
+/** One data push carried by an OP_RETURN output */
+export interface OpReturnPayload {
+  /** Pushed bytes as lowercase hex, without the opcode and the push prefix */
+  hex: string;
+  /** UTF-8 reading of the payload, present only when the bytes are printable text */
+  text?: string;
+}
+
 /** Normalized transaction */
 export interface Transaction {
   /** Transaction hash */
@@ -66,6 +74,8 @@ export interface Transaction {
   isContractInteraction: boolean;
   /** Token transfers within this tx */
   tokenTransfers: TokenTransfer[];
+  /** Data pushed by the OP_RETURN outputs, on chains that carry them */
+  opReturn?: OpReturnPayload[];
   /** Raw provider data */
   raw?: Record<string, unknown>;
 }

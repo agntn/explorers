@@ -145,7 +145,7 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
     name: "explorers_tx_detail",
     label: "Explorers Tx Detail",
     description:
-      "Inspect one transaction by hash. Returns normalized status, block, fee, value, method, and token-transfer count when the selected explorer supports transaction details.",
+      "Inspect one transaction by hash. Returns normalized status, block, fee, value, method, token-transfer count, and any OP_RETURN message when the selected explorer supports transaction details.",
     parameters: txDetailParameters,
     approval: "read",
     renderCall(args, _options, _theme) {
@@ -168,6 +168,7 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
         `Value: ${tx.valueFormatted}`,
         tx.functionName ? `Method: ${tx.functionName}` : null,
         tx.tokenTransfers.length > 0 ? `Token transfers: ${tx.tokenTransfers.length}` : null,
+        ...(tx.opReturn ?? []).map((payload) => `OP_RETURN: ${payload.text ?? payload.hex}`),
       ].filter(Boolean);
 
       return {
@@ -214,6 +215,11 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
         if (tx.tokenTransfers.length > 0) {
           lines.push(
             `${theme.fg("muted", "Token transfers")} ${tx.tokenTransfers.length.toString()}`,
+          );
+        }
+        for (const payload of tx.opReturn ?? []) {
+          lines.push(
+            `${theme.fg("muted", "OP_RETURN")} ${sanitizeTerminalText(payload.text ?? payload.hex)}`,
           );
         }
       }

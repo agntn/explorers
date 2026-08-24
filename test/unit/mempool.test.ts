@@ -14,6 +14,28 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+/** Serve one canned transaction whose outputs are the interesting part. */
+function stubTxDetail(
+  vout: Array<{ scriptpubkey?: string; scriptpubkey_address?: string; value: number }>,
+): void {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            txid: "a".repeat(64),
+            vin: [{ prevout: { scriptpubkey_address: KNOWN_BTC, value: 3_000 } }],
+            vout,
+            fee: 500,
+            status: { confirmed: true, block_height: 963_629, block_time: 1_787_427_938 },
+          }),
+          { headers: { "Content-Type": "application/json" } },
+        ),
+    ),
+  );
+}
+
 describe("mempool provider", () => {
   let provider: ReturnType<typeof create>;
 
@@ -140,6 +162,118 @@ describe("mempool provider", () => {
     expect(tx.hash).toMatch(/^[0-9a-f]{64}$/);
     expect(tx.status).toBe("success");
     expect(tx.blockNumber).toBeGreaterThan(0);
+  });
+
+  it("reads the message an OP_RETURN output carries", async () => {
+    stubTxDetail([
+      { scriptpubkey: "0014c30f5f3fccac11feca2fd0322b607c9d73995fde", value: 2_000 },
+      {
+        scriptpubkey:
+          "6a31426f7468206b65797320617265206465726976656420696e646570656e64656e746c792066726f6d2047656e657369732e",
+        value: 0,
+      },
+    ]);
+
+    const tx = await provider.getTxDetail!("a".repeat(64), "bitcoin");
+
+    expect(tx.opReturn).toEqual([
+      {
+        hex: "426f7468206b65797320617265206465726976656420696e646570656e64656e746c792066726f6d2047656e657369732e",
+        text: "Both keys are derived independently from Genesis.",
+      },
+    ]);
+  });
+
+  it("strips the push prefix from an OP_PUSHDATA1 payload", async () => {
+    stubTxDetail([{ scriptpubkey: "6a4c0b48656c6c6f2c2042544321", value: 0 }]);
+
+    const tx = await provider.getTxDetail!("a".repeat(64), "bitcoin");
+
+    expect(tx.opReturn).toEqual([{ hex: "48656c6c6f2c2042544321", text: "Hello, BTC!" }]);
+  });
+
+  it("keeps every push of a multi-push OP_RETURN separate", async () => {
+    stubTxDetail([{ scriptpubkey: "6a0548656c6c6f024f6b", value: 0 }]);
+
+    const tx = await provider.getTxDetail!("a".repeat(64), "bitcoin");
+
+    expect(tx.opReturn).toEqual([
+      { hex: "48656c6c6f", text: "Hello" },
+      { hex: "4f6b", text: "Ok" },
+    ]);
+  });
+
+  it("reads the wider push opcodes and skips a truncated one", async () => {
+    stubTxDetail([
+      { scriptpubkey: "6a4d050048656c6c6f", value: 0 },
+      { scriptpubkey: "6a4e0500000048656c6c6f", value: 0 },
+      { scriptpubkey: "6a2048656c6c6f", value: 0 },
+    ]);
+
+    const tx = await provider.getTxDetail!("a".repeat(64), "bitcoin");
+
+    expect(tx.opReturn).toEqual([
+      { hex: "48656c6c6f", text: "Hello" },
+      { hex: "48656c6c6f", text: "Hello" },
+    ]);
+  });
+
+  it("leaves payloads without a text reading when the bytes are not printable", async () => {
+    stubTxDetail([
+      { scriptpubkey: "6a04ff00ff00", value: 0 },
+      { scriptpubkey: "6a0361006b", value: 0 },
+    ]);
+
+    const tx = await provider.getTxDetail!("a".repeat(64), "bitcoin");
+
+    expect(tx.opReturn).toEqual([{ hex: "ff00ff00" }, { hex: "61006b" }]);
+  });
+
+  it("omits opReturn for a transaction without one", async () => {
+    stubTxDetail([{ scriptpubkey: "0014c30f5f3fccac11feca2fd0322b607c9d73995fde", value: 2_000 }]);
+
+    const tx = await provider.getTxDetail!("a".repeat(64), "bitcoin");
+
+    expect(tx.opReturn).toBeUndefined();
+  });
+
+  it("reads OP_RETURN messages from transaction history too", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify([
+              {
+                txid: "b".repeat(64),
+                vin: [{ prevout: { scriptpubkey_address: KNOWN_BTC, value: 5_000 } }],
+                vout: [
+                  { scriptpubkey: "6a0548656c6c6f", value: 0 },
+                  { scriptpubkey_address: KNOWN_BTC, value: 4_000 },
+                ],
+                fee: 1_000,
+                status: { confirmed: true, block_height: 963_837, block_time: 1_787_000_000 },
+              },
+            ]),
+            { headers: { "Content-Type": "application/json" } },
+          ),
+      ),
+    );
+
+    const [transaction] = await provider.getTxHistory(KNOWN_BTC, "bitcoin", { limit: 1 });
+
+    expect(transaction?.opReturn).toEqual([{ hex: "48656c6c6f", text: "Hello" }]);
+  });
+
+  it("reads a live 252-byte OP_RETURN message", async () => {
+    const tx = await provider.getTxDetail!(
+      "b691de3657880d9a1eabd2783b1a9fa8c5313ced338495bf10e85727012d7a77",
+      "bitcoin",
+    );
+
+    expect(tx.opReturn?.[0]?.text).toContain(
+      "I made a Bitcoin puzzle using information contained in the genesis block",
+    );
   });
 
   it("getGasData returns fee estimates", async () => {

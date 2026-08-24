@@ -76,6 +76,9 @@ export default defineCommand({
         if (tx.tokenTransfers.length > 0) {
           consola.log(`  Token transfers: ${tx.tokenTransfers.length}`);
         }
+        for (const payload of tx.opReturn ?? []) {
+          consola.log(`  OP_RETURN: ${payload.text ?? payload.hex}`);
+        }
       } else {
         const { address } = await resolveInput(rawTarget, chain);
         const limitText = (args.limit as string).trim();
