@@ -143,7 +143,7 @@ export function createMcpServer(): McpServer {
   server.registerTool(
     "explorers_tx_detail",
     {
-      description: "Get one normalized transaction by hash",
+      description: "Get one normalized transaction by hash, including any OP_RETURN message",
       inputSchema: { hash: z.string().min(1), ...providerInput },
       annotations: { readOnlyHint: true },
     },
