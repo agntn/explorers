@@ -229,6 +229,17 @@ describe("mempool provider", () => {
     expect(tx.opReturn).toEqual([{ hex: "ff00ff00" }, { hex: "61006b" }]);
   });
 
+  it("refuses a text reading for payloads carrying terminal controls", async () => {
+    stubTxDetail([
+      { scriptpubkey: "6a0568c29b6d21", value: 0 },
+      { scriptpubkey: "6a03610d62", value: 0 },
+    ]);
+
+    const tx = await provider.getTxDetail!("a".repeat(64), "bitcoin");
+
+    expect(tx.opReturn).toEqual([{ hex: "68c29b6d21" }, { hex: "610d62" }]);
+  });
+
   it("omits opReturn for a transaction without one", async () => {
     stubTxDetail([{ scriptpubkey: "0014c30f5f3fccac11feca2fd0322b607c9d73995fde", value: 2_000 }]);
 

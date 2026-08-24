@@ -152,14 +152,15 @@ const utf8 = new TextDecoder("utf-8", { fatal: true });
 /**
  * Decide whether decoded chain data is safe to print.
  *
- * Rejects control characters other than tab and the line breaks, plus the bidi overrides, so a
- * payload cannot steer a terminal or reorder the line that renders it.
+ * Keeps only tab and newline out of the C0 and C1 control blocks, matching what the agent
+ * extensions strip at the terminal boundary, and rejects the bidi overrides on top. A payload
+ * anyone can pay to publish must not steer a terminal or reorder the line that renders it.
  */
 function isPrintable(text: string): boolean {
   for (const char of text) {
     const code = char.codePointAt(0) ?? 0;
-    if (code < 0x20 && code !== 0x09 && code !== 0x0a && code !== 0x0d) return false;
-    if (code === 0x7f) return false;
+    if (code < 0x20 && code !== 0x09 && code !== 0x0a) return false;
+    if (code >= 0x7f && code <= 0x9f) return false;
     if (code >= 0x200e && code <= 0x200f) return false;
     if (code >= 0x202a && code <= 0x202e) return false;
     if (code >= 0x2066 && code <= 0x2069) return false;
