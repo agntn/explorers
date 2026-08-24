@@ -226,6 +226,31 @@ describe("mempool provider", () => {
     ]);
   });
 
+  it("keeps the constant pushes and the data that follows them", async () => {
+    stubTxDetail([
+      { scriptpubkey: "6a000548656c6c6f", value: 0 },
+      { scriptpubkey: "6a4f5160", value: 0 },
+    ]);
+
+    const tx = await provider.getTxDetail!("a".repeat(64), "bitcoin");
+
+    expect(tx.opReturn).toEqual([
+      { hex: "", text: "" },
+      { hex: "48656c6c6f", text: "Hello" },
+      { hex: "81" },
+      { hex: "01" },
+      { hex: "10" },
+    ]);
+  });
+
+  it("stops at an opcode that is no longer a push", async () => {
+    stubTxDetail([{ scriptpubkey: "6a0548656c6c6f760548656c6c6f", value: 0 }]);
+
+    const tx = await provider.getTxDetail!("a".repeat(64), "bitcoin");
+
+    expect(tx.opReturn).toEqual([{ hex: "48656c6c6f", text: "Hello" }]);
+  });
+
   it("leaves a payload without a text reading when the bytes are not valid UTF-8", async () => {
     stubTxDetail([{ scriptpubkey: "6a04ff00ff00", value: 0 }]);
 

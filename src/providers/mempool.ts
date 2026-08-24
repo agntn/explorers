@@ -144,11 +144,15 @@ function satToBtc(sat: number): string {
 /** An OP_RETURN output opens with the opcode itself, so the hex says so before it is decoded. */
 const OP_RETURN_SCRIPT = /^6a/i;
 
-const MAX_DIRECT_PUSH = 0x4b;
-
+const OP_0 = 0x00;
 const OP_PUSHDATA1 = 0x4c;
 const OP_PUSHDATA2 = 0x4d;
 const OP_PUSHDATA4 = 0x4e;
+
+const OP_1NEGATE = 0x4f;
+const OP_RESERVED = 0x50;
+const OP_1 = 0x51;
+const OP_16 = 0x60;
 
 /** Push opcodes that spell their length out, and how many bytes that length takes. */
 const PUSHDATA_WIDTH: Record<number, number> = {
@@ -202,6 +206,19 @@ function readPushLength(script: Uint8Array, offset: number, width: number): numb
   return length;
 }
 
+/**
+ * Value an opcode pushes on its own, for the small constants that carry no bytes after them.
+ *
+ * Nothing comes back for OP_RESERVED: Bitcoin Core counts it as push-type in `IsPushOnly`, yet it
+ * leaves no data behind.
+ */
+function constantPush(opcode: number): Uint8Array | undefined {
+  if (opcode === OP_0) return new Uint8Array();
+  if (opcode === OP_1NEGATE) return Uint8Array.of(0x81);
+  if (opcode >= OP_1 && opcode <= OP_16) return Uint8Array.of(opcode - OP_1 + 1);
+  return undefined;
+}
+
 /** Read a payload as text, leaving binary carriers (Runes, Omni, hashes) without a text reading. */
 function decodeText(payload: Uint8Array): string | undefined {
   try {
@@ -212,12 +229,17 @@ function decodeText(payload: Uint8Array): string | undefined {
   }
 }
 
+function toPayload(bytes: Uint8Array): OpReturnPayload {
+  return { hex: toHex(bytes), text: decodeText(bytes) };
+}
+
 /**
  * Read the data pushes of an OP_RETURN output.
  *
  * Any other output yields nothing, and is rejected on the hex so a busy address does not pay to
- * decode thousands of ordinary scripts. The walk stops at the first byte that is not a data push,
- * so a truncated or non-standard tail still returns whatever was pushed before it.
+ * decode thousands of ordinary scripts. The walk covers what Bitcoin Core calls push-only: an
+ * opcode below OP_PUSHDATA1 is its own byte count, the small constants push themselves, and
+ * anything above OP_16 or a truncated push ends the walk with whatever came before it.
  */
 function parseOpReturn(scriptHex: string): OpReturnPayload[] {
   if (!OP_RETURN_SCRIPT.test(scriptHex)) return [];
@@ -232,12 +254,19 @@ function parseOpReturn(scriptHex: string): OpReturnPayload[] {
     const opcode = script[cursor]!;
     cursor += 1;
 
-    let length: number;
-    if (opcode >= 1 && opcode <= MAX_DIRECT_PUSH) {
-      length = opcode;
-    } else {
-      const width = PUSHDATA_WIDTH[opcode];
-      if (width === undefined || cursor + width > script.length) break;
+    if (opcode > OP_16) break;
+    if (opcode === OP_RESERVED) continue;
+
+    const constant = constantPush(opcode);
+    if (constant !== undefined) {
+      payloads.push(toPayload(constant));
+      continue;
+    }
+
+    let length = opcode;
+    const width = PUSHDATA_WIDTH[opcode];
+    if (width !== undefined) {
+      if (cursor + width > script.length) break;
       length = readPushLength(script, cursor, width);
       cursor += width;
     }
@@ -246,7 +275,7 @@ function parseOpReturn(scriptHex: string): OpReturnPayload[] {
 
     const payload = script.subarray(cursor, cursor + length);
     cursor += length;
-    payloads.push({ hex: toHex(payload), text: decodeText(payload) });
+    payloads.push(toPayload(payload));
   }
 
   return payloads;
