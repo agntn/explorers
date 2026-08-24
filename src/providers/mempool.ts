@@ -163,29 +163,24 @@ const PUSHDATA_WIDTH: Record<number, number> = {
 
 const utf8 = new TextDecoder("utf-8", { fatal: true });
 
-/** The code points Unicode gives the Bidi_Control property: invisible, and they reorder a line. */
-function isBidiControl(code: number): boolean {
-  return (
-    code === 0x061c ||
-    (code >= 0x200e && code <= 0x200f) ||
-    (code >= 0x202a && code <= 0x202e) ||
-    (code >= 0x2066 && code <= 0x2069)
-  );
-}
+/** Unicode format characters: invisible on screen, which covers the bidi controls as well. */
+const FORMAT_CHARACTER = /\p{Cf}/u;
 
 /**
- * Decide whether decoded chain data is safe to print.
+ * Decide whether decoded chain data is worth showing as text.
  *
- * Out of the C0 and C1 control blocks only tab and newline survive, and the bidi controls go with
- * them. A payload anyone can pay to publish must not steer a terminal or reorder the line that
- * renders it, and the CLI prints this text straight out.
+ * A payload anyone can pay to publish must not steer a terminal, reorder the line that renders it,
+ * or hide bytes behind characters nobody can see, because the CLI prints this text straight out.
+ * Out of the C0 and C1 control blocks only tab and newline survive. The trade is that a joiner
+ * carries meaning in Persian spelling and in emoji sequences, and those payloads arrive as hex.
  */
 function isPrintable(text: string): boolean {
+  if (FORMAT_CHARACTER.test(text)) return false;
+
   for (const char of text) {
     const code = char.codePointAt(0) ?? 0;
     if (code < 0x20 && code !== 0x09 && code !== 0x0a) return false;
     if (code >= 0x7f && code <= 0x9f) return false;
-    if (isBidiControl(code)) return false;
   }
 
   return true;

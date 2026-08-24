@@ -251,17 +251,31 @@ describe("mempool provider", () => {
     expect(tx.opReturn).toEqual([{ hex: "48656c6c6f", text: "Hello" }]);
   });
 
-  it("refuses a text reading for payloads carrying invisible bidi controls", async () => {
+  it("refuses a text reading for payloads carrying invisible format characters", async () => {
     const arabicLetterMark = "6a0461d89c62";
     const rightToLeftOverride = "6a0561e280ae62";
+    const zeroWidthSpace = "6a0561e2808b62";
     stubTxDetail([
       { scriptpubkey: arabicLetterMark, value: 0 },
       { scriptpubkey: rightToLeftOverride, value: 0 },
+      { scriptpubkey: zeroWidthSpace, value: 0 },
     ]);
 
     const tx = await provider.getTxDetail!("a".repeat(64), "bitcoin");
 
-    expect(tx.opReturn).toEqual([{ hex: "61d89c62" }, { hex: "61e280ae62" }]);
+    expect(tx.opReturn).toEqual([
+      { hex: "61d89c62" },
+      { hex: "61e280ae62" },
+      { hex: "61e2808b62" },
+    ]);
+  });
+
+  it("keeps a text reading for an emoji that needs a variation selector", async () => {
+    stubTxDetail([{ scriptpubkey: "6a06e29da4efb88f", value: 0 }]);
+
+    const tx = await provider.getTxDetail!("a".repeat(64), "bitcoin");
+
+    expect(tx.opReturn).toEqual([{ hex: "e29da4efb88f", text: "❤️" }]);
   });
 
   it("leaves a payload without a text reading when the bytes are not valid UTF-8", async () => {
