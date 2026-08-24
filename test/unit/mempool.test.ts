@@ -270,6 +270,19 @@ describe("mempool provider", () => {
     ]);
   });
 
+  it("hands back hex when a payload hides behind a byte order mark", async () => {
+    const bomOnly = "6a03efbbbf";
+    const bomThenText = "6a05efbbbf4869";
+    stubTxDetail([
+      { scriptpubkey: bomOnly, value: 0 },
+      { scriptpubkey: bomThenText, value: 0 },
+    ]);
+
+    const tx = await provider.getTxDetail!("a".repeat(64), "bitcoin");
+
+    expect(tx.opReturn).toEqual([{ hex: "efbbbf" }, { hex: "efbbbf4869" }]);
+  });
+
   it("keeps a text reading for an emoji that needs a variation selector", async () => {
     stubTxDetail([{ scriptpubkey: "6a06e29da4efb88f", value: 0 }]);
 

@@ -161,7 +161,8 @@ const PUSHDATA_WIDTH: Record<number, number> = {
   [OP_PUSHDATA4]: 4,
 };
 
-const utf8 = new TextDecoder("utf-8", { fatal: true });
+/** `ignoreBOM` means "leave a leading U+FEFF in the string", which is where the filter can see it. */
+const utf8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 
 /** Unicode format characters: invisible on screen, which covers the bidi controls as well. */
 const FORMAT_CHARACTER = /\p{Cf}/u;
