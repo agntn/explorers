@@ -141,7 +141,9 @@ function satToBtc(sat: number): string {
   return formatWei(String(sat), 8);
 }
 
-const OP_RETURN = 0x6a;
+/** An OP_RETURN output opens with the opcode itself, so the hex says so before it is decoded. */
+const OP_RETURN_SCRIPT = /^6a/i;
+
 const MAX_DIRECT_PUSH = 0x4b;
 
 const OP_PUSHDATA1 = 0x4c;
@@ -213,12 +215,15 @@ function decodeText(payload: Uint8Array): string | undefined {
 /**
  * Read the data pushes of an OP_RETURN output.
  *
- * Any other output yields nothing. The walk stops at the first byte that is not a data push, so a
- * truncated or non-standard tail still returns whatever was pushed before it.
+ * Any other output yields nothing, and is rejected on the hex so a busy address does not pay to
+ * decode thousands of ordinary scripts. The walk stops at the first byte that is not a data push,
+ * so a truncated or non-standard tail still returns whatever was pushed before it.
  */
 function parseOpReturn(scriptHex: string): OpReturnPayload[] {
+  if (!OP_RETURN_SCRIPT.test(scriptHex)) return [];
+
   const script = hexToBytes(scriptHex);
-  if (!script || script[0] !== OP_RETURN) return [];
+  if (!script) return [];
 
   const payloads: OpReturnPayload[] = [];
   let cursor = 1;

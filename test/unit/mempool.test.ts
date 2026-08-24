@@ -203,6 +203,14 @@ describe("mempool provider", () => {
     ]);
   });
 
+  it("reads a script whose hex arrives uppercase", async () => {
+    stubTxDetail([{ scriptpubkey: "6A0548656C6C6F", value: 0 }]);
+
+    const tx = await provider.getTxDetail!("a".repeat(64), "bitcoin");
+
+    expect(tx.opReturn).toEqual([{ hex: "48656c6c6f", text: "Hello" }]);
+  });
+
   it("reads the wider push opcodes and skips a truncated one", async () => {
     stubTxDetail([
       { scriptpubkey: "6a4d050048656c6c6f", value: 0 },
