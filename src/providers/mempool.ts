@@ -18,6 +18,7 @@ import type {
   BlockInfo,
   TxStatus,
   TokenTransfer,
+  OpReturnPayload,
 } from "../core/types.js";
 import { Provider } from "../core/provider.js";
 import { normalizeBaseUrl } from "../core/client.js";
@@ -97,6 +98,7 @@ interface MempoolAddressTx {
     sequence: number;
   }>;
   vout: Array<{
+    scriptpubkey?: string;
     scriptpubkey_address?: string;
     value: number;
   }>;
@@ -139,6 +141,158 @@ function satToBtc(sat: number): string {
   return formatWei(String(sat), 8);
 }
 
+/** An OP_RETURN output opens with the opcode itself, so the hex says so before it is decoded. */
+const OP_RETURN_SCRIPT = /^6a/i;
+
+const OP_0 = 0x00;
+const OP_PUSHDATA1 = 0x4c;
+const OP_PUSHDATA2 = 0x4d;
+const OP_PUSHDATA4 = 0x4e;
+
+const OP_1NEGATE = 0x4f;
+const OP_RESERVED = 0x50;
+const OP_1 = 0x51;
+const OP_16 = 0x60;
+
+/** Push opcodes that spell their length out, and how many bytes that length takes. */
+const PUSHDATA_WIDTH: Record<number, number> = {
+  [OP_PUSHDATA1]: 1,
+  [OP_PUSHDATA2]: 2,
+  [OP_PUSHDATA4]: 4,
+};
+
+/** `ignoreBOM` means "leave a leading U+FEFF in the string", which is where the filter can see it. */
+const utf8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
+
+/** Unicode format characters: invisible on screen, which covers the bidi controls as well. */
+const FORMAT_CHARACTER = /\p{Cf}/u;
+
+/**
+ * Decide whether decoded chain data is worth showing as text.
+ *
+ * A payload anyone can pay to publish must not steer a terminal, reorder the line that renders it,
+ * or hide bytes behind characters nobody can see, because the CLI prints this text straight out.
+ * Out of the C0 and C1 control blocks only tab and newline survive: real messages write paragraphs
+ * with them, and the renderers indent a continuation line so it cannot pose as another field. The
+ * trade is that a joiner carries meaning in Persian spelling and in emoji sequences, and those
+ * payloads arrive as hex.
+ */
+function isPrintable(text: string): boolean {
+  if (FORMAT_CHARACTER.test(text)) return false;
+
+  for (const char of text) {
+    const code = char.codePointAt(0) ?? 0;
+    if (code < 0x20 && code !== 0x09 && code !== 0x0a) return false;
+    if (code >= 0x7f && code <= 0x9f) return false;
+  }
+
+  return true;
+}
+
+function hexToBytes(hex: string): Uint8Array | undefined {
+  if (hex.length % 2 !== 0 || !/^[0-9a-f]*$/i.test(hex)) return undefined;
+
+  const bytes = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < bytes.length; i += 1) {
+    bytes[i] = Number.parseInt(hex.slice(i * 2, i * 2 + 2), 16);
+  }
+  return bytes;
+}
+
+function toHex(bytes: Uint8Array): string {
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+/** Read a little-endian push length. Callers check first that all `width` bytes are there. */
+function readPushLength(script: Uint8Array, offset: number, width: number): number {
+  let length = 0;
+  for (let i = 0; i < width; i += 1) {
+    length += (script[offset + i] ?? 0) * 256 ** i;
+  }
+  return length;
+}
+
+/**
+ * Value an opcode pushes on its own, for the small constants that carry no bytes after them.
+ *
+ * Nothing comes back for OP_RESERVED: Bitcoin Core counts it as push-type in `IsPushOnly`, yet it
+ * leaves no data behind.
+ */
+function constantPush(opcode: number): Uint8Array | undefined {
+  if (opcode === OP_0) return new Uint8Array();
+  if (opcode === OP_1NEGATE) return Uint8Array.of(0x81);
+  if (opcode >= OP_1 && opcode <= OP_16) return Uint8Array.of(opcode - OP_1 + 1);
+  return undefined;
+}
+
+/** Read a payload as text, leaving binary carriers (Runes, Omni, hashes) without a text reading. */
+function decodeText(payload: Uint8Array): string | undefined {
+  try {
+    const text = utf8.decode(payload);
+    return isPrintable(text) ? text : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function toPayload(bytes: Uint8Array): OpReturnPayload {
+  return { hex: toHex(bytes), text: decodeText(bytes) };
+}
+
+/**
+ * Read the data pushes of an OP_RETURN output.
+ *
+ * Any other output yields nothing, and is rejected on the hex so a busy address does not pay to
+ * decode thousands of ordinary scripts. The walk covers what Bitcoin Core calls push-only: an
+ * opcode below OP_PUSHDATA1 is its own byte count, the small constants push themselves, and
+ * anything above OP_16 or a truncated push ends the walk with whatever came before it.
+ */
+function parseOpReturn(scriptHex: string): OpReturnPayload[] {
+  if (!OP_RETURN_SCRIPT.test(scriptHex)) return [];
+
+  const script = hexToBytes(scriptHex);
+  if (!script) return [];
+
+  const payloads: OpReturnPayload[] = [];
+  let cursor = 1;
+
+  while (cursor < script.length) {
+    const opcode = script[cursor]!;
+    cursor += 1;
+
+    if (opcode > OP_16) break;
+    if (opcode === OP_RESERVED) continue;
+
+    const constant = constantPush(opcode);
+    if (constant !== undefined) {
+      payloads.push(toPayload(constant));
+      continue;
+    }
+
+    let length = opcode;
+    const width = PUSHDATA_WIDTH[opcode];
+    if (width !== undefined) {
+      if (cursor + width > script.length) break;
+      length = readPushLength(script, cursor, width);
+      cursor += width;
+    }
+
+    if (cursor + length > script.length) break;
+
+    const payload = script.subarray(cursor, cursor + length);
+    cursor += length;
+    payloads.push(toPayload(payload));
+  }
+
+  return payloads;
+}
+
+/** Gather the OP_RETURN payloads of all outputs, or nothing when the transaction carries none. */
+function collectOpReturns(vout: Array<{ scriptpubkey?: string }>): OpReturnPayload[] | undefined {
+  const payloads = vout.flatMap((out) => (out.scriptpubkey ? parseOpReturn(out.scriptpubkey) : []));
+  return payloads.length > 0 ? payloads : undefined;
+}
+
 function mapTx(raw: MempoolAddressTx, address: string): Transaction {
   // Determine direction: is this address receiving or sending?
   const totalIn = raw.vin
@@ -175,6 +329,7 @@ function mapTx(raw: MempoolAddressTx, address: string): Transaction {
     status: (raw.status.confirmed ? "success" : "pending") as TxStatus,
     isContractInteraction: false,
     tokenTransfers: [] as TokenTransfer[],
+    opReturn: collectOpReturns(raw.vout),
     raw: raw as unknown as Record<string, unknown>,
   };
 }
@@ -270,6 +425,7 @@ class Mempool extends Provider {
       status: (data.status.confirmed ? "success" : "pending") as TxStatus,
       isContractInteraction: false,
       tokenTransfers: [],
+      opReturn: collectOpReturns(data.vout),
       raw: data as unknown as Record<string, unknown>,
     };
   }

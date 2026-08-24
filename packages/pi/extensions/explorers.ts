@@ -146,6 +146,7 @@ export default function explorersExtension(pi: ExtensionAPI) {
     promptGuidelines: [
       "Use explorers_tx_detail with a chain-native transaction hash and optionally a chain.",
       "explorers_tx_detail returns fees, status, method, and token-transfer count.",
+      "explorers_tx_detail reads OP_RETURN messages through the mempool provider, so ask for it by name when a Bitcoin transaction carries one.",
     ],
     parameters: Type.Object({
       hash: Type.String({ description: "Transaction hash" }),
@@ -172,6 +173,7 @@ export default function explorersExtension(pi: ExtensionAPI) {
         `Value: ${tx.valueFormatted}`,
         tx.functionName ? `Method: ${tx.functionName}` : null,
         tx.tokenTransfers.length > 0 ? `Token transfers: ${tx.tokenTransfers.length}` : null,
+        ...(tx.opReturn ?? []).map((payload) => `OP_RETURN: ${payload.text ?? payload.hex}`),
       ].filter(Boolean);
 
       return {
@@ -210,6 +212,11 @@ export default function explorersExtension(pi: ExtensionAPI) {
           lines.push(
             `${theme.fg("muted", "Token transfers")} ${tx.tokenTransfers.length.toString()}`,
           );
+        }
+        for (const payload of tx.opReturn ?? []) {
+          const [first = "", ...rest] = (payload.text ?? payload.hex).split("\n");
+          lines.push(`${theme.fg("muted", "OP_RETURN")} ${first}`);
+          for (const line of rest) lines.push(`  ${line}`);
         }
       }
 

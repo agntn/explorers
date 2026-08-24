@@ -143,7 +143,8 @@ export function createMcpServer(): McpServer {
   server.registerTool(
     "explorers_tx_detail",
     {
-      description: "Get one normalized transaction by hash",
+      description:
+        "Get one normalized transaction by hash, with OP_RETURN messages when the provider is mempool",
       inputSchema: { hash: z.string().min(1), ...providerInput },
       annotations: { readOnlyHint: true },
     },
