@@ -160,7 +160,6 @@ describe("explorers OMP extension", () => {
       functionName: "transfer",
       isContractInteraction: true,
       tokenTransfers: [],
-      // SAFETY: an OP_RETURN payload is chain data an attacker pays to publish.
       opReturn: [
         {
           hex: "6869",

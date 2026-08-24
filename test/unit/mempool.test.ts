@@ -14,26 +14,26 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+function stubJSON(body: unknown) {
+  const fetch = vi.fn(
+    async () =>
+      new Response(JSON.stringify(body), { headers: { "Content-Type": "application/json" } }),
+  );
+  vi.stubGlobal("fetch", fetch);
+  return fetch;
+}
+
 /** Serve one canned transaction whose outputs are the interesting part. */
 function stubTxDetail(
   vout: Array<{ scriptpubkey?: string; scriptpubkey_address?: string; value: number }>,
 ): void {
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(
-      async () =>
-        new Response(
-          JSON.stringify({
-            txid: "a".repeat(64),
-            vin: [{ prevout: { scriptpubkey_address: KNOWN_BTC, value: 3_000 } }],
-            vout,
-            fee: 500,
-            status: { confirmed: true, block_height: 963_629, block_time: 1_787_427_938 },
-          }),
-          { headers: { "Content-Type": "application/json" } },
-        ),
-    ),
-  );
+  stubJSON({
+    txid: "a".repeat(64),
+    vin: [{ prevout: { scriptpubkey_address: KNOWN_BTC, value: 3_000 } }],
+    vout,
+    fee: 500,
+    status: { confirmed: true, block_height: 963_629, block_time: 1_787_427_938 },
+  });
 }
 
 describe("mempool provider", () => {
@@ -218,26 +218,24 @@ describe("mempool provider", () => {
     ]);
   });
 
-  it("leaves payloads without a text reading when the bytes are not printable", async () => {
-    stubTxDetail([
-      { scriptpubkey: "6a04ff00ff00", value: 0 },
-      { scriptpubkey: "6a0361006b", value: 0 },
-    ]);
+  it("leaves a payload without a text reading when the bytes are not valid UTF-8", async () => {
+    stubTxDetail([{ scriptpubkey: "6a04ff00ff00", value: 0 }]);
 
     const tx = await provider.getTxDetail!("a".repeat(64), "bitcoin");
 
-    expect(tx.opReturn).toEqual([{ hex: "ff00ff00" }, { hex: "61006b" }]);
+    expect(tx.opReturn).toEqual([{ hex: "ff00ff00" }]);
   });
 
   it("refuses a text reading for payloads carrying terminal controls", async () => {
     stubTxDetail([
+      { scriptpubkey: "6a0361006b", value: 0 },
       { scriptpubkey: "6a0568c29b6d21", value: 0 },
       { scriptpubkey: "6a03610d62", value: 0 },
     ]);
 
     const tx = await provider.getTxDetail!("a".repeat(64), "bitcoin");
 
-    expect(tx.opReturn).toEqual([{ hex: "68c29b6d21" }, { hex: "610d62" }]);
+    expect(tx.opReturn).toEqual([{ hex: "61006b" }, { hex: "68c29b6d21" }, { hex: "610d62" }]);
   });
 
   it("omits opReturn for a transaction without one", async () => {
@@ -249,27 +247,18 @@ describe("mempool provider", () => {
   });
 
   it("reads OP_RETURN messages from transaction history too", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(
-        async () =>
-          new Response(
-            JSON.stringify([
-              {
-                txid: "b".repeat(64),
-                vin: [{ prevout: { scriptpubkey_address: KNOWN_BTC, value: 5_000 } }],
-                vout: [
-                  { scriptpubkey: "6a0548656c6c6f", value: 0 },
-                  { scriptpubkey_address: KNOWN_BTC, value: 4_000 },
-                ],
-                fee: 1_000,
-                status: { confirmed: true, block_height: 963_837, block_time: 1_787_000_000 },
-              },
-            ]),
-            { headers: { "Content-Type": "application/json" } },
-          ),
-      ),
-    );
+    stubJSON([
+      {
+        txid: "b".repeat(64),
+        vin: [{ prevout: { scriptpubkey_address: KNOWN_BTC, value: 5_000 } }],
+        vout: [
+          { scriptpubkey: "6a0548656c6c6f", value: 0 },
+          { scriptpubkey_address: KNOWN_BTC, value: 4_000 },
+        ],
+        fee: 1_000,
+        status: { confirmed: true, block_height: 963_837, block_time: 1_787_000_000 },
+      },
+    ]);
 
     const [transaction] = await provider.getTxHistory(KNOWN_BTC, "bitcoin", { limit: 1 });
 
