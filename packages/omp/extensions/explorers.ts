@@ -145,7 +145,7 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
     name: "explorers_tx_detail",
     label: "Explorers Tx Detail",
     description:
-      "Inspect one transaction by hash. Returns normalized status, block, fee, value, method, token-transfer count, and any OP_RETURN message when the selected explorer supports transaction details.",
+      "Inspect one transaction by hash. Returns normalized status, block, fee, value, method, and token-transfer count when the selected explorer supports transaction details, plus OP_RETURN messages on Bitcoin when that explorer is mempool.",
     parameters: txDetailParameters,
     approval: "read",
     renderCall(args, _options, _theme) {

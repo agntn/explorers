@@ -146,7 +146,7 @@ export default function explorersExtension(pi: ExtensionAPI) {
     promptGuidelines: [
       "Use explorers_tx_detail with a chain-native transaction hash and optionally a chain.",
       "explorers_tx_detail returns fees, status, method, and token-transfer count.",
-      "explorers_tx_detail reads OP_RETURN messages on Bitcoin transactions that carry them.",
+      "explorers_tx_detail reads OP_RETURN messages through the mempool provider, so ask for it by name when a Bitcoin transaction carries one.",
     ],
     parameters: Type.Object({
       hash: Type.String({ description: "Transaction hash" }),
