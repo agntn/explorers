@@ -78,7 +78,7 @@ graph TB
 - **CLI Layer** (`cli.ts`, `commands/*.ts`): citty-based CLI, lazy-loads subcommands via dynamic `import()`. `cli-args.ts` normalizes bare address input to `balance` subcommand.
 - **Core Layer** (`core/*.ts`): Domain types, provider registry (side-effect registration), HTTP client (ofetch, 15s timeout), ENS resolution (public APIs), input classification, error hierarchy.
 - **Provider Layer** (`providers/*.ts`): 10 self-registering providers. Each file defines API types, helper mappers, a concrete `Provider` subclass with a static registry key, and calls `register()` with its constructor at module scope.
-- **Pi Extension** (`packages/pi/extensions/explorers.ts`): Exposes 6 tools to Pi coding agent. Lazy-loads `@agntn/explorers` via dynamic import with fallback to source.
+- **Pi Extension** (`packages/pi/extensions/explorers.ts`): Exposes 9 tools to Pi coding agent, matching the MCP server's tool set. Lazy-loads `@agntn/explorers` via dynamic import with fallback to source. `packages/omp/extensions/explorers.ts` registers the same nine for OMP.
 
 ### Provider categories
 

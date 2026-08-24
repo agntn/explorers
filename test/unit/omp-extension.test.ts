@@ -60,7 +60,10 @@ describe("explorers OMP extension", () => {
       "explorers_tx_history",
       "explorers_tx_detail",
       "explorers_contract",
+      "explorers_tokens",
+      "explorers_token_transfers",
       "explorers_gas",
+      "explorers_block",
       "explorers_providers",
     ]);
     for (const tool of tools.values()) expect(tool.approval).toBe("read");
@@ -74,6 +77,16 @@ describe("explorers OMP extension", () => {
     expect(accepts(tool, { address: "address", limit: 0 })).toBe(false);
     expect(accepts(tool, { address: "address", limit: 101 })).toBe(false);
     expect(accepts(tool, { address: "address", limit: 1.5 })).toBe(false);
+  });
+
+  it("declares a non-negative integer block number", () => {
+    const tool = requireTool(registerExtensionTools().tools, "explorers_block");
+
+    expect(accepts(tool, { blockNumber: 0 })).toBe(true);
+    expect(accepts(tool, { blockNumber: 21000000 })).toBe(true);
+    expect(accepts(tool, { blockNumber: -1 })).toBe(false);
+    expect(accepts(tool, { blockNumber: 1.5 })).toBe(false);
+    expect(accepts(tool, { blockNumber: "1" })).toBe(false);
   });
 
   it("documents environment-based provider selection accurately", () => {
@@ -120,7 +133,10 @@ describe("explorers OMP extension", () => {
   it.each([
     ["explorers_tx_detail", { hash: "0xdead", provider: "aptos" }, "getTxDetail"],
     ["explorers_contract", { address: "0x1", provider: "aptos" }, "getContractInfo"],
+    ["explorers_tokens", { address: "0x1", provider: "aptos" }, "getTokenBalances"],
+    ["explorers_token_transfers", { address: "0x1", provider: "aptos" }, "getTokenTransfers"],
     ["explorers_gas", { provider: "aptos" }, "getGasData"],
+    ["explorers_block", { blockNumber: 1, provider: "aptos" }, "getBlockInfo"],
   ])("reports unsupported %s execution as an error", async (name, params, operation) => {
     const tool = requireTool(registerExtensionTools().tools, name);
 
