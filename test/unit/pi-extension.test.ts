@@ -78,6 +78,23 @@ describe("explorers Pi extension", () => {
     expect(Value.Check(tool.parameters, { blockNumber: "1" })).toBe(false);
   });
 
+  it("removes terminal control sequences from rendered arguments", () => {
+    const tool = requireTool(registerExtensionTools(), "explorers_balance");
+    const renderCall = tool.renderCall;
+    if (!renderCall) throw new Error("explorers_balance has no call renderer");
+
+    type RenderCall = NonNullable<ToolDefinition["renderCall"]>;
+    type RenderTheme = Parameters<RenderCall>[1];
+    const attack = "safe\u001b]52;c;SGVsbG8=\u0007address";
+    const rendered = renderCall({ address: attack }, {} as RenderTheme)
+      .render(120)
+      .join("\n");
+
+    expect(rendered).toContain("safe]52;c;SGVsbG8=address");
+    /* oxlint-disable-next-line no-control-regex */
+    expect(rendered).not.toMatch(/[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/u);
+  });
+
   it("lists providers without model or network access", async () => {
     const tool = requireTool(registerExtensionTools(), "explorers_providers");
 
@@ -161,5 +178,62 @@ describe("explorers Pi extension", () => {
       "To 0xto",
       "Method transfer",
     ]);
+  });
+  it("strips control bytes from explorer-supplied transaction fields", () => {
+    const tool = requireTool(registerExtensionTools(), "explorers_tx_detail");
+    const renderResult = tool.renderResult;
+    if (!renderResult) throw new Error("explorers_tx_detail has no result renderer");
+
+    // SAFETY: simulates an untrusted explorer violating the declared numeric response type.
+    const transaction = {
+      hash: "0xabc",
+      blockNumber: "123\u001b]52;c;SGVsbG8=\u0007",
+      from: "0xfrom",
+      to: "0xto",
+      value: "1000000000000000000",
+      valueFormatted: "1 ETH",
+      status: "success",
+      isContractInteraction: false,
+      tokenTransfers: [],
+      opReturn: [
+        {
+          hex: "6869",
+          text: `hi${String.fromCodePoint(0x1b)}]52;c;SGVsbG8=${String.fromCodePoint(0x07)}`,
+        },
+        { hex: "6f6e650a74776f", text: "one\nStatus: forged" },
+      ],
+    } as unknown as Transaction;
+    type RenderResult = NonNullable<ToolDefinition["renderResult"]>;
+    type RenderTheme = Parameters<RenderResult>[2];
+    type RenderContext = Parameters<RenderResult>[3];
+    const theme = {
+      fg: (_color: string, text: string) => text,
+    } as unknown as RenderTheme;
+
+    const rendered = renderResult(
+      {
+        content: [{ type: "text", text: "LLM output" }],
+        details: { provider: "mempool", transaction },
+      },
+      { expanded: true, isPartial: false },
+      theme,
+      // SAFETY: the renderer does not read ToolRenderContext.
+      {} as RenderContext,
+    )
+      .render(120)
+      .map((line) => line.trimEnd());
+
+    expect(rendered).toEqual([
+      "[mempool] 0xabc",
+      "Block 123]52;c;SGVsbG8=  Status success",
+      "Value 1 ETH",
+      "From 0xfrom",
+      "To 0xto",
+      "OP_RETURN hi]52;c;SGVsbG8=",
+      "OP_RETURN one",
+      "  Status: forged",
+    ]);
+    /* oxlint-disable-next-line no-control-regex */
+    expect(rendered.join("\n")).not.toMatch(/[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/u);
   });
 });

@@ -33,6 +33,15 @@ function loadLib(): Promise<typeof ExplorersModule> {
   return loaded;
 }
 
+/** Terminal control bytes that must not reach the TUI from tool arguments or explorer responses. */
+/* oxlint-disable-next-line no-control-regex */
+const UNSAFE_TERMINAL_CONTROLS = /[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/gu;
+
+/** Drop control bytes so an explorer response cannot inject ANSI or OSC sequences into the terminal. */
+function sanitizeTerminalText(text: string): string {
+  return text.replace(UNSAFE_TERMINAL_CONTROLS, "");
+}
+
 interface TxDetailToolDetails {
   provider: string;
   transaction: ExplorersModule.Transaction;
@@ -44,7 +53,7 @@ type ExplorersToolResult = AgentToolResult<undefined>;
 
 function textResult(text: string): ExplorersToolResult {
   return {
-    content: [{ type: "text", text }],
+    content: [{ type: "text", text: sanitizeTerminalText(text) }],
     details: undefined,
   };
 }
@@ -86,7 +95,11 @@ export default function explorersExtension(pi: ExtensionAPI) {
       ),
     }),
     renderCall(args, _theme) {
-      return new Text(`🔍 Balance: ${args.address} (${args.chain ?? "provider default"})`, 0, 0);
+      return new Text(
+        sanitizeTerminalText(`🔍 Balance: ${args.address} (${args.chain ?? "provider default"})`),
+        0,
+        0,
+      );
     },
     async execute(_toolCallId, params): Promise<ExplorersToolResult> {
       const { lib, name, provider } = await getProvider(params.provider, params.chain);
@@ -122,7 +135,11 @@ export default function explorersExtension(pi: ExtensionAPI) {
       provider: Type.Optional(Type.String({ description: "Provider" })),
     }),
     renderCall(args, _theme) {
-      return new Text(`📜 Tx history: ${args.address} (limit: ${args.limit ?? 10})`, 0, 0);
+      return new Text(
+        sanitizeTerminalText(`📜 Tx history: ${args.address} (limit: ${args.limit ?? 10})`),
+        0,
+        0,
+      );
     },
     async execute(_toolCallId, params): Promise<ExplorersToolResult> {
       const { lib, name, provider } = await getProvider(params.provider, params.chain);
@@ -154,7 +171,7 @@ export default function explorersExtension(pi: ExtensionAPI) {
       provider: Type.Optional(Type.String({ description: "Provider" })),
     }),
     renderCall(args, _theme) {
-      return new Text(`🔬 Tx detail: ${args.hash.slice(0, 18)}…`, 0, 0);
+      return new Text(sanitizeTerminalText(`🔬 Tx detail: ${args.hash.slice(0, 18)}…`), 0, 0);
     },
     async execute(_toolCallId, params): Promise<TxDetailToolResult> {
       const { lib, name, provider } = await getProvider(params.provider, params.chain);
@@ -177,7 +194,7 @@ export default function explorersExtension(pi: ExtensionAPI) {
       ].filter(Boolean);
 
       return {
-        content: [{ type: "text", text: parts.join("\n") }],
+        content: [{ type: "text", text: sanitizeTerminalText(parts.join("\n")) }],
         details: { provider: name, transaction: tx },
       };
     },
@@ -188,7 +205,10 @@ export default function explorersExtension(pi: ExtensionAPI) {
       if (!details) {
         const content = result.content.find((part) => part.type === "text");
         return new Text(
-          theme.fg("error", content?.text ?? "Transaction details unavailable"),
+          theme.fg(
+            "error",
+            sanitizeTerminalText(content?.text ?? "Transaction details unavailable"),
+          ),
           0,
           0,
         );
@@ -198,23 +218,30 @@ export default function explorersExtension(pi: ExtensionAPI) {
       const statusColor =
         tx.status === "success" ? "success" : tx.status === "failed" ? "error" : "warning";
       const lines = [
-        `${theme.fg("muted", `[${details.provider}]`)} ${theme.fg("accent", tx.hash)}`,
-        `${theme.fg("muted", "Block")} ${tx.blockNumber}  ${theme.fg("muted", "Status")} ${theme.fg(statusColor, tx.status)}`,
-        `${theme.fg("muted", "Value")} ${tx.valueFormatted}`,
+        `${theme.fg("muted", sanitizeTerminalText(`[${details.provider}]`))} ${theme.fg("accent", sanitizeTerminalText(tx.hash))}`,
+        `${theme.fg("muted", "Block")} ${sanitizeTerminalText(String(tx.blockNumber))}  ${theme.fg("muted", "Status")} ${theme.fg(statusColor, sanitizeTerminalText(tx.status))}`,
+        `${theme.fg("muted", "Value")} ${sanitizeTerminalText(tx.valueFormatted)}`,
       ];
 
       if (expanded) {
-        if (tx.fee) lines.push(`${theme.fg("muted", "Fee")} ${tx.fee} base units`);
-        lines.push(`${theme.fg("muted", "From")} ${tx.from}`);
-        lines.push(`${theme.fg("muted", "To")} ${tx.to ?? "contract creation"}`);
-        if (tx.functionName) lines.push(`${theme.fg("muted", "Method")} ${tx.functionName}`);
+        if (tx.fee) {
+          lines.push(`${theme.fg("muted", "Fee")} ${sanitizeTerminalText(tx.fee)} base units`);
+        }
+        lines.push(`${theme.fg("muted", "From")} ${sanitizeTerminalText(tx.from)}`);
+        lines.push(
+          `${theme.fg("muted", "To")} ${sanitizeTerminalText(tx.to ?? "contract creation")}`,
+        );
+        if (tx.functionName) {
+          lines.push(`${theme.fg("muted", "Method")} ${sanitizeTerminalText(tx.functionName)}`);
+        }
         if (tx.tokenTransfers.length > 0) {
           lines.push(
             `${theme.fg("muted", "Token transfers")} ${tx.tokenTransfers.length.toString()}`,
           );
         }
         for (const payload of tx.opReturn ?? []) {
-          const [first = "", ...rest] = (payload.text ?? payload.hex).split("\n");
+          const message = sanitizeTerminalText(payload.text ?? payload.hex);
+          const [first = "", ...rest] = message.split("\n");
           lines.push(`${theme.fg("muted", "OP_RETURN")} ${first}`);
           for (const line of rest) lines.push(`  ${line}`);
         }
@@ -239,7 +266,7 @@ export default function explorersExtension(pi: ExtensionAPI) {
       provider: Type.Optional(Type.String({ description: "Provider" })),
     }),
     renderCall(args, _theme) {
-      return new Text(`📋 Contract: ${args.address}`, 0, 0);
+      return new Text(sanitizeTerminalText(`📋 Contract: ${args.address}`), 0, 0);
     },
     async execute(_toolCallId, params): Promise<ExplorersToolResult> {
       const { lib, name, provider } = await getProvider(params.provider, params.chain);
@@ -282,7 +309,11 @@ export default function explorersExtension(pi: ExtensionAPI) {
       provider: Type.Optional(Type.String({ description: "Provider" })),
     }),
     renderCall(args, _theme) {
-      return new Text(`🪙 Tokens: ${args.address} (${args.chain ?? "provider default"})`, 0, 0);
+      return new Text(
+        sanitizeTerminalText(`🪙 Tokens: ${args.address} (${args.chain ?? "provider default"})`),
+        0,
+        0,
+      );
     },
     async execute(_toolCallId, params): Promise<ExplorersToolResult> {
       const { lib, name, provider } = await getProvider(params.provider, params.chain);
@@ -331,7 +362,11 @@ export default function explorersExtension(pi: ExtensionAPI) {
       token: Type.Optional(Type.String({ description: "Only transfers of this token contract" })),
     }),
     renderCall(args, _theme) {
-      return new Text(`💸 Token transfers: ${args.address} (limit: ${args.limit ?? 10})`, 0, 0);
+      return new Text(
+        sanitizeTerminalText(`💸 Token transfers: ${args.address} (limit: ${args.limit ?? 10})`),
+        0,
+        0,
+      );
     },
     async execute(_toolCallId, params): Promise<ExplorersToolResult> {
       const { lib, name, provider } = await getProvider(params.provider, params.chain);
@@ -369,7 +404,11 @@ export default function explorersExtension(pi: ExtensionAPI) {
       provider: Type.Optional(Type.String({ description: "Provider" })),
     }),
     renderCall(args, _theme) {
-      return new Text(`⛽ Gas prices: ${args.chain ?? "provider default"}`, 0, 0);
+      return new Text(
+        sanitizeTerminalText(`⛽ Gas prices: ${args.chain ?? "provider default"}`),
+        0,
+        0,
+      );
     },
     async execute(_toolCallId, params): Promise<ExplorersToolResult> {
       const { lib, name, provider } = await getProvider(params.provider, params.chain);
@@ -409,7 +448,13 @@ export default function explorersExtension(pi: ExtensionAPI) {
       provider: Type.Optional(Type.String({ description: "Provider" })),
     }),
     renderCall(args, _theme) {
-      return new Text(`🧱 Block: #${args.blockNumber} (${args.chain ?? "provider default"})`, 0, 0);
+      return new Text(
+        sanitizeTerminalText(
+          `🧱 Block: #${args.blockNumber} (${args.chain ?? "provider default"})`,
+        ),
+        0,
+        0,
+      );
     },
     async execute(_toolCallId, params): Promise<ExplorersToolResult> {
       const { lib, name, provider } = await getProvider(params.provider, params.chain);
