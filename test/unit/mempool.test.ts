@@ -1,7 +1,7 @@
 /**
- * Explorers — Mempool.space integration tests (Bitcoin)
+ * Explorers - Mempool.space integration tests (Bitcoin and Litecoin)
  *
- * Live roundtrips against public mempool.space API.
+ * Live roundtrips against the public mempool.space API and its litecoinspace.org fork.
  */
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { create } from "../../src/core/registry.js";
@@ -9,6 +9,9 @@ import "../../src/providers/mempool.js";
 
 // A known Bitcoin address with history
 const KNOWN_BTC = "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh";
+
+// A Litecoin mining pool address with tens of thousands of transactions
+const KNOWN_LTC = "LfdYLbP9F9CpmCX6atZnHZb8KkS8T6x4DK";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -62,6 +65,42 @@ describe("mempool provider", () => {
     expect(balance.symbol).toBe("BTC");
     expect(balance.balance).toMatch(/^-?\d+$/);
     expect(Number(balance.balanceFormatted)).toBeGreaterThan(0);
+  });
+
+  it("getBalance returns LTC balance from litecoinspace", async () => {
+    const balance = await provider.getBalance(KNOWN_LTC, "litecoin");
+
+    expect(balance.address).toBe(KNOWN_LTC);
+    expect(balance.chain).toBe("litecoin");
+    expect(balance.symbol).toBe("LTC");
+    expect(balance.balance).toMatch(/^-?\d+$/);
+    expect(Number(balance.balanceFormatted)).toBeGreaterThan(0);
+  });
+
+  it("routes litecoin calls to litecoinspace.org", async () => {
+    const fetch = stubJSON({
+      chain_stats: {
+        funded_txo_count: 1,
+        funded_txo_sum: 10,
+        spent_txo_count: 0,
+        spent_txo_sum: 0,
+      },
+    });
+
+    await provider.getBalance(KNOWN_LTC, "litecoin");
+
+    expect(String(fetch.mock.calls[0]?.[0])).toBe(
+      `https://litecoinspace.org/api/address/${KNOWN_LTC}`,
+    );
+  });
+
+  it("labels litecoin fee estimates in litoshi/vB", async () => {
+    stubJSON({ fastestFee: 2, halfHourFee: 1, hourFee: 1, economyFee: 1, minimumFee: 1 });
+
+    const gas = await provider.getGasData!("litecoin");
+
+    expect(gas.chain).toBe("litecoin");
+    expect(gas.unit).toBe("litoshi/vB");
   });
 
   it("joins custom base URLs with exactly one separator", async () => {
@@ -358,7 +397,7 @@ describe("mempool provider", () => {
     expect(Number(gas.proposedGasPrice)).toBeGreaterThan(0);
   });
 
-  it("getBalance throws for non-bitcoin chain", async () => {
+  it("getBalance throws for a chain mempool does not serve", async () => {
     await expect(provider.getBalance(KNOWN_BTC, "eth")).rejects.toThrow();
   });
 });

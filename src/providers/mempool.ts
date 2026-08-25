@@ -1,8 +1,8 @@
 /**
- * Mempool.space provider — Bitcoin block explorer
+ * Mempool.space provider for Bitcoin, with Litecoin served by the litecoinspace.org fork.
  *
  * Public API, no key needed. Best-in-class Bitcoin data: address balances, tx history, UTXO info,
- * fee estimates, block info.
+ * fee estimates, block info. The fork exposes the same API surface.
  *
  * https://mempool.space/docs/api
  */
@@ -15,6 +15,7 @@ import type {
   Transaction,
   TxHistoryOptions,
   GasData,
+  GasUnit,
   BlockInfo,
   TxStatus,
   TokenTransfer,
@@ -24,10 +25,20 @@ import { Provider } from "../core/provider.js";
 import { normalizeBaseUrl } from "../core/client.js";
 import { UnsupportedChainError } from "../core/errors.js";
 import { register } from "../core/registry.js";
+import { create as createChain } from "@agntn/chains";
 import { clampMaxResults, formatWei } from "../core/types.js";
 import { assertSafePathSegment } from "../core/path-safety.js";
 
-const DEFAULT_BASE = "https://mempool.space";
+const CHAIN_BASES: Partial<Record<ChainKey, string>> = {
+  bitcoin: "https://mempool.space",
+  litecoin: "https://litecoinspace.org",
+};
+
+/** Fee rates come back in the chain's smallest unit per virtual byte. */
+const FEE_UNITS: Partial<Record<ChainKey, GasUnit>> = {
+  bitcoin: "sat/vB",
+  litecoin: "litoshi/vB",
+};
 
 interface MempoolAddressSummary {
   address: string;
@@ -136,8 +147,8 @@ interface MempoolBlock {
   mediantime: number;
 }
 
-/** Convert satoshis to a BTC string without floating-point arithmetic. */
-function satToBtc(sat: number): string {
+/** Convert the smallest unit to a coin string without floating-point arithmetic. */
+function satToCoin(sat: number): string {
   return formatWei(String(sat), 8);
 }
 
@@ -324,7 +335,7 @@ function mapTx(raw: MempoolAddressTx, address: string): Transaction {
     from,
     to: to ?? null,
     value: transferredSat.toString(),
-    valueFormatted: satToBtc(transferredSat),
+    valueFormatted: satToCoin(transferredSat),
     fee: raw.fee.toString(),
     status: (raw.status.confirmed ? "success" : "pending") as TxStatus,
     isContractInteraction: false,
@@ -336,13 +347,15 @@ function mapTx(raw: MempoolAddressTx, address: string): Transaction {
 
 class Mempool extends Provider {
   static readonly key = "mempool";
-  static readonly chains: readonly ChainKey[] = ["bitcoin"];
+  static readonly chains = Object.keys(CHAIN_BASES) as readonly ChainKey[];
 
-  private baseUrl: string;
+  private baseUrl: string | undefined;
+  private defaultChain: ChainKey;
 
   constructor(config: ProviderConfig) {
     super(config);
-    this.baseUrl = normalizeBaseUrl(config.baseUrl ?? DEFAULT_BASE);
+    this.baseUrl = config.baseUrl ? normalizeBaseUrl(config.baseUrl) : undefined;
+    this.defaultChain = config.defaultChain ?? "bitcoin";
   }
   get capabilities(): ProviderCapabilities {
     return {
@@ -357,16 +370,23 @@ class Mempool extends Provider {
     };
   }
 
-  private async api<T>(path: string): Promise<T> {
-    return this.getJSON<T>(`${this.baseUrl}${path}`);
+  /** Chain membership decides support; an explicit `baseUrl` then overrides the host. */
+  private base(chain: ChainKey): string {
+    const base = CHAIN_BASES[chain];
+    if (!base) throw new UnsupportedChainError(chain, "mempool");
+    return this.baseUrl ?? base;
+  }
+
+  private async api<T>(chain: ChainKey, path: string): Promise<T> {
+    return this.getJSON<T>(`${this.base(chain)}${path}`);
   }
 
   async getBalance(address: string, chain?: ChainKey): Promise<Balance> {
-    const c = chain ?? "bitcoin";
-    if (c !== "bitcoin") throw new UnsupportedChainError(c, "mempool");
+    const c = chain ?? this.defaultChain;
 
     assertSafePathSegment(address, "address");
     const data = await this.api<MempoolAddressSummary>(
+      c,
       `/api/address/${encodeURIComponent(address)}`,
     );
 
@@ -376,10 +396,10 @@ class Mempool extends Provider {
 
     return {
       address,
-      chain: "bitcoin",
+      chain: c,
       balance: balanceSat.toString(),
-      balanceFormatted: satToBtc(balanceSat),
-      symbol: "BTC",
+      balanceFormatted: satToCoin(balanceSat),
+      symbol: createChain(c).symbol,
     };
   }
 
@@ -388,12 +408,12 @@ class Mempool extends Provider {
     chain?: ChainKey,
     options?: TxHistoryOptions,
   ): Promise<Transaction[]> {
-    const c = chain ?? "bitcoin";
-    if (c !== "bitcoin") throw new UnsupportedChainError(c, "mempool");
+    const c = chain ?? this.defaultChain;
 
     const limit = clampMaxResults(options?.limit);
     assertSafePathSegment(address, "address");
     const data = await this.api<MempoolAddressTx[]>(
+      c,
       `/api/address/${encodeURIComponent(address)}/txs`,
     );
 
@@ -401,11 +421,10 @@ class Mempool extends Provider {
   }
 
   override async getTxDetail(hash: string, chain?: ChainKey): Promise<Transaction> {
-    const c = chain ?? "bitcoin";
-    if (c !== "bitcoin") throw new UnsupportedChainError(c, "mempool");
+    const c = chain ?? this.defaultChain;
 
     assertSafePathSegment(hash, "tx hash");
-    const data = await this.api<MempoolTx>(`/api/tx/${encodeURIComponent(hash)}`);
+    const data = await this.api<MempoolTx>(c, `/api/tx/${encodeURIComponent(hash)}`);
 
     const totalOut = data.vout.reduce((sum, v) => sum + v.value, 0);
     const fromAddr = data.vin[0]?.prevout?.scriptpubkey_address ?? "unknown";
@@ -420,7 +439,7 @@ class Mempool extends Provider {
       from: fromAddr,
       to: toAddr,
       value: totalOut.toString(),
-      valueFormatted: satToBtc(totalOut),
+      valueFormatted: satToCoin(totalOut),
       fee: data.fee.toString(),
       status: (data.status.confirmed ? "success" : "pending") as TxStatus,
       isContractInteraction: false,
@@ -431,14 +450,13 @@ class Mempool extends Provider {
   }
 
   override async getGasData(chain?: ChainKey): Promise<GasData> {
-    const c = chain ?? "bitcoin";
-    if (c !== "bitcoin") throw new UnsupportedChainError(c, "mempool");
+    const c = chain ?? this.defaultChain;
 
-    const fees = await this.api<MempoolFees>("/api/v1/fees/recommended");
+    const fees = await this.api<MempoolFees>(c, "/api/v1/fees/recommended");
 
     return {
-      chain: "bitcoin",
-      unit: "sat/vB",
+      chain: c,
+      unit: FEE_UNITS[c] ?? "sat/vB",
       safeGasPrice: fees.economyFee.toString(),
       proposedGasPrice: fees.halfHourFee.toString(),
       fastGasPrice: fees.fastestFee.toString(),
@@ -447,17 +465,17 @@ class Mempool extends Provider {
   }
 
   override async getBlockInfo(blockNumber: number, chain?: ChainKey): Promise<BlockInfo> {
-    const c = chain ?? "bitcoin";
-    if (c !== "bitcoin") throw new UnsupportedChainError(c, "mempool");
+    const c = chain ?? this.defaultChain;
 
     // Get block hash from height, then fetch block details.
     // Block numbers are ASCII hex from mempool.space — no traversal concern,
     // but assert anyway for symmetry with sibling providers.
     assertSafePathSegment(String(blockNumber), "block number");
     const blockHash = await this.api<string>(
+      c,
       `/api/block-height/${encodeURIComponent(String(blockNumber))}`,
     );
-    const data = await this.api<MempoolBlock>(`/api/block/${encodeURIComponent(blockHash)}`);
+    const data = await this.api<MempoolBlock>(c, `/api/block/${encodeURIComponent(blockHash)}`);
 
     return {
       number: data.height,

@@ -7,7 +7,7 @@ Block explorers keep returning roughly the same data in completely different for
 ## Features
 
 - **Ten providers, one contract.** Etherscan, Blockscout, Blockchair, Mempool, Solscan, Helius, TON, TRONSCAN, Aptos and Blockberry.
-- **18 chains.** Ethereum, Base, Arbitrum, Optimism, Polygon, BSC, Avalanche, Gnosis, Linea, Berachain, zkSync, Scroll, Bitcoin, Solana, TON, TRON, Aptos and Sui.
+- **19 chains.** Ethereum, Base, Arbitrum, Optimism, Polygon, BSC, Avalanche, Gnosis, Linea, Berachain, zkSync, Scroll, Bitcoin, Litecoin, Solana, TON, TRON, Aptos and Sui.
 - **Explorer data stays explorer data.** A provider never quietly falls back to a fullnode RPC just to pretend an operation is supported.
 - **Amounts stay exact.** Native and token values use strings in the chain's smallest unit instead of lossy JavaScript numbers.
 - **CLI, library and agent extensions.** Use the same provider contract from a terminal, TypeScript, OMP or Pi.
@@ -109,7 +109,7 @@ Required operations live on `Provider`. Optional operations stay absent when a b
 | **etherscan**  | `ETHERSCAN_API_KEY`           | eth, base, arbitrum, optimism, polygon, bsc, avalanche, gnosis, linea, bera      | balances, tx, transfers, contract, tokens, gas, block |
 | **blockscout** | None                          | eth, base, arbitrum, optimism, polygon, gnosis, linea, scroll, zksync, avalanche | balances, tx, transfers, contract, tokens, gas, block |
 | **blockchair** | Optional `BLOCKCHAIR_API_KEY` | bitcoin, eth                                                                     | balances, tx, block                                   |
-| **mempool**    | None                          | bitcoin                                                                          | balances, tx, gas, block                              |
+| **mempool**    | None                          | bitcoin, litecoin                                                                | balances, tx, gas, block                              |
 | **solscan**    | `SOLSCAN_API_KEY`             | solana                                                                           | balances, tx detail/history, block                    |
 | **helius**     | `HELIUS_API_KEY`              | solana                                                                           | tx detail/history                                     |
 | **ton**        | None                          | ton                                                                              | balances, tx                                          |
@@ -123,7 +123,7 @@ Required operations live on `Provider`. Optional operations stay absent when a b
 
 Wallet amounts stay as strings in the chain's smallest unit. Converting them to JavaScript numbers is an easy way to lose precision without noticing. Use `formatWei(value, decimals)` for display. The default is 18 decimals, so pass `8` for BTC, `9` for SOL and whatever the actual token uses.
 
-Bitcoin transactions from `mempool` expose their OP_RETURN data in `opReturn`. Every push arrives as raw `hex`, plus a `text` reading when the bytes are printable UTF-8. Binary carriers such as Runes or Omni keep the hex and skip the text instead of handing you mojibake.
+Bitcoin and Litecoin transactions from `mempool` expose their OP_RETURN data in `opReturn`. Every push arrives as raw `hex`, plus a `text` reading when the bytes are printable UTF-8. Binary carriers such as Runes or Omni keep the hex and skip the text instead of handing you mojibake.
 
 `normalizeChain()` accepts practical aliases such as `mainnet`, `btc`, `coinbase` and `apt`. Unknown names fail instead of silently selecting another chain.
 

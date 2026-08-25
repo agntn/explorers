@@ -11,7 +11,7 @@ Unified block explorer provider library. Normalizes balances, tx history, contra
 | etherscan  | API key (free: 5 req/s) | eth, base, arbitrum, optimism, polygon, bsc, avalanche, gnosis, linea, bera      | Full: balances, tx, transfers, contract, tokens, gas, block |
 | blockscout | none                    | eth, base, arbitrum, optimism, polygon, gnosis, linea, scroll, zksync, avalanche | Full: balances, tx, transfers, contract, tokens, gas, block |
 | blockchair | optional key            | bitcoin, eth                                                                     | balances, tx, block                                         |
-| mempool    | none                    | bitcoin                                                                          | balances, tx, gas, block                                    |
+| mempool    | none                    | bitcoin, litecoin                                                                | balances, tx, gas, block                                    |
 | solscan    | `SOLSCAN_API_KEY`       | solana                                                                           | balances, tx detail/history, block                          |
 | helius     | `HELIUS_API_KEY`        | solana                                                                           | tx detail/history; no balance endpoint                      |
 | ton        | none                    | ton                                                                              | balances, tx                                                |
@@ -26,7 +26,7 @@ Unified block explorer provider library. Normalizes balances, tx history, contra
 - `noUncheckedIndexedAccess` and `noImplicitOverride` are enabled — guard indexed access and mark overrides explicitly
 - Provider registration is a class side effect: each concrete class owns a static `key`, and importing `src/providers/index.js` triggers all `register()` calls
 - Provider backends are explorer/indexer APIs only. Unsupported operations stay absent; required methods without an explorer contract throw `UnsupportedOperationError`.
-- Bitcoin transactions from `mempool` carry their OP_RETURN pushes in `Transaction.opReturn`; each payload keeps its raw `hex` and gets a `text` reading only when the bytes are printable UTF-8
+- Bitcoin and Litecoin transactions from `mempool` carry their OP_RETURN pushes in `Transaction.opReturn`; each payload keeps its raw `hex` and gets a `text` reading only when the bytes are printable UTF-8
 - CLI default subcommand: `balance` (for address-like input) or `providers` (no input)
 - Error hierarchy: `ExplorerError` → `HTTPError`, `AuthError`, `RateLimitError`, `NotFoundError`, `UnsupportedChainError`, `UnsupportedOperationError`, `UnknownProviderError`
 - HTTP client uses `ofetch` with a 15s default timeout and preserves out-of-range JSON integers as strings
@@ -57,7 +57,7 @@ Unified block explorer provider library. Normalizes balances, tx history, contra
 - Helius Enhanced Transactions v0 exposes no REST balance endpoint, so `getBalance` throws `UnsupportedOperationError`; the key travels as the `api-key` query parameter, which `sanitizeUrl` redacts.
 - Aptos Explorer has no documented account/history API; `aptos` remains registered with false capabilities and throws `UnsupportedOperationError` instead of using fullnode REST.
 - TONAPI and Blockberry do not expose block lookup compatible with the library's single block-number contract, so `blockInfo` is unsupported.
-- Mempool: Bitcoin only
+- Mempool: Bitcoin and Litecoin; the LTC host is litecoinspace.org, a fork with the same API surface
 
 ## Architecture
 
@@ -84,7 +84,7 @@ graph TB
 
 1. **Multi-chain EVM** (etherscan, blockscout): support 10 EVM chains each
 2. **Bitcoin/Ethereum bridge** (blockchair): dashboard API for Bitcoin and Ethereum
-3. **Bitcoin** (mempool): UTXO model
+3. **Bitcoin/Litecoin** (mempool): UTXO model; Litecoin rides the litecoinspace.org fork of the same API
 4. **Single-chain non-EVM** (solscan, helius, ton, tronscan, aptos, blockberry): capabilities mirror only their explorer APIs; Aptos is explicitly unsupported
 
 ## Patterns
