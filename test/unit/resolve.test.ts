@@ -47,6 +47,7 @@ describe("resolveProvider", () => {
     vi.stubEnv("BLOCKBERRY_API_KEY", "");
 
     expect(resolveProvider(undefined, "bitcoin")).toBe("mempool");
+    expect(resolveProvider(undefined, "litecoin")).toBe("mempool");
   });
 
   it("keeps a configured provider that serves the requested chain", () => {

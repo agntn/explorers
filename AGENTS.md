@@ -11,7 +11,7 @@ Unified block explorer provider library. Normalizes balances, tx history, contra
 | etherscan  | API key (free: 5 req/s) | eth, base, arbitrum, optimism, polygon, bsc, avalanche, gnosis, linea, bera      | Full: balances, tx, transfers, contract, tokens, gas, block |
 | blockscout | none                    | eth, base, arbitrum, optimism, polygon, gnosis, linea, scroll, zksync, avalanche | Full: balances, tx, transfers, contract, tokens, gas, block |
 | blockchair | optional key            | bitcoin, eth                                                                     | balances, tx, block                                         |
-| mempool    | none                    | bitcoin                                                                          | balances, tx, gas, block                                    |
+| mempool    | none                    | bitcoin, litecoin                                                                | balances, tx, gas, block                                    |
 | solscan    | `SOLSCAN_API_KEY`       | solana                                                                           | balances, tx detail/history, block                          |
 | helius     | `HELIUS_API_KEY`        | solana                                                                           | tx detail/history; no balance endpoint                      |
 | ton        | none                    | ton                                                                              | balances, tx                                                |
@@ -84,7 +84,7 @@ graph TB
 
 1. **Multi-chain EVM** (etherscan, blockscout): support 10 EVM chains each
 2. **Bitcoin/Ethereum bridge** (blockchair): dashboard API for Bitcoin and Ethereum
-3. **Bitcoin** (mempool): UTXO model
+3. **Bitcoin/Litecoin** (mempool): UTXO model; Litecoin rides the litecoinspace.org fork of the same API
 4. **Single-chain non-EVM** (solscan, helius, ton, tronscan, aptos, blockberry): capabilities mirror only their explorer APIs; Aptos is explicitly unsupported
 
 ## Patterns

@@ -7,7 +7,7 @@ Block explorers keep returning roughly the same data in completely different for
 ## Features
 
 - **Ten providers, one contract.** Etherscan, Blockscout, Blockchair, Mempool, Solscan, Helius, TON, TRONSCAN, Aptos and Blockberry.
-- **18 chains.** Ethereum, Base, Arbitrum, Optimism, Polygon, BSC, Avalanche, Gnosis, Linea, Berachain, zkSync, Scroll, Bitcoin, Solana, TON, TRON, Aptos and Sui.
+- **19 chains.** Ethereum, Base, Arbitrum, Optimism, Polygon, BSC, Avalanche, Gnosis, Linea, Berachain, zkSync, Scroll, Bitcoin, Litecoin, Solana, TON, TRON, Aptos and Sui.
 - **Explorer data stays explorer data.** A provider never quietly falls back to a fullnode RPC just to pretend an operation is supported.
 - **Amounts stay exact.** Native and token values use strings in the chain's smallest unit instead of lossy JavaScript numbers.
 - **CLI, library and agent extensions.** Use the same provider contract from a terminal, TypeScript, OMP or Pi.
@@ -109,7 +109,7 @@ Required operations live on `Provider`. Optional operations stay absent when a b
 | **etherscan**  | `ETHERSCAN_API_KEY`           | eth, base, arbitrum, optimism, polygon, bsc, avalanche, gnosis, linea, bera      | balances, tx, transfers, contract, tokens, gas, block |
 | **blockscout** | None                          | eth, base, arbitrum, optimism, polygon, gnosis, linea, scroll, zksync, avalanche | balances, tx, transfers, contract, tokens, gas, block |
 | **blockchair** | Optional `BLOCKCHAIR_API_KEY` | bitcoin, eth                                                                     | balances, tx, block                                   |
-| **mempool**    | None                          | bitcoin                                                                          | balances, tx, gas, block                              |
+| **mempool**    | None                          | bitcoin, litecoin                                                                | balances, tx, gas, block                              |
 | **solscan**    | `SOLSCAN_API_KEY`             | solana                                                                           | balances, tx detail/history, block                    |
 | **helius**     | `HELIUS_API_KEY`              | solana                                                                           | tx detail/history                                     |
 | **ton**        | None                          | ton                                                                              | balances, tx                                          |
