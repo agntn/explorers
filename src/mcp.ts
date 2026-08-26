@@ -2,7 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { UnsupportedOperationError } from "./core/errors.js";
-import { resolveInput } from "./core/input.js";
+import { resolveAddresses, resolveInput } from "./core/input.js";
 import type { Provider } from "./core/provider.js";
 import { create, getDefaultURL, providers } from "./core/registry.js";
 import { PROVIDER_DEFAULT_CHAIN, resolveProvider } from "./core/resolve.js";
@@ -102,15 +102,27 @@ export function createMcpServer(): McpServer {
   server.registerTool(
     "explorers_balance",
     {
-      description: "Get the native-token balance for a blockchain address or ENS name",
-      inputSchema: { address: z.string().min(1), ...providerInput },
+      description:
+        "Get the native-token balance for one or more blockchain addresses or ENS names",
+      inputSchema: {
+        address: z
+          .union([
+            z.string().trim().min(1),
+            z.array(z.string().trim().min(1)).min(1).max(20),
+          ])
+          .describe("Blockchain address or ENS name, or a list of them"),
+        ...providerInput,
+      },
       annotations: { readOnlyHint: true },
     },
     async ({ address, chain, provider }) => {
       const selected = selectedProvider(provider, chain);
-      const resolvedAddress = await addressForChain(address, selected.chain);
+      const resolvedAddresses = await resolveAddresses(address, selected.chain);
       const getBalance = requireOperation(selected.provider, "getBalance");
-      return providerResult(selected.name, await getBalance(resolvedAddress, selected.chain));
+      const balances = await Promise.all(
+        resolvedAddresses.map((resolvedAddress) => getBalance(resolvedAddress, selected.chain)),
+      );
+      return providerResult(selected.name, typeof address === "string" ? balances[0] : balances);
     },
   );
 

@@ -174,6 +174,70 @@ describe("Explorers MCP server", () => {
     ]);
   });
 
+  it("returns one balance per address for a batch request", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        return new Response(JSON.stringify({ coin_balance: "1" }), {
+          headers: { "content-type": "application/json" },
+        });
+      }),
+    );
+    const client = await connectTestClient();
+
+    const response = await client.callTool({
+      name: "explorers_balance",
+      arguments: {
+        address: [
+          "0x0000000000000000000000000000000000000001",
+          "0x0000000000000000000000000000000000000002",
+        ],
+        provider: "blockscout",
+      },
+    });
+    expect(response.isError).not.toBe(true);
+    const [content] = response.content as Array<{ type: string; text: string }>;
+    const payload = JSON.parse(content!.text) as {
+      provider: string;
+      data: Array<{ address: string }>;
+    };
+    expect(payload.provider).toBe("blockscout");
+    expect(payload.data.map((balance) => balance.address)).toEqual([
+      "0x0000000000000000000000000000000000000001",
+      "0x0000000000000000000000000000000000000002",
+    ]);
+  });
+
+  it("rejects a whitespace-only address before any provider call", async () => {
+    const fetchSpy = vi.fn(async () => {
+      throw new Error("network must not be reached");
+    });
+    vi.stubGlobal("fetch", fetchSpy);
+    const client = await connectTestClient();
+
+    for (const address of ["   ", ["   "]]) {
+      const response = await client.callTool({
+        name: "explorers_balance",
+        arguments: { address, provider: "blockscout" },
+      });
+      expect(response.isError).toBe(true);
+      expect(response.content).toEqual([
+        { type: "text", text: expect.stringContaining("Invalid arguments") },
+      ]);
+    }
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("rejects an empty address list", async () => {
+    const client = await connectTestClient();
+
+    const response = await client.callTool({
+      name: "explorers_balance",
+      arguments: { address: [], provider: "blockscout" },
+    });
+    expect(response.isError).toBe(true);
+  });
+
   it.each([
     {
       tool: "explorers_balance",

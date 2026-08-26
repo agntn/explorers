@@ -73,15 +73,24 @@ export default function explorersExtension(pi: ExtensionAPI) {
   pi.registerTool({
     name: "explorers_balance",
     label: "Explorers Balance",
-    description: "Get a native-token balance for a blockchain address",
+    description: "Get native-token balances for one or more blockchain addresses",
     promptSnippet: "Use to check ETH, BTC, or other native-token balances across chains.",
     promptGuidelines: [
-      "Use explorers_balance with a blockchain address and optionally a chain.",
+      "Use explorers_balance with a blockchain address, or a list of addresses to batch, and optionally a chain.",
       "explorers_balance defaults to Ethereum mainnet when neither provider nor chain is explicit.",
       "explorers_balance returns raw base-unit and human-readable balances.",
     ],
     parameters: Type.Object({
-      address: Type.String({ description: "Blockchain address" }),
+      address: Type.Union(
+        [
+          Type.String({ minLength: 1, pattern: "\\S" }),
+          Type.Array(Type.String({ minLength: 1, pattern: "\\S" }), {
+            minItems: 1,
+            maxItems: 20,
+          }),
+        ],
+        { description: "Blockchain address or ENS name, or a list of them to check in one call" },
+      ),
       chain: Type.Optional(
         Type.String({
           description: "Chain (eth, base, arbitrum, bitcoin, solana, ...)",
@@ -95,8 +104,11 @@ export default function explorersExtension(pi: ExtensionAPI) {
       ),
     }),
     renderCall(args, _theme) {
+      const label = Array.isArray(args.address)
+        ? `${args.address.length} addresses`
+        : args.address;
       return new Text(
-        sanitizeTerminalText(`🔍 Balance: ${args.address} (${args.chain ?? "provider default"})`),
+        sanitizeTerminalText(`🔍 Balance: ${label} (${args.chain ?? "provider default"})`),
         0,
         0,
       );
@@ -104,10 +116,15 @@ export default function explorersExtension(pi: ExtensionAPI) {
     async execute(_toolCallId, params): Promise<ExplorersToolResult> {
       const { lib, name, provider } = await getProvider(params.provider, params.chain);
       const chain = resolveToolChain(lib, name, params.chain);
-      const balance = await provider.getBalance(params.address, chain);
-      return textResult(
-        `[${name}] ${balance.chain} balance for ${balance.address}: ${balance.balanceFormatted} ${balance.symbol} (${balance.balance} base units)`,
+      const addresses = await lib.resolveAddresses(params.address, chain);
+      const balances = await Promise.all(
+        addresses.map((address) => provider.getBalance(address, chain)),
       );
+      const lines = balances.map(
+        (balance) =>
+          `[${name}] ${balance.chain} balance for ${balance.address}: ${balance.balanceFormatted} ${balance.symbol} (${balance.balance} base units)`,
+      );
+      return textResult(lines.join("\n"));
     },
   });
 
