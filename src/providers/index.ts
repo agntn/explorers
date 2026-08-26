@@ -45,7 +45,7 @@ export const builtins: readonly ProviderEntry[] = [
   },
   {
     key: "blockchair",
-    chains: ["bitcoin", "ethereum"],
+    chains: ["bitcoin", "ethereum", "ecash"],
     defaultURL: "https://api.blockchair.com",
     load: () => import("./blockchair.js").then((m) => m.Blockchair),
   },

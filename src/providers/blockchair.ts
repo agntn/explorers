@@ -1,8 +1,8 @@
 /**
  * Blockchair provider — multi-chain block explorer
  *
- * Supports Bitcoin and Ethereum. Free tier: limited requests, dashboard queries. Auth: optional
- * BLOCKCHAIR_API_KEY for higher limits.
+ * Supports Bitcoin, Ethereum and eCash. Free tier: limited requests, dashboard queries. Auth:
+ * optional BLOCKCHAIR_API_KEY for higher limits.
  */
 
 import type {
@@ -24,6 +24,13 @@ import { assertSafePathSegment } from "../core/path-safety.js";
 const CHAIN_NAMES: Partial<Record<ChainKey, string>> = {
   bitcoin: "bitcoin",
   ethereum: "ethereum",
+  ecash: "ecash",
+};
+
+/** Blockchair's UTXO-shaped chains and their base-unit decimals. */
+const UTXO_DECIMALS: Partial<Record<ChainKey, number>> = {
+  bitcoin: 8,
+  ecash: 2,
 };
 
 const DEFAULT_BASE = "https://api.blockchair.com";
@@ -170,7 +177,7 @@ export class Blockchair extends Provider {
       address,
       chain: c,
       balance,
-      balanceFormatted: formatWei(balance, c === "bitcoin" ? 8 : 18),
+      balanceFormatted: formatWei(balance, UTXO_DECIMALS[c] ?? 18),
       symbol: createChain(c).symbol,
     };
   }
@@ -223,7 +230,8 @@ export class Blockchair extends Provider {
     const entry = res.data[key];
     if (!entry) throw new NotFoundError(`Transaction ${hash}`, "blockchair");
     const data = entry.transaction;
-    const value = c === "bitcoin" ? String(data.output_total ?? 0) : (data.value ?? "0");
+    const utxoDecimals = UTXO_DECIMALS[c];
+    const value = utxoDecimals === undefined ? (data.value ?? "0") : String(data.output_total ?? 0);
 
     return {
       hash: data.hash,
@@ -232,12 +240,12 @@ export class Blockchair extends Provider {
       from: data.sender ?? "",
       to: data.recipient ?? null,
       value,
-      valueFormatted: formatWei(value, c === "bitcoin" ? 8 : 18),
+      valueFormatted: formatWei(value, utxoDecimals ?? 18),
       gasUsed: data.gas_used?.toString(),
       gasPrice: data.gas_price?.toString(),
       fee: String(data.fee),
       status: data.block_id < 0 ? "pending" : data.failed === true ? "failed" : "success",
-      isContractInteraction: c !== "bitcoin" && (data.input_hex?.length ?? 0) > 0,
+      isContractInteraction: utxoDecimals === undefined && (data.input_hex?.length ?? 0) > 0,
       tokenTransfers: [],
       raw: data as unknown as Record<string, unknown>,
     };
