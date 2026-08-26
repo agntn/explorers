@@ -49,3 +49,17 @@ export async function resolveInput(
   }
   return { address: resolved, type };
 }
+
+/**
+ * Resolve one address or a list of addresses, preserving order.
+ *
+ * @throws {NotFoundError} When any ENS name cannot be resolved.
+ */
+export async function resolveAddresses(
+  input: string | readonly string[],
+  chain?: ChainKey,
+): Promise<string[]> {
+  const list = typeof input === "string" ? [input] : input;
+  const resolved = await Promise.all(list.map((item) => resolveInput(item, chain)));
+  return resolved.map((entry) => entry.address);
+}

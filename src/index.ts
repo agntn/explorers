@@ -35,6 +35,7 @@ export {
   normalizeError,
 } from "./core/errors.js";
 export { isEnsName, isAddress, resolveEns } from "./core/ens.js";
+export { resolveAddresses } from "./core/input.js";
 export { getJSON, buildQuery } from "./core/client.js";
 export { register, create, providers, has, supportsChain, getDefaultURL } from "./core/registry.js";
 export { PROVIDER_DEFAULT_CHAIN, resolveProvider } from "./core/resolve.js";

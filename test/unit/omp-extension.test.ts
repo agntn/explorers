@@ -79,6 +79,14 @@ describe("explorers OMP extension", () => {
     expect(accepts(tool, { address: "address", limit: 1.5 })).toBe(false);
   });
 
+  it("accepts one address or a non-empty list of addresses for balance", () => {
+    const tool = requireTool(registerExtensionTools().tools, "explorers_balance");
+
+    expect(accepts(tool, { address: "address" })).toBe(true);
+    expect(accepts(tool, { address: ["a1", "a2"] })).toBe(true);
+    expect(accepts(tool, { address: [] })).toBe(false);
+  });
+
   it("declares a non-negative integer block number", () => {
     const tool = requireTool(registerExtensionTools().tools, "explorers_block");
 

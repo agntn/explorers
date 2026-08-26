@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { classifyInput } from "../../src/core/input.js";
+import { classifyInput, resolveAddresses } from "../../src/core/input.js";
 import { normalizeChain } from "../../src/core/types.js";
 
 describe("classifyInput", () => {
@@ -70,5 +70,23 @@ describe("normalizeChain", () => {
   it("rejects a blank chain rather than reading it as a missing value", () => {
     expect(() => normalizeChain("")).toThrow("Unknown chain:");
     expect(() => normalizeChain("   ")).toThrow("Unknown chain:");
+  });
+});
+
+describe("resolveAddresses", () => {
+  it("wraps a single address in a one-element list", async () => {
+    const addr = "0x" + "a".repeat(40);
+    await expect(resolveAddresses(addr)).resolves.toEqual([addr]);
+  });
+
+  it("resolves a list of addresses preserving order", async () => {
+    const first = "0x" + "1".repeat(40);
+    const second = "0x" + "2".repeat(40);
+    await expect(resolveAddresses([first, second])).resolves.toEqual([first, second]);
+  });
+
+  it("trims whitespace around each address", async () => {
+    const addr = "0x" + "a".repeat(40);
+    await expect(resolveAddresses([`  ${addr}  `])).resolves.toEqual([addr]);
   });
 });
