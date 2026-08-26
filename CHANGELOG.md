@@ -1,5 +1,48 @@
 # Changelog
 
+## v0.3.0
+
+[compare changes](https://github.com/agntn/explorers/compare/v0.2.0...v0.3.0)
+
+### 🚀 Enhancements
+
+- Add explorers MCP command ([#1](https://github.com/agntn/explorers/pull/1))
+- Add token transfer history ([#6](https://github.com/agntn/explorers/pull/6))
+- Add Helius provider ([#7](https://github.com/agntn/explorers/pull/7))
+- Read OP_RETURN messages from Bitcoin transactions ([#12](https://github.com/agntn/explorers/pull/12))
+- Register the token and block tools in the OMP and Pi extensions ([#13](https://github.com/agntn/explorers/pull/13))
+- Serve Litecoin through the mempool provider ([#15](https://github.com/agntn/explorers/pull/15))
+- Check many addresses in one balance call ([#21](https://github.com/agntn/explorers/pull/21))
+
+### 🩹 Fixes
+
+- Handle pending Blockscout transactions ([#5](https://github.com/agntn/explorers/pull/5))
+- ⚠️  Route provider auto-selection by requested chain ([#8](https://github.com/agntn/explorers/pull/8))
+
+### 💅 Refactors
+
+- ⚠️  Use the published @agntn/chains registry ([#4](https://github.com/agntn/explorers/pull/4))
+- ⚠️  Stop loading ten providers to use one ([#22](https://github.com/agntn/explorers/pull/22))
+
+### 🏡 Chore
+
+- Publish explorers under @agntn ([#2](https://github.com/agntn/explorers/pull/2))
+
+### 🤖 CI
+
+- Publish releases through GitHub OIDC ([#3](https://github.com/agntn/explorers/pull/3))
+
+#### ⚠️ Breaking Changes
+
+- ⚠️  Route provider auto-selection by requested chain ([#8](https://github.com/agntn/explorers/pull/8))
+- ⚠️  Use the published @agntn/chains registry ([#4](https://github.com/agntn/explorers/pull/4))
+- ⚠️  Stop loading ten providers to use one ([#22](https://github.com/agntn/explorers/pull/22))
+
+### ❤️ Contributors
+
+- Ori ([@oritwoen](https://github.com/oritwoen))
+- Aeitwoen <aeitwoen@gmail.com>
+
 ## v0.2.0
 
 ### 🚀 Enhancements
