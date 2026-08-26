@@ -14,7 +14,8 @@ export function classifyInput(input: string, chain?: ChainKey): InputType {
       chain === "litecoin" ||
       chain === "ecash" ||
       chain === "tron" ||
-      chain === "cardano") &&
+      chain === "cardano" ||
+      chain === "pepecoin") &&
       /^[0-9a-fA-F]{64}$/.test(trimmed)) ||
     (chain === "solana" && /^[1-9A-HJ-NP-Za-km-z]{64,88}$/.test(trimmed)) ||
     (chain === "sui" && /^[1-9A-HJ-NP-Za-km-z]{43,44}$/.test(trimmed))

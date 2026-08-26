@@ -12,6 +12,9 @@ const KNOWN_BTC = "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh";
 // A Litecoin mining pool address with tens of thousands of transactions
 const KNOWN_LTC = "LfdYLbP9F9CpmCX6atZnHZb8KkS8T6x4DK";
 
+// A Pepecoin address
+const KNOWN_PEP = "Pu5spyDwNEQxmWLkUHv779AWNkpMdQ29SZ";
+
 afterEach(() => {
   vi.unstubAllGlobals();
 });
@@ -100,6 +103,40 @@ describe("mempool provider", () => {
 
     expect(gas.chain).toBe("litecoin");
     expect(gas.unit).toBe("litoshi/vB");
+  });
+
+  it("getBalance returns PEP balance from peppool", async () => {
+    const balance = await provider.getBalance(KNOWN_PEP, "pepecoin");
+
+    expect(balance.address).toBe(KNOWN_PEP);
+    expect(balance.chain).toBe("pepecoin");
+    expect(balance.symbol).toBe("PEP");
+    expect(balance.balance).toMatch(/^-?\d+$/);
+    expect(Number(balance.balanceFormatted)).toBeGreaterThanOrEqual(0);
+  });
+
+  it("routes pepecoin calls to peppool.space", async () => {
+    const fetch = stubJSON({
+      chain_stats: {
+        funded_txo_count: 1,
+        funded_txo_sum: 10,
+        spent_txo_count: 0,
+        spent_txo_sum: 0,
+      },
+    });
+
+    await provider.getBalance(KNOWN_PEP, "pepecoin");
+
+    expect(String(fetch.mock.calls[0]?.[0])).toBe(`https://peppool.space/api/address/${KNOWN_PEP}`);
+  });
+
+  it("labels pepecoin fee estimates in pepetoshi/vB", async () => {
+    stubJSON({ fastestFee: 2, halfHourFee: 1, hourFee: 1, economyFee: 1, minimumFee: 1 });
+
+    const gas = await provider.getGasData!("pepecoin");
+
+    expect(gas.chain).toBe("pepecoin");
+    expect(gas.unit).toBe("pepetoshi/vB");
   });
 
   it("joins custom base URLs with exactly one separator", async () => {

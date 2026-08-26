@@ -47,6 +47,7 @@ describe("resolveProvider", () => {
 
     expect(resolveProvider(undefined, "bitcoin")).toBe("mempool");
     expect(resolveProvider(undefined, "litecoin")).toBe("mempool");
+    expect(resolveProvider(undefined, "pepecoin")).toBe("mempool");
   });
 
   it("keeps a configured provider that serves the requested chain", () => {

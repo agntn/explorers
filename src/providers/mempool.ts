@@ -33,12 +33,14 @@ const DEFAULT_BASE = "https://mempool.space";
 const CHAIN_BASES: Partial<Record<ChainKey, string>> = {
   bitcoin: DEFAULT_BASE,
   litecoin: "https://litecoinspace.org",
+  pepecoin: "https://peppool.space",
 };
 
 /** Fee rates come back in the chain's smallest unit per virtual byte. */
 const FEE_UNITS: Partial<Record<ChainKey, GasUnit>> = {
   bitcoin: "sat/vB",
   litecoin: "litoshi/vB",
+  pepecoin: "pepetoshi/vB",
 };
 
 interface MempoolAddressSummary {

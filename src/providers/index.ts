@@ -51,7 +51,7 @@ export const builtins: readonly ProviderEntry[] = [
   },
   {
     key: "mempool",
-    chains: ["bitcoin", "litecoin"],
+    chains: ["bitcoin", "litecoin", "pepecoin"],
     defaultURL: "https://mempool.space",
     load: () => import("./mempool.js").then((m) => m.Mempool),
   },
