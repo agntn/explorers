@@ -24,7 +24,7 @@ Unified block explorer provider library. Normalizes balances, tx history, contra
 - Chain names normalized via `normalizeChain()`, which takes display names as well as aliases like `ethereum`, `mainnet`, `arb`, `btc`
 - Native and token amounts use strings in each chain's smallest unit — call `formatWei(value, decimals)` with the asset's decimals; its default is 18
 - `noUncheckedIndexedAccess` and `noImplicitOverride` are enabled — guard indexed access and mark overrides explicitly
-- Provider registration is a class side effect: each concrete class owns a static `key`, and importing `src/providers/index.js` triggers all `register()` calls
+- Provider registration runs off a manifest: `src/providers/index.ts` lists every built-in as `{ key, chains, defaultURL?, load }`, and `core/registry.ts` turns that list into its map on the first registry call. The class itself only owns `static readonly key`
 - Provider backends are explorer/indexer APIs only. Unsupported operations stay absent; required methods without an explorer contract throw `UnsupportedOperationError`.
 - Bitcoin and Litecoin transactions from `mempool` carry their OP_RETURN pushes in `Transaction.opReturn`; each payload keeps its raw `hex` and gets a `text` reading only when the bytes are printable UTF-8
 - CLI default subcommand: `balance` (for address-like input) or `providers` (no input)
@@ -36,12 +36,12 @@ Unified block explorer provider library. Normalizes balances, tx history, contra
 - `src/core/types.ts` - re-exports `ChainKey` from `@agntn/chains`; owns transaction, balance, token, contract, gas, block, and provider-config types
 - `src/core/provider.ts` — abstract `Provider` base class and optional operation contract
 - `src/core/errors.ts` — ExplorerError hierarchy + normalizeError
-- `src/core/registry.ts` — Self-registering provider registry (register, create, providers, has)
+- `src/core/registry.ts` — Provider registry built from `builtins` on first use; `create()` is async and imports one provider (register, create, providers, has)
 - `src/core/resolve.ts` - Auto-select provider by env vars and the requested chain, default blockscout
 - `src/core/client.ts` — HTTP client wrapper (ofetch)
 - `src/core/ens.ts` — ENS resolution (public APIs, no keccak dependency)
 - `src/core/input.ts` — User input classification (address/txhash/ens)
-- `src/providers/*.ts` — One file per provider, self-registering via `register()`
+- `src/providers/*.ts` — One file per provider, each exporting its class, listed in `builtins` and built as its own bundle entry
 - `src/commands/*.ts` - CLI subcommands (balance, tx, contract, tokens, transfers, gas, block, providers)
 - `src/cli.ts` — Citty CLI entry point
 
@@ -76,8 +76,8 @@ graph TB
 ### Layer breakdown
 
 - **CLI Layer** (`cli.ts`, `commands/*.ts`): citty-based CLI, lazy-loads subcommands via dynamic `import()`. `cli-args.ts` normalizes bare address input to `balance` subcommand.
-- **Core Layer** (`core/*.ts`): Domain types, provider registry (side-effect registration), HTTP client (ofetch, 15s timeout), ENS resolution (public APIs), input classification, error hierarchy.
-- **Provider Layer** (`providers/*.ts`): 10 self-registering providers. Each file defines API types, helper mappers, a concrete `Provider` subclass with a static registry key, and calls `register()` with its constructor at module scope.
+- **Core Layer** (`core/*.ts`): Domain types, provider registry (built lazily from the barrel list), HTTP client (ofetch, 15s timeout), ENS resolution (public APIs), input classification, error hierarchy.
+- **Provider Layer** (`providers/*.ts`): 10 providers. Each file defines API types, helper mappers and a concrete `Provider` subclass with a static registry key, exports that class, and ships as its own bundle so `create()` can import it alone.
 - **Pi Extension** (`packages/pi/extensions/explorers.ts`): Exposes 9 tools to Pi coding agent, matching the MCP server's tool set. Lazy-loads `@agntn/explorers` via dynamic import with fallback to source. `packages/omp/extensions/explorers.ts` registers the same nine for OMP.
 
 ### Provider categories
@@ -89,7 +89,8 @@ graph TB
 
 ## Patterns
 
-- **Side-effect registration**: `import './providers/index.js'` triggers all `register()` calls. Each class owns its registry key as `static key`.
+- **Lazy registration**: `providers/index.ts` exports `builtins` with metadata and a `load` per provider, and `core/registry.ts` builds its map the first time anything asks the registry. `create(name)` awaits `load()` once and caches the class; every metadata question stays synchronous. `register(providerClass, meta)` covers provider classes living outside the package.
+- **Nothing runs on import**: library modules evaluate to declarations only. Derived values wait for their first use, such as `entries()` in the registry and `decoder()` in mempool. `pnpm build` prints `Side effects` per bundle: everything except `dist/cli.mjs` stays at 0 B, and that one entry is allowed to run because it starts the CLI, which is what `sideEffects` in `package.json` declares.
 - **String-only values**: All wei/satoshi/native amounts are strings (`Balance.balance`, `TokenBalance.balance`). The HTTP boundary preserves unsafe JSON integers as strings; `formatWei()` converts amounts for display.
 - **Optional methods**: `getTxDetail`, `getContractInfo`, `getTokenBalances`, `getTokenTransfers`, `getGasData`, and `getBlockInfo` are optional on `Provider`. Always check both the `capabilities` getter and method presence before calling.
 - **Dynamic CLI imports**: Each subcommand is lazily loaded via `() => import('./commands/X.js').then(m => m.default)`.
@@ -99,7 +100,8 @@ graph TB
 
 ## Anti-patterns to avoid
 
-- Importing individual provider files without the barrel — breaks registration chain
+- Writing a provider file without adding its class to `builtins` — the class never reaches the registry, and `test/unit/registry.test.ts` fails
+- A top-level call in a module the library entry can reach (`new Set()`, `Object.keys()`, a decoder, a prebuilt map) — it pins that module into every consumer bundle, which `pnpm build` reports as growing `Side effects`
 - Calling an optional provider method without checking `capabilities` and method presence — unsupported operations stay absent at runtime
 - Assuming EVM address formats work on non-EVM chains (Solana base58, TON base64, TRON base58/hex)
 - Hardcoding chain names — always use `normalizeChain()` for user input
