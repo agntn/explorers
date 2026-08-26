@@ -3,7 +3,7 @@ import type {
   ExtensionContext,
   ToolDefinition,
 } from "@earendil-works/pi-coding-agent";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { Value } from "typebox/value";
 import explorersExtension from "../../packages/pi/extensions/explorers.js";
 import type { Transaction } from "../../src/core/types.js";
@@ -31,6 +31,10 @@ function requireTool(tools: Map<string, ToolDefinition>, name: string): ToolDefi
 const unusedContext = {} as ExtensionContext;
 
 describe("explorers Pi extension", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it("registers the complete tool set", () => {
     const tools = registerExtensionTools();
 
@@ -106,6 +110,44 @@ describe("explorers Pi extension", () => {
         text: expect.stringMatching(/^Registered providers \(10\):/),
       },
     ]);
+  });
+
+  it("keeps complete identifiers in transaction history results", async () => {
+    const address = "bc1qsenderaddress";
+    const recipient = "bc1qrecipientaddress";
+    const hash = "a".repeat(64);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify([
+              {
+                txid: hash,
+                vin: [{ prevout: { scriptpubkey_address: address, value: 100_000 } }],
+                vout: [{ scriptpubkey_address: recipient, value: 99_000 }],
+                fee: 1_000,
+                status: { confirmed: true, block_height: 1, block_time: 1 },
+              },
+            ]),
+            { headers: { "Content-Type": "application/json" } },
+          ),
+      ),
+    );
+    const tool = requireTool(registerExtensionTools(), "explorers_tx_history");
+
+    const result = await tool.execute(
+      "test",
+      { address, chain: "bitcoin", provider: "mempool", limit: 1 },
+      undefined,
+      undefined,
+      unusedContext,
+    );
+    const text = result.content.find((part) => part.type === "text")?.text ?? "";
+
+    expect(text).toBe(
+      `[mempool] 1 transactions on bitcoin:\n${hash} ${address}→${recipient} 0.00099 [success]`,
+    );
   });
 
   it.each([

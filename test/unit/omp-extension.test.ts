@@ -176,6 +176,44 @@ describe("explorers OMP extension", () => {
     ]);
   });
 
+  it("keeps complete identifiers in transaction history results", async () => {
+    const address = "bc1qsenderaddress";
+    const recipient = "bc1qrecipientaddress";
+    const hash = "a".repeat(64);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify([
+              {
+                txid: hash,
+                vin: [{ prevout: { scriptpubkey_address: address, value: 100_000 } }],
+                vout: [{ scriptpubkey_address: recipient, value: 99_000 }],
+                fee: 1_000,
+                status: { confirmed: true, block_height: 1, block_time: 1 },
+              },
+            ]),
+            { headers: { "Content-Type": "application/json" } },
+          ),
+      ),
+    );
+    const tool = requireTool(registerExtensionTools().tools, "explorers_tx_history");
+
+    const result = await tool.execute(
+      "test",
+      { address, chain: "bitcoin", provider: "mempool", limit: 1 },
+      undefined,
+      undefined,
+      unusedContext,
+    );
+    const text = result.content.find((part) => part.type === "text")?.text ?? "";
+
+    expect(text).toBe(
+      `[mempool] 1 transactions on bitcoin:\n${hash} ${address}→${recipient} 0.00099 [success]`,
+    );
+  });
+
   it.each([
     ["explorers_tx_detail", { hash: "0xdead", provider: "aptos" }, "getTxDetail"],
     ["explorers_contract", { address: "0x1", provider: "aptos" }, "getContractInfo"],
