@@ -91,6 +91,9 @@ describe("explorers OMP extension", () => {
     expect(accepts(tool, { address: [] })).toBe(false);
     expect(accepts(tool, { address: "" })).toBe(false);
     expect(accepts(tool, { address: [""] })).toBe(false);
+    expect(accepts(tool, { address: "   " })).toBe(false);
+    expect(accepts(tool, { address: ["   "] })).toBe(false);
+    expect(accepts(tool, { address: "  0xabc  " })).toBe(true);
   });
 
   it("resolves an ENS name before fetching the balance", async () => {

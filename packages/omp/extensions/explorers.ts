@@ -57,8 +57,8 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
   const balanceParameters = Type.Object({
     address: Type.Union(
       [
-        Type.String({ minLength: 1 }),
-        Type.Array(Type.String({ minLength: 1 }), { minItems: 1, maxItems: 20 }),
+        Type.String({ minLength: 1, pattern: "\\S" }),
+        Type.Array(Type.String({ minLength: 1, pattern: "\\S" }), { minItems: 1, maxItems: 20 }),
       ],
       { description: "Blockchain address or ENS name, or a list of them to check in one call" },
     ),
