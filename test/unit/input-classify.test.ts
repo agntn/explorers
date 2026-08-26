@@ -38,8 +38,15 @@ describe("classifyInput", () => {
   });
   it("uses unambiguous chain-specific transaction hash shapes", () => {
     expect(classifyInput("a".repeat(64), "bitcoin")).toBe("txhash");
+    expect(classifyInput("a".repeat(64), "ecash")).toBe("txhash");
     expect(classifyInput("2".repeat(64), "solana")).toBe("txhash");
     expect(classifyInput("2".repeat(44), "sui")).toBe("txhash");
+  });
+
+  it("keeps a prefixed CashAddr as an address", () => {
+    expect(classifyInput("ecash:prfhcnyqnl5cgrnmlfmms675w93ld7mvvqd0y8lz07", "ecash")).toBe(
+      "address",
+    );
   });
 
   it("keeps a 32-byte Sui hex address in history mode", () => {

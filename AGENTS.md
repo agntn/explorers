@@ -10,7 +10,7 @@ Unified block explorer provider library. Normalizes balances, tx history, contra
 | ---------- | ----------------------- | -------------------------------------------------------------------------------- | ----------------------------------------------------------- |
 | etherscan  | API key (free: 5 req/s) | eth, base, arbitrum, optimism, polygon, bsc, avalanche, gnosis, linea, bera      | Full: balances, tx, transfers, contract, tokens, gas, block |
 | blockscout | none                    | eth, base, arbitrum, optimism, polygon, gnosis, linea, scroll, zksync, avalanche | Full: balances, tx, transfers, contract, tokens, gas, block |
-| blockchair | optional key            | bitcoin, eth                                                                     | balances, tx, block                                         |
+| blockchair | optional key            | bitcoin, eth, ecash                                                              | balances, tx, block                                         |
 | mempool    | none                    | bitcoin, litecoin                                                                | balances, tx, gas, block                                    |
 | solscan    | `SOLSCAN_API_KEY`       | solana                                                                           | balances, tx detail/history, block                          |
 | helius     | `HELIUS_API_KEY`        | solana                                                                           | tx detail/history; no balance endpoint                      |
@@ -52,7 +52,7 @@ Unified block explorer provider library. Normalizes balances, tx history, contra
 ## Constraints
 
 - Etherscan: 5 req/s free tier, needs `ETHERSCAN_API_KEY`
-- Blockchair: data format differs between BTC and EVM chains
+- Blockchair: data format differs between UTXO (bitcoin, ecash) and EVM chains; eCash amounts are satoshis at 2 decimals (100 satoshis = 1 XEC)
 - Solscan, Helius, TONAPI, TRONSCAN, Aptos, and Blockberry are single-chain providers and throw `UnsupportedChainError` for other chains.
 - Helius Enhanced Transactions v0 exposes no REST balance endpoint, so `getBalance` throws `UnsupportedOperationError`; the key travels as the `api-key` query parameter, which `sanitizeUrl` redacts.
 - Aptos Explorer has no documented account/history API; `aptos` remains registered with false capabilities and throws `UnsupportedOperationError` instead of using fullnode REST.
@@ -83,7 +83,7 @@ graph TB
 ### Provider categories
 
 1. **Multi-chain EVM** (etherscan, blockscout): support 10 EVM chains each
-2. **Bitcoin/Ethereum bridge** (blockchair): dashboard API for Bitcoin and Ethereum
+2. **Bitcoin/Ethereum bridge** (blockchair): dashboard API for Bitcoin, Ethereum and eCash
 3. **Bitcoin/Litecoin** (mempool): UTXO model; Litecoin rides the litecoinspace.org fork of the same API
 4. **Single-chain non-EVM** (solscan, helius, ton, tronscan, aptos, blockberry): capabilities mirror only their explorer APIs; Aptos is explicitly unsupported
 

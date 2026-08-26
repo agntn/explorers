@@ -4,6 +4,7 @@ import { create } from "../../src/core/registry.js";
 
 const BTC_ADDRESS = "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh";
 const ETH_ADDRESS = "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045";
+const XEC_ADDRESS = "ecash:prfhcnyqnl5cgrnmlfmms675w93ld7mvvqd0y8lz07";
 
 function stubJSON(body: unknown) {
   const fetch = vi.fn(
@@ -36,6 +37,55 @@ describe("blockchair provider", () => {
       balance: "123456789",
       balanceFormatted: "1.23456789",
       symbol: "BTC",
+    });
+  });
+
+  it("formats eCash balances at two decimals", async () => {
+    const fetch = stubJSON({
+      data: {
+        [XEC_ADDRESS]: {
+          address: { balance: 123456789 },
+        },
+      },
+      context: { code: 200 },
+    });
+    const provider = await create("blockchair");
+
+    const balance = await provider.getBalance(XEC_ADDRESS, "ecash");
+
+    expect(balance).toMatchObject({
+      balance: "123456789",
+      balanceFormatted: "1234567.89",
+      symbol: "XEC",
+    });
+    expect(String(fetch.mock.calls[0]?.[0])).toContain("/ecash/dashboards/address/");
+  });
+
+  it("maps eCash transactions through the UTXO shape", async () => {
+    stubJSON({
+      data: {
+        tx: {
+          transaction: {
+            hash: "ab".repeat(32),
+            block_id: 800000,
+            time: "2026-08-26 12:00:00",
+            output_total: 5000,
+            fee: 219,
+          },
+        },
+      },
+      context: { code: 200 },
+    });
+    const provider = await create("blockchair");
+
+    const transaction = await provider.getTxDetail("ab".repeat(32), "ecash");
+
+    expect(transaction).toMatchObject({
+      value: "5000",
+      valueFormatted: "50",
+      fee: "219",
+      status: "success",
+      isContractInteraction: false,
     });
   });
 

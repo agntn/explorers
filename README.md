@@ -7,7 +7,7 @@ Block explorers keep returning roughly the same data in completely different for
 ## Features
 
 - **Ten providers, one contract.** Etherscan, Blockscout, Blockchair, Mempool, Solscan, Helius, TON, TRONSCAN, Aptos and Blockberry.
-- **19 chains.** Ethereum, Base, Arbitrum, Optimism, Polygon, BSC, Avalanche, Gnosis, Linea, Berachain, zkSync, Scroll, Bitcoin, Litecoin, Solana, TON, TRON, Aptos and Sui.
+- **20 chains.** Ethereum, Base, Arbitrum, Optimism, Polygon, BSC, Avalanche, Gnosis, Linea, Berachain, zkSync, Scroll, Bitcoin, Litecoin, eCash, Solana, TON, TRON, Aptos and Sui.
 - **Explorer data stays explorer data.** A provider never quietly falls back to a fullnode RPC just to pretend an operation is supported.
 - **Amounts stay exact.** Native and token values use strings in the chain's smallest unit instead of lossy JavaScript numbers.
 - **CLI, library and agent extensions.** Use the same provider contract from a terminal, TypeScript, OMP or Pi.
@@ -110,7 +110,7 @@ Required operations live on `Provider`. Optional operations stay absent when a b
 | -------------- | ----------------------------- | ------------------------------------------------------------------------------------- | ----------------------------------------------------- |
 | **etherscan**  | `ETHERSCAN_API_KEY`           | ethereum, base, arbitrum, optimism, polygon, bsc, avalanche, gnosis, linea, berachain | balances, tx, transfers, contract, tokens, gas, block |
 | **blockscout** | None                          | ethereum, base, arbitrum, optimism, polygon, gnosis, linea, scroll, zksync, avalanche | balances, tx, transfers, contract, tokens, gas, block |
-| **blockchair** | Optional `BLOCKCHAIR_API_KEY` | bitcoin, ethereum                                                                     | balances, tx, block                                   |
+| **blockchair** | Optional `BLOCKCHAIR_API_KEY` | bitcoin, ethereum, ecash                                                              | balances, tx, block                                   |
 | **mempool**    | None                          | bitcoin, litecoin                                                                     | balances, tx, gas, block                              |
 | **solscan**    | `SOLSCAN_API_KEY`             | solana                                                                                | balances, tx detail/history, block                    |
 | **helius**     | `HELIUS_API_KEY`              | solana                                                                                | tx detail/history                                     |

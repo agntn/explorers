@@ -80,6 +80,7 @@ describe("resolveProvider", () => {
     vi.stubEnv("BLOCKBERRY_API_KEY", "");
 
     expect(resolveProvider(undefined, "solana")).toBe("solscan");
+    expect(resolveProvider(undefined, "ecash")).toBe("blockchair");
   });
 
   it("routes keyless single-chain networks to their explorer", () => {
