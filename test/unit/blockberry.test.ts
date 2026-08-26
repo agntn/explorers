@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthError } from "../../src/core/errors.js";
 import { create } from "../../src/core/registry.js";
-import "../../src/providers/blockberry.js";
 
 const ADDRESS = "0x61953ea72709eed72f4441dd944eec49a11b4acabfc8e04015e89c63be81b6ab";
 
@@ -22,13 +21,13 @@ afterEach(() => {
 describe("blockberry provider", () => {
   let provider: ReturnType<typeof create>;
 
-  beforeEach(() => {
-    provider = create("blockberry", { apiKey: "secret", baseUrl: "https://example.test/" });
+  beforeEach(async () => {
+    provider = await create("blockberry", { apiKey: "secret", baseUrl: "https://example.test/" });
   });
 
-  it("requires a Blockberry API key", () => {
+  it("requires a Blockberry API key", async () => {
     vi.stubEnv("BLOCKBERRY_API_KEY", "");
-    expect(() => create("blockberry")).toThrow(AuthError);
+    await expect(create("blockberry")).rejects.toThrow(AuthError);
   });
 
   it("reports only operations exposed by the explorer API", () => {

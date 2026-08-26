@@ -33,7 +33,7 @@ export default defineCommand({
       const chainInput = args.chain as string | undefined;
       const requestedChain = chainInput === undefined ? undefined : normalizeChain(chainInput);
       const providerName = resolveProvider(args.provider as string | undefined, requestedChain);
-      const provider = create(providerName);
+      const provider = await create(providerName);
       const chain = requestedChain ?? normalizeChain(PROVIDER_DEFAULT_CHAIN[providerName]);
       if (!provider.capabilities.contractInfo || !provider.getContractInfo) {
         consola.error(`Provider "${providerName}" does not support contract info`);

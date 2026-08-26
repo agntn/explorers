@@ -1,6 +1,5 @@
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+/** Run the Explorers MCP server over stdio */
 import { defineCommand } from "citty";
-import { createMcpServer } from "../mcp.js";
 
 export default defineCommand({
   meta: {
@@ -8,6 +7,12 @@ export default defineCommand({
     description: "Run the Explorers MCP server over stdio",
   },
   async run() {
+    // The SDK and its zod schemas cost more than a megabyte to parse, so they wait until the
+    // server actually starts instead of loading for every `--help`.
+    const [{ StdioServerTransport }, { createMcpServer }] = await Promise.all([
+      import("@modelcontextprotocol/sdk/server/stdio.js"),
+      import("../mcp.js"),
+    ]);
     const server = createMcpServer();
     await server.connect(new StdioServerTransport());
   },

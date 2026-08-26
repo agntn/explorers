@@ -66,9 +66,27 @@ export abstract class Provider {
 export interface ProviderConstructor {
   /** Stable registry key owned by the concrete class. */
   readonly key: string;
-  /** Chains the concrete class can serve, consulted during auto-selection. */
-  readonly chains: readonly ChainKey[];
   new (config: ProviderConfig): Provider;
+}
+
+/** What the registry answers about a provider without loading its module. */
+export interface ProviderMeta {
+  /** Chains the provider can serve, consulted during auto-selection. */
+  chains: readonly ChainKey[];
+  /** Public endpoint advertised for the provider. */
+  defaultURL?: string;
+}
+
+/**
+ * One provider in the built-in list.
+ *
+ * The metadata is repeated here instead of read off the class so that listing providers, matching a
+ * chain or reporting an endpoint never loads provider code. `load` pulls the class in when someone
+ * actually asks for an instance.
+ */
+export interface ProviderEntry extends ProviderMeta {
+  key: string;
+  load: () => Promise<ProviderConstructor>;
 }
 
 /**

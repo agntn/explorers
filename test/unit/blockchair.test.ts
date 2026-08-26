@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { UnsupportedChainError } from "../../src/core/errors.js";
 import { create } from "../../src/core/registry.js";
-import "../../src/providers/blockchair.js";
 
 const BTC_ADDRESS = "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh";
 const ETH_ADDRESS = "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045";
@@ -29,7 +28,7 @@ describe("blockchair provider", () => {
       },
       context: { code: 200 },
     });
-    const provider = create("blockchair");
+    const provider = await create("blockchair");
 
     const balance = await provider.getBalance(BTC_ADDRESS, "bitcoin");
 
@@ -61,7 +60,7 @@ describe("blockchair provider", () => {
       },
       context: { code: 200 },
     });
-    const provider = create("blockchair");
+    const provider = await create("blockchair");
 
     const transaction = await provider.getTxDetail("0xtx", "eth");
 
@@ -84,7 +83,7 @@ describe("blockchair provider", () => {
       data: { [ETH_ADDRESS]: { address: { balance: "0" } } },
       context: { code: 200 },
     });
-    const provider = create("blockchair", { baseUrl: "https://example.test/" });
+    const provider = await create("blockchair", { baseUrl: "https://example.test/" });
 
     await provider.getBalance(ETH_ADDRESS, "eth");
 
@@ -96,7 +95,7 @@ describe("blockchair provider", () => {
   it("rejects explorer slugs that Blockchair does not serve", async () => {
     const fetch = vi.fn();
     vi.stubGlobal("fetch", fetch);
-    const provider = create("blockchair");
+    const provider = await create("blockchair");
 
     await expect(provider.getBalance(ETH_ADDRESS, "base")).rejects.toBeInstanceOf(
       UnsupportedChainError,

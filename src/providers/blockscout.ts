@@ -27,13 +27,14 @@ import type {
 import { Provider } from "../core/provider.js";
 import { buildQuery } from "../core/client.js";
 import { NotFoundError, UnsupportedChainError } from "../core/errors.js";
-import { register } from "../core/registry.js";
 import { assertSafePathSegment } from "../core/path-safety.js";
 import { create as createChain } from "@agntn/chains";
 import { clampMaxResults, formatWei, multiplyIntegerStrings } from "../core/types.js";
 
+const DEFAULT_BASE = "https://eth.blockscout.com";
+
 const CHAIN_BASES: Partial<Record<ChainKey, string>> = {
-  eth: "https://eth.blockscout.com",
+  eth: DEFAULT_BASE,
   base: "https://base.blockscout.com",
   arbitrum: "https://arbitrum.blockscout.com",
   optimism: "https://optimism.blockscout.com",
@@ -199,9 +200,8 @@ function mapTx(raw: BlockscoutTx): Transaction {
   };
 }
 
-class Blockscout extends Provider {
+export class Blockscout extends Provider {
   static readonly key = "blockscout";
-  static readonly chains = Object.keys(CHAIN_BASES) as readonly ChainKey[];
 
   private defaultChain: ChainKey;
 
@@ -405,5 +405,3 @@ class Blockscout extends Provider {
     };
   }
 }
-
-register(Blockscout, "https://eth.blockscout.com");

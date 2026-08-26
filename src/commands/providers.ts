@@ -15,7 +15,7 @@ export default defineCommand({
 
     for (const name of names) {
       try {
-        const provider = create(name);
+        const provider = await create(name);
         const caps = provider.capabilities;
         const capList = Object.entries(caps)
           .filter(([, v]) => v)

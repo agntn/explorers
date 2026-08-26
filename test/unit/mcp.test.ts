@@ -3,18 +3,19 @@ import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Provider } from "../../src/core/provider.js";
 import type { ProviderConstructor } from "../../src/core/provider.js";
-import { create, getDefaultURL, register } from "../../src/core/registry.js";
+import { create, register } from "../../src/core/registry.js";
+import { builtins } from "../../src/providers/index.js";
 import type { ContractInfo } from "../../src/core/types.js";
 import { createMcpServer } from "../../src/mcp.js";
 
 const openConnections: Array<{ close(): Promise<void> }> = [];
 
 // SAFETY: create() instantiates the ProviderConstructor registered for this key.
-const blockscoutConstructor = create("blockscout").constructor as ProviderConstructor;
-const blockscoutDefaultURL = getDefaultURL("blockscout");
+const blockscoutConstructor = (await create("blockscout")).constructor as ProviderConstructor;
+const blockscoutEntry = builtins.find((entry) => entry.key === "blockscout")!;
 
 afterEach(async () => {
-  register(blockscoutConstructor, blockscoutDefaultURL);
+  register(blockscoutConstructor, blockscoutEntry);
   vi.unstubAllGlobals();
   await Promise.all(openConnections.splice(0).map((connection) => connection.close()));
 });
@@ -250,7 +251,7 @@ describe("Explorers MCP server", () => {
       arguments: { address: "0x1", provider: DisabledProvider.key },
     },
   ])("honors the disabled capability for $tool", async ({ tool, operation, arguments: args }) => {
-    register(DisabledProvider);
+    register(DisabledProvider, { chains: ["eth"] });
     const client = await connectTestClient();
 
     const response = await client.callTool({ name: tool, arguments: args });
@@ -264,7 +265,7 @@ describe("Explorers MCP server", () => {
   });
 
   it("honors a disabled optional capability despite a method being present", async () => {
-    register(DisabledProvider);
+    register(DisabledProvider, { chains: ["eth"] });
     const client = await connectTestClient();
 
     const response = await client.callTool({
@@ -282,7 +283,7 @@ describe("Explorers MCP server", () => {
 
   it("resolves ENS names before contract lookup", async () => {
     const resolvedAddress = "0x0000000000000000000000000000000000000001";
-    register(ContractProvider);
+    register(ContractProvider, { chains: ["eth"] });
     vi.stubGlobal(
       "fetch",
       vi.fn(async () => {

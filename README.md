@@ -81,7 +81,7 @@ Without `--provider`, Explorers first checks configured API keys and then falls 
 ```typescript
 import { create, resolveEns, resolveProvider } from "@agntn/explorers";
 
-const provider = create(resolveProvider());
+const provider = await create(resolveProvider());
 const address = await resolveEns("vitalik.eth");
 if (!address) throw new Error("ENS name did not resolve");
 
@@ -101,6 +101,8 @@ if (provider.capabilities.contractInfo && provider.getContractInfo) {
 ```
 
 Required operations live on `Provider`. Optional operations stay absent when a backend cannot serve them, so check both `capabilities` and the method before calling. No fake fallback and no method that returns convincing nonsense.
+
+`create()` imports the provider it was asked for and nothing else, which is why it returns a promise. Everything the registry answers without an instance stays synchronous: `providers()`, `has()`, `supportsChain()`, `getDefaultURL()` and `resolveProvider()` read the metadata in `builtins`. A single backend can also skip the registry: `import { Mempool } from "@agntn/explorers/providers/mempool"` gives you the class and leaves the other nine out of your bundle.
 
 ## Providers
 
@@ -136,10 +138,11 @@ A new backend is five steps:
 1. Create a class extending `Provider` in `src/providers/`.
 2. Give it one unique `static readonly key`.
 3. Implement balances and transaction history, then advertise only the optional methods that really work.
-4. Register the class at module scope.
-5. Import it from `src/providers/index.ts`.
+4. Export the class.
+5. Add an entry to `builtins` in `src/providers/index.ts` with its chains, its public endpoint and a `load` that imports the module.
+6. Add the file to `build.config.ts` so it ships as its own bundle.
 
-Importing `@agntn/explorers` loads the provider barrel and triggers registration. There is no separate registry list to forget.
+The entry carries what the registry answers without an instance, so listing providers or matching a chain never loads explorer code. Skipping a step is not silent: `test/unit/registry.test.ts` compares the list against the files on disk, against the key of the class each entry loads, and against the build inputs.
 
 ## Development
 

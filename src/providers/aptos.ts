@@ -14,11 +14,9 @@ import type {
 } from "../core/types.js";
 import { Provider } from "../core/provider.js";
 import { UnsupportedChainError, UnsupportedOperationError } from "../core/errors.js";
-import { register } from "../core/registry.js";
 
-class Aptos extends Provider {
+export class Aptos extends Provider {
   static readonly key = "aptos";
-  static readonly chains: readonly ChainKey[] = ["aptos"];
 
   get capabilities(): ProviderCapabilities {
     return {
@@ -49,5 +47,3 @@ class Aptos extends Provider {
     throw new UnsupportedOperationError("getTxHistory", this.name);
   }
 }
-
-register(Aptos);

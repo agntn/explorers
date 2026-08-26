@@ -19,7 +19,6 @@ import type {
 import { Provider } from "../core/provider.js";
 import { normalizeBaseUrl } from "../core/client.js";
 import { UnsupportedChainError } from "../core/errors.js";
-import { register } from "../core/registry.js";
 import { clampMaxResults, formatWei } from "../core/types.js";
 
 import { assertSafePathSegment } from "../core/path-safety.js";
@@ -109,9 +108,8 @@ function mapEventToTx(event: TonEvent): Transaction {
   };
 }
 
-class Ton extends Provider {
+export class Ton extends Provider {
   static readonly key = "ton";
-  static readonly chains: readonly ChainKey[] = ["ton"];
 
   private baseUrl: string;
 
@@ -169,5 +167,3 @@ class Ton extends Provider {
     return data.events.map(mapEventToTx);
   }
 }
-
-register(Ton, "https://tonapi.io");

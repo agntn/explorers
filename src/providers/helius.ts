@@ -21,7 +21,6 @@ import {
   UnsupportedChainError,
   UnsupportedOperationError,
 } from "../core/errors.js";
-import { register } from "../core/registry.js";
 import { assertSafePathSegment } from "../core/path-safety.js";
 import { clampMaxResults, toTimestamp } from "../core/types.js";
 
@@ -63,9 +62,8 @@ function mapTransaction(raw: HeliusTransaction): Transaction {
   };
 }
 
-class Helius extends Provider {
+export class Helius extends Provider {
   static readonly key = "helius";
-  static readonly chains: readonly ChainKey[] = ["solana"];
 
   private readonly apiKey: string;
   private readonly baseUrl: string;
@@ -143,5 +141,3 @@ class Helius extends Provider {
     return mapTransaction(transaction);
   }
 }
-
-register(Helius, DEFAULT_BASE);

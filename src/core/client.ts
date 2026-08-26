@@ -4,7 +4,13 @@ import { ofetch } from "ofetch";
 import { normalizeError } from "./errors.js";
 import { version } from "../version.js";
 
-const USER_AGENT = `explorers/${version}`;
+let userAgent: string | undefined;
+
+/** Built on the first request so that loading the client evaluates nothing. */
+function agent(): string {
+  userAgent ??= `explorers/${version}`;
+  return userAgent;
+}
 
 /** Request metadata shared by the HTTP helpers. */
 export interface ClientOptions {
@@ -46,7 +52,7 @@ export async function getJSON<T>(url: string, options?: ClientOptions): Promise<
       method: "GET",
       headers: {
         Accept: "application/json",
-        "User-Agent": USER_AGENT,
+        "User-Agent": agent(),
         ...options?.headers,
       },
       timeout: options?.timeout ?? 15_000,
@@ -66,7 +72,7 @@ export async function postJSON<T>(url: string, body: unknown, options?: ClientOp
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json",
-        "User-Agent": USER_AGENT,
+        "User-Agent": agent(),
         ...options?.headers,
       },
       body: JSON.stringify(body),

@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthError, NotFoundError, UnsupportedOperationError } from "../../src/core/errors.js";
 import { create } from "../../src/core/registry.js";
-import "../../src/providers/helius.js";
 
 const ADDRESS = "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM";
 const SIGNATURE =
@@ -34,13 +33,13 @@ afterEach(() => {
 describe("helius provider", () => {
   let provider: ReturnType<typeof create>;
 
-  beforeEach(() => {
-    provider = create("helius", { apiKey: "secret", baseUrl: "https://example.test/" });
+  beforeEach(async () => {
+    provider = await create("helius", { apiKey: "secret", baseUrl: "https://example.test/" });
   });
 
-  it("requires a Helius API key", () => {
+  it("requires a Helius API key", async () => {
     vi.stubEnv("HELIUS_API_KEY", "");
-    expect(() => create("helius")).toThrow(AuthError);
+    await expect(create("helius")).rejects.toThrow(AuthError);
   });
 
   it("reports only explorer-backed capabilities", () => {

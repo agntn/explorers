@@ -24,13 +24,14 @@ import type {
 import { Provider } from "../core/provider.js";
 import { normalizeBaseUrl } from "../core/client.js";
 import { UnsupportedChainError } from "../core/errors.js";
-import { register } from "../core/registry.js";
 import { create as createChain } from "@agntn/chains";
 import { clampMaxResults, formatWei } from "../core/types.js";
 import { assertSafePathSegment } from "../core/path-safety.js";
 
+const DEFAULT_BASE = "https://mempool.space";
+
 const CHAIN_BASES: Partial<Record<ChainKey, string>> = {
-  bitcoin: "https://mempool.space",
+  bitcoin: DEFAULT_BASE,
   litecoin: "https://litecoinspace.org",
 };
 
@@ -172,8 +173,13 @@ const PUSHDATA_WIDTH: Record<number, number> = {
   [OP_PUSHDATA4]: 4,
 };
 
+let utf8: TextDecoder | undefined;
+
 /** `ignoreBOM` means "leave a leading U+FEFF in the string", which is where the filter can see it. */
-const utf8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
+function decoder(): TextDecoder {
+  utf8 ??= new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
+  return utf8;
+}
 
 /** Unicode format characters: invisible on screen, which covers the bidi controls as well. */
 const FORMAT_CHARACTER = /\p{Cf}/u;
@@ -239,7 +245,7 @@ function constantPush(opcode: number): Uint8Array | undefined {
 /** Read a payload as text, leaving binary carriers (Runes, Omni, hashes) without a text reading. */
 function decodeText(payload: Uint8Array): string | undefined {
   try {
-    const text = utf8.decode(payload);
+    const text = decoder().decode(payload);
     return isPrintable(text) ? text : undefined;
   } catch {
     return undefined;
@@ -345,9 +351,8 @@ function mapTx(raw: MempoolAddressTx, address: string): Transaction {
   };
 }
 
-class Mempool extends Provider {
+export class Mempool extends Provider {
   static readonly key = "mempool";
-  static readonly chains = Object.keys(CHAIN_BASES) as readonly ChainKey[];
 
   private baseUrl: string | undefined;
   private defaultChain: ChainKey;
@@ -489,5 +494,3 @@ class Mempool extends Provider {
     };
   }
 }
-
-register(Mempool, "https://mempool.space");

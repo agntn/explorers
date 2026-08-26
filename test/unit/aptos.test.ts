@@ -1,13 +1,12 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { UnsupportedChainError, UnsupportedOperationError } from "../../src/core/errors.js";
 import { create } from "../../src/core/registry.js";
-import "../../src/providers/aptos.js";
 
 describe("aptos provider", () => {
   let provider: ReturnType<typeof create>;
 
-  beforeAll(() => {
-    provider = create("aptos");
+  beforeAll(async () => {
+    provider = await create("aptos");
   });
 
   it("advertises no operations without a documented explorer API", () => {
