@@ -139,6 +139,11 @@ interface BlockscoutGasPrice {
   slow?: string | number;
 }
 
+interface BlockscoutTransactionPage {
+  items: BlockscoutTx[];
+  next_page_params?: Record<string, string | number> | null;
+}
+
 function getBase(chain: ChainKey): string {
   const base = CHAIN_BASES[chain];
   if (!base) throw new UnsupportedChainError(chain, "blockscout");
@@ -241,6 +246,7 @@ export class Blockscout extends Provider {
     };
   }
 
+  /** Follow Blockscout's 50-item keyset pages up to the 100-result provider limit. */
   async getTxHistory(
     address: string,
     chain?: ChainKey,
@@ -249,12 +255,18 @@ export class Blockscout extends Provider {
     const c = chain ?? this.defaultChain;
     assertSafePathSegment(address, "address");
     const limit = clampMaxResults(options?.limit);
-    const url = `${this.base(c)}/api/v2/addresses/${encodeURIComponent(address)}/transactions`;
+    const baseUrl = `${this.base(c)}/api/v2/addresses/${encodeURIComponent(address)}/transactions`;
 
-    const data = await this.getJSON<{ items: BlockscoutTx[] }>(url);
-
-    if (!data.items?.length) return [];
-    return data.items.slice(0, limit).map(mapTx);
+    const transactions: Transaction[] = [];
+    let cursor: Record<string, string | number> = {};
+    for (let fetches = 0; fetches < 2 && transactions.length < limit; fetches++) {
+      const data = await this.getJSON<BlockscoutTransactionPage>(`${baseUrl}${buildQuery(cursor)}`);
+      if (!data.items.length) break;
+      transactions.push(...data.items.slice(0, limit - transactions.length).map(mapTx));
+      if (!data.next_page_params) break;
+      cursor = data.next_page_params;
+    }
+    return transactions.slice(0, limit);
   }
 
   override async getTxDetail(hash: string, chain?: ChainKey): Promise<Transaction> {

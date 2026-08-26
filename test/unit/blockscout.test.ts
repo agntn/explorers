@@ -71,6 +71,58 @@ describe("blockscout provider", () => {
     expect(["success", "failed", "pending"]).toContain(tx.status);
   });
 
+  it("walks transaction pages until the requested limit is reached", async () => {
+    const transaction = (block: number) => ({
+      hash: `0x${block.toString(16).padStart(64, "0")}`,
+      block_number: block,
+      timestamp: "2026-08-22T18:24:59.000000Z",
+      from: { hash: "0x1111111111111111111111111111111111111111" },
+      to: { hash: VITALIK },
+      value: "0",
+      gas_used: "21000",
+      gas_price: "1",
+      status: "ok",
+      transaction_types: [],
+    });
+    const page = (items: unknown[], next: Record<string, string | number> | null): Response =>
+      new Response(JSON.stringify({ items, next_page_params: next }), {
+        headers: { "Content-Type": "application/json" },
+      });
+    const firstPage = Array.from({ length: 50 }, (_, index) => transaction(100 - index));
+    const cursorHash = transaction(51).hash;
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(
+        page(firstPage, {
+          block_number: 51,
+          fee: "21000",
+          hash: cursorHash,
+          index: 1,
+          inserted_at: "2026-08-22T18:24:59.000000Z",
+          items_count: 50,
+          value: "0",
+        }),
+      )
+      .mockResolvedValueOnce(page([transaction(50)], null));
+    vi.stubGlobal("fetch", fetch);
+
+    const transactions = await provider.getTxHistory(VITALIK, "ethereum", { limit: 51 });
+
+    expect(transactions).toHaveLength(51);
+    expect(transactions.at(-1)?.blockNumber).toBe(50);
+    expect(fetch).toHaveBeenCalledTimes(2);
+    const second = new URL(String(fetch.mock.calls[1]?.[0]));
+    expect(Object.fromEntries(second.searchParams)).toEqual({
+      block_number: "51",
+      fee: "21000",
+      hash: cursorHash,
+      index: "1",
+      inserted_at: "2026-08-22T18:24:59.000000Z",
+      items_count: "50",
+      value: "0",
+    });
+  });
+
   it("getContractInfo returns info for known contract", async () => {
     const info = await provider.getContractInfo(USDC_BASE, "base");
 
