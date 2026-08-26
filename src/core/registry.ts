@@ -3,7 +3,7 @@
 import { builtins } from "../providers/index.js";
 import { Provider } from "./provider.js";
 import type { ProviderConstructor, ProviderMeta } from "./provider.js";
-import type { ChainKey, ProviderConfig } from "./types.js";
+import type { ChainKey, ProviderCapabilities, ProviderConfig } from "./types.js";
 import { UnknownProviderError } from "./errors.js";
 
 interface RegistryEntry extends ProviderMeta {
@@ -21,9 +21,9 @@ let registry: Map<string, RegistryEntry> | undefined;
  */
 function entries(): Map<string, RegistryEntry> {
   registry ??= new Map(
-    builtins.map(({ key, chains, defaultURL, load }): [string, RegistryEntry] => [
+    builtins.map(({ key, chains, capabilities, defaultURL, load }): [string, RegistryEntry] => [
       key,
-      { chains, defaultURL, load },
+      { chains, capabilities, defaultURL, load },
     ]),
   );
   return registry;
@@ -40,6 +40,7 @@ function entries(): Map<string, RegistryEntry> {
 export function register(providerClass: ProviderConstructor, meta: ProviderMeta): void {
   entries().set(providerClass.key, {
     chains: meta.chains,
+    capabilities: meta.capabilities,
     defaultURL: meta.defaultURL,
     load: () => Promise.resolve(providerClass),
     providerClass,
@@ -57,7 +58,7 @@ export function register(providerClass: ProviderConstructor, meta: ProviderMeta)
  *
  *   const provider = await create("blockscout");
  *   const balance = await provider.getBalance("0x0000000000000000000000000000000000000000", "ethereum");
- *   ```
+ *   ```;
  *
  * @throws {UnknownProviderError} When `name` has not been registered.
  */
@@ -84,6 +85,12 @@ export function has(name: string): boolean {
 export function supportsChain(name: string, chain: ChainKey): boolean {
   const entry = entries().get(name);
   return entry !== undefined && entry.chains.includes(chain);
+}
+
+/** Check whether a registered provider declares support for an operation capability. */
+export function supportsCapability(name: string, capability: keyof ProviderCapabilities): boolean {
+  const entry = entries().get(name);
+  return entry !== undefined && (entry.capabilities ? entry.capabilities[capability] : true);
 }
 
 /**

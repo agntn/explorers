@@ -73,6 +73,8 @@ export interface ProviderConstructor {
 export interface ProviderMeta {
   /** Chains the provider can serve, consulted during auto-selection. */
   chains: readonly ChainKey[];
+  /** Operations supported by the provider, consulted during auto-selection. */
+  capabilities?: ProviderCapabilities;
   /** Public endpoint advertised for the provider. */
   defaultURL?: string;
 }

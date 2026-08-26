@@ -43,9 +43,6 @@ export default defineCommand({
     try {
       const chainInput = args.chain as string | undefined;
       const requestedChain = chainInput === undefined ? undefined : normalizeChain(chainInput);
-      const providerName = resolveProvider(args.provider as string | undefined, requestedChain);
-      const provider = await create(providerName);
-      const chain = requestedChain ?? normalizeChain(PROVIDER_DEFAULT_CHAIN[providerName]);
       const rawTarget = (args.target as string).trim();
       const requestedMode = args.mode as string | undefined;
       if (
@@ -57,7 +54,18 @@ export default defineCommand({
         process.exit(1);
       }
       const mode =
-        requestedMode ?? (classifyInput(rawTarget, chain) === "txhash" ? "detail" : "history");
+        requestedMode ??
+        (classifyInput(rawTarget, requestedChain ?? "ethereum") === "txhash"
+          ? "detail"
+          : "history");
+      const capability = mode === "detail" ? "txDetail" : "txHistory";
+      const providerName = resolveProvider(
+        args.provider as string | undefined,
+        requestedChain,
+        capability,
+      );
+      const provider = await create(providerName);
+      const chain = requestedChain ?? normalizeChain(PROVIDER_DEFAULT_CHAIN[providerName]);
 
       if (mode === "detail") {
         if (!provider.capabilities.txDetail || !provider.getTxDetail) {

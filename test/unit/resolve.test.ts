@@ -71,6 +71,19 @@ describe("resolveProvider", () => {
     expect(resolveProvider(undefined, "solana")).toBe("helius");
   });
 
+  it("skips a configured provider that lacks the requested operation capability", () => {
+    vi.stubEnv("ETHERSCAN_API_KEY", "");
+    vi.stubEnv("BLOCKCHAIR_API_KEY", "");
+    vi.stubEnv("SOLSCAN_API_KEY", "");
+    vi.stubEnv("HELIUS_API_KEY", "configured");
+    vi.stubEnv("TRONSCAN_API_KEY", "");
+    vi.stubEnv("BLOCKBERRY_API_KEY", "");
+
+    expect(resolveProvider(undefined, "solana", "balances")).toBe("solscan");
+    expect(resolveProvider(undefined, "solana", "txHistory")).toBe("helius");
+    expect(resolveProvider(undefined, "solana", "txDetail")).toBe("helius");
+  });
+
   it("falls back to a chain-capable provider even without credentials", () => {
     vi.stubEnv("ETHERSCAN_API_KEY", "");
     vi.stubEnv("BLOCKCHAIR_API_KEY", "");
@@ -96,5 +109,6 @@ describe("resolveProvider", () => {
 
   it("lets an explicit provider win over the requested chain", () => {
     expect(resolveProvider("etherscan", "bitcoin")).toBe("etherscan");
+    expect(resolveProvider("helius", "solana", "balances")).toBe("helius");
   });
 });

@@ -1,8 +1,8 @@
-/** Auto-select provider by checking env vars */
+/** Auto-select provider by checking env vars and requested operation capabilities */
 
-import { providers, has, supportsChain } from "./registry.js";
+import { providers, has, supportsChain, supportsCapability } from "./registry.js";
 import { UnknownProviderError } from "./errors.js";
-import type { ChainKey } from "./types.js";
+import type { ChainKey, ProviderCapabilities } from "./types.js";
 
 const ENV_MAP: Record<string, string[]> = {
   etherscan: ["ETHERSCAN_API_KEY"],
@@ -31,14 +31,18 @@ export const PROVIDER_DEFAULT_CHAIN: Partial<Record<string, ChainKey>> = {
 /**
  * Choose a registered provider for the current environment.
  *
- * An explicit preference wins, even for a chain it cannot serve, so misconfiguration stays
- * visible. Without one, candidates that declare support for the requested chain are considered
- * in order: configured credentials first, then keyless providers, then any chain-capable
- * registry entry, and finally Blockscout.
+ * An explicit preference wins, even for a chain or operation it cannot serve, so misconfiguration
+ * stays visible. Without one, candidates that declare support for the requested chain and
+ * capability are considered in order: configured credentials first, then keyless providers, then
+ * any capable registry entry, and finally Blockscout.
  *
  * @throws {UnknownProviderError} When an explicit preference is not registered.
  */
-export function resolveProvider(preferred?: string, chain?: ChainKey): string {
+export function resolveProvider(
+  preferred?: string,
+  chain?: ChainKey,
+  capability?: keyof ProviderCapabilities,
+): string {
   if (preferred) {
     if (!has(preferred)) {
       throw new UnknownProviderError(preferred);
@@ -46,7 +50,9 @@ export function resolveProvider(preferred?: string, chain?: ChainKey): string {
     return preferred;
   }
 
-  const fits = (name: string) => chain === undefined || supportsChain(name, chain);
+  const fits = (name: string) =>
+    (chain === undefined || supportsChain(name, chain)) &&
+    (capability === undefined || supportsCapability(name, capability));
 
   // Pick first provider whose env keys are all set
   for (const [name, envKeys] of Object.entries(ENV_MAP)) {
@@ -65,12 +71,28 @@ export function resolveProvider(preferred?: string, chain?: ChainKey): string {
   // A chain-capable provider missing credentials fails with a clearer error than a chain mismatch
   if (chain !== undefined) {
     for (const name of providers()) {
-      if (supportsChain(name, chain)) return name;
+      if (
+        supportsChain(name, chain) &&
+        (capability === undefined || supportsCapability(name, capability))
+      ) {
+        return name;
+      }
     }
   }
 
   // Default: blockscout (no key needed)
-  if (has("blockscout")) return "blockscout";
+  if (
+    has("blockscout") &&
+    (capability === undefined || supportsCapability("blockscout", capability))
+  ) {
+    return "blockscout";
+  }
 
-  return providers()[0] ?? "blockscout";
+  for (const name of providers()) {
+    if (capability === undefined || supportsCapability(name, capability)) {
+      return name;
+    }
+  }
+
+  return "blockscout";
 }

@@ -20,7 +20,7 @@ export default defineCommand({
     chain: {
       type: "string",
       alias: "c",
-      description: "Chain (eth, base, arbitrum, bitcoin, ...)",
+      description: "Chain (ethereum, base, arbitrum, bitcoin, ...)",
     },
     provider: {
       type: "string",
@@ -32,7 +32,11 @@ export default defineCommand({
     try {
       const chainInput = args.chain as string | undefined;
       const requestedChain = chainInput === undefined ? undefined : normalizeChain(chainInput);
-      const providerName = resolveProvider(args.provider as string | undefined, requestedChain);
+      const providerName = resolveProvider(
+        args.provider as string | undefined,
+        requestedChain,
+        "balances",
+      );
       const provider = await create(providerName);
       const chain = requestedChain ?? normalizeChain(PROVIDER_DEFAULT_CHAIN[providerName]);
       const inputs = args._.length > 0 ? args._ : [args.address as string];

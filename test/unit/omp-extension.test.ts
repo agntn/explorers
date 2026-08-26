@@ -102,9 +102,7 @@ describe("explorers OMP extension", () => {
       "fetch",
       vi.fn(async (input: RequestInfo | URL) => {
         const url = String(input);
-        const payload = url.includes("ensideas")
-          ? { address: resolved }
-          : { coin_balance: "1" };
+        const payload = url.includes("ensideas") ? { address: resolved } : { coin_balance: "1" };
         return new Response(JSON.stringify(payload), {
           headers: { "content-type": "application/json" },
         });
@@ -120,9 +118,7 @@ describe("explorers OMP extension", () => {
       unusedContext,
     );
 
-    expect(result.content).toEqual([
-      { type: "text", text: expect.stringContaining(resolved) },
-    ]);
+    expect(result.content).toEqual([{ type: "text", text: expect.stringContaining(resolved) }]);
   });
 
   it("declares a non-negative integer block number", () => {

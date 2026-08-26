@@ -43,7 +43,11 @@ export default defineCommand({
     try {
       const chainInput = args.chain as string | undefined;
       const requestedChain = chainInput === undefined ? undefined : normalizeChain(chainInput);
-      const providerName = resolveProvider(args.provider as string | undefined, requestedChain);
+      const providerName = resolveProvider(
+        args.provider as string | undefined,
+        requestedChain,
+        "tokenTransfers",
+      );
       const provider = await create(providerName);
       const chain = requestedChain ?? normalizeChain(PROVIDER_DEFAULT_CHAIN[providerName]);
 

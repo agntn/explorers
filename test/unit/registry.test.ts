@@ -2,7 +2,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { getChain } from "@agntn/chains";
 import { describe, expect, it } from "vitest";
-import { getDefaultURL, providers } from "../../src/core/registry.js";
+import { getDefaultURL, providers, supportsCapability } from "../../src/core/registry.js";
 import { builtins } from "../../src/providers/index.js";
 
 const providerDir = fileURLToPath(new URL("../../src/providers/", import.meta.url));
@@ -43,6 +43,19 @@ describe("built-in provider registry", () => {
     for (const entry of builtins) {
       const providerClass = await entry.load();
       expect(providerClass.key).toBe(entry.key);
+    }
+  });
+
+  it("declares capabilities matching the loaded class", async () => {
+    for (const entry of builtins) {
+      const ProviderClass = await entry.load();
+      const instance = new ProviderClass({ apiKey: "test" });
+      expect(entry.capabilities).toEqual(instance.capabilities);
+      for (const [cap, enabled] of Object.entries(instance.capabilities)) {
+        expect(supportsCapability(entry.key, cap as keyof typeof instance.capabilities)).toBe(
+          enabled,
+        );
+      }
     }
   });
 

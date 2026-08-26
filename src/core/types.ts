@@ -264,7 +264,7 @@ export function toTimestamp(seconds: number): string {
  * @example
  *   ```ts
  *   formatWei("1234500000000000000"); // '1.2345'
- *   ```
+ *   ```;
  */
 export function formatWei(wei: string | bigint, decimals = 18): string {
   if (!Number.isInteger(decimals) || decimals < 0 || decimals > 255) {
@@ -287,7 +287,7 @@ export function formatWei(wei: string | bigint, decimals = 18): string {
  * @example
  *   ```ts
  *   hexToWei("0xff"); // '255'
- *   ```
+ *   ```;
  */
 export function hexToWei(hex: string): string {
   return BigInt(hex).toString();
@@ -307,7 +307,7 @@ export function multiplyIntegerStrings(left: string, right: string): string {
  * @example
  *   ```ts
  *   normalizeChain("arb"); // 'arbitrum'
- *   ```
+ *   ```;
  */
 export function normalizeChain(input?: string): ChainKey {
   try {

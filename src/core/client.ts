@@ -26,19 +26,46 @@ export function normalizeBaseUrl(url: string): string {
 }
 
 function parseJSON(text: string): unknown {
-  type Reviver = (key: string, value: unknown, context: { source: string }) => unknown;
+  type Reviver = (key: string, value: unknown, context?: { source?: string }) => unknown;
   const parseWithSource = JSON.parse as unknown as (value: string, reviver: Reviver) => unknown;
 
-  return parseWithSource(text, (_key, value, context) => {
-    if (
-      typeof value === "number" &&
-      !Number.isSafeInteger(value) &&
-      /^-?\d+$/.test(context.source)
-    ) {
-      return context.source;
+  let hasSourceContext = false;
+  try {
+    parseWithSource('{"a":1}', (_k, _v, ctx) => {
+      if (ctx?.source) hasSourceContext = true;
+    });
+  } catch {
+    // ignore
+  }
+
+  if (hasSourceContext) {
+    return parseWithSource(text, (_key, value, context) => {
+      if (
+        typeof value === "number" &&
+        !Number.isSafeInteger(value) &&
+        context?.source &&
+        /^-?\d+$/.test(context.source)
+      ) {
+        return context.source;
+      }
+      return value;
+    });
+  }
+
+  // Fallback for runtimes without JSON.parse reviver context (Node < 21)
+  const sanitized = text.replace(/([:[,]\s*)(-?\d+)(?=[,\s\]}])/g, (match, prefix, digits) => {
+    try {
+      const b = BigInt(digits);
+      if (b > BigInt(Number.MAX_SAFE_INTEGER) || b < BigInt(Number.MIN_SAFE_INTEGER)) {
+        return `${prefix}"${digits}"`;
+      }
+    } catch {
+      // ignore
     }
-    return value;
+    return match;
   });
+
+  return JSON.parse(sanitized);
 }
 
 /**
@@ -92,7 +119,7 @@ export async function postJSON<T>(url: string, body: unknown, options?: ClientOp
  * @example
  *   ```ts
  *   buildQuery({ page: 2, cursor: undefined }); // '?page=2'
- *   ```
+ *   ```;
  */
 export function buildQuery(params: Record<string, string | number | undefined>): string {
   const usp = new URLSearchParams();
