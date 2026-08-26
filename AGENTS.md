@@ -130,4 +130,5 @@ pnpm dev            # obuild --stub (watch mode)
 pnpm typecheck      # tsc --noEmit
 pnpm test           # vitest watch
 pnpm test:run       # vitest single run
+pnpm release        # test, changelog, tag, push; CI publishes the tag
 ```
