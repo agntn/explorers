@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { RateLimitError, UnsupportedChainError } from "../../src/core/errors.js";
 import { create } from "../../src/core/registry.js";
-import "../../src/providers/etherscan.js";
 
 const ADDRESS = "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045";
 
@@ -21,7 +20,7 @@ afterEach(() => {
 describe("etherscan provider", () => {
   it("uses the unified V2 endpoint and chain ID", async () => {
     const fetch = stubJSON({ status: "1", message: "OK", result: "1000000000000000000" });
-    const provider = create("etherscan", {
+    const provider = await create("etherscan", {
       apiKey: "secret",
       baseUrl: "https://example.test/v2/api/",
       defaultChain: "base",
@@ -52,7 +51,7 @@ describe("etherscan provider", () => {
         },
       ],
     });
-    const provider = create("etherscan", { apiKey: "secret" });
+    const provider = await create("etherscan", { apiKey: "secret" });
 
     const tokens = await provider.getTokenBalances!(ADDRESS, "eth");
 
@@ -90,7 +89,7 @@ describe("etherscan provider", () => {
         },
       ],
     });
-    const provider = create("etherscan", { apiKey: "secret" });
+    const provider = await create("etherscan", { apiKey: "secret" });
 
     const transfers = await provider.getTokenTransfers!(ADDRESS, "eth", {
       token: "0x0000000000000000000000000000000000000001",
@@ -118,7 +117,7 @@ describe("etherscan provider", () => {
 
   it("returns an empty transfer list for Etherscan's no-transactions response", async () => {
     stubJSON({ status: "0", message: "No transactions found", result: [] });
-    const provider = create("etherscan", { apiKey: "secret" });
+    const provider = await create("etherscan", { apiKey: "secret" });
 
     await expect(provider.getTokenTransfers!(ADDRESS, "eth")).resolves.toEqual([]);
   });
@@ -139,7 +138,7 @@ describe("etherscan provider", () => {
         transactions: ["0xtx1", "0xtx2"],
       },
     });
-    const provider = create("etherscan", { apiKey: "secret" });
+    const provider = await create("etherscan", { apiKey: "secret" });
 
     const block = await provider.getBlockInfo!(16, "eth");
 
@@ -171,7 +170,7 @@ describe("etherscan provider", () => {
         },
       ],
     });
-    const provider = create("etherscan", { apiKey: "secret" });
+    const provider = await create("etherscan", { apiKey: "secret" });
 
     await expect(provider.getContractInfo(ADDRESS, "eth")).resolves.toMatchObject({
       isVerified: true,
@@ -182,20 +181,20 @@ describe("etherscan provider", () => {
 
   it("preserves API failures instead of returning partial contract data", async () => {
     stubJSON({ status: "0", message: "NOTOK", result: "Max rate limit reached" });
-    const provider = create("etherscan", { apiKey: "secret" });
+    const provider = await create("etherscan", { apiKey: "secret" });
 
     await expect(provider.getContractInfo(ADDRESS, "eth")).rejects.toBeInstanceOf(RateLimitError);
   });
 
   it("returns an empty history for Etherscan's no-transactions response", async () => {
     stubJSON({ status: "0", message: "No transactions found", result: [] });
-    const provider = create("etherscan", { apiKey: "secret" });
+    const provider = await create("etherscan", { apiKey: "secret" });
 
     await expect(provider.getTxHistory(ADDRESS, "eth")).resolves.toEqual([]);
   });
 
-  it("rejects networks that the unified endpoint does not serve", () => {
-    expect(() => create("etherscan", { apiKey: "secret", defaultChain: "fantom" })).toThrow(
+  it("rejects networks that the unified endpoint does not serve", async () => {
+    await expect(create("etherscan", { apiKey: "secret", defaultChain: "fantom" })).rejects.toThrow(
       UnsupportedChainError,
     );
   });

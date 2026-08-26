@@ -17,7 +17,6 @@ import type {
 import { Provider } from "../core/provider.js";
 import { NotFoundError, UnsupportedChainError } from "../core/errors.js";
 import { buildQuery, normalizeBaseUrl } from "../core/client.js";
-import { register } from "../core/registry.js";
 import { create as createChain } from "@agntn/chains";
 import { formatWei, clampMaxResults } from "../core/types.js";
 import { assertSafePathSegment } from "../core/path-safety.js";
@@ -26,6 +25,8 @@ const CHAIN_NAMES: Partial<Record<ChainKey, string>> = {
   bitcoin: "bitcoin",
   eth: "ethereum",
 };
+
+const DEFAULT_BASE = "https://api.blockchair.com";
 
 interface BlockchairResponse<T> {
   data: T;
@@ -113,9 +114,8 @@ function toIsoTimestamp(timestamp: string): string {
   return new Date(`${timestamp.replace(" ", "T")}Z`).toISOString();
 }
 
-class Blockchair extends Provider {
+export class Blockchair extends Provider {
   static readonly key = "blockchair";
-  static readonly chains = Object.keys(CHAIN_NAMES) as readonly ChainKey[];
 
   private apiKey: string | undefined;
   private readonly baseUrl: string;
@@ -124,7 +124,7 @@ class Blockchair extends Provider {
   constructor(config: ProviderConfig) {
     super(config);
     this.apiKey = config.apiKey ?? process.env.BLOCKCHAIR_API_KEY;
-    this.baseUrl = normalizeBaseUrl(config.baseUrl ?? "https://api.blockchair.com");
+    this.baseUrl = normalizeBaseUrl(config.baseUrl ?? DEFAULT_BASE);
     this.defaultChain = config.defaultChain ?? "eth";
   }
   get capabilities(): ProviderCapabilities {
@@ -265,5 +265,3 @@ class Blockchair extends Provider {
     };
   }
 }
-
-register(Blockchair, "https://api.blockchair.com");

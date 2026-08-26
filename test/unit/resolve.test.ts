@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { UnknownProviderError } from "../../src/core/errors.js";
 import { resolveProvider } from "../../src/core/resolve.js";
-import "../../src/providers/index.js";
 
 afterEach(() => {
   vi.unstubAllEnvs();

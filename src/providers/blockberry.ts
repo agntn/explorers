@@ -16,7 +16,6 @@ import type {
 import { Provider } from "../core/provider.js";
 import { normalizeBaseUrl, buildQuery } from "../core/client.js";
 import { AuthError, UnsupportedChainError } from "../core/errors.js";
-import { register } from "../core/registry.js";
 import { assertSafePathSegment } from "../core/path-safety.js";
 import { clampMaxResults, formatWei } from "../core/types.js";
 
@@ -65,9 +64,8 @@ function mapActivity(raw: BlockberryActivity): Transaction {
   };
 }
 
-class Blockberry extends Provider {
+export class Blockberry extends Provider {
   static readonly key = "blockberry";
-  static readonly chains: readonly ChainKey[] = ["sui"];
 
   private readonly apiKey: string;
   private readonly baseUrl: string;
@@ -142,5 +140,3 @@ class Blockberry extends Provider {
     return page.content.map(mapActivity);
   }
 }
-
-register(Blockberry, DEFAULT_BASE);

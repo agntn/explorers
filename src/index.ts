@@ -1,6 +1,3 @@
-// Side-effect: register all providers
-import "./providers/index.js";
-
 export { version } from "./version.js";
 export type {
   ChainKey,
@@ -21,7 +18,8 @@ export type {
   ProviderConfig,
 } from "./core/types.js";
 export { Provider } from "./core/provider.js";
-export type { ProviderConstructor } from "./core/provider.js";
+export type { ProviderConstructor, ProviderEntry, ProviderMeta } from "./core/provider.js";
+export { builtins } from "./providers/index.js";
 export { clampMaxResults, formatWei, hexToWei, normalizeChain } from "./core/types.js";
 export {
   ExplorerError,

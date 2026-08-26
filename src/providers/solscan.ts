@@ -17,7 +17,6 @@ import type {
 import { Provider } from "../core/provider.js";
 import { normalizeBaseUrl, buildQuery } from "../core/client.js";
 import { AuthError, ExplorerError, UnsupportedChainError } from "../core/errors.js";
-import { register } from "../core/registry.js";
 import { assertSafePathSegment } from "../core/path-safety.js";
 import { clampMaxResults, formatWei, toTimestamp } from "../core/types.js";
 
@@ -102,9 +101,8 @@ function mapTransactionDetail(raw: SolscanTransactionDetail): Transaction {
   };
 }
 
-class Solscan extends Provider {
+export class Solscan extends Provider {
   static readonly key = "solscan";
-  static readonly chains: readonly ChainKey[] = ["solana"];
 
   private readonly apiKey: string;
   private readonly baseUrl: string;
@@ -208,5 +206,3 @@ class Solscan extends Provider {
     };
   }
 }
-
-register(Solscan, DEFAULT_BASE);

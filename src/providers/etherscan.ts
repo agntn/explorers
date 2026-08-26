@@ -32,7 +32,6 @@ import {
   RateLimitError,
   UnsupportedChainError,
 } from "../core/errors.js";
-import { register } from "../core/registry.js";
 import { create as createChain } from "@agntn/chains";
 import { clampMaxResults, formatWei, multiplyIntegerStrings } from "../core/types.js";
 
@@ -152,9 +151,8 @@ function mapTx(raw: EtherscanTx): Transaction {
   };
 }
 
-class Etherscan extends Provider {
+export class Etherscan extends Provider {
   static readonly key = "etherscan";
-  static readonly chains: readonly ChainKey[] = [...SUPPORTED_CHAINS];
 
   private readonly apiKey: string;
   private readonly apiUrl: string;
@@ -430,5 +428,3 @@ class Etherscan extends Provider {
     };
   }
 }
-
-register(Etherscan, DEFAULT_BASE);

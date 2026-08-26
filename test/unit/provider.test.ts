@@ -55,11 +55,11 @@ afterEach(() => {
 });
 
 describe("abstract provider registry", () => {
-  it("constructs a registered subclass and forwards its config", () => {
-    register(Custom);
+  it("constructs a registered subclass and forwards its config", async () => {
+    register(Custom, { chains: ["eth"] });
 
     const config = { baseUrl: "https://example.test" };
-    const provider = create("abstract-provider-test", config);
+    const provider = await create("abstract-provider-test", config);
 
     expect(provider).toBeInstanceOf(Provider);
     expect(provider).toBeInstanceOf(Custom);
@@ -70,8 +70,8 @@ describe("abstract provider registry", () => {
     expect(provider.config).toEqual(config);
   });
 
-  it.each(BUILT_IN_PROVIDERS)("%s extends Provider", (name) => {
-    const provider = create(name, { apiKey: "test" });
+  it.each(BUILT_IN_PROVIDERS)("%s extends Provider", async (name) => {
+    const provider = await create(name, { apiKey: "test" });
     expect(provider).toBeInstanceOf(Provider);
     expect(provider.name).toBe(name);
     expect(provider.getTxDetail !== undefined).toBe(provider.capabilities.txDetail);
@@ -82,8 +82,8 @@ describe("abstract provider registry", () => {
     expect(provider.getBlockInfo !== undefined).toBe(provider.capabilities.blockInfo);
   });
 
-  it("keeps unsupported optional operations absent at runtime", () => {
-    const provider = create("ton");
+  it("keeps unsupported optional operations absent at runtime", async () => {
+    const provider = await create("ton");
     expect(provider.getTxDetail).toBeUndefined();
     expect(provider.getContractInfo).toBeUndefined();
     expect(provider.getTokenBalances).toBeUndefined();

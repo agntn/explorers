@@ -17,7 +17,6 @@ import type {
 import { Provider } from "../core/provider.js";
 import { normalizeBaseUrl, buildQuery } from "../core/client.js";
 import { AuthError, NotFoundError, UnsupportedChainError } from "../core/errors.js";
-import { register } from "../core/registry.js";
 import { assertSafePathSegment } from "../core/path-safety.js";
 import { clampMaxResults, formatWei } from "../core/types.js";
 
@@ -74,9 +73,8 @@ function mapTransaction(raw: TronscanTransaction): Transaction {
   };
 }
 
-class Tronscan extends Provider {
+export class Tronscan extends Provider {
   static readonly key = "tronscan";
-  static readonly chains: readonly ChainKey[] = ["tron"];
 
   private readonly apiKey: string;
   private readonly baseUrl: string;
@@ -175,5 +173,3 @@ class Tronscan extends Provider {
     };
   }
 }
-
-register(Tronscan, DEFAULT_BASE);

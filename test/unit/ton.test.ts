@@ -5,7 +5,6 @@
  */
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { create } from "../../src/core/registry.js";
-import "../../src/providers/ton.js";
 
 // A known TON address with balance
 const KNOWN_TON = "EQD__________________________________________0voM";
@@ -17,8 +16,8 @@ afterEach(() => {
 describe("ton provider", () => {
   let provider: ReturnType<typeof create>;
 
-  beforeAll(() => {
-    provider = create("ton");
+  beforeAll(async () => {
+    provider = await create("ton");
   });
 
   it("reports capabilities", () => {

@@ -9,7 +9,6 @@ import { PROVIDER_DEFAULT_CHAIN, resolveProvider } from "./core/resolve.js";
 import { normalizeChain } from "./core/types.js";
 import type { ProviderCapabilities } from "./core/types.js";
 import { version } from "./version.js";
-import "./providers/index.js";
 
 const providerInput = {
   chain: z.string().trim().min(1).optional().describe("Chain name or alias"),
@@ -35,10 +34,10 @@ const OPERATION_CAPABILITIES = {
   getBlockInfo: "blockInfo",
 } as const satisfies Record<ProviderOperation, keyof ProviderCapabilities>;
 
-function selectedProvider(providerName?: string, chainName?: string) {
+async function selectedProvider(providerName?: string, chainName?: string) {
   const requestedChain = chainName === undefined ? undefined : normalizeChain(chainName);
   const name = resolveProvider(providerName, requestedChain);
-  const provider = create(name);
+  const provider = await create(name);
   const chain = requestedChain ?? normalizeChain(PROVIDER_DEFAULT_CHAIN[name]);
   return { chain, name, provider };
 }
@@ -78,24 +77,26 @@ export function createMcpServer(): McpServer {
       description: "List registered block explorer providers and their capabilities",
       annotations: { readOnlyHint: true },
     },
-    () =>
+    async () =>
       result(
-        providers().map((name) => {
-          try {
-            const provider = create(name);
-            return {
-              name,
-              defaultUrl: getDefaultURL(name),
-              capabilities: provider.capabilities,
-            };
-          } catch {
-            return {
-              name,
-              defaultUrl: getDefaultURL(name),
-              requiresConfiguration: true,
-            };
-          }
-        }),
+        await Promise.all(
+          providers().map(async (name) => {
+            try {
+              const provider = await create(name);
+              return {
+                name,
+                defaultUrl: getDefaultURL(name),
+                capabilities: provider.capabilities,
+              };
+            } catch {
+              return {
+                name,
+                defaultUrl: getDefaultURL(name),
+                requiresConfiguration: true,
+              };
+            }
+          }),
+        ),
       ),
   );
 
@@ -116,7 +117,7 @@ export function createMcpServer(): McpServer {
       annotations: { readOnlyHint: true },
     },
     async ({ address, chain, provider }) => {
-      const selected = selectedProvider(provider, chain);
+      const selected = await selectedProvider(provider, chain);
       const resolvedAddresses = await resolveAddresses(address, selected.chain);
       const getBalance = requireOperation(selected.provider, "getBalance");
       const balances = await Promise.all(
@@ -142,7 +143,7 @@ export function createMcpServer(): McpServer {
       annotations: { readOnlyHint: true },
     },
     async ({ address, chain, provider, ...options }) => {
-      const selected = selectedProvider(provider, chain);
+      const selected = await selectedProvider(provider, chain);
       const resolvedAddress = await addressForChain(address, selected.chain);
       const getTxHistory = requireOperation(selected.provider, "getTxHistory");
       return providerResult(
@@ -161,7 +162,7 @@ export function createMcpServer(): McpServer {
       annotations: { readOnlyHint: true },
     },
     async ({ hash, chain, provider }) => {
-      const selected = selectedProvider(provider, chain);
+      const selected = await selectedProvider(provider, chain);
       const getTxDetail = requireOperation(selected.provider, "getTxDetail");
       return providerResult(selected.name, await getTxDetail(hash, selected.chain));
     },
@@ -175,7 +176,7 @@ export function createMcpServer(): McpServer {
       annotations: { readOnlyHint: true },
     },
     async ({ address, chain, provider }) => {
-      const selected = selectedProvider(provider, chain);
+      const selected = await selectedProvider(provider, chain);
       const getContractInfo = requireOperation(selected.provider, "getContractInfo");
       const resolvedAddress = await addressForChain(address, selected.chain);
       return providerResult(selected.name, await getContractInfo(resolvedAddress, selected.chain));
@@ -194,7 +195,7 @@ export function createMcpServer(): McpServer {
       annotations: { readOnlyHint: true },
     },
     async ({ address, chain, provider, nonZeroOnly }) => {
-      const selected = selectedProvider(provider, chain);
+      const selected = await selectedProvider(provider, chain);
       const resolvedAddress = await addressForChain(address, selected.chain);
       const getTokenBalances = requireOperation(selected.provider, "getTokenBalances");
       return providerResult(
@@ -227,7 +228,7 @@ export function createMcpServer(): McpServer {
       annotations: { readOnlyHint: true },
     },
     async ({ address, chain, provider, ...options }) => {
-      const selected = selectedProvider(provider, chain);
+      const selected = await selectedProvider(provider, chain);
       const resolvedAddress = await addressForChain(address, selected.chain);
       const getTokenTransfers = requireOperation(selected.provider, "getTokenTransfers");
       return providerResult(
@@ -245,7 +246,7 @@ export function createMcpServer(): McpServer {
       annotations: { readOnlyHint: true },
     },
     async ({ chain, provider }) => {
-      const selected = selectedProvider(provider, chain);
+      const selected = await selectedProvider(provider, chain);
       const getGasData = requireOperation(selected.provider, "getGasData");
       return providerResult(selected.name, await getGasData(selected.chain));
     },
@@ -262,7 +263,7 @@ export function createMcpServer(): McpServer {
       annotations: { readOnlyHint: true },
     },
     async ({ blockNumber, chain, provider }) => {
-      const selected = selectedProvider(provider, chain);
+      const selected = await selectedProvider(provider, chain);
       const getBlockInfo = requireOperation(selected.provider, "getBlockInfo");
       return providerResult(selected.name, await getBlockInfo(blockNumber, selected.chain));
     },

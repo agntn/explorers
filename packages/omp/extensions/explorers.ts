@@ -41,7 +41,7 @@ async function getProvider(preferred?: string, requestedChain?: string) {
   const lib = await loadLib();
   const chain = requestedChain === undefined ? undefined : lib.normalizeChain(requestedChain);
   const name = lib.resolveProvider(preferred, chain);
-  return { lib, name, provider: lib.create(name) };
+  return { lib, name, provider: await lib.create(name) };
 }
 
 function resolveToolChain(lib: typeof ExplorersModule, providerName: string, requested?: string) {

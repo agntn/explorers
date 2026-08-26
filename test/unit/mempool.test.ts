@@ -5,7 +5,6 @@
  */
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { create } from "../../src/core/registry.js";
-import "../../src/providers/mempool.js";
 
 // A known Bitcoin address with history
 const KNOWN_BTC = "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh";
@@ -42,8 +41,8 @@ function stubTxDetail(
 describe("mempool provider", () => {
   let provider: ReturnType<typeof create>;
 
-  beforeAll(() => {
-    provider = create("mempool");
+  beforeAll(async () => {
+    provider = await create("mempool");
   });
 
   it("reports capabilities", () => {
@@ -119,7 +118,7 @@ describe("mempool provider", () => {
     });
     vi.stubGlobal("fetch", fetch);
 
-    const customProvider = create("mempool", { baseUrl: "https://example.test/" });
+    const customProvider = await create("mempool", { baseUrl: "https://example.test/" });
     await customProvider.getBalance(KNOWN_BTC, "bitcoin");
 
     expect(String(fetch.mock.calls[0]?.[0])).toBe(`https://example.test/api/address/${KNOWN_BTC}`);

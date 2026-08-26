@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthError } from "../../src/core/errors.js";
 import { create } from "../../src/core/registry.js";
-import "../../src/providers/tronscan.js";
 
 const ADDRESS = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t";
 
@@ -23,13 +22,13 @@ afterEach(() => {
 describe("tronscan provider", () => {
   let provider: ReturnType<typeof create>;
 
-  beforeEach(() => {
-    provider = create("tronscan", { apiKey: "secret", baseUrl: "https://example.test/" });
+  beforeEach(async () => {
+    provider = await create("tronscan", { apiKey: "secret", baseUrl: "https://example.test/" });
   });
 
-  it("requires a TRONSCAN API key", () => {
+  it("requires a TRONSCAN API key", async () => {
     vi.stubEnv("TRONSCAN_API_KEY", "");
-    expect(() => create("tronscan")).toThrow(AuthError);
+    await expect(create("tronscan")).rejects.toThrow(AuthError);
   });
 
   it("reports explorer-backed capabilities", () => {

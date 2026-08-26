@@ -3,9 +3,6 @@ import { defineCommand, runMain } from "citty";
 import { normalizeMainArgs } from "./cli-args.js";
 import { version } from "./version.js";
 
-// Side-effect: register all providers on import
-import "./providers/index.js";
-
 const main = defineCommand({
   meta: {
     name: "explorers",

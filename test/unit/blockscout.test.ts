@@ -6,7 +6,6 @@
  */
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { create } from "../../src/core/registry.js";
-import "../../src/providers/blockscout.js";
 
 const VITALIK = "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045";
 const USDC_BASE = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
@@ -27,8 +26,8 @@ afterEach(() => {
 describe("blockscout provider", () => {
   let provider: ReturnType<typeof create>;
 
-  beforeAll(() => {
-    provider = create("blockscout");
+  beforeAll(async () => {
+    provider = await create("blockscout");
   });
 
   it("reports capabilities", () => {
