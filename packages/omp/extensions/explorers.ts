@@ -139,8 +139,7 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
       const txs = await provider.getTxHistory(params.address, chain, { limit: params.limit });
 
       const lines = txs.map(
-        (tx) =>
-          `${tx.hash.slice(0, 14)}… ${tx.from.slice(0, 10)}…→${(tx.to ?? "new").slice(0, 10)}… ${tx.valueFormatted} [${tx.status}]`,
+        (tx) => `${tx.hash} ${tx.from}→${tx.to ?? "new"} ${tx.valueFormatted} [${tx.status}]`,
       );
 
       return textResult(`[${name}] ${txs.length} transactions on ${chain}:\n${lines.join("\n")}`);
