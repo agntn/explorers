@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@agntn/chains':
-        specifier: ^0.2.2
-        version: 0.2.2(@earendil-works/pi-coding-agent@0.78.0(@modelcontextprotocol/sdk@1.30.0(zod@4.4.3))(ws@8.21.0)(zod@4.4.3))(typebox@1.3.16)(zod@4.4.3)
+        specifier: ^0.3.0
+        version: 0.3.0(@earendil-works/pi-coding-agent@0.78.0(@modelcontextprotocol/sdk@1.30.0(zod@4.4.3))(ws@8.21.0)(zod@4.4.3))(typebox@1.3.16)(zod@4.4.3)
       '@modelcontextprotocol/sdk':
         specifier: ^1.30.0
         version: 1.30.0(zod@4.4.3)
@@ -69,8 +69,8 @@ importers:
 
 packages:
 
-  '@agntn/chains@0.2.2':
-    resolution: {integrity: sha512-FNG8ZjdXJZZ2WkCZqe8v019jSjNiitWkpTwef2WCYeQ6MVdYRzeA62Yi5g1Ycar4K23eUMROwwZsCxBpkictlA==}
+  '@agntn/chains@0.3.0':
+    resolution: {integrity: sha512-5i64VDpIBvd09EnLh14RhFmVnoW38ICUMtsybGxpBPofhnDvDaRpiIwWlyVVkAift+6eHHDY7zHR9l62hX3aZQ==}
     engines: {node: '>=24'}
     hasBin: true
     peerDependencies:
@@ -2946,7 +2946,7 @@ packages:
 
 snapshots:
 
-  '@agntn/chains@0.2.2(@earendil-works/pi-coding-agent@0.78.0(@modelcontextprotocol/sdk@1.30.0(zod@4.4.3))(ws@8.21.0)(zod@4.4.3))(typebox@1.3.16)(zod@4.4.3)':
+  '@agntn/chains@0.3.0(@earendil-works/pi-coding-agent@0.78.0(@modelcontextprotocol/sdk@1.30.0(zod@4.4.3))(ws@8.21.0)(zod@4.4.3))(typebox@1.3.16)(zod@4.4.3)':
     dependencies:
       '@modelcontextprotocol/sdk': 1.30.0(zod@4.4.3)
       citty: 0.2.2

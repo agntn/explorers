@@ -111,6 +111,6 @@ describe("blockberry provider", () => {
   });
 
   it("rejects non-Sui chains", async () => {
-    await expect(provider.getBalance(ADDRESS, "eth")).rejects.toThrow();
+    await expect(provider.getBalance(ADDRESS, "ethereum")).rejects.toThrow();
   });
 });

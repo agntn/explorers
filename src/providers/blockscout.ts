@@ -34,7 +34,7 @@ import { clampMaxResults, formatWei, multiplyIntegerStrings } from "../core/type
 const DEFAULT_BASE = "https://eth.blockscout.com";
 
 const CHAIN_BASES: Partial<Record<ChainKey, string>> = {
-  eth: DEFAULT_BASE,
+  ethereum: DEFAULT_BASE,
   base: "https://base.blockscout.com",
   arbitrum: "https://arbitrum.blockscout.com",
   optimism: "https://optimism.blockscout.com",
@@ -207,7 +207,7 @@ export class Blockscout extends Provider {
 
   constructor(config: ProviderConfig) {
     super(config);
-    this.defaultChain = config.defaultChain ?? "eth";
+    this.defaultChain = config.defaultChain ?? "ethereum";
   }
   get capabilities(): ProviderCapabilities {
     return {

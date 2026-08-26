@@ -138,6 +138,6 @@ describe("tronscan provider", () => {
   });
 
   it("rejects non-TRON chains", async () => {
-    await expect(provider.getBalance(ADDRESS, "eth")).rejects.toThrow();
+    await expect(provider.getBalance(ADDRESS, "ethereum")).rejects.toThrow();
   });
 });

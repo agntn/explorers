@@ -301,7 +301,7 @@ export function multiplyIntegerStrings(left: string, right: string): string {
 /**
  * Normalize a canonical chain key, display name, or common CLI alias.
  *
- * Missing values default to `eth`. Unknown values are rejected, an empty string included, so a
+ * Missing values default to `ethereum`. Unknown values are rejected, an empty string included, so a
  * typo cannot silently query the wrong network.
  *
  * @example

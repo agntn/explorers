@@ -23,7 +23,7 @@ import { assertSafePathSegment } from "../core/path-safety.js";
 
 const CHAIN_NAMES: Partial<Record<ChainKey, string>> = {
   bitcoin: "bitcoin",
-  eth: "ethereum",
+  ethereum: "ethereum",
 };
 
 const DEFAULT_BASE = "https://api.blockchair.com";
@@ -125,7 +125,7 @@ export class Blockchair extends Provider {
     super(config);
     this.apiKey = config.apiKey ?? process.env.BLOCKCHAIR_API_KEY;
     this.baseUrl = normalizeBaseUrl(config.baseUrl ?? DEFAULT_BASE);
-    this.defaultChain = config.defaultChain ?? "eth";
+    this.defaultChain = config.defaultChain ?? "ethereum";
   }
   get capabilities(): ProviderCapabilities {
     return {

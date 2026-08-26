@@ -12,7 +12,7 @@ export const builtins: readonly ProviderEntry[] = [
   {
     key: "etherscan",
     chains: [
-      "eth",
+      "ethereum",
       "base",
       "arbitrum",
       "optimism",
@@ -21,7 +21,7 @@ export const builtins: readonly ProviderEntry[] = [
       "avalanche",
       "gnosis",
       "linea",
-      "bera",
+      "berachain",
     ],
     defaultURL: "https://api.etherscan.io/v2/api",
     load: () => import("./etherscan.js").then((m) => m.Etherscan),
@@ -29,7 +29,7 @@ export const builtins: readonly ProviderEntry[] = [
   {
     key: "blockscout",
     chains: [
-      "eth",
+      "ethereum",
       "base",
       "arbitrum",
       "optimism",
@@ -45,7 +45,7 @@ export const builtins: readonly ProviderEntry[] = [
   },
   {
     key: "blockchair",
-    chains: ["bitcoin", "eth"],
+    chains: ["bitcoin", "ethereum"],
     defaultURL: "https://api.blockchair.com",
     load: () => import("./blockchair.js").then((m) => m.Blockchair),
   },

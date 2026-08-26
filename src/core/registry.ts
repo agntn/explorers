@@ -56,7 +56,7 @@ export function register(providerClass: ProviderConstructor, meta: ProviderMeta)
  *   import { create } from "@agntn/explorers";
  *
  *   const provider = await create("blockscout");
- *   const balance = await provider.getBalance("0x0000000000000000000000000000000000000000", "eth");
+ *   const balance = await provider.getBalance("0x0000000000000000000000000000000000000000", "ethereum");
  *   ```
  *
  * @throws {UnknownProviderError} When `name` has not been registered.

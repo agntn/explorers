@@ -57,7 +57,7 @@ describe("resolveProvider", () => {
     vi.stubEnv("TRONSCAN_API_KEY", "");
     vi.stubEnv("BLOCKBERRY_API_KEY", "");
 
-    expect(resolveProvider(undefined, "eth")).toBe("etherscan");
+    expect(resolveProvider(undefined, "ethereum")).toBe("etherscan");
   });
 
   it("prefers configured credentials among chain-capable providers", () => {

@@ -251,7 +251,7 @@ describe("Explorers MCP server", () => {
       arguments: { address: "0x1", provider: DisabledProvider.key },
     },
   ])("honors the disabled capability for $tool", async ({ tool, operation, arguments: args }) => {
-    register(DisabledProvider, { chains: ["eth"] });
+    register(DisabledProvider, { chains: ["ethereum"] });
     const client = await connectTestClient();
 
     const response = await client.callTool({ name: tool, arguments: args });
@@ -265,7 +265,7 @@ describe("Explorers MCP server", () => {
   });
 
   it("honors a disabled optional capability despite a method being present", async () => {
-    register(DisabledProvider, { chains: ["eth"] });
+    register(DisabledProvider, { chains: ["ethereum"] });
     const client = await connectTestClient();
 
     const response = await client.callTool({
@@ -283,7 +283,7 @@ describe("Explorers MCP server", () => {
 
   it("resolves ENS names before contract lookup", async () => {
     const resolvedAddress = "0x0000000000000000000000000000000000000001";
-    register(ContractProvider, { chains: ["eth"] });
+    register(ContractProvider, { chains: ["ethereum"] });
     vi.stubGlobal(
       "fetch",
       vi.fn(async () => {
@@ -296,7 +296,7 @@ describe("Explorers MCP server", () => {
 
     const response = await client.callTool({
       name: "explorers_contract",
-      arguments: { address: "vitalik.eth", chain: "eth", provider: ContractProvider.key },
+      arguments: { address: "vitalik.eth", chain: "ethereum", provider: ContractProvider.key },
     });
     expect(response.isError).not.toBe(true);
     expect(response.content).toEqual([

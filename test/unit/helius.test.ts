@@ -116,6 +116,6 @@ describe("helius provider", () => {
   });
 
   it("rejects non-Solana chains", async () => {
-    await expect(provider.getTxHistory(ADDRESS, "eth")).rejects.toThrow();
+    await expect(provider.getTxHistory(ADDRESS, "ethereum")).rejects.toThrow();
   });
 });
