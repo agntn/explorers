@@ -208,6 +208,26 @@ describe("Explorers MCP server", () => {
     ]);
   });
 
+  it("rejects a whitespace-only address before any provider call", async () => {
+    const fetchSpy = vi.fn(async () => {
+      throw new Error("network must not be reached");
+    });
+    vi.stubGlobal("fetch", fetchSpy);
+    const client = await connectTestClient();
+
+    for (const address of ["   ", ["   "]]) {
+      const response = await client.callTool({
+        name: "explorers_balance",
+        arguments: { address, provider: "blockscout" },
+      });
+      expect(response.isError).toBe(true);
+      expect(response.content).toEqual([
+        { type: "text", text: expect.stringContaining("Invalid arguments") },
+      ]);
+    }
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
   it("rejects an empty address list", async () => {
     const client = await connectTestClient();
 

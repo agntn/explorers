@@ -55,9 +55,13 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
   pi.setLabel("Explorers");
 
   const balanceParameters = Type.Object({
-    address: Type.Union([Type.String(), Type.Array(Type.String(), { minItems: 1, maxItems: 20 })], {
-      description: "Blockchain address, or a list of addresses to check in one call",
-    }),
+    address: Type.Union(
+      [
+        Type.String({ minLength: 1 }),
+        Type.Array(Type.String({ minLength: 1 }), { minItems: 1, maxItems: 20 }),
+      ],
+      { description: "Blockchain address or ENS name, or a list of them to check in one call" },
+    ),
     chain: Type.Optional(
       Type.String({
         description: "Chain (eth, base, arbitrum, bitcoin, solana, ...)",
@@ -91,7 +95,7 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
     async execute(_toolCallId, params) {
       const { lib, name, provider } = await getProvider(params.provider, params.chain);
       const chain = resolveToolChain(lib, name, params.chain);
-      const addresses = Array.isArray(params.address) ? params.address : [params.address];
+      const addresses = await lib.resolveAddresses(params.address, chain);
       const balances = await Promise.all(
         addresses.map((address) => provider.getBalance(address, chain)),
       );

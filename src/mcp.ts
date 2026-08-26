@@ -106,7 +106,10 @@ export function createMcpServer(): McpServer {
         "Get the native-token balance for one or more blockchain addresses or ENS names",
       inputSchema: {
         address: z
-          .union([z.string().min(1), z.array(z.string().min(1)).min(1).max(20)])
+          .union([
+            z.string().trim().min(1),
+            z.array(z.string().trim().min(1)).min(1).max(20),
+          ])
           .describe("Blockchain address or ENS name, or a list of them"),
         ...providerInput,
       },

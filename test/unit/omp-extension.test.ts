@@ -1,6 +1,6 @@
 import * as TypeBox from "@oh-my-pi/omptype/typebox";
 import type { ExtensionAPI, ExtensionContext, ToolDefinition } from "@oh-my-pi/pi-coding-agent";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import explorersOmpExtension from "../../packages/omp/extensions/explorers.js";
 import type { Transaction } from "../../src/core/types.js";
 
@@ -51,6 +51,10 @@ function accepts(tool: ToolDefinition, value: unknown): boolean {
 const unusedContext = {} as ExtensionContext;
 
 describe("explorers OMP extension", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it("registers the complete read-only tool set under an extension label", () => {
     const { label, tools } = registerExtensionTools();
 
@@ -85,6 +89,37 @@ describe("explorers OMP extension", () => {
     expect(accepts(tool, { address: "address" })).toBe(true);
     expect(accepts(tool, { address: ["a1", "a2"] })).toBe(true);
     expect(accepts(tool, { address: [] })).toBe(false);
+    expect(accepts(tool, { address: "" })).toBe(false);
+    expect(accepts(tool, { address: [""] })).toBe(false);
+  });
+
+  it("resolves an ENS name before fetching the balance", async () => {
+    const resolved = "0x" + "a".repeat(40);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        const payload = url.includes("ensideas")
+          ? { address: resolved }
+          : { coin_balance: "1" };
+        return new Response(JSON.stringify(payload), {
+          headers: { "content-type": "application/json" },
+        });
+      }),
+    );
+    const tool = requireTool(registerExtensionTools().tools, "explorers_balance");
+
+    const result = await tool.execute(
+      "test",
+      { address: "vitalik.eth", provider: "blockscout" },
+      undefined,
+      undefined,
+      unusedContext,
+    );
+
+    expect(result.content).toEqual([
+      { type: "text", text: expect.stringContaining(resolved) },
+    ]);
   });
 
   it("declares a non-negative integer block number", () => {
