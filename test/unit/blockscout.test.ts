@@ -95,8 +95,8 @@ describe("blockscout provider", () => {
     }
   });
 
-  it("maps the current token balance response envelope", async () => {
-    stubJSON({
+  it("requests and returns only fungible token balances", async () => {
+    const fetch = stubJSON({
       items: [
         {
           token: {
@@ -107,6 +107,16 @@ describe("blockscout provider", () => {
             type: "ERC-20",
           },
           value: "1250000",
+        },
+        {
+          token: {
+            address_hash: "0x57f1887a8BF19b14fC0dF6Fd9B2acc9Af147eA85",
+            symbol: "ENS",
+            name: "Ethereum Name Service",
+            decimals: null,
+            type: "ERC-721",
+          },
+          value: "473",
         },
       ],
     });
@@ -121,6 +131,8 @@ describe("blockscout provider", () => {
         balanceFormatted: "1.25",
       },
     ]);
+    const url = new URL(String(fetch.mock.calls[0]?.[0]));
+    expect(url.searchParams.get("type")).toBe("ERC-20");
   });
 
   it("normalizes numeric gas prices to domain strings", async () => {
