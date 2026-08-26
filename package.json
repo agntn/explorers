@@ -51,7 +51,7 @@
     "test": "vitest",
     "test:run": "vitest --run",
     "prepack": "pnpm run build",
-    "release": "pnpm test && changelogen --release --push && pnpm publish"
+    "release": "pnpm test:run && changelogen --release --push"
   },
   "dependencies": {
     "@agntn/chains": "^0.2.2",
