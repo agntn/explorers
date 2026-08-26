@@ -316,17 +316,21 @@ export class Blockscout extends Provider {
   ): Promise<TokenBalance[]> {
     const c = chain ?? this.defaultChain;
     assertSafePathSegment(address, "address");
-    const url = `${this.base(c)}/api/v2/addresses/${encodeURIComponent(address)}/tokens`;
-    const data = await this.getJSON<{ items: BlockscoutTokenBalance[] }>(url);
+    const baseUrl = `${this.base(c)}/api/v2/addresses/${encodeURIComponent(address)}/tokens`;
+    const data = await this.getJSON<{ items: BlockscoutTokenBalance[] }>(
+      `${baseUrl}${buildQuery({ type: "ERC-20" })}`,
+    );
 
-    let tokens = data.items.map((item) => ({
-      contract: item.token.address_hash,
-      symbol: item.token.symbol,
-      name: item.token.name,
-      decimals: Number(item.token.decimals),
-      balance: item.value,
-      balanceFormatted: formatWei(item.value, Number(item.token.decimals)),
-    }));
+    let tokens = data.items
+      .filter((item) => item.token.type === "ERC-20")
+      .map((item) => ({
+        contract: item.token.address_hash,
+        symbol: item.token.symbol,
+        name: item.token.name,
+        decimals: Number(item.token.decimals),
+        balance: item.value,
+        balanceFormatted: formatWei(item.value, Number(item.token.decimals)),
+      }));
 
     if (options?.nonZeroOnly) {
       tokens = tokens.filter((t) => t.balance !== "0");
