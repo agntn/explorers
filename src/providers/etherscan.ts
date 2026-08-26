@@ -37,7 +37,7 @@ import { clampMaxResults, formatWei, multiplyIntegerStrings } from "../core/type
 
 const DEFAULT_BASE = "https://api.etherscan.io/v2/api";
 const SUPPORTED_CHAINS = new Set<ChainKey>([
-  "eth",
+  "ethereum",
   "base",
   "arbitrum",
   "optimism",
@@ -46,7 +46,7 @@ const SUPPORTED_CHAINS = new Set<ChainKey>([
   "avalanche",
   "gnosis",
   "linea",
-  "bera",
+  "berachain",
 ]);
 
 interface EtherscanResponse<T> {
@@ -166,7 +166,7 @@ export class Etherscan extends Provider {
     }
     this.apiKey = key;
     this.apiUrl = normalizeBaseUrl(config.baseUrl ?? DEFAULT_BASE);
-    this.defaultChain = config.defaultChain ?? "eth";
+    this.defaultChain = config.defaultChain ?? "ethereum";
     getChainId(this.defaultChain);
   }
   get capabilities(): ProviderCapabilities {

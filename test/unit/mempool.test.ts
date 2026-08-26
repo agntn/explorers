@@ -397,6 +397,6 @@ describe("mempool provider", () => {
   });
 
   it("getBalance throws for a chain mempool does not serve", async () => {
-    await expect(provider.getBalance(KNOWN_BTC, "eth")).rejects.toThrow();
+    await expect(provider.getBalance(KNOWN_BTC, "ethereum")).rejects.toThrow();
   });
 });

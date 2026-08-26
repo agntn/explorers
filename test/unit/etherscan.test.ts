@@ -53,7 +53,7 @@ describe("etherscan provider", () => {
     });
     const provider = await create("etherscan", { apiKey: "secret" });
 
-    const tokens = await provider.getTokenBalances!(ADDRESS, "eth");
+    const tokens = await provider.getTokenBalances!(ADDRESS, "ethereum");
 
     expect(new URL(String(fetch.mock.calls[0]?.[0])).searchParams.get("action")).toBe(
       "addresstokenbalance",
@@ -91,7 +91,7 @@ describe("etherscan provider", () => {
     });
     const provider = await create("etherscan", { apiKey: "secret" });
 
-    const transfers = await provider.getTokenTransfers!(ADDRESS, "eth", {
+    const transfers = await provider.getTokenTransfers!(ADDRESS, "ethereum", {
       token: "0x0000000000000000000000000000000000000001",
     });
 
@@ -119,7 +119,7 @@ describe("etherscan provider", () => {
     stubJSON({ status: "0", message: "No transactions found", result: [] });
     const provider = await create("etherscan", { apiKey: "secret" });
 
-    await expect(provider.getTokenTransfers!(ADDRESS, "eth")).resolves.toEqual([]);
+    await expect(provider.getTokenTransfers!(ADDRESS, "ethereum")).resolves.toEqual([]);
   });
 
   it("returns complete block identity through the proxy API", async () => {
@@ -140,7 +140,7 @@ describe("etherscan provider", () => {
     });
     const provider = await create("etherscan", { apiKey: "secret" });
 
-    const block = await provider.getBlockInfo!(16, "eth");
+    const block = await provider.getBlockInfo!(16, "ethereum");
 
     expect(block).toEqual({
       number: 16,
@@ -172,7 +172,7 @@ describe("etherscan provider", () => {
     });
     const provider = await create("etherscan", { apiKey: "secret" });
 
-    await expect(provider.getContractInfo(ADDRESS, "eth")).resolves.toMatchObject({
+    await expect(provider.getContractInfo(ADDRESS, "ethereum")).resolves.toMatchObject({
       isVerified: true,
       isProxy: true,
       implementationAddress: "0x0000000000000000000000000000000000000002",
@@ -183,14 +183,16 @@ describe("etherscan provider", () => {
     stubJSON({ status: "0", message: "NOTOK", result: "Max rate limit reached" });
     const provider = await create("etherscan", { apiKey: "secret" });
 
-    await expect(provider.getContractInfo(ADDRESS, "eth")).rejects.toBeInstanceOf(RateLimitError);
+    await expect(provider.getContractInfo(ADDRESS, "ethereum")).rejects.toBeInstanceOf(
+      RateLimitError,
+    );
   });
 
   it("returns an empty history for Etherscan's no-transactions response", async () => {
     stubJSON({ status: "0", message: "No transactions found", result: [] });
     const provider = await create("etherscan", { apiKey: "secret" });
 
-    await expect(provider.getTxHistory(ADDRESS, "eth")).resolves.toEqual([]);
+    await expect(provider.getTxHistory(ADDRESS, "ethereum")).resolves.toEqual([]);
   });
 
   it("rejects networks that the unified endpoint does not serve", async () => {

@@ -111,6 +111,6 @@ describe("ton provider", () => {
   });
 
   it("getBalance throws for non-ton chain", async () => {
-    await expect(provider.getBalance(KNOWN_TON, "eth")).rejects.toThrow();
+    await expect(provider.getBalance(KNOWN_TON, "ethereum")).rejects.toThrow();
   });
 });

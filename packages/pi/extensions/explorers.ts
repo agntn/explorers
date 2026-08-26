@@ -93,7 +93,7 @@ export default function explorersExtension(pi: ExtensionAPI) {
       ),
       chain: Type.Optional(
         Type.String({
-          description: "Chain (eth, base, arbitrum, bitcoin, solana, ...)",
+          description: "Chain (ethereum, base, arbitrum, bitcoin, solana, ...)",
         }),
       ),
       provider: Type.Optional(
@@ -104,9 +104,7 @@ export default function explorersExtension(pi: ExtensionAPI) {
       ),
     }),
     renderCall(args, _theme) {
-      const label = Array.isArray(args.address)
-        ? `${args.address.length} addresses`
-        : args.address;
+      const label = Array.isArray(args.address) ? `${args.address.length} addresses` : args.address;
       return new Text(
         sanitizeTerminalText(`🔍 Balance: ${label} (${args.chain ?? "provider default"})`),
         0,

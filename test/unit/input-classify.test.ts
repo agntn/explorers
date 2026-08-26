@@ -56,7 +56,7 @@ describe("normalizeChain", () => {
   });
 
   it("defaults missing values to Ethereum", () => {
-    expect(normalizeChain()).toBe("eth");
+    expect(normalizeChain()).toBe("ethereum");
   });
 
   it("resolves display names as well as aliases", () => {

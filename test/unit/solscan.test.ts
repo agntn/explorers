@@ -146,6 +146,6 @@ describe("solscan provider", () => {
   });
 
   it("rejects non-Solana chains", async () => {
-    await expect(provider.getBalance(ADDRESS, "eth")).rejects.toThrow();
+    await expect(provider.getBalance(ADDRESS, "ethereum")).rejects.toThrow();
   });
 });

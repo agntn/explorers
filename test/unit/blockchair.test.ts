@@ -62,7 +62,7 @@ describe("blockchair provider", () => {
     });
     const provider = await create("blockchair");
 
-    const transaction = await provider.getTxDetail("0xtx", "eth");
+    const transaction = await provider.getTxDetail("0xtx", "ethereum");
 
     expect(transaction).toMatchObject({
       from: ETH_ADDRESS,
@@ -85,7 +85,7 @@ describe("blockchair provider", () => {
     });
     const provider = await create("blockchair", { baseUrl: "https://example.test/" });
 
-    await provider.getBalance(ETH_ADDRESS, "eth");
+    await provider.getBalance(ETH_ADDRESS, "ethereum");
 
     expect(String(fetch.mock.calls[0]?.[0])).toBe(
       `https://example.test/ethereum/dashboards/address/${ETH_ADDRESS}`,

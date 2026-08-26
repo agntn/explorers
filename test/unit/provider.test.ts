@@ -56,7 +56,7 @@ afterEach(() => {
 
 describe("abstract provider registry", () => {
   it("constructs a registered subclass and forwards its config", async () => {
-    register(Custom, { chains: ["eth"] });
+    register(Custom, { chains: ["ethereum"] });
 
     const config = { baseUrl: "https://example.test" };
     const provider = await create("abstract-provider-test", config);

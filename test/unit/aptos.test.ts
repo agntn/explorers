@@ -34,6 +34,8 @@ describe("aptos provider", () => {
   });
 
   it("still distinguishes an unsupported chain", async () => {
-    await expect(provider.getBalance("0x1", "eth")).rejects.toBeInstanceOf(UnsupportedChainError);
+    await expect(provider.getBalance("0x1", "ethereum")).rejects.toBeInstanceOf(
+      UnsupportedChainError,
+    );
   });
 });
