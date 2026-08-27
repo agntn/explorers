@@ -18,6 +18,7 @@ Unified block explorer provider library. Normalizes balances, tx history, contra
 | tronscan   | `TRONSCAN_API_KEY`      | tron                                                                             | balances, tx detail/history, block                          |
 | aptos      | none                    | aptos                                                                            | none; required methods throw                                |
 | blockberry | `BLOCKBERRY_API_KEY`    | sui                                                                              | balances, tx history                                        |
+| koios      | none                    | cardano                                                                          | balances, tx detail/history, tokens                         |
 
 ## Conventions
 
@@ -59,6 +60,9 @@ Unified block explorer provider library. Normalizes balances, tx history, contra
 - Aptos Explorer has no documented account/history API; `aptos` remains registered with false capabilities and throws `UnsupportedOperationError` instead of using fullnode REST.
 - TONAPI and Blockberry do not expose block lookup compatible with the library's single block-number contract, so `blockInfo` is unsupported.
 - Mempool: Bitcoin and Litecoin; the LTC host is litecoinspace.org, a fork with the same API surface
+- Koios answers on POST with the address or hash in the request body, and the public instance rejects a body over 5120 bytes, so `getTxHistory` asks `tx_info` for 70 hashes at a time and reorders the answer, which comes back in the endpoint's own order
+- Koios `address_info` ships the whole UTxO set of an address, 222 kB for a busy one, so `getBalance` narrows the payload with the PostgREST `select` parameter; the endpoint still builds that set before it answers, and a busy address takes 3 to 9 seconds against the 15-second client timeout
+- Koios keeps the phase-2 validity flag behind the heavier `_scripts` payload, so a Cardano transaction reads as `success` even when a failing script consumed its collateral; `isContractInteraction` comes from the presence of collateral inputs
 
 ## Architecture
 
@@ -78,7 +82,7 @@ graph TB
 
 - **CLI Layer** (`cli.ts`, `commands/*.ts`): citty-based CLI, lazy-loads subcommands via dynamic `import()`. `cli-args.ts` normalizes bare address input to `balance` subcommand.
 - **Core Layer** (`core/*.ts`): Domain types, provider registry (built lazily from the barrel list), HTTP client (ofetch, 15s timeout), ENS resolution (public APIs), input classification, error hierarchy.
-- **Provider Layer** (`providers/*.ts`): 10 providers. Each file defines API types, helper mappers and a concrete `Provider` subclass with a static registry key, exports that class, and ships as its own bundle so `create()` can import it alone.
+- **Provider Layer** (`providers/*.ts`): 11 providers. Each file defines API types, helper mappers and a concrete `Provider` subclass with a static registry key, exports that class, and ships as its own bundle so `create()` can import it alone.
 - **Pi Extension** (`packages/pi/extensions/explorers.ts`): Exposes 9 tools to Pi coding agent, matching the MCP server's tool set. Lazy-loads `@agntn/explorers` via dynamic import with fallback to source. `packages/omp/extensions/explorers.ts` registers the same nine for OMP.
 
 ### Provider categories
@@ -86,7 +90,7 @@ graph TB
 1. **Multi-chain EVM** (etherscan, blockscout): support 10 EVM chains each
 2. **Bitcoin/Ethereum bridge** (blockchair): dashboard API for Bitcoin, Ethereum and eCash
 3. **Bitcoin/Litecoin** (mempool): UTXO model; Litecoin rides the litecoinspace.org fork of the same API
-4. **Single-chain non-EVM** (solscan, helius, ton, tronscan, aptos, blockberry): capabilities mirror only their explorer APIs; Aptos is explicitly unsupported
+4. **Single-chain non-EVM** (solscan, helius, ton, tronscan, aptos, blockberry, koios): capabilities mirror only their explorer APIs; Aptos is explicitly unsupported
 
 ## Patterns
 
@@ -110,7 +114,7 @@ graph TB
 
 ## Test coverage gaps
 
-**Covered** (19 test files): provider base/registry, provider resolution, HTTP client, path safety, amount formatting, errors, input classification, chain normalization, CLI argument routing, plus all ten providers.
+**Covered** (24 test files): provider base/registry, provider resolution, HTTP client, path safety, amount formatting, errors, input classification, chain normalization, CLI argument routing, plus all eleven providers.
 **Missing**: CLI command execution and the Pi extension.
 **Test style**: Focused unit tests for local contracts and mocked explorer-API responses; public no-key providers may additionally use live roundtrips.
 

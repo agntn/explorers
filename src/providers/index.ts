@@ -90,4 +90,10 @@ export const builtins: readonly ProviderEntry[] = [
     defaultURL: "https://api.blockberry.one/sui",
     load: () => import("./blockberry.js").then((m) => m.Blockberry),
   },
+  {
+    key: "koios",
+    chains: ["cardano"],
+    defaultURL: "https://api.koios.rest/api/v1",
+    load: () => import("./koios.js").then((m) => m.Koios),
+  },
 ];

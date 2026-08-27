@@ -15,6 +15,7 @@ const ENV_MAP: Record<string, string[]> = {
   tronscan: ["TRONSCAN_API_KEY"],
   aptos: [],
   blockberry: ["BLOCKBERRY_API_KEY"],
+  koios: [],
 };
 
 /** Provider-specific default chains */
@@ -26,6 +27,7 @@ export const PROVIDER_DEFAULT_CHAIN: Partial<Record<string, ChainKey>> = {
   tronscan: "tron",
   aptos: "aptos",
   blockberry: "sui",
+  koios: "cardano",
 };
 
 /**

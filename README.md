@@ -1,13 +1,13 @@
 # Explorers
 
-Ten block explorer APIs, one shape.
+Eleven block explorer APIs, one shape.
 
 Block explorers keep returning roughly the same data in completely different formats. Explorers deals with that mess and gives scripts, agents and humans one TypeScript API and one CLI for balances, transactions, token transfers, contracts, tokens, gas and blocks.
 
 ## Features
 
-- **Ten providers, one contract.** Etherscan, Blockscout, Blockchair, Mempool, Solscan, Helius, TON, TRONSCAN, Aptos and Blockberry.
-- **20 chains.** Ethereum, Base, Arbitrum, Optimism, Polygon, BSC, Avalanche, Gnosis, Linea, Berachain, zkSync, Scroll, Bitcoin, Litecoin, eCash, Solana, TON, TRON, Aptos and Sui.
+- **Eleven providers, one contract.** Etherscan, Blockscout, Blockchair, Mempool, Solscan, Helius, TON, TRONSCAN, Aptos, Blockberry and Koios.
+- **21 chains.** Ethereum, Base, Arbitrum, Optimism, Polygon, BSC, Avalanche, Gnosis, Linea, Berachain, zkSync, Scroll, Bitcoin, Litecoin, eCash, Solana, TON, TRON, Aptos, Sui and Cardano.
 - **Explorer data stays explorer data.** A provider never quietly falls back to a fullnode RPC just to pretend an operation is supported.
 - **Amounts stay exact.** Native and token values use strings in the chain's smallest unit instead of lossy JavaScript numbers.
 - **CLI, library and agent extensions.** Use the same provider contract from a terminal, TypeScript, OMP or Pi.
@@ -58,7 +58,7 @@ An address-like first argument defaults to `balance`. No ceremonial subcommand n
 | `balance`   | Native token balance, including ENS         | `explorers balance vitalik.eth`   |
 | `tx`        | Transaction history or one transaction      | `explorers tx vitalik.eth -n 5`   |
 | `contract`  | ABI, source and verification status         | `explorers contract 0x1f984...`   |
-| `tokens`    | ERC-20 and SPL token holdings               | `explorers tokens vitalik.eth`    |
+| `tokens`    | ERC-20, SPL and Cardano native holdings     | `explorers tokens vitalik.eth`    |
 | `transfers` | ERC-20 transfer history for an address      | `explorers transfers vitalik.eth` |
 | `gas`       | Current gas prices                          | `explorers gas -c base`           |
 | `block`     | Block data by number                        | `explorers block 18000000`        |
@@ -102,7 +102,7 @@ if (provider.capabilities.contractInfo && provider.getContractInfo) {
 
 Required operations live on `Provider`. Optional operations stay absent when a backend cannot serve them, so check both `capabilities` and the method before calling. No fake fallback and no method that returns convincing nonsense.
 
-`create()` imports the provider it was asked for and nothing else, which is why it returns a promise. Everything the registry answers without an instance stays synchronous: `providers()`, `has()`, `supportsChain()`, `getDefaultURL()` and `resolveProvider()` read the metadata in `builtins`. A single backend can also skip the registry: `import { Mempool } from "@agntn/explorers/providers/mempool"` gives you the class and leaves the other nine out of your bundle.
+`create()` imports the provider it was asked for and nothing else, which is why it returns a promise. Everything the registry answers without an instance stays synchronous: `providers()`, `has()`, `supportsChain()`, `getDefaultURL()` and `resolveProvider()` read the metadata in `builtins`. A single backend can also skip the registry: `import { Mempool } from "@agntn/explorers/providers/mempool"` gives you the class and leaves the other ten out of your bundle.
 
 ## Providers
 
@@ -118,6 +118,7 @@ Required operations live on `Provider`. Optional operations stay absent when a b
 | **tronscan**   | `TRONSCAN_API_KEY`            | tron                                                                                  | balances, tx detail/history, block                    |
 | **aptos**      | None                          | aptos                                                                                 | no supported explorer operations                      |
 | **blockberry** | `BLOCKBERRY_API_KEY`          | sui                                                                                   | balances, tx history                                  |
+| **koios**      | None                          | cardano                                                                               | balances, tx detail/history, tokens                   |
 
 `aptos` is deliberately boring. It stays registered, advertises no capabilities and throws `UnsupportedOperationError` from required methods. Aptos Explorer has no documented account/history API, and hiding fullnode REST behind an explorer provider just to make the table look complete would be dishonest.
 

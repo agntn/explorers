@@ -10,7 +10,11 @@ export function classifyInput(input: string, chain?: ChainKey): InputType {
   const trimmed = input.trim();
   if (chain === "sui" && /^0x[0-9a-fA-F]{64}$/.test(trimmed)) return "address";
   if (
-    ((chain === "bitcoin" || chain === "litecoin" || chain === "ecash" || chain === "tron") &&
+    ((chain === "bitcoin" ||
+      chain === "litecoin" ||
+      chain === "ecash" ||
+      chain === "tron" ||
+      chain === "cardano") &&
       /^[0-9a-fA-F]{64}$/.test(trimmed)) ||
     (chain === "solana" && /^[1-9A-HJ-NP-Za-km-z]{64,88}$/.test(trimmed)) ||
     (chain === "sui" && /^[1-9A-HJ-NP-Za-km-z]{43,44}$/.test(trimmed))
