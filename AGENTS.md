@@ -13,7 +13,7 @@ Unified block explorer provider library. Normalizes balances, tx history, contra
 | blockchair | optional key            | bitcoin, eth, ecash                                                              | balances, tx, block                                         |
 | mempool    | none                    | bitcoin, litecoin                                                                | balances, tx, gas, block                                    |
 | solscan    | `SOLSCAN_API_KEY`       | solana                                                                           | balances, tx detail/history, block                          |
-| helius     | `HELIUS_API_KEY`        | solana                                                                           | tx detail/history; no balance endpoint                      |
+| helius     | `HELIUS_API_KEY`        | solana                                                                           | tx detail/history, tokens; no balance endpoint              |
 | ton        | none                    | ton                                                                              | balances, tx                                                |
 | tronscan   | `TRONSCAN_API_KEY`      | tron                                                                             | balances, tx detail/history, block                          |
 | aptos      | none                    | aptos                                                                            | none; required methods throw                                |
@@ -55,6 +55,7 @@ Unified block explorer provider library. Normalizes balances, tx history, contra
 - Blockchair: data format differs between UTXO (bitcoin, ecash) and EVM chains; eCash amounts are satoshis at 2 decimals (100 satoshis = 1 XEC)
 - Solscan, Helius, TONAPI, TRONSCAN, Aptos, and Blockberry are single-chain providers and throw `UnsupportedChainError` for other chains.
 - Helius Enhanced Transactions v0 exposes no REST balance endpoint, so `getBalance` throws `UnsupportedOperationError`; the key travels as the `api-key` query parameter, which `sanitizeUrl` redacts.
+- Helius `getTokenBalances` calls DAS `searchAssets` on the RPC root, so it answers over JSON-RPC and a failure arrives as `error` inside a 200 response. Pages hold 1000 assets and the walk stops after 20 of them.
 - Aptos Explorer has no documented account/history API; `aptos` remains registered with false capabilities and throws `UnsupportedOperationError` instead of using fullnode REST.
 - TONAPI and Blockberry do not expose block lookup compatible with the library's single block-number contract, so `blockInfo` is unsupported.
 - Mempool: Bitcoin and Litecoin; the LTC host is litecoinspace.org, a fork with the same API surface
