@@ -107,7 +107,7 @@ describe("explorers Pi extension", () => {
     expect(result.content).toEqual([
       {
         type: "text",
-        text: expect.stringMatching(/^Registered providers \(10\):/),
+        text: expect.stringMatching(/^Registered providers \(11\):/),
       },
     ]);
   });

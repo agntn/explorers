@@ -41,6 +41,16 @@ describe("classifyInput", () => {
     expect(classifyInput("a".repeat(64), "ecash")).toBe("txhash");
     expect(classifyInput("2".repeat(64), "solana")).toBe("txhash");
     expect(classifyInput("2".repeat(44), "sui")).toBe("txhash");
+    expect(classifyInput("a".repeat(64), "cardano")).toBe("txhash");
+  });
+
+  it("keeps a Cardano bech32 address out of detail mode", () => {
+    expect(
+      classifyInput(
+        "addr1q93k6rgprz5fxwkpvl2vgjq4pwejth400f8aldz2m3lj7khrnd05p259l0qjrf396am6wahv5895ey35y62fexta3q5q3cc3k8",
+        "cardano",
+      ),
+    ).toBe("address");
   });
 
   it("keeps a prefixed CashAddr as an address", () => {

@@ -17,6 +17,7 @@ export default defineBuildConfig({
         "./src/providers/tronscan.ts",
         "./src/providers/aptos.ts",
         "./src/providers/blockberry.ts",
+        "./src/providers/koios.ts",
       ],
     },
   ],

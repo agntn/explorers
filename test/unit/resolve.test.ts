@@ -93,6 +93,7 @@ describe("resolveProvider", () => {
 
     expect(resolveProvider(undefined, "ton")).toBe("ton");
     expect(resolveProvider(undefined, "aptos")).toBe("aptos");
+    expect(resolveProvider(undefined, "cardano")).toBe("koios");
   });
 
   it("lets an explicit provider win over the requested chain", () => {
