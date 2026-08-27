@@ -1,4 +1,4 @@
-/** List ERC-20 token holdings (supports ENS) */
+/** List fungible token holdings (supports ENS) */
 import { defineCommand } from "citty";
 import consola from "consola";
 import { resolveProvider, PROVIDER_DEFAULT_CHAIN } from "../core/resolve.js";
@@ -9,7 +9,7 @@ import { resolveInput } from "../core/input.js";
 export default defineCommand({
   meta: {
     name: "tokens",
-    description: "List ERC-20 token holdings for an address (supports ENS)",
+    description: "List fungible token holdings for an address (supports ENS)",
   },
   args: {
     address: {

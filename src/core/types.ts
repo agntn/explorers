@@ -94,7 +94,7 @@ export interface Balance {
   symbol: string;
 }
 
-/** ERC-20 token holding for an address */
+/** Fungible token holding for an address */
 export interface TokenBalance {
   /** Token contract address */
   contract: string;

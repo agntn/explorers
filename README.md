@@ -58,7 +58,7 @@ An address-like first argument defaults to `balance`. No ceremonial subcommand n
 | `balance`   | Native token balance, including ENS         | `explorers balance vitalik.eth`   |
 | `tx`        | Transaction history or one transaction      | `explorers tx vitalik.eth -n 5`   |
 | `contract`  | ABI, source and verification status         | `explorers contract 0x1f984...`   |
-| `tokens`    | ERC-20 holdings                             | `explorers tokens vitalik.eth`    |
+| `tokens`    | ERC-20 and SPL token holdings               | `explorers tokens vitalik.eth`    |
 | `transfers` | ERC-20 transfer history for an address      | `explorers transfers vitalik.eth` |
 | `gas`       | Current gas prices                          | `explorers gas -c base`           |
 | `block`     | Block data by number                        | `explorers block 18000000`        |
@@ -113,7 +113,7 @@ Required operations live on `Provider`. Optional operations stay absent when a b
 | **blockchair** | Optional `BLOCKCHAIR_API_KEY` | bitcoin, ethereum, ecash                                                              | balances, tx, block                                   |
 | **mempool**    | None                          | bitcoin, litecoin                                                                     | balances, tx, gas, block                              |
 | **solscan**    | `SOLSCAN_API_KEY`             | solana                                                                                | balances, tx detail/history, block                    |
-| **helius**     | `HELIUS_API_KEY`              | solana                                                                                | tx detail/history                                     |
+| **helius**     | `HELIUS_API_KEY`              | solana                                                                                | tx detail/history, tokens                             |
 | **ton**        | None                          | ton                                                                                   | balances, tx                                          |
 | **tronscan**   | `TRONSCAN_API_KEY`            | tron                                                                                  | balances, tx detail/history, block                    |
 | **aptos**      | None                          | aptos                                                                                 | no supported explorer operations                      |
