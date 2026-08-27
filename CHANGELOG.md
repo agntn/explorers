@@ -1,5 +1,35 @@
 # Changelog
 
+## v0.4.0
+
+[compare changes](https://github.com/agntn/explorers/compare/v0.3.0...v0.4.0)
+
+### 🚀 Enhancements
+
+- **blockchair:** Support eCash ([#26](https://github.com/agntn/explorers/pull/26))
+- **helius:** List SPL token holdings ([#30](https://github.com/agntn/explorers/pull/30))
+- Cover Cardano balances, history and native assets with Koios ([#31](https://github.com/agntn/explorers/pull/31))
+
+### 🩹 Fixes
+
+- **deps:** Require eCash-capable chains ([5c1b722](https://github.com/agntn/explorers/commit/5c1b722))
+- Return reusable transaction history IDs ([#27](https://github.com/agntn/explorers/pull/27))
+- **blockscout:** Exclude NFTs from token holdings ([#28](https://github.com/agntn/explorers/pull/28))
+- **blockscout:** Return the full history limit ([#29](https://github.com/agntn/explorers/pull/29))
+
+### 💅 Refactors
+
+- ⚠️  Adopt the full-name chain keys ([#24](https://github.com/agntn/explorers/pull/24))
+
+#### ⚠️ Breaking Changes
+
+- ⚠️  Adopt the full-name chain keys ([#24](https://github.com/agntn/explorers/pull/24))
+
+### ❤️ Contributors
+
+- Aeitwoen <aeitwoen@gmail.com>
+- Ori ([@oritwoen](https://github.com/oritwoen))
+
 ## v0.3.0
 
 [compare changes](https://github.com/agntn/explorers/compare/v0.2.0...v0.3.0)
