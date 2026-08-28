@@ -114,10 +114,13 @@ export default function explorersExtension(pi: ExtensionAPI) {
       const balances = await Promise.all(
         addresses.map((address) => provider.getBalance(address, chain)),
       );
-      const lines = balances.map(
-        (balance) =>
-          `[${name}] ${balance.chain} balance for ${balance.address}: ${balance.balanceFormatted} ${balance.symbol} (${balance.balance} base units)`,
-      );
+      const lines = balances.map((balance) => {
+        const totals =
+          balance.funded === undefined || balance.spent === undefined
+            ? ""
+            : `; funded ${balance.funded}, spent ${balance.spent}`;
+        return `[${name}] ${balance.chain} balance for ${balance.address}: ${balance.balanceFormatted} ${balance.symbol} (${balance.balance} base units${totals})`;
+      });
       return textResult(lines.join("\n"));
     },
   });

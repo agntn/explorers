@@ -24,7 +24,7 @@ describe("blockchair provider", () => {
     stubJSON({
       data: {
         [BTC_ADDRESS]: {
-          address: { balance: 123456789 },
+          address: { balance: 123456789, received: "223456789", spent: 100000000 },
         },
       },
       context: { code: 200 },
@@ -37,6 +37,8 @@ describe("blockchair provider", () => {
       balance: "123456789",
       balanceFormatted: "1.23456789",
       symbol: "BTC",
+      funded: "223456789",
+      spent: "100000000",
     });
   });
 
@@ -44,7 +46,7 @@ describe("blockchair provider", () => {
     const fetch = stubJSON({
       data: {
         [XEC_ADDRESS]: {
-          address: { balance: 123456789 },
+          address: { balance: 123456789, received: 223456789, spent: 100000000 },
         },
       },
       context: { code: 200 },
@@ -57,8 +59,27 @@ describe("blockchair provider", () => {
       balance: "123456789",
       balanceFormatted: "1234567.89",
       symbol: "XEC",
+      funded: "223456789",
+      spent: "100000000",
     });
     expect(String(fetch.mock.calls[0]?.[0])).toContain("/ecash/dashboards/address/");
+  });
+
+  it("does not label account balances as UTXO funding", async () => {
+    stubJSON({
+      data: {
+        [ETH_ADDRESS]: {
+          address: { balance: "1", received: "2", spent: "1" },
+        },
+      },
+      context: { code: 200 },
+    });
+    const provider = await create("blockchair");
+
+    const balance = await provider.getBalance(ETH_ADDRESS, "ethereum");
+
+    expect(balance).not.toHaveProperty("funded");
+    expect(balance).not.toHaveProperty("spent");
   });
 
   it("maps eCash transactions through the UTXO shape", async () => {

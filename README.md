@@ -100,6 +100,8 @@ if (provider.capabilities.contractInfo && provider.getContractInfo) {
 }
 ```
 
+UTXO providers that expose cumulative totals add `funded` and `spent` to `Balance`, in the chain's smallest native unit.
+
 Required operations live on `Provider`. Optional operations stay absent when a backend cannot serve them, so check both `capabilities` and the method before calling. No fake fallback and no method that returns convincing nonsense.
 
 `create()` imports the provider it was asked for and nothing else, which is why it returns a promise. Everything the registry answers without an instance stays synchronous: `providers()`, `has()`, `supportsChain()`, `getDefaultURL()` and `resolveProvider()` read the metadata in `builtins`. A single backend can also skip the registry: `import { Mempool } from "@agntn/explorers/providers/mempool"` gives you the class and leaves the other ten out of your bundle.
