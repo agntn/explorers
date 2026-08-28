@@ -1,23 +1,30 @@
-/**
- * Explorers — Blockscout integration tests
- *
- * Tests are live roundtrips against public Blockscout API. Expected values are derived from API
- * responses, not hand-written.
- */
-import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+/** Blockscout provider contract tests with deterministic API fixtures. */
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { create } from "../../src/core/registry.js";
 
 const VITALIK = "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045";
 const USDC_BASE = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
 
-function stubJSON(body: unknown) {
+function stubJSON(body: unknown, status = 200) {
   const fetch = vi.fn(
     async () =>
-      new Response(JSON.stringify(body), { headers: { "Content-Type": "application/json" } }),
+      new Response(JSON.stringify(body), {
+        status,
+        headers: { "Content-Type": "application/json" },
+      }),
   );
   vi.stubGlobal("fetch", fetch);
   return fetch;
 }
+
+beforeEach(() => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => {
+      throw new Error("Unexpected network request in unit test");
+    }),
+  );
+});
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -42,33 +49,48 @@ describe("blockscout provider", () => {
     expect(caps.blockInfo).toBe(true);
   });
 
-  it("getBalance returns valid structure for known address", async () => {
-    const balance = await provider.getBalance(VITALIK, "ethereum");
+  it("maps an address balance response", async () => {
+    stubJSON({ coin_balance: "1250000000000000000" });
 
-    expect(balance.address).toBe(VITALIK);
-    expect(balance.chain).toBe("ethereum");
-    expect(balance.symbol).toBe("ETH");
-    // Balance should be a valid wei string (digits only)
-    expect(balance.balance).toMatch(/^\d+$/);
-    // Formatted should look like a decimal number
-    expect(balance.balanceFormatted).toMatch(/^\d+(\.\d+)?$/);
-    // Vitalik should have > 0 ETH
-    expect(Number(balance.balanceFormatted)).toBeGreaterThan(0);
+    await expect(provider.getBalance(VITALIK, "ethereum")).resolves.toEqual({
+      address: VITALIK,
+      chain: "ethereum",
+      balance: "1250000000000000000",
+      balanceFormatted: "1.25",
+      symbol: "ETH",
+    });
   });
 
-  it("getTxHistory returns array of transactions", async () => {
-    const txs = await provider.getTxHistory(VITALIK, "ethereum", { limit: 3 });
+  it("maps an address transaction response", async () => {
+    stubJSON({
+      items: [
+        {
+          hash: `0x${"1".repeat(64)}`,
+          block_number: 123,
+          timestamp: "2026-08-22T18:24:59.000000Z",
+          from: { hash: "0x1111111111111111111111111111111111111111" },
+          to: { hash: VITALIK },
+          value: "1000000000000000000",
+          gas_used: "21000",
+          gas_price: "2",
+          status: "ok",
+          transaction_types: [],
+        },
+      ],
+      next_page_params: null,
+    });
 
-    expect(Array.isArray(txs)).toBe(true);
-    expect(txs.length).toBeLessThanOrEqual(3);
-    expect(txs.length).toBeGreaterThan(0);
-
-    const tx = txs[0]!;
-    expect(tx.hash).toMatch(/^0x[0-9a-fA-F]{64}$/);
-    expect(tx.from).toMatch(/^0x[0-9a-fA-F]{40}$/);
-    expect(typeof tx.blockNumber).toBe("number");
-    expect(tx.blockNumber).toBeGreaterThan(0);
-    expect(["success", "failed", "pending"]).toContain(tx.status);
+    await expect(provider.getTxHistory(VITALIK, "ethereum", { limit: 3 })).resolves.toMatchObject([
+      {
+        hash: `0x${"1".repeat(64)}`,
+        blockNumber: 123,
+        from: "0x1111111111111111111111111111111111111111",
+        to: VITALIK,
+        value: "1000000000000000000",
+        valueFormatted: "1",
+        status: "success",
+      },
+    ]);
   });
 
   it("walks transaction pages until the requested limit is reached", async () => {
@@ -123,28 +145,33 @@ describe("blockscout provider", () => {
     });
   });
 
-  it("getContractInfo returns info for known contract", async () => {
-    const info = await provider.getContractInfo(USDC_BASE, "base");
+  it("maps verified contract information", async () => {
+    stubJSON({
+      is_verified: true,
+      name: "FiatTokenV2_2",
+      compiler_version: "v0.8.20",
+      abi: [{ type: "function", name: "transfer" }],
+    });
 
-    expect(info.address).toBe(USDC_BASE);
-    expect(typeof info.isVerified).toBe("boolean");
-    // USDC should be verified
-    expect(info.isVerified).toBe(true);
-    // Should have a name
-    expect(info.name).toBeTruthy();
+    await expect(provider.getContractInfo(USDC_BASE, "base")).resolves.toMatchObject({
+      address: USDC_BASE,
+      isVerified: true,
+      name: "FiatTokenV2_2",
+      compilerVersion: "v0.8.20",
+      isToken: true,
+    });
   });
 
-  it("getGasData returns gas prices", async () => {
-    const gas = await provider.getGasData!("ethereum");
+  it("maps current gas prices", async () => {
+    stubJSON({ gas_prices: { slow: "0.1", average: "0.21", fast: "1.17" } });
 
-    expect(gas.chain).toBe("ethereum");
-    // At least one gas price field should be present
-    const hasPrice = gas.safeGasPrice || gas.proposedGasPrice || gas.fastGasPrice;
-    expect(hasPrice).toBeTruthy();
-    // Gas price should be a valid number string
-    if (gas.proposedGasPrice) {
-      expect(Number(gas.proposedGasPrice)).toBeGreaterThan(0);
-    }
+    await expect(provider.getGasData!("ethereum")).resolves.toEqual({
+      chain: "ethereum",
+      unit: "gwei",
+      safeGasPrice: "0.1",
+      proposedGasPrice: "0.21",
+      fastGasPrice: "1.17",
+    });
   });
 
   it("requests and returns only fungible token balances", async () => {
@@ -400,8 +427,11 @@ describe("blockscout provider", () => {
     });
   });
 
-  it("getBalance throws on invalid address gracefully", async () => {
-    // Blockscout returns 400 for invalid addresses
-    await expect(provider.getBalance("not-an-address", "ethereum")).rejects.toThrow();
+  it("rejects a Blockscout invalid-address response", async () => {
+    stubJSON({ message: "Invalid address hash" }, 400);
+
+    await expect(provider.getBalance("not-an-address", "ethereum")).rejects.toMatchObject({
+      statusCode: 400,
+    });
   });
 });
