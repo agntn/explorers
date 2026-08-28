@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url";
 import type {
   ExtensionAPI,
   ExtensionContext,
@@ -5,7 +6,9 @@ import type {
 } from "@earendil-works/pi-coding-agent";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Value } from "typebox/value";
-import explorersExtension from "../../packages/pi/extensions/explorers.js";
+import explorersExtension, {
+  resolveExplorersModuleUrl,
+} from "../../packages/pi/extensions/explorers.js";
 import type { Transaction } from "../../src/core/types.js";
 
 function registerExtensionTools(): Map<string, ToolDefinition> {
@@ -33,6 +36,12 @@ const unusedContext = {} as ExtensionContext;
 describe("explorers Pi extension", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
+  });
+
+  it("loads live source instead of a missing or stale build in a checkout", () => {
+    expect(fileURLToPath(resolveExplorersModuleUrl())).toBe(
+      fileURLToPath(new URL("../../src/index.ts", import.meta.url)),
+    );
   });
 
   it("registers the complete tool set", () => {

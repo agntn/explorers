@@ -1,36 +1,32 @@
 /** Pi extension: Explorers — unified block explorer tools */
+import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import type { AgentToolResult, ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import type * as ExplorersModule from "../../../src/index.js";
 import { Text } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
 
-const sourceModulePath = fileURLToPath(new URL("../../../src/index.ts", import.meta.url));
+const sourceModuleUrl = new URL("../../../src/index.ts", import.meta.url);
+const distributionModuleUrl = new URL("../../../dist/index.mjs", import.meta.url);
 let explorersModulePromise: Promise<typeof ExplorersModule> | undefined;
 
-function isMissingSourceModule(error: unknown): boolean {
-  if (typeof error !== "object" || error === null || !("code" in error)) return false;
-  const code = String(error.code);
-  if (code !== "ERR_MODULE_NOT_FOUND" && code !== "MODULE_NOT_FOUND") return false;
-
-  const message = error instanceof Error ? error.message : "";
-  return (
-    message.includes(`Cannot find module '${sourceModulePath}'`) ||
-    message.includes(`Cannot find module "${sourceModulePath}"`)
-  );
+/** Return live source in a checkout, otherwise the built module shipped in the package. */
+export function resolveExplorersModuleUrl(): string {
+  return existsSync(fileURLToPath(sourceModuleUrl))
+    ? sourceModuleUrl.href
+    : distributionModuleUrl.href;
 }
 
-/** Load current source in development and fall back to the installed package in distributions. */
+/** Load the library from one unambiguous graph and retry after a failed import. */
 function loadLib(): Promise<typeof ExplorersModule> {
-  if (explorersModulePromise) return explorersModulePromise;
-
-  // @ts-expect-error — Pi runs TypeScript extension sources directly in development
-  const loaded = import("../../../src/index.ts").catch((error: unknown) => {
-    if (!isMissingSourceModule(error)) throw error;
-    return import("@agntn/explorers") as unknown as Promise<typeof ExplorersModule>;
+  explorersModulePromise ??= (
+    import(resolveExplorersModuleUrl()) as Promise<typeof ExplorersModule>
+  ).catch((error: unknown) => {
+    explorersModulePromise = undefined;
+    throw error;
   });
-  explorersModulePromise = loaded;
-  return loaded;
+
+  return explorersModulePromise;
 }
 
 /** Terminal control bytes that must not reach the TUI from tool arguments or explorer responses. */
