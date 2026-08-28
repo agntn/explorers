@@ -76,6 +76,25 @@ describe("mempool provider", () => {
     expect(Number(balance.balanceFormatted)).toBeGreaterThan(0);
   });
 
+  it("keeps confirmed funded and spent totals without losing integer precision", async () => {
+    stubJSON({
+      chain_stats: {
+        funded_txo_count: 2,
+        funded_txo_sum: "9007199254740993",
+        spent_txo_count: 1,
+        spent_txo_sum: "1",
+      },
+    });
+
+    const balance = await provider.getBalance(KNOWN_BTC, "bitcoin");
+
+    expect(balance).toMatchObject({
+      balance: "9007199254740992",
+      funded: "9007199254740993",
+      spent: "1",
+    });
+  });
+
   it("routes litecoin calls to litecoinspace.org", async () => {
     const fetch = stubJSON({
       chain_stats: {

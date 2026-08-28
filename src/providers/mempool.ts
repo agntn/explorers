@@ -45,16 +45,16 @@ interface MempoolAddressSummary {
   address: string;
   chain_stats: {
     funded_txo_count: number;
-    funded_txo_sum: number;
+    funded_txo_sum: number | string;
     spent_txo_count: number;
-    spent_txo_sum: number;
+    spent_txo_sum: number | string;
     tx_count: number;
   };
   mempool_stats: {
     funded_txo_count: number;
-    funded_txo_sum: number;
+    funded_txo_sum: number | string;
     spent_txo_count: number;
-    spent_txo_sum: number;
+    spent_txo_sum: number | string;
     tx_count: number;
   };
 }
@@ -149,7 +149,7 @@ interface MempoolBlock {
 }
 
 /** Convert the smallest unit to a coin string without floating-point arithmetic. */
-function satToCoin(sat: number): string {
+function satToCoin(sat: number | bigint): string {
   return formatWei(String(sat), 8);
 }
 
@@ -395,8 +395,8 @@ export class Mempool extends Provider {
       `/api/address/${encodeURIComponent(address)}`,
     );
 
-    const fundedSat = data.chain_stats.funded_txo_sum;
-    const spentSat = data.chain_stats.spent_txo_sum;
+    const fundedSat = BigInt(data.chain_stats.funded_txo_sum);
+    const spentSat = BigInt(data.chain_stats.spent_txo_sum);
     const balanceSat = fundedSat - spentSat;
 
     return {
@@ -404,6 +404,8 @@ export class Mempool extends Provider {
       chain: c,
       balance: balanceSat.toString(),
       balanceFormatted: satToCoin(balanceSat),
+      funded: fundedSat.toString(),
+      spent: spentSat.toString(),
       symbol: createChain(c).symbol,
     };
   }

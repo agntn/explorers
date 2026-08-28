@@ -172,12 +172,20 @@ export class Blockchair extends Provider {
     const data = res.data[key];
     if (!data) throw new NotFoundError(`Address ${address}`, "blockchair");
     const balance = String(data.address.balance);
+    const utxoTotals =
+      UTXO_DECIMALS[c] === undefined
+        ? {}
+        : {
+            funded: String(data.address.received),
+            spent: String(data.address.spent),
+          };
 
     return {
       address,
       chain: c,
       balance,
       balanceFormatted: formatWei(balance, UTXO_DECIMALS[c] ?? 18),
+      ...utxoTotals,
       symbol: createChain(c).symbol,
     };
   }

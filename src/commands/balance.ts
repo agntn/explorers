@@ -44,6 +44,10 @@ export default defineCommand({
         consola.log(`[${providerName}] ${balance.chain} balance for ${balance.address}`);
         consola.log(`  ${balance.balanceFormatted} ${balance.symbol}`);
         consola.log(`  Raw: ${balance.balance} base units`);
+        if (balance.funded !== undefined && balance.spent !== undefined) {
+          consola.log(`  Funded: ${balance.funded} base units`);
+          consola.log(`  Spent: ${balance.spent} base units`);
+        }
       }
     } catch (error) {
       consola.error(`Error: ${error instanceof Error ? error.message : error}`);

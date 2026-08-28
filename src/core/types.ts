@@ -90,6 +90,10 @@ export interface Balance {
   balance: string;
   /** Human-readable balance */
   balanceFormatted: string;
+  /** Cumulative value received in the smallest native unit, when the provider exposes it */
+  funded?: string;
+  /** Cumulative value spent in the smallest native unit, when the provider exposes it */
+  spent?: string;
   /** Native token symbol (ETH, BNB, etc.) */
   symbol: string;
 }
