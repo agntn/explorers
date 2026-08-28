@@ -65,6 +65,12 @@ function resolveToolChain(lib: typeof ExplorersModule, providerName: string, req
   return lib.normalizeChain(requested ?? lib.PROVIDER_DEFAULT_CHAIN[providerName]);
 }
 
+function balanceContext(balance: ExplorersModule.Balance): string {
+  const block = balance.blockNumber === null ? "block unknown" : `block ${balance.blockNumber}`;
+  const hash = balance.blockHash === null ? "" : `; hash ${balance.blockHash}`;
+  return `; fetched ${balance.fetchedAt}; ${block}${hash}`;
+}
+
 export default function explorersExtension(pi: ExtensionAPI) {
   pi.registerTool({
     name: "explorers_balance",
@@ -74,7 +80,7 @@ export default function explorersExtension(pi: ExtensionAPI) {
     promptGuidelines: [
       "Use explorers_balance with a blockchain address, or a list of addresses to batch, and optionally a chain.",
       "explorers_balance defaults to Ethereum mainnet when neither provider nor chain is explicit.",
-      "explorers_balance returns raw base-unit and human-readable balances.",
+      "explorers_balance returns raw and human-readable balances with the read time and available block position.",
     ],
     parameters: Type.Object({
       address: Type.Union(
@@ -119,7 +125,7 @@ export default function explorersExtension(pi: ExtensionAPI) {
           balance.funded === undefined || balance.spent === undefined
             ? ""
             : `; funded ${balance.funded}, spent ${balance.spent}`;
-        return `[${name}] ${balance.chain} balance for ${balance.address}: ${balance.balanceFormatted} ${balance.symbol} (${balance.balance} base units${totals})`;
+        return `[${name}] ${balance.chain} balance for ${balance.address}: ${balance.balanceFormatted} ${balance.symbol} (${balance.balance} base units${totals}${balanceContext(balance)})`;
       });
       return textResult(lines.join("\n"));
     },

@@ -16,6 +16,7 @@ const blockscoutEntry = builtins.find((entry) => entry.key === "blockscout")!;
 
 afterEach(async () => {
   register(blockscoutConstructor, blockscoutEntry);
+  vi.useRealTimers();
   vi.unstubAllGlobals();
   await Promise.all(openConnections.splice(0).map((connection) => connection.close()));
 });
@@ -148,7 +149,9 @@ describe("Explorers MCP server", () => {
     },
   );
 
-  it("includes the selected provider in operation results", async () => {
+  it("includes the selected provider and balance snapshot context", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime("2026-08-28T12:34:56.789Z");
     vi.stubGlobal(
       "fetch",
       vi.fn(async () => {
@@ -170,7 +173,9 @@ describe("Explorers MCP server", () => {
     expect(response.content).toEqual([
       {
         type: "text",
-        text: expect.stringMatching(/"provider": "blockscout"[\s\S]*"balance": "1"/),
+        text: expect.stringMatching(
+          /"provider": "blockscout"[\s\S]*"balance": "1"[\s\S]*"fetchedAt": "2026-08-28T12:34:56.789Z"[\s\S]*"blockNumber": null[\s\S]*"blockHash": null/,
+        ),
       },
     ]);
   });

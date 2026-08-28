@@ -9,7 +9,8 @@ import { resolveAddresses } from "../core/input.js";
 export default defineCommand({
   meta: {
     name: "balance",
-    description: "Get native token balance for one or more addresses (supports ENS)",
+    description:
+      "Get native token balances with read time for one or more addresses (supports ENS)",
   },
   args: {
     address: {
@@ -44,6 +45,11 @@ export default defineCommand({
         consola.log(`[${providerName}] ${balance.chain} balance for ${balance.address}`);
         consola.log(`  ${balance.balanceFormatted} ${balance.symbol}`);
         consola.log(`  Raw: ${balance.balance} base units`);
+        consola.log(`  Fetched: ${balance.fetchedAt}`);
+        consola.log(`  Block: ${balance.blockNumber ?? "unknown"}`);
+        if (balance.blockHash !== null) {
+          consola.log(`  Block hash: ${balance.blockHash}`);
+        }
         if (balance.funded !== undefined && balance.spent !== undefined) {
           consola.log(`  Funded: ${balance.funded} base units`);
           consola.log(`  Spent: ${balance.spent} base units`);

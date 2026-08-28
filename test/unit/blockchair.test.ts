@@ -16,18 +16,21 @@ function stubJSON(body: unknown) {
 }
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllGlobals();
 });
 
 describe("blockchair provider", () => {
-  it("formats Bitcoin balances as satoshis", async () => {
+  it("keeps the Blockchair tip with a dated Bitcoin balance", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime("2026-08-28T12:34:56.789Z");
     stubJSON({
       data: {
         [BTC_ADDRESS]: {
           address: { balance: 123456789, received: "223456789", spent: 100000000 },
         },
       },
-      context: { code: 200 },
+      context: { code: 200, state: 912345 },
     });
     const provider = await create("blockchair");
 
@@ -39,6 +42,9 @@ describe("blockchair provider", () => {
       symbol: "BTC",
       funded: "223456789",
       spent: "100000000",
+      fetchedAt: "2026-08-28T12:34:56.789Z",
+      blockNumber: 912345,
+      blockHash: null,
     });
   });
 

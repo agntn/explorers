@@ -114,13 +114,13 @@ export class Tronscan extends Provider {
 
     const account = await this.api<TronscanAccount>("/api/accountv2", { address });
     const balance = account.balanceStr ?? String(account.balance ?? 0);
-    return {
+    return this.snapshotBalance({
       address,
       chain: "tron",
       balance,
       balanceFormatted: formatWei(balance, 6),
       symbol: "TRX",
-    };
+    });
   }
 
   async getTxHistory(

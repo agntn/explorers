@@ -230,13 +230,13 @@ export class Etherscan extends Provider {
       tag: "latest",
     });
 
-    return {
+    return this.snapshotBalance({
       address,
       chain: c,
       balance: result,
       balanceFormatted: formatWei(result),
       symbol: createChain(c).symbol,
-    };
+    });
   }
 
   async getTxHistory(

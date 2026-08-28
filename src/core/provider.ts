@@ -60,6 +60,19 @@ export abstract class Provider {
   protected postJSON<T>(url: string, body: unknown): Promise<T> {
     return postJSON<T>(url, body, { timeout: this.timeout, provider: this.name });
   }
+
+  /** Date a completed balance read and preserve any chain position the response exposes. */
+  protected snapshotBalance(
+    balance: Omit<Balance, "fetchedAt" | "blockNumber" | "blockHash">,
+    position: { blockNumber?: number | null; blockHash?: string | null } = {},
+  ): Balance {
+    return {
+      ...balance,
+      fetchedAt: new Date().toISOString(),
+      blockNumber: position.blockNumber ?? null,
+      blockHash: position.blockHash ?? null,
+    };
+  }
 }
 
 /** Concrete provider class accepted by the registry. */

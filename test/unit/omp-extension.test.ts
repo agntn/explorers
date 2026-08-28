@@ -57,6 +57,7 @@ const unusedContext = {} as ExtensionContext;
 
 describe("explorers OMP extension", () => {
   afterEach(() => {
+    vi.useRealTimers();
     vi.unstubAllGlobals();
   });
 
@@ -152,7 +153,9 @@ console.log(result.content[0].text);
     expect(accepts(tool, { address: "  0xabc  " })).toBe(true);
   });
 
-  it("resolves an ENS name before fetching the balance", async () => {
+  it("resolves ENS before returning dated balance context", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime("2026-08-28T12:34:56.789Z");
     const resolved = "0x" + "a".repeat(40);
     vi.stubGlobal(
       "fetch",
@@ -160,7 +163,7 @@ console.log(result.content[0].text);
         const url = String(input);
         const payload = url.includes("ensideas")
           ? { address: resolved }
-          : { coin_balance: "1" };
+          : { coin_balance: "1000000000000000000" };
         return new Response(JSON.stringify(payload), {
           headers: { "content-type": "application/json" },
         });
@@ -177,7 +180,10 @@ console.log(result.content[0].text);
     );
 
     expect(result.content).toEqual([
-      { type: "text", text: expect.stringContaining(resolved) },
+      {
+        type: "text",
+        text: `[blockscout] ethereum balance for ${resolved}: 1 ETH (1000000000000000000 base units; fetched 2026-08-28T12:34:56.789Z; block unknown)`,
+      },
     ]);
   });
 

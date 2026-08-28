@@ -35,6 +35,7 @@ const unusedContext = {} as ExtensionContext;
 
 describe("explorers Pi extension", () => {
   afterEach(() => {
+    vi.useRealTimers();
     vi.unstubAllGlobals();
   });
 
@@ -117,6 +118,36 @@ describe("explorers Pi extension", () => {
       {
         type: "text",
         text: expect.stringMatching(/^Registered providers \(11\):/),
+      },
+    ]);
+  });
+
+  it("reports when a balance was fetched and whether its block is known", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime("2026-08-28T12:34:56.789Z");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ coin_balance: "1000000000000000000" }), {
+            headers: { "Content-Type": "application/json" },
+          }),
+      ),
+    );
+    const tool = requireTool(registerExtensionTools(), "explorers_balance");
+
+    const result = await tool.execute(
+      "test",
+      { address: "0x0000000000000000000000000000000000000001", provider: "blockscout" },
+      undefined,
+      undefined,
+      unusedContext,
+    );
+
+    expect(result.content).toEqual([
+      {
+        type: "text",
+        text: "[blockscout] ethereum balance for 0x0000000000000000000000000000000000000001: 1 ETH (1000000000000000000 base units; fetched 2026-08-28T12:34:56.789Z; block unknown)",
       },
     ]);
   });

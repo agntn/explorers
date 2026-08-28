@@ -250,13 +250,13 @@ export class Koios extends Provider {
     if (!info) throw new NotFoundError(address, this.name);
 
     const balance = String(info.balance);
-    return {
+    return this.snapshotBalance({
       address,
       chain: c,
       balance,
       balanceFormatted: formatWei(balance, ADA_DECIMALS),
       symbol: createChain(c).symbol,
-    };
+    });
   }
 
   /** List transactions. `tx_info` answers in its own order, so the hash list sets the order. */
