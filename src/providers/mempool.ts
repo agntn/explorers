@@ -399,7 +399,7 @@ export class Mempool extends Provider {
     const spentSat = BigInt(data.chain_stats.spent_txo_sum);
     const balanceSat = fundedSat - spentSat;
 
-    return {
+    return this.snapshotBalance({
       address,
       chain: c,
       balance: balanceSat.toString(),
@@ -407,7 +407,7 @@ export class Mempool extends Provider {
       funded: fundedSat.toString(),
       spent: spentSat.toString(),
       symbol: createChain(c).symbol,
-    };
+    });
   }
 
   async getTxHistory(

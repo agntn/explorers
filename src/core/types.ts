@@ -86,6 +86,12 @@ export interface Balance {
   address: string;
   /** Chain */
   chain: ChainKey;
+  /** Time when the provider completed the read */
+  fetchedAt: string;
+  /** Chain height represented by the response, or null when unavailable */
+  blockNumber: number | null;
+  /** Block hash represented by the response, or null when unavailable */
+  blockHash: string | null;
   /** Balance in the chain's smallest native unit */
   balance: string;
   /** Human-readable balance */

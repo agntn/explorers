@@ -139,13 +139,13 @@ export class Ton extends Provider {
       `${this.baseUrl}/v2/accounts/${encodeURIComponent(address)}`,
     );
 
-    return {
+    return this.snapshotBalance({
       address,
       chain: "ton",
       balance: data.balance.toString(),
       balanceFormatted: formatWei(String(data.balance), 9),
       symbol: "TON",
-    };
+    });
   }
 
   async getTxHistory(

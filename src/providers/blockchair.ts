@@ -42,6 +42,7 @@ interface BlockchairResponse<T> {
     error?: string;
     limit?: string;
     offset?: string;
+    state?: number;
   };
 }
 
@@ -180,14 +181,17 @@ export class Blockchair extends Provider {
             spent: String(data.address.spent),
           };
 
-    return {
-      address,
-      chain: c,
-      balance,
-      balanceFormatted: formatWei(balance, UTXO_DECIMALS[c] ?? 18),
-      ...utxoTotals,
-      symbol: createChain(c).symbol,
-    };
+    return this.snapshotBalance(
+      {
+        address,
+        chain: c,
+        balance,
+        balanceFormatted: formatWei(balance, UTXO_DECIMALS[c] ?? 18),
+        ...utxoTotals,
+        symbol: createChain(c).symbol,
+      },
+      res.context.state === undefined ? {} : { blockNumber: res.context.state },
+    );
   }
 
   async getTxHistory(

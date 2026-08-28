@@ -27,6 +27,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllGlobals();
 });
 
@@ -49,7 +50,9 @@ describe("blockscout provider", () => {
     expect(caps.blockInfo).toBe(true);
   });
 
-  it("maps an address balance response", async () => {
+  it("dates an address balance response without inventing chain position", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime("2026-08-28T12:34:56.789Z");
     stubJSON({ coin_balance: "1250000000000000000" });
 
     await expect(provider.getBalance(VITALIK, "ethereum")).resolves.toEqual({
@@ -58,10 +61,15 @@ describe("blockscout provider", () => {
       balance: "1250000000000000000",
       balanceFormatted: "1.25",
       symbol: "ETH",
+      fetchedAt: "2026-08-28T12:34:56.789Z",
+      blockNumber: null,
+      blockHash: null,
     });
   });
 
   it("maps a null address balance to zero", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime("2026-08-28T12:34:56.789Z");
     stubJSON({ coin_balance: null });
 
     await expect(provider.getBalance(VITALIK, "ethereum")).resolves.toEqual({
@@ -70,6 +78,9 @@ describe("blockscout provider", () => {
       balance: "0",
       balanceFormatted: "0",
       symbol: "ETH",
+      fetchedAt: "2026-08-28T12:34:56.789Z",
+      blockNumber: null,
+      blockHash: null,
     });
   });
 

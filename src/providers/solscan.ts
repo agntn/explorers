@@ -152,13 +152,13 @@ export class Solscan extends Provider {
 
     const data = await this.api<SolscanAccount>("/account/detail", { address });
     const balance = String(data.lamports);
-    return {
+    return this.snapshotBalance({
       address,
       chain: "solana",
       balance,
       balanceFormatted: formatWei(balance, 9),
       symbol: "SOL",
-    };
+    });
   }
 
   async getTxHistory(

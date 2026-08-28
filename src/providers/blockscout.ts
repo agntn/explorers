@@ -238,13 +238,13 @@ export class Blockscout extends Provider {
     const data = await this.getJSON<BlockscoutAddress>(url);
     const balance = data.coin_balance ?? "0";
 
-    return {
+    return this.snapshotBalance({
       address,
       chain: c,
       balance,
       balanceFormatted: formatWei(balance),
       symbol: createChain(c).symbol,
-    };
+    });
   }
 
   /** Follow Blockscout's 50-item keyset pages up to the 100-result provider limit. */

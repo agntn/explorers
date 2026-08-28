@@ -111,13 +111,13 @@ export class Blockberry extends Provider {
     );
     const balance = String(sui?.balance ?? 0);
     const decimals = sui?.decimals ?? 9;
-    return {
+    return this.snapshotBalance({
       address,
       chain: "sui",
       balance,
       balanceFormatted: formatWei(balance, decimals),
       symbol: "SUI",
-    };
+    });
   }
 
   async getTxHistory(

@@ -48,6 +48,12 @@ function resolveToolChain(lib: typeof ExplorersModule, providerName: string, req
   return lib.normalizeChain(requested ?? lib.PROVIDER_DEFAULT_CHAIN[providerName]);
 }
 
+function balanceContext(balance: ExplorersModule.Balance): string {
+  const block = balance.blockNumber === null ? "block unknown" : `block ${balance.blockNumber}`;
+  const hash = balance.blockHash === null ? "" : `; hash ${balance.blockHash}`;
+  return `; fetched ${balance.fetchedAt}; ${block}${hash}`;
+}
+
 /** Register Explorers tools with the OMP extension host. */
 export default function explorersOmpExtension(pi: ExtensionAPI) {
   const { Text } = pi.pi;
@@ -79,7 +85,7 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
     name: "explorers_balance",
     label: "Explorers Balance",
     description:
-      "Get native-token balances for one or more blockchain addresses. Provider selection follows configured API keys and otherwise falls back to Blockscout on Ethereum; each result includes base-unit and human-readable balances.",
+      "Get native-token balances for one or more blockchain addresses. Provider selection follows configured API keys and otherwise falls back to Blockscout on Ethereum; each result includes raw and human-readable amounts, read time, and available block position.",
     parameters: balanceParameters,
     approval: "read",
     renderCall(args, _options, _theme) {
@@ -102,7 +108,7 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
           balance.funded === undefined || balance.spent === undefined
             ? ""
             : `; funded ${balance.funded}, spent ${balance.spent}`;
-        return `[${name}] ${balance.chain} balance for ${balance.address}: ${balance.balanceFormatted} ${balance.symbol} (${balance.balance} base units${totals})`;
+        return `[${name}] ${balance.chain} balance for ${balance.address}: ${balance.balanceFormatted} ${balance.symbol} (${balance.balance} base units${totals}${balanceContext(balance)})`;
       });
       return textResult(lines.join("\n"));
     },

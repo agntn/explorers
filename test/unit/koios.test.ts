@@ -73,6 +73,7 @@ const bodyOf = (call: [RequestInfo | URL, (RequestInit | undefined)?]) =>
   JSON.parse(String(call[1]?.body)) as Record<string, unknown>;
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllGlobals();
 });
 
@@ -108,6 +109,8 @@ describe("koios provider", () => {
   });
 
   it("reads a balance in lovelace and asks for it in the request body", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime("2026-08-28T12:34:56.789Z");
     const fetch = stubJSON([
       { address: ADDRESS, balance: "293356537534", stake_address: null, script_address: false },
     ]);
@@ -118,6 +121,9 @@ describe("koios provider", () => {
       balance: "293356537534",
       balanceFormatted: "293356.537534",
       symbol: "ADA",
+      fetchedAt: "2026-08-28T12:34:56.789Z",
+      blockNumber: null,
+      blockHash: null,
     });
 
     const call = fetch.mock.calls[0]!;
