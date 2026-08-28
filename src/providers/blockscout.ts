@@ -48,7 +48,7 @@ const CHAIN_BASES: Partial<Record<ChainKey, string>> = {
 
 interface BlockscoutAddress {
   hash: string;
-  coin_balance: string;
+  coin_balance: string | null;
   implementation_address?: string;
   is_contract: boolean;
   is_verified: boolean;
@@ -236,12 +236,13 @@ export class Blockscout extends Provider {
     assertSafePathSegment(address, "address");
     const url = `${this.base(c)}/api/v2/addresses/${encodeURIComponent(address)}`;
     const data = await this.getJSON<BlockscoutAddress>(url);
+    const balance = data.coin_balance ?? "0";
 
     return {
       address,
       chain: c,
-      balance: data.coin_balance,
-      balanceFormatted: formatWei(data.coin_balance),
+      balance,
+      balanceFormatted: formatWei(balance),
       symbol: createChain(c).symbol,
     };
   }

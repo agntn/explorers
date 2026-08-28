@@ -61,6 +61,18 @@ describe("blockscout provider", () => {
     });
   });
 
+  it("maps a null address balance to zero", async () => {
+    stubJSON({ coin_balance: null });
+
+    await expect(provider.getBalance(VITALIK, "ethereum")).resolves.toEqual({
+      address: VITALIK,
+      chain: "ethereum",
+      balance: "0",
+      balanceFormatted: "0",
+      symbol: "ETH",
+    });
+  });
+
   it("maps an address transaction response", async () => {
     stubJSON({
       items: [
