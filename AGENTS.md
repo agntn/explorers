@@ -38,7 +38,7 @@ Unified block explorer provider library. Normalizes balances, tx history, contra
 - `src/core/provider.ts` — abstract `Provider` base class and optional operation contract
 - `src/core/errors.ts` — ExplorerError hierarchy + normalizeError
 - `src/core/registry.ts` — Provider registry built from `builtins` on first use; `create()` is async and imports one provider (register, create, providers, has)
-- `src/core/resolve.ts` - Auto-select provider by env vars and the requested chain, default blockscout
+- `src/core/resolve.ts` - Auto-select built-in providers by env vars and chain, with one retry after a rate limit
 - `src/core/client.ts` — HTTP client wrapper (ofetch)
 - `src/core/ens.ts` — ENS resolution (public APIs, no keccak dependency)
 - `src/core/input.ts` — User input classification (address/txhash/ens)
@@ -101,7 +101,7 @@ graph TB
 - **Optional methods**: `getTxDetail`, `getContractInfo`, `getTokenBalances`, `getTokenTransfers`, `getGasData`, and `getBlockInfo` are optional on `Provider`. Always check both the `capabilities` getter and method presence before calling.
 - **Dynamic CLI imports**: Each subcommand is lazily loaded via `() => import('./commands/X.js').then(m => m.default)`.
 - **Chain normalization**: `normalizeChain()` delegates to `getChain()` from `@agntn/chains` and returns the canonical `ChainKey`. Aliases and display names both resolve (`ethereum→eth`, `btc→bitcoin`, `arb→arbitrum`). Missing input defaults to `eth`; unknown names and the empty string throw.
-- **Provider auto-selection**: `resolveProvider()` checks env vars for each provider, falls back to `blockscout` (no key needed).
+- **Provider auto-selection**: `resolveProvider()` checks env vars and chain support. `withProvider()` keeps explicit choices strict and retries automatic reads once on another available built-in after `RateLimitError`. Its callback must be safe to run twice.
 - **Error sanitization**: `HTTPError` strips API keys from URLs in error messages. `normalizeError()` wraps unknown errors into typed `ExplorerError` subclasses.
 
 ## Anti-patterns to avoid
@@ -115,7 +115,7 @@ graph TB
 ## Test coverage gaps
 
 **Covered** (24 test files): provider base/registry, provider resolution, HTTP client, path safety, amount formatting, errors, input classification, chain normalization, CLI argument routing, plus all eleven providers.
-**Missing**: CLI command execution and the Pi extension.
+**Missing**: CLI command execution.
 **Test style**: Focused unit tests for local contracts and mocked explorer-API responses; public no-key providers may additionally use live roundtrips.
 
 ## Dependencies

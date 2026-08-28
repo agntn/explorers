@@ -1,8 +1,7 @@
 /** Get native token balance for one or more addresses (supports ENS) */
 import { defineCommand } from "citty";
 import consola from "consola";
-import { resolveProvider, PROVIDER_DEFAULT_CHAIN } from "../core/resolve.js";
-import { create } from "../core/registry.js";
+import { withProvider } from "../core/resolve.js";
 import { normalizeChain } from "../core/types.js";
 import { resolveAddresses } from "../core/input.js";
 
@@ -33,28 +32,31 @@ export default defineCommand({
     try {
       const chainInput = args.chain as string | undefined;
       const requestedChain = chainInput === undefined ? undefined : normalizeChain(chainInput);
-      const providerName = resolveProvider(args.provider as string | undefined, requestedChain);
-      const provider = await create(providerName);
-      const chain = requestedChain ?? normalizeChain(PROVIDER_DEFAULT_CHAIN[providerName]);
-      const inputs = args._.length > 0 ? args._ : [args.address as string];
-      const addresses = await resolveAddresses(inputs, chain);
-      const balances = await Promise.all(
-        addresses.map((address) => provider.getBalance(address, chain)),
+      await withProvider(
+        args.provider as string | undefined,
+        requestedChain,
+        async ({ chain, name, provider }) => {
+          const inputs = args._.length > 0 ? args._ : [args.address as string];
+          const addresses = await resolveAddresses(inputs, chain);
+          const balances = await Promise.all(
+            addresses.map((address) => provider.getBalance(address, chain)),
+          );
+          for (const balance of balances) {
+            consola.log(`[${name}] ${balance.chain} balance for ${balance.address}`);
+            consola.log(`  ${balance.balanceFormatted} ${balance.symbol}`);
+            consola.log(`  Raw: ${balance.balance} base units`);
+            consola.log(`  Fetched: ${balance.fetchedAt}`);
+            consola.log(`  Block: ${balance.blockNumber ?? "unknown"}`);
+            if (balance.blockHash !== null) {
+              consola.log(`  Block hash: ${balance.blockHash}`);
+            }
+            if (balance.funded !== undefined && balance.spent !== undefined) {
+              consola.log(`  Funded: ${balance.funded} base units`);
+              consola.log(`  Spent: ${balance.spent} base units`);
+            }
+          }
+        },
       );
-      for (const balance of balances) {
-        consola.log(`[${providerName}] ${balance.chain} balance for ${balance.address}`);
-        consola.log(`  ${balance.balanceFormatted} ${balance.symbol}`);
-        consola.log(`  Raw: ${balance.balance} base units`);
-        consola.log(`  Fetched: ${balance.fetchedAt}`);
-        consola.log(`  Block: ${balance.blockNumber ?? "unknown"}`);
-        if (balance.blockHash !== null) {
-          consola.log(`  Block hash: ${balance.blockHash}`);
-        }
-        if (balance.funded !== undefined && balance.spent !== undefined) {
-          consola.log(`  Funded: ${balance.funded} base units`);
-          consola.log(`  Spent: ${balance.spent} base units`);
-        }
-      }
     } catch (error) {
       consola.error(`Error: ${error instanceof Error ? error.message : error}`);
       process.exit(1);

@@ -58,6 +58,7 @@ const unusedContext = {} as ExtensionContext;
 describe("explorers OMP extension", () => {
   afterEach(() => {
     vi.useRealTimers();
+    vi.unstubAllEnvs();
     vi.unstubAllGlobals();
   });
 
@@ -183,6 +184,41 @@ console.log(result.content[0].text);
       {
         type: "text",
         text: `[blockscout] ethereum balance for ${resolved}: 1 ETH (1000000000000000000 base units; fetched 2026-08-28T12:34:56.789Z; block unknown)`,
+      },
+    ]);
+  });
+
+  it("falls past an automatically selected provider's rate limit", async () => {
+    vi.stubEnv("ETHERSCAN_API_KEY", "configured");
+    vi.stubEnv("BLOCKCHAIR_API_KEY", "");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const payload = String(input).includes("etherscan.io")
+          ? { status: "0", message: "NOTOK", result: "Max rate limit reached" }
+          : { coin_balance: "1" };
+        return new Response(JSON.stringify(payload), {
+          headers: { "content-type": "application/json" },
+        });
+      }),
+    );
+    const tool = requireTool(registerExtensionTools().tools, "explorers_balance");
+
+    const result = await tool.execute(
+      "test",
+      {
+        address: "0x0000000000000000000000000000000000000001",
+        chain: "ethereum",
+      },
+      undefined,
+      undefined,
+      unusedContext,
+    );
+
+    expect(result.content).toEqual([
+      {
+        type: "text",
+        text: expect.stringContaining("[blockscout] ethereum balance"),
       },
     ]);
   });

@@ -5,7 +5,7 @@ import { UnsupportedOperationError } from "./core/errors.js";
 import { resolveAddresses, resolveInput } from "./core/input.js";
 import type { Provider } from "./core/provider.js";
 import { create, getDefaultURL, providers } from "./core/registry.js";
-import { PROVIDER_DEFAULT_CHAIN, resolveProvider } from "./core/resolve.js";
+import { PROVIDER_DEFAULT_CHAIN, resolveProvider, withProvider } from "./core/resolve.js";
 import { normalizeChain } from "./core/types.js";
 import type { ProviderCapabilities } from "./core/types.js";
 import { version } from "./version.js";
@@ -103,27 +103,25 @@ export function createMcpServer(): McpServer {
   server.registerTool(
     "explorers_balance",
     {
-      description:
-        "Get the native-token balance for one or more blockchain addresses or ENS names",
+      description: "Get the native-token balance for one or more blockchain addresses or ENS names",
       inputSchema: {
         address: z
-          .union([
-            z.string().trim().min(1),
-            z.array(z.string().trim().min(1)).min(1).max(20),
-          ])
+          .union([z.string().trim().min(1), z.array(z.string().trim().min(1)).min(1).max(20)])
           .describe("Blockchain address or ENS name, or a list of them"),
         ...providerInput,
       },
       annotations: { readOnlyHint: true },
     },
     async ({ address, chain, provider }) => {
-      const selected = await selectedProvider(provider, chain);
-      const resolvedAddresses = await resolveAddresses(address, selected.chain);
-      const getBalance = requireOperation(selected.provider, "getBalance");
-      const balances = await Promise.all(
-        resolvedAddresses.map((resolvedAddress) => getBalance(resolvedAddress, selected.chain)),
-      );
-      return providerResult(selected.name, typeof address === "string" ? balances[0] : balances);
+      const requestedChain = chain === undefined ? undefined : normalizeChain(chain);
+      return withProvider(provider, requestedChain, async (selected) => {
+        const resolvedAddresses = await resolveAddresses(address, selected.chain);
+        const getBalance = requireOperation(selected.provider, "getBalance");
+        const balances = await Promise.all(
+          resolvedAddresses.map((resolvedAddress) => getBalance(resolvedAddress, selected.chain)),
+        );
+        return providerResult(selected.name, typeof address === "string" ? balances[0] : balances);
+      });
     },
   );
 

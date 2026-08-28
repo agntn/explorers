@@ -1,7 +1,15 @@
 /** Auto-select provider by checking env vars */
 
-import { providers, has, supportsChain } from "./registry.js";
-import { UnknownProviderError } from "./errors.js";
+import { create, providers, has, supportsChain } from "./registry.js";
+import {
+  AuthError,
+  RateLimitError,
+  UnknownProviderError,
+  UnsupportedChainError,
+  UnsupportedOperationError,
+} from "./errors.js";
+import type { Provider } from "./provider.js";
+import { normalizeChain } from "./types.js";
 import type { ChainKey } from "./types.js";
 
 const ENV_MAP: Record<string, string[]> = {
@@ -18,6 +26,8 @@ const ENV_MAP: Record<string, string[]> = {
   koios: [],
 };
 
+const OPTIONAL_CREDENTIAL_PROVIDERS: readonly string[] = ["blockchair"];
+
 /** Provider-specific default chains */
 export const PROVIDER_DEFAULT_CHAIN: Partial<Record<string, ChainKey>> = {
   mempool: "bitcoin",
@@ -30,49 +40,96 @@ export const PROVIDER_DEFAULT_CHAIN: Partial<Record<string, ChainKey>> = {
   koios: "cardano",
 };
 
+function rankProviders(chain?: ChainKey, mode: "primary" | "fallback" = "primary"): string[] {
+  const fits = (name: string) => chain === undefined || supportsChain(name, chain);
+  const ranked: string[] = [];
+  const add = (name: string) => {
+    if (has(name) && fits(name) && !ranked.includes(name)) ranked.push(name);
+  };
+
+  for (const [name, envKeys] of Object.entries(ENV_MAP)) {
+    if (envKeys.length > 0 && envKeys.every((key) => process.env[key])) add(name);
+  }
+
+  for (const [name, envKeys] of Object.entries(ENV_MAP)) {
+    if (
+      envKeys.length === 0 ||
+      (mode === "fallback" && OPTIONAL_CREDENTIAL_PROVIDERS.includes(name))
+    ) {
+      add(name);
+    }
+  }
+
+  if (mode === "primary" && chain !== undefined) {
+    for (const name of providers()) add(name);
+  }
+
+  if (ranked.length === 0 && has("blockscout")) ranked.push("blockscout");
+  return ranked;
+}
+
 /**
  * Choose a registered provider for the current environment.
  *
- * An explicit preference wins, even for a chain it cannot serve, so misconfiguration stays
- * visible. Without one, candidates that declare support for the requested chain are considered
- * in order: configured credentials first, then keyless providers, then any chain-capable
- * registry entry, and finally Blockscout.
+ * An explicit preference wins, even for a chain it cannot serve, so misconfiguration stays visible.
+ * Without one, candidates that declare support for the requested chain are considered in order:
+ * configured credentials first, then keyless providers, then any chain-capable registry entry, and
+ * finally Blockscout.
  *
  * @throws {UnknownProviderError} When an explicit preference is not registered.
  */
 export function resolveProvider(preferred?: string, chain?: ChainKey): string {
-  if (preferred) {
-    if (!has(preferred)) {
-      throw new UnknownProviderError(preferred);
-    }
+  if (preferred !== undefined) {
+    if (!has(preferred)) throw new UnknownProviderError(preferred);
     return preferred;
   }
 
-  const fits = (name: string) => chain === undefined || supportsChain(name, chain);
+  return rankProviders(chain)[0] ?? providers()[0] ?? "blockscout";
+}
 
-  // Pick first provider whose env keys are all set
-  for (const [name, envKeys] of Object.entries(ENV_MAP)) {
-    if (!has(name) || !fits(name)) continue;
-    if (envKeys.length === 0) continue;
-    const allSet = envKeys.every((k) => process.env[k]);
-    if (allSet) return name;
-  }
+/** Provider and effective chain selected for one read. */
+export interface ProviderContext {
+  chain: ChainKey;
+  name: string;
+  provider: Provider;
+}
 
-  // Keyless providers next, so bitcoin lands on mempool and ton on TONAPI
-  for (const [name, envKeys] of Object.entries(ENV_MAP)) {
-    if (envKeys.length > 0) continue;
-    if (has(name) && fits(name)) return name;
-  }
+/** Retry one automatic read after a rate limit. The callback must be safe to run twice. */
+export async function withProvider<T>(
+  preferred: string | undefined,
+  chain: ChainKey | undefined,
+  run: (context: ProviderContext) => Promise<T>,
+): Promise<T> {
+  const primaryName = resolveProvider(preferred, chain);
+  const effectiveChain = chain ?? normalizeChain(PROVIDER_DEFAULT_CHAIN[primaryName]);
+  const fallbackName = rankProviders(effectiveChain, "fallback").find(
+    (name) => name !== primaryName,
+  );
+  const execute = async (name: string) =>
+    run({ chain: effectiveChain, name, provider: await create(name) });
 
-  // A chain-capable provider missing credentials fails with a clearer error than a chain mismatch
-  if (chain !== undefined) {
-    for (const name of providers()) {
-      if (supportsChain(name, chain)) return name;
+  try {
+    return await execute(primaryName);
+  } catch (error) {
+    if (
+      preferred !== undefined ||
+      fallbackName === undefined ||
+      !(error instanceof RateLimitError)
+    ) {
+      throw error;
+    }
+
+    try {
+      return await execute(fallbackName);
+    } catch (fallbackError) {
+      if (
+        fallbackError instanceof AuthError ||
+        fallbackError instanceof UnsupportedChainError ||
+        fallbackError instanceof UnsupportedOperationError
+      ) {
+        throw error;
+      }
+      throw fallbackError;
     }
   }
-
-  // Default: blockscout (no key needed)
-  if (has("blockscout")) return "blockscout";
-
-  return providers()[0] ?? "blockscout";
 }

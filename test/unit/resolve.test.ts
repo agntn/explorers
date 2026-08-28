@@ -1,18 +1,37 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { UnknownProviderError } from "../../src/core/errors.js";
-import { resolveProvider } from "../../src/core/resolve.js";
+import {
+  NotFoundError,
+  RateLimitError,
+  UnknownProviderError,
+  UnsupportedOperationError,
+} from "../../src/core/errors.js";
+import { resolveProvider, withProvider } from "../../src/core/resolve.js";
 
 afterEach(() => {
   vi.unstubAllEnvs();
 });
+
+function useNoProviderCredentials() {
+  vi.stubEnv("ETHERSCAN_API_KEY", "");
+  vi.stubEnv("BLOCKCHAIR_API_KEY", "");
+  vi.stubEnv("SOLSCAN_API_KEY", "");
+  vi.stubEnv("HELIUS_API_KEY", "");
+  vi.stubEnv("TRONSCAN_API_KEY", "");
+  vi.stubEnv("BLOCKBERRY_API_KEY", "");
+}
+
+function useOnlyEtherscanCredentials() {
+  useNoProviderCredentials();
+  vi.stubEnv("ETHERSCAN_API_KEY", "configured");
+}
 
 describe("resolveProvider", () => {
   it("honors an explicitly registered provider", () => {
     expect(resolveProvider("mempool")).toBe("mempool");
   });
 
-  it("rejects an unknown explicit provider", () => {
-    expect(() => resolveProvider("missing")).toThrow(UnknownProviderError);
+  it.each(["", "missing"])("rejects an unknown explicit provider", (provider) => {
+    expect(() => resolveProvider(provider)).toThrow(UnknownProviderError);
   });
 
   it("prefers configured credentials before the free fallback", () => {
@@ -98,5 +117,90 @@ describe("resolveProvider", () => {
 
   it("lets an explicit provider win over the requested chain", () => {
     expect(resolveProvider("etherscan", "bitcoin")).toBe("etherscan");
+  });
+});
+
+describe("withProvider", () => {
+  it("keeps the primary chain when a rate limit triggers fallback", async () => {
+    useOnlyEtherscanCredentials();
+    const tried: string[] = [];
+
+    const selected = await withProvider(undefined, undefined, async ({ chain, name }) => {
+      tried.push(name);
+      if (name === "etherscan") throw new RateLimitError(name);
+      return { chain, name };
+    });
+
+    expect(tried).toEqual(["etherscan", "blockscout"]);
+    expect(selected).toEqual({ chain: "ethereum", name: "blockscout" });
+  });
+
+  it("uses a provider with optional credentials after the keyless default", async () => {
+    useNoProviderCredentials();
+    const tried: string[] = [];
+
+    const name = await withProvider(undefined, "ethereum", async ({ name }) => {
+      tried.push(name);
+      if (name === "blockscout") throw new RateLimitError(name);
+      return name;
+    });
+
+    expect(tried).toEqual(["blockscout", "blockchair"]);
+    expect(name).toBe("blockchair");
+  });
+
+  it("does not replace an explicitly selected provider", async () => {
+    const tried: string[] = [];
+
+    await expect(
+      withProvider("etherscan", "ethereum", async ({ name }) => {
+        tried.push(name);
+        throw new RateLimitError(name);
+      }),
+    ).rejects.toBeInstanceOf(RateLimitError);
+    expect(tried).toEqual(["etherscan"]);
+  });
+
+  it("keeps the original rate limit when fallback cannot serve the operation", async () => {
+    useNoProviderCredentials();
+    vi.stubEnv("SOLSCAN_API_KEY", "configured");
+    vi.stubEnv("HELIUS_API_KEY", "configured");
+    const primaryError = new RateLimitError("solscan");
+    const tried: string[] = [];
+
+    await expect(
+      withProvider(undefined, "solana", async ({ name }) => {
+        tried.push(name);
+        if (name === "solscan") throw primaryError;
+        throw new UnsupportedOperationError("getBalance", name);
+      }),
+    ).rejects.toBe(primaryError);
+    expect(tried).toEqual(["solscan", "helius"]);
+  });
+
+  it("does not retry failures other than rate limits", async () => {
+    useOnlyEtherscanCredentials();
+    const tried: string[] = [];
+
+    await expect(
+      withProvider(undefined, "ethereum", async ({ name }) => {
+        tried.push(name);
+        throw new NotFoundError("balance", name);
+      }),
+    ).rejects.toBeInstanceOf(NotFoundError);
+    expect(tried).toEqual(["etherscan"]);
+  });
+
+  it("tries only one fallback provider", async () => {
+    useOnlyEtherscanCredentials();
+    const tried: string[] = [];
+
+    await expect(
+      withProvider(undefined, "ethereum", async ({ name }) => {
+        tried.push(name);
+        throw new RateLimitError(name);
+      }),
+    ).rejects.toBeInstanceOf(RateLimitError);
+    expect(tried).toEqual(["etherscan", "blockscout"]);
   });
 });
