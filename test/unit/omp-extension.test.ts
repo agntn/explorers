@@ -1,3 +1,8 @@
+import { execFileSync } from "node:child_process";
+import { copyFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import * as TypeBox from "@oh-my-pi/omptype/typebox";
 import type { ExtensionAPI, ExtensionContext, ToolDefinition } from "@oh-my-pi/pi-coding-agent";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -53,6 +58,57 @@ const unusedContext = {} as ExtensionContext;
 describe("explorers OMP extension", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
+  });
+
+  it("loads its sibling dist instead of another installed package copy", () => {
+    const root = mkdtempSync(join(tmpdir(), "explorers-omp-loader-"));
+
+    try {
+      const packageRoot = join(root, "package");
+      const extensionDir = join(packageRoot, "packages/omp/extensions");
+      writeFileSync(join(root, "package.json"), '{"type":"module"}\n');
+      const installedPackageDir = join(packageRoot, "node_modules/@agntn/explorers");
+      mkdirSync(extensionDir, { recursive: true });
+      mkdirSync(join(packageRoot, "dist"), { recursive: true });
+      mkdirSync(installedPackageDir, { recursive: true });
+      copyFileSync(
+        fileURLToPath(new URL("../../packages/omp/extensions/explorers.ts", import.meta.url)),
+        join(extensionDir, "explorers.ts"),
+      );
+      writeFileSync(
+        join(packageRoot, "dist/index.mjs"),
+        'export function providers() { return ["relative-dist"]; }\n',
+      );
+      writeFileSync(
+        join(installedPackageDir, "package.json"),
+        '{"name":"@agntn/explorers","type":"module","exports":"./index.mjs"}\n',
+      );
+      writeFileSync(
+        join(installedPackageDir, "index.mjs"),
+        'export function providers() { return ["poisoned-bare-import"]; }\n',
+      );
+      const probePath = join(root, "probe.ts");
+      writeFileSync(
+        probePath,
+        `import extension from "./package/packages/omp/extensions/explorers.ts";
+const tools = new Map<string, any>();
+extension({
+  pi: { Text: class {} },
+  typebox: { Type: new Proxy({}, { get: () => () => ({}) }) },
+  setLabel() {},
+  registerTool(tool: any) { tools.set(tool.name, tool); },
+} as any);
+const result = await tools.get("explorers_providers").execute();
+console.log(result.content[0].text);
+`,
+      );
+
+      const tsx = fileURLToPath(new URL("../../node_modules/.bin/tsx", import.meta.url));
+      const output = execFileSync(tsx, [probePath], { cwd: root, encoding: "utf8" });
+      expect(output).toBe("Registered providers (1):\n  relative-dist\n");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 
   it("registers the complete read-only tool set under an extension label", () => {

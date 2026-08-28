@@ -7,14 +7,14 @@ import type * as ExplorersModule from "../../../src/index.js";
 const sourceModulePath = fileURLToPath(new URL("../../../src/index.ts", import.meta.url));
 let explorersModulePromise: Promise<typeof ExplorersModule> | undefined;
 
-/** Load current source in development and fall back to the installed package in distributions. */
+/** Load current source in development and the sibling build in distributions. */
 function loadLib(): Promise<typeof ExplorersModule> {
   if (explorersModulePromise) return explorersModulePromise;
 
   const loaded: Promise<typeof ExplorersModule> = existsSync(sourceModulePath)
     ? // @ts-expect-error — OMP runs TypeScript extension sources directly in development
       import("../../../src/index.ts")
-    : (import("@agntn/explorers") as unknown as Promise<typeof ExplorersModule>);
+    : (import("../../../dist/index.mjs") as unknown as Promise<typeof ExplorersModule>);
   explorersModulePromise = loaded;
   return loaded;
 }
