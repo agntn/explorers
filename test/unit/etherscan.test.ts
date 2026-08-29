@@ -195,6 +195,36 @@ describe("etherscan provider", () => {
     await expect(provider.getTxHistory(ADDRESS, "ethereum")).resolves.toEqual([]);
   });
 
+  it.each([
+    ["selector-only calldata", "0xd0e30db0", true],
+    ["empty calldata", "0x", false],
+  ])("classifies %s in transaction details", async (_case, input, expected) => {
+    const fetch = vi.fn(async (request: string | URL | Request) => {
+      const action = new URL(String(request)).searchParams.get("action");
+      const result =
+        action === "eth_getTransactionByHash"
+          ? {
+              hash: "0xabc",
+              blockNumber: "0x10",
+              from: ADDRESS,
+              to: "0x0000000000000000000000000000000000000001",
+              value: "0x0",
+              gasPrice: "0x3b9aca00",
+              input,
+            }
+          : { status: "0x1", gasUsed: "0x5208" };
+      return new Response(JSON.stringify({ jsonrpc: "2.0", id: 1, result }), {
+        headers: { "Content-Type": "application/json" },
+      });
+    });
+    vi.stubGlobal("fetch", fetch);
+    const provider = await create("etherscan", { apiKey: "secret" });
+
+    const transaction = await provider.getTxDetail!("0xabc", "ethereum");
+
+    expect(transaction.isContractInteraction).toBe(expected);
+  });
+
   it("rejects networks that the unified endpoint does not serve", async () => {
     await expect(create("etherscan", { apiKey: "secret", defaultChain: "fantom" })).rejects.toThrow(
       UnsupportedChainError,
