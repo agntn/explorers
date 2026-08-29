@@ -31,6 +31,53 @@ async function connectTestClient(): Promise<Client> {
   return client;
 }
 
+interface ToolContentView {
+  readonly type: string;
+  readonly text?: string;
+}
+
+interface ToolResultView {
+  readonly content: readonly ToolContentView[];
+  readonly isError: boolean;
+}
+
+function isUnknownArray(value: unknown): value is unknown[] {
+  return Array.isArray(value);
+}
+
+function parseToolResult(value: unknown): ToolResultView {
+  if (typeof value !== "object" || value === null || !("content" in value)) {
+    throw new TypeError("Tool returned no content array");
+  }
+  const contentValue = value.content;
+  if (!isUnknownArray(contentValue)) throw new TypeError("Tool content is not an array");
+
+  const content = contentValue.map((part): ToolContentView => {
+    if (typeof part !== "object" || part === null || !("type" in part)) {
+      throw new TypeError("Tool content item has no type");
+    }
+    const type = part.type;
+    const text = "text" in part ? part.text : undefined;
+    if (typeof type !== "string" || (text !== undefined && typeof text !== "string")) {
+      throw new TypeError("Tool content item has an invalid shape");
+    }
+    return { type, text };
+  });
+  return { content, isError: "isError" in value && value.isError === true };
+}
+
+function textContaining(expected: string): unknown {
+  return expect.stringContaining(expected);
+}
+
+function notTextContaining(expected: string): unknown {
+  return expect.not.stringContaining(expected);
+}
+
+function textMatching(expected: RegExp): unknown {
+  return expect.stringMatching(expected);
+}
+
 class DisabledProvider extends Provider {
   static readonly key = "blockscout";
 
@@ -105,12 +152,14 @@ describe("Explorers MCP server", () => {
       "explorers_block",
     ]);
 
-    const response = await client.callTool({ name: "explorers_providers", arguments: {} });
+    const response = parseToolResult(
+      await client.callTool({ name: "explorers_providers", arguments: {} }),
+    );
     expect(response.isError).not.toBe(true);
     expect(response.content).toEqual([
       {
         type: "text",
-        text: expect.stringContaining('"name": "blockscout"'),
+        text: textContaining('"name": "blockscout"'),
       },
     ]);
   });
@@ -118,15 +167,17 @@ describe("Explorers MCP server", () => {
   it("returns an MCP tool error for an unsupported provider operation", async () => {
     const client = await connectTestClient();
 
-    const response = await client.callTool({
-      name: "explorers_block",
-      arguments: { blockNumber: 1, chain: "aptos", provider: "aptos" },
-    });
+    const response = parseToolResult(
+      await client.callTool({
+        name: "explorers_block",
+        arguments: { blockNumber: 1, chain: "aptos", provider: "aptos" },
+      }),
+    );
     expect(response.isError).toBe(true);
     expect(response.content).toEqual([
       {
         type: "text",
-        text: expect.stringContaining('Operation "getBlockInfo" not supported by aptos'),
+        text: textContaining('Operation "getBlockInfo" not supported by aptos'),
       },
     ]);
   });
@@ -136,15 +187,17 @@ describe("Explorers MCP server", () => {
     async (provider) => {
       const client = await connectTestClient();
 
-      const response = await client.callTool({
-        name: "explorers_block",
-        arguments: { blockNumber: 1, chain: "bitcoin", provider },
-      });
+      const response = parseToolResult(
+        await client.callTool({
+          name: "explorers_block",
+          arguments: { blockNumber: 1, chain: "bitcoin", provider },
+        }),
+      );
       expect(response.isError).toBe(true);
       expect(response.content).toEqual([
         {
           type: "text",
-          text: expect.not.stringContaining("blockscout"),
+          text: notTextContaining("blockscout"),
         },
       ]);
     },
@@ -163,18 +216,20 @@ describe("Explorers MCP server", () => {
     );
     const client = await connectTestClient();
 
-    const response = await client.callTool({
-      name: "explorers_balance",
-      arguments: {
-        address: "0x0000000000000000000000000000000000000001",
-        provider: "blockscout",
-      },
-    });
+    const response = parseToolResult(
+      await client.callTool({
+        name: "explorers_balance",
+        arguments: {
+          address: "0x0000000000000000000000000000000000000001",
+          provider: "blockscout",
+        },
+      }),
+    );
     expect(response.isError).not.toBe(true);
     expect(response.content).toEqual([
       {
         type: "text",
-        text: expect.stringMatching(
+        text: textMatching(
           /"provider": "blockscout"[\s\S]*"balance": "1"[\s\S]*"fetchedAt": "2026-08-28T12:34:56.789Z"[\s\S]*"blockNumber": null[\s\S]*"blockHash": null/,
         ),
       },
@@ -198,19 +253,21 @@ describe("Explorers MCP server", () => {
     );
     const client = await connectTestClient();
 
-    const response = await client.callTool({
-      name: "explorers_balance",
-      arguments: {
-        address: "0x0000000000000000000000000000000000000001",
-        chain: "ethereum",
-      },
-    });
+    const response = parseToolResult(
+      await client.callTool({
+        name: "explorers_balance",
+        arguments: {
+          address: "0x0000000000000000000000000000000000000001",
+          chain: "ethereum",
+        },
+      }),
+    );
 
     expect(response.isError).not.toBe(true);
     expect(response.content).toEqual([
       {
         type: "text",
-        text: expect.stringMatching(/"provider": "blockscout"[\s\S]*"balance": "1"/),
+        text: textMatching(/"provider": "blockscout"[\s\S]*"balance": "1"/),
       },
     ]);
   });
@@ -226,16 +283,18 @@ describe("Explorers MCP server", () => {
     );
     const client = await connectTestClient();
 
-    const response = await client.callTool({
-      name: "explorers_balance",
-      arguments: {
-        address: [
-          "0x0000000000000000000000000000000000000001",
-          "0x0000000000000000000000000000000000000002",
-        ],
-        provider: "blockscout",
-      },
-    });
+    const response = parseToolResult(
+      await client.callTool({
+        name: "explorers_balance",
+        arguments: {
+          address: [
+            "0x0000000000000000000000000000000000000001",
+            "0x0000000000000000000000000000000000000002",
+          ],
+          provider: "blockscout",
+        },
+      }),
+    );
     expect(response.isError).not.toBe(true);
     const [content] = response.content as Array<{ type: string; text: string }>;
     const payload = JSON.parse(content!.text) as {
@@ -257,13 +316,15 @@ describe("Explorers MCP server", () => {
     const client = await connectTestClient();
 
     for (const address of ["   ", ["   "]]) {
-      const response = await client.callTool({
-        name: "explorers_balance",
-        arguments: { address, provider: "blockscout" },
-      });
+      const response = parseToolResult(
+        await client.callTool({
+          name: "explorers_balance",
+          arguments: { address, provider: "blockscout" },
+        }),
+      );
       expect(response.isError).toBe(true);
       expect(response.content).toEqual([
-        { type: "text", text: expect.stringContaining("Invalid arguments") },
+        { type: "text", text: textContaining("Invalid arguments") },
       ]);
     }
     expect(fetchSpy).not.toHaveBeenCalled();
@@ -272,10 +333,12 @@ describe("Explorers MCP server", () => {
   it("rejects an empty address list", async () => {
     const client = await connectTestClient();
 
-    const response = await client.callTool({
-      name: "explorers_balance",
-      arguments: { address: [], provider: "blockscout" },
-    });
+    const response = parseToolResult(
+      await client.callTool({
+        name: "explorers_balance",
+        arguments: { address: [], provider: "blockscout" },
+      }),
+    );
     expect(response.isError).toBe(true);
   });
 
@@ -294,12 +357,12 @@ describe("Explorers MCP server", () => {
     register(DisabledProvider, { chains: ["ethereum"] });
     const client = await connectTestClient();
 
-    const response = await client.callTool({ name: tool, arguments: args });
+    const response = parseToolResult(await client.callTool({ name: tool, arguments: args }));
     expect(response.isError).toBe(true);
     expect(response.content).toEqual([
       {
         type: "text",
-        text: expect.stringContaining(`Operation "${operation}" not supported by blockscout`),
+        text: textContaining(`Operation "${operation}" not supported by blockscout`),
       },
     ]);
   });
@@ -308,15 +371,17 @@ describe("Explorers MCP server", () => {
     register(DisabledProvider, { chains: ["ethereum"] });
     const client = await connectTestClient();
 
-    const response = await client.callTool({
-      name: "explorers_block",
-      arguments: { blockNumber: 1, provider: DisabledProvider.key },
-    });
+    const response = parseToolResult(
+      await client.callTool({
+        name: "explorers_block",
+        arguments: { blockNumber: 1, provider: DisabledProvider.key },
+      }),
+    );
     expect(response.isError).toBe(true);
     expect(response.content).toEqual([
       {
         type: "text",
-        text: expect.stringContaining('Operation "getBlockInfo" not supported by blockscout'),
+        text: textContaining('Operation "getBlockInfo" not supported by blockscout'),
       },
     ]);
   });
@@ -334,15 +399,17 @@ describe("Explorers MCP server", () => {
     );
     const client = await connectTestClient();
 
-    const response = await client.callTool({
-      name: "explorers_contract",
-      arguments: { address: "vitalik.eth", chain: "ethereum", provider: ContractProvider.key },
-    });
+    const response = parseToolResult(
+      await client.callTool({
+        name: "explorers_contract",
+        arguments: { address: "vitalik.eth", chain: "ethereum", provider: ContractProvider.key },
+      }),
+    );
     expect(response.isError).not.toBe(true);
     expect(response.content).toEqual([
       {
         type: "text",
-        text: expect.stringContaining(`"address": "${resolvedAddress}"`),
+        text: textContaining(`"address": "${resolvedAddress}"`),
       },
     ]);
   });

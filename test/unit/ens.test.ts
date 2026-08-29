@@ -38,10 +38,9 @@ describe("ens helpers", () => {
 
     await resolveEns("name#.eth");
 
-    expect(fetch).toHaveBeenCalledWith(
-      "https://api.ensideas.com/ens/resolve/name%23.eth",
-      expect.objectContaining({ signal: expect.any(AbortSignal) }),
-    );
+    const [url, init] = fetch.mock.calls[0] ?? [];
+    expect(url).toBe("https://api.ensideas.com/ens/resolve/name%23.eth");
+    expect(init?.signal).toBeInstanceOf(AbortSignal);
   });
 
   it("resolveEns resolves vitalik.eth to known address", async () => {

@@ -1,9 +1,17 @@
 /** Get current gas prices */
 import { defineCommand } from "citty";
 import consola from "consola";
-import { resolveProvider, PROVIDER_DEFAULT_CHAIN } from "../core/resolve.js";
-import { create } from "../core/registry.js";
-import { normalizeChain } from "../core/types.js";
+import type { GasData } from "../core/types.js";
+import { failCommand, reportCommandError, selectProvider } from "./shared.js";
+
+function renderGas(providerName: string, gas: Readonly<GasData>): void {
+  consola.log(`[${providerName}] Gas prices on ${gas.chain}`);
+  if (gas.safeGasPrice) consola.log(`  Safe/Low: ${gas.safeGasPrice} ${gas.unit}`);
+  if (gas.proposedGasPrice) consola.log(`  Average:  ${gas.proposedGasPrice} ${gas.unit}`);
+  if (gas.fastGasPrice) consola.log(`  Fast:     ${gas.fastGasPrice} ${gas.unit}`);
+  if (gas.baseFee) consola.log(`  Base fee: ${gas.baseFee} ${gas.unit}`);
+  if (gas.priorityFee) consola.log(`  Priority: ${gas.priorityFee} ${gas.unit}`);
+}
 
 export default defineCommand({
   meta: {
@@ -24,27 +32,18 @@ export default defineCommand({
   },
   async run({ args }) {
     try {
-      const chainInput = args.chain as string | undefined;
-      const requestedChain = chainInput === undefined ? undefined : normalizeChain(chainInput);
-      const providerName = resolveProvider(args.provider as string | undefined, requestedChain);
-      const provider = await create(providerName);
-      const chain = requestedChain ?? normalizeChain(PROVIDER_DEFAULT_CHAIN[providerName]);
-
-      const caps = provider.capabilities;
-      if (!caps.gasData || !provider.getGasData) {
-        consola.error(`Provider "${providerName}" does not support gas data`);
-        process.exit(1);
+      const selected = await selectProvider(
+        args.chain as string | undefined,
+        args.provider as string | undefined,
+      );
+      const getGasData = selected.provider.getGasData?.bind(selected.provider);
+      if (!selected.provider.capabilities.gasData || !getGasData) {
+        failCommand(`Provider "${selected.name}" does not support gas data`);
       }
-      const gas = await provider.getGasData(chain);
-      consola.log(`[${providerName}] Gas prices on ${gas.chain}`);
-      if (gas.safeGasPrice) consola.log(`  Safe/Low: ${gas.safeGasPrice} ${gas.unit}`);
-      if (gas.proposedGasPrice) consola.log(`  Average:  ${gas.proposedGasPrice} ${gas.unit}`);
-      if (gas.fastGasPrice) consola.log(`  Fast:     ${gas.fastGasPrice} ${gas.unit}`);
-      if (gas.baseFee) consola.log(`  Base fee: ${gas.baseFee} ${gas.unit}`);
-      if (gas.priorityFee) consola.log(`  Priority: ${gas.priorityFee} ${gas.unit}`);
+      const gas = await getGasData(selected.chain);
+      renderGas(selected.name, gas);
     } catch (error) {
-      consola.error(`Error: ${error instanceof Error ? error.message : error}`);
-      process.exit(1);
+      reportCommandError(error);
     }
   },
 });

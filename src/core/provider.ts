@@ -13,7 +13,7 @@ import type {
   TxHistoryOptions,
 } from "./types.js";
 import { getJSON, postJSON } from "./client.js";
-import type { ClientOptions } from "./client.js";
+import type { ClientRequestOptions } from "./client.js";
 import type { ProviderConfig } from "./types.js";
 
 /**
@@ -26,11 +26,15 @@ import type { ProviderConfig } from "./types.js";
 export abstract class Provider {
   private readonly timeout: number | undefined;
 
-  constructor(config: ProviderConfig = {}) {
+  constructor(config: Readonly<ProviderConfig> = {}) {
     this.timeout = config.timeout;
   }
 
-  /** Registry key owned by the concrete class. */
+  /**
+   * Registry key owned by the concrete class.
+   *
+   * @returns {string} The resulting value.
+   */
   get name(): string {
     return (this.constructor as ProviderConstructor).key;
   }
@@ -45,26 +49,44 @@ export abstract class Provider {
   abstract getTxHistory(
     address: string,
     chain?: ChainKey,
-    options?: TxHistoryOptions,
+    options?: Readonly<TxHistoryOptions>,
   ): Promise<Transaction[]>;
 
-  /** Execute a provider-attributed GET request using the configured timeout. */
+  /**
+   * Execute a provider-attributed GET request using the configured timeout.
+   *
+   * @param {string} url - The `url` value.
+   * @param {Omit<ClientRequestOptions, "provider" | "timeout">} options - Per-request headers and cancellation.
+   * @returns {Promise<T>} The resulting value.
+   */
   protected getJSON<T>(
     url: string,
-    options?: Omit<ClientOptions, "provider" | "timeout">,
+    options?: Omit<ClientRequestOptions, "provider" | "timeout">,
   ): Promise<T> {
     return getJSON<T>(url, { ...options, timeout: this.timeout, provider: this.name });
   }
 
-  /** Execute a provider-attributed JSON POST request using the configured timeout. */
+  /**
+   * Execute a provider-attributed JSON POST request using the configured timeout.
+   *
+   * @param {string} url - The `url` value.
+   * @param {unknown} body - The `body` value.
+   * @returns {Promise<T>} The resulting value.
+   */
   protected postJSON<T>(url: string, body: unknown): Promise<T> {
     return postJSON<T>(url, body, { timeout: this.timeout, provider: this.name });
   }
 
-  /** Date a completed balance read and preserve any chain position the response exposes. */
+  /**
+   * Date a completed balance read and preserve any chain position the response exposes.
+   *
+   * @param {Omit<Balance, "fetchedAt" | "blockNumber" | "blockHash">} balance - The `balance` value.
+   * @param {Readonly<{ blockNumber?: number | null; blockHash?: string | null }>} position - The `position` value.
+   * @returns {Balance} The resulting value.
+   */
   protected snapshotBalance(
     balance: Omit<Balance, "fetchedAt" | "blockNumber" | "blockHash">,
-    position: { blockNumber?: number | null; blockHash?: string | null } = {},
+    position: Readonly<{ blockNumber?: number | null; blockHash?: string | null }> = {},
   ): Balance {
     return {
       ...balance,
@@ -79,7 +101,7 @@ export abstract class Provider {
 export interface ProviderConstructor {
   /** Stable registry key owned by the concrete class. */
   readonly key: string;
-  new (config: ProviderConfig): Provider;
+  new (config: Readonly<ProviderConfig>): Provider;
 }
 
 /** What the registry answers about a provider without loading its module. */
@@ -118,14 +140,14 @@ export interface Provider {
   getTokenBalances?(
     address: string,
     chain?: ChainKey,
-    options?: TokenBalanceOptions,
+    options?: Readonly<TokenBalanceOptions>,
   ): Promise<TokenBalance[]>;
 
   /** List fungible-token transfers involving an address. */
   getTokenTransfers?(
     address: string,
     chain?: ChainKey,
-    options?: TokenTransferOptions,
+    options?: Readonly<TokenTransferOptions>,
   ): Promise<TokenTransfer[]>;
 
   /** Fetch the provider's current gas-price suggestions. */

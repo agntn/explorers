@@ -43,113 +43,113 @@ const FEE_UNITS: Partial<Record<ChainKey, GasUnit>> = {
 };
 
 interface MempoolAddressSummary {
-  address: string;
-  chain_stats: {
-    funded_txo_count: number;
-    funded_txo_sum: number | string;
-    spent_txo_count: number;
-    spent_txo_sum: number | string;
-    tx_count: number;
+  readonly address: string;
+  readonly chain_stats: {
+    readonly funded_txo_count: number;
+    readonly funded_txo_sum: number | string;
+    readonly spent_txo_count: number;
+    readonly spent_txo_sum: number | string;
+    readonly tx_count: number;
   };
-  mempool_stats: {
-    funded_txo_count: number;
-    funded_txo_sum: number | string;
-    spent_txo_count: number;
-    spent_txo_sum: number | string;
-    tx_count: number;
+  readonly mempool_stats: {
+    readonly funded_txo_count: number;
+    readonly funded_txo_sum: number | string;
+    readonly spent_txo_count: number;
+    readonly spent_txo_sum: number | string;
+    readonly tx_count: number;
   };
 }
 
 interface MempoolTx {
-  txid: string;
-  version: number;
-  locktime: number;
-  vin: Array<{
-    txid: string;
-    vout: number;
-    prevout: {
-      scriptpubkey: string;
-      scriptpubkey_asm: string;
-      scriptpubkey_type: string;
-      scriptpubkey_address?: string;
-      value: number;
+  readonly txid: string;
+  readonly version: number;
+  readonly locktime: number;
+  readonly vin: ReadonlyArray<{
+    readonly txid: string;
+    readonly vout: number;
+    readonly prevout: {
+      readonly scriptpubkey: string;
+      readonly scriptpubkey_asm: string;
+      readonly scriptpubkey_type: string;
+      readonly scriptpubkey_address?: string;
+      readonly value: number;
     } | null;
-    scriptsig: string;
-    sequence: number;
-    witness?: string[];
+    readonly scriptsig: string;
+    readonly sequence: number;
+    readonly witness?: readonly string[];
   }>;
-  vout: Array<{
-    scriptpubkey: string;
-    scriptpubkey_asm: string;
-    scriptpubkey_type: string;
-    scriptpubkey_address?: string;
-    value: number;
+  readonly vout: ReadonlyArray<{
+    readonly scriptpubkey: string;
+    readonly scriptpubkey_asm: string;
+    readonly scriptpubkey_type: string;
+    readonly scriptpubkey_address?: string;
+    readonly value: number;
   }>;
-  size: number;
-  weight: number;
-  fee: number;
-  status: {
-    confirmed: boolean;
-    block_height?: number;
-    block_hash?: string;
-    block_time?: number;
+  readonly size: number;
+  readonly weight: number;
+  readonly fee: number;
+  readonly status: {
+    readonly confirmed: boolean;
+    readonly block_height?: number;
+    readonly block_hash?: string;
+    readonly block_time?: number;
   };
 }
 
 interface MempoolAddressTx {
-  txid: string;
-  version: number;
-  locktime: number;
-  vin: Array<{
-    txid: string;
-    vout: number;
-    prevout: {
-      scriptpubkey_address?: string;
-      value: number;
+  readonly txid: string;
+  readonly version: number;
+  readonly locktime: number;
+  readonly vin: ReadonlyArray<{
+    readonly txid: string;
+    readonly vout: number;
+    readonly prevout: {
+      readonly scriptpubkey_address?: string;
+      readonly value: number;
     } | null;
-    scriptsig: string;
-    sequence: number;
+    readonly scriptsig: string;
+    readonly sequence: number;
   }>;
-  vout: Array<{
-    scriptpubkey?: string;
-    scriptpubkey_address?: string;
-    value: number;
+  readonly vout: ReadonlyArray<{
+    readonly scriptpubkey?: string;
+    readonly scriptpubkey_address?: string;
+    readonly value: number;
   }>;
-  size: number;
-  weight: number;
-  fee: number;
-  status: {
-    confirmed: boolean;
-    block_height?: number;
-    block_time?: number;
+  readonly size: number;
+  readonly weight: number;
+  readonly fee: number;
+  readonly status: {
+    readonly confirmed: boolean;
+    readonly block_height?: number;
+    readonly block_time?: number;
   };
 }
 
 interface MempoolFees {
-  fastestFee: number;
-  halfHourFee: number;
-  hourFee: number;
-  economyFee: number;
-  minimumFee: number;
+  readonly fastestFee: number;
+  readonly halfHourFee: number;
+  readonly hourFee: number;
+  readonly economyFee: number;
+  readonly minimumFee: number;
 }
 
 interface MempoolBlock {
-  id: string;
-  height: number;
-  version: number;
-  timestamp: number;
-  bits: number;
-  nonce: number;
-  difficulty: number;
-  merkle_root: string;
-  tx_count: number;
-  size: number;
-  weight: number;
-  previousblockhash: string;
-  mediantime: number;
+  readonly id: string;
+  readonly height: number;
+  readonly version: number;
+  readonly timestamp: number;
+  readonly bits: number;
+  readonly nonce: number;
+  readonly difficulty: number;
+  readonly merkle_root: string;
+  readonly tx_count: number;
+  readonly size: number;
+  readonly weight: number;
+  readonly previousblockhash: string;
+  readonly mediantime: number;
 }
 
-/** Convert the smallest unit to a coin string without floating-point arithmetic. */
+/* Convert the smallest unit to a coin string without floating-point arithmetic. */
 function satToCoin(sat: number | bigint): string {
   return formatWei(String(sat), 8);
 }
@@ -176,7 +176,7 @@ const PUSHDATA_WIDTH: Record<number, number> = {
 
 let utf8: TextDecoder | undefined;
 
-/** `ignoreBOM` means "leave a leading U+FEFF in the string", which is where the filter can see it. */
+/* `ignoreBOM` means "leave a leading U+FEFF in the string", which is where the filter can see it. */
 function decoder(): TextDecoder {
   utf8 ??= new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
   return utf8;
@@ -185,7 +185,7 @@ function decoder(): TextDecoder {
 /** Unicode format characters: invisible on screen, which covers the bidi controls as well. */
 const FORMAT_CHARACTER = /\p{Cf}/u;
 
-/**
+/*
  * Decide whether decoded chain data is worth showing as text.
  *
  * A payload anyone can pay to publish must not steer a terminal, reorder the line that renders it,
@@ -221,7 +221,7 @@ function toHex(bytes: Uint8Array): string {
   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
-/** Read a little-endian push length. Callers check first that all `width` bytes are there. */
+/* Read a little-endian push length. Callers check first that all `width` bytes are there. */
 function readPushLength(script: Uint8Array, offset: number, width: number): number {
   let length = 0;
   for (let i = 0; i < width; i += 1) {
@@ -230,7 +230,7 @@ function readPushLength(script: Uint8Array, offset: number, width: number): numb
   return length;
 }
 
-/**
+/*
  * Value an opcode pushes on its own, for the small constants that carry no bytes after them.
  *
  * Nothing comes back for OP_RESERVED: Bitcoin Core counts it as push-type in `IsPushOnly`, yet it
@@ -243,7 +243,7 @@ function constantPush(opcode: number): Uint8Array | undefined {
   return undefined;
 }
 
-/** Read a payload as text, leaving binary carriers (Runes, Omni, hashes) without a text reading. */
+/* Read a payload as text, leaving binary carriers (Runes, Omni, hashes) without a text reading. */
 function decodeText(payload: Uint8Array): string | undefined {
   try {
     const text = decoder().decode(payload);
@@ -257,7 +257,18 @@ function toPayload(bytes: Uint8Array): OpReturnPayload {
   return { hex: toHex(bytes), text: decodeText(bytes) };
 }
 
-/**
+function dataPush(
+  script: Uint8Array,
+  cursor: number,
+  opcode: number,
+): { readonly cursor: number; readonly length: number } | undefined {
+  const width = PUSHDATA_WIDTH[opcode];
+  if (width === undefined) return { cursor, length: opcode };
+  if (cursor + width > script.length) return undefined;
+  return { cursor: cursor + width, length: readPushLength(script, cursor, width) };
+}
+
+/*
  * Read the data pushes of an OP_RETURN output.
  *
  * Any other output yields nothing, and is rejected on the hex so a busy address does not pay to
@@ -287,58 +298,74 @@ function parseOpReturn(scriptHex: string): OpReturnPayload[] {
       continue;
     }
 
-    let length = opcode;
-    const width = PUSHDATA_WIDTH[opcode];
-    if (width !== undefined) {
-      if (cursor + width > script.length) break;
-      length = readPushLength(script, cursor, width);
-      cursor += width;
-    }
+    const push = dataPush(script, cursor, opcode);
+    if (!push || push.cursor + push.length > script.length) break;
 
-    if (cursor + length > script.length) break;
-
-    const payload = script.subarray(cursor, cursor + length);
-    cursor += length;
+    const payload = script.subarray(push.cursor, push.cursor + push.length);
+    cursor = push.cursor + push.length;
     payloads.push(toPayload(payload));
   }
 
   return payloads;
 }
 
-/** Gather the OP_RETURN payloads of all outputs, or nothing when the transaction carries none. */
-function collectOpReturns(vout: Array<{ scriptpubkey?: string }>): OpReturnPayload[] | undefined {
+/* Gather the OP_RETURN payloads of all outputs, or nothing when the transaction carries none. */
+function collectOpReturns(
+  vout: readonly { readonly scriptpubkey?: string }[],
+): OpReturnPayload[] | undefined {
   const payloads = vout.flatMap((out) => (out.scriptpubkey ? parseOpReturn(out.scriptpubkey) : []));
   return payloads.length > 0 ? payloads : undefined;
 }
 
-function mapTx(raw: MempoolAddressTx, address: string): Transaction {
-  // Determine direction: is this address receiving or sending?
-  const totalIn = raw.vin
-    .filter((v) => v.prevout?.scriptpubkey_address === address)
-    .reduce((sum, v) => sum + (v.prevout?.value ?? 0), 0);
-  const totalOut = raw.vout
-    .filter((v) => v.scriptpubkey_address === address)
-    .reduce((sum, v) => sum + v.value, 0);
+function mempoolTimestamp(status: Readonly<MempoolAddressTx["status"]>): string | undefined {
+  return status.block_time ? new Date(status.block_time * 1000).toISOString() : undefined;
+}
 
-  const netSat = totalOut - totalIn;
-  const isSend = totalIn > 0;
+function mempoolAddressTotals(
+  raw: Readonly<MempoolAddressTx>,
+  address: string,
+): { readonly input: number; readonly output: number } {
+  const input = raw.vin
+    .filter((item) => item.prevout?.scriptpubkey_address === address)
+    .reduce((sum, item) => sum + (item.prevout?.value ?? 0), 0);
+  const output = raw.vout
+    .filter((item) => item.scriptpubkey_address === address)
+    .reduce((sum, item) => sum + item.value, 0);
+  return { input, output };
+}
+
+function mempoolSendingParties(
+  raw: Readonly<MempoolAddressTx>,
+  address: string,
+): { readonly from: string; readonly to: string } {
+  const sender = raw.vin.find((item) => item.prevout?.scriptpubkey_address === address);
+  const recipient = raw.vout.find((item) => item.scriptpubkey_address !== address);
+  return {
+    from: sender?.prevout?.scriptpubkey_address ?? address,
+    to: recipient?.scriptpubkey_address ?? address,
+  };
+}
+
+function mempoolAddressParties(
+  raw: Readonly<MempoolAddressTx>,
+  address: string,
+  isSend: boolean,
+): { readonly from: string; readonly to: string } {
+  if (isSend) return mempoolSendingParties(raw, address);
+  return { from: raw.vin[0]?.prevout?.scriptpubkey_address ?? "unknown", to: address };
+}
+
+function mapTx(raw: Readonly<MempoolAddressTx>, address: string): Transaction {
+  const totals = mempoolAddressTotals(raw, address);
+  const netSat = totals.output - totals.input;
+  const isSend = totals.input > 0;
   const transferredSat = isSend ? Math.max(0, Math.abs(netSat) - raw.fee) : netSat;
-
-  // Find the primary counterparty
-  const from = isSend
-    ? (raw.vin.find((v) => v.prevout?.scriptpubkey_address === address)?.prevout
-        ?.scriptpubkey_address ?? address)
-    : (raw.vin[0]?.prevout?.scriptpubkey_address ?? "unknown");
-  const to = isSend
-    ? (raw.vout.find((v) => v.scriptpubkey_address !== address)?.scriptpubkey_address ?? address)
-    : address;
+  const { from, to } = mempoolAddressParties(raw, address, isSend);
 
   return {
     hash: raw.txid,
     blockNumber: raw.status.block_height ?? 0,
-    timestamp: raw.status.block_time
-      ? new Date(raw.status.block_time * 1000).toISOString()
-      : undefined,
+    timestamp: mempoolTimestamp(raw.status),
     from,
     to: to ?? null,
     value: transferredSat.toString(),
@@ -358,7 +385,7 @@ export class Mempool extends Provider {
   private baseUrl: string | undefined;
   private defaultChain: ChainKey;
 
-  constructor(config: ProviderConfig) {
+  constructor(config: Readonly<ProviderConfig>) {
     super(config);
     this.baseUrl = config.baseUrl ? normalizeBaseUrl(config.baseUrl) : undefined;
     this.defaultChain = config.defaultChain ?? "bitcoin";
@@ -376,7 +403,7 @@ export class Mempool extends Provider {
     };
   }
 
-  /** Chain membership decides support; an explicit `baseUrl` then overrides the host. */
+  /* Chain membership decides support; an explicit `baseUrl` then overrides the host. */
   private base(chain: ChainKey): string {
     const base = CHAIN_BASES[chain];
     if (!base) throw new UnsupportedChainError(chain, "mempool");
@@ -414,7 +441,7 @@ export class Mempool extends Provider {
   async getTxHistory(
     address: string,
     chain?: ChainKey,
-    options?: TxHistoryOptions,
+    options?: Readonly<TxHistoryOptions>,
   ): Promise<Transaction[]> {
     const c = chain ?? this.defaultChain;
     const transactions = await getEsploraAddressHistory(address, options?.limit, async (path) =>
@@ -437,9 +464,7 @@ export class Mempool extends Provider {
     return {
       hash: data.txid,
       blockNumber: data.status.block_height ?? 0,
-      timestamp: data.status.block_time
-        ? new Date(data.status.block_time * 1000).toISOString()
-        : undefined,
+      timestamp: mempoolTimestamp(data.status),
       from: fromAddr,
       to: toAddr,
       value: totalOut.toString(),

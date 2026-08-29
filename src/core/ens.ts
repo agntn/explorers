@@ -1,23 +1,33 @@
-/**
+/*
  * ENS (Ethereum Name Service) resolution
  *
  * Resolves .eth names to addresses via public ENS APIs. No API key, no keccak256 dependency — pure
  * HTTP.
  */
 
-/** Public ENS resolution endpoints (fallback chain) */
+/*Public ENS resolution endpoints (fallback chain) */
 const RESOLVERS = [
   (name: string) => `https://api.ensideas.com/ens/resolve/${encodeURIComponent(name)}`,
   (name: string) => `https://api.ensdata.net/${encodeURIComponent(name)}`,
 ];
 
-/** Cheap `.eth` shape check. It does not resolve the name or verify ownership. */
+/**
+ * Cheap `.eth` shape check. It does not resolve the name or verify ownership.
+ *
+ * @param {string} input - The `input` value.
+ * @returns {boolean} The resulting value.
+ */
 export function isEnsName(input: string): boolean {
   const lower = input.toLowerCase().trim();
   return lower.endsWith(".eth") && lower.length > 4;
 }
 
-/** Match a 20-byte EVM hex address. This is not a validator for non-EVM chains. */
+/**
+ * Match a 20-byte EVM hex address. This is not a validator for non-EVM chains.
+ *
+ * @param {string} input - The `input` value.
+ * @returns {boolean} The resulting value.
+ */
 export function isAddress(input: string): boolean {
   return /^0x[0-9a-fA-F]{40}$/.test(input.trim());
 }
@@ -26,6 +36,9 @@ export function isAddress(input: string): boolean {
  * Resolve an ENS name through public HTTP resolvers.
  *
  * Resolver failures are tried in order and collapse to `null` when every endpoint fails.
+ *
+ * @param {string} name - The `name` value.
+ * @returns {Promise<string | null>} The resulting value.
  */
 export async function resolveEns(name: string): Promise<string | null> {
   const normalized = name.toLowerCase().trim();

@@ -22,4 +22,4 @@ const main = defineCommand({
   },
 });
 
-runMain(main, { rawArgs: normalizeMainArgs(process.argv.slice(2)) });
+void runMain(main, { rawArgs: normalizeMainArgs(process.argv.slice(2)) });

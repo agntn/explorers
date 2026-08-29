@@ -3,7 +3,7 @@ import { UnsupportedChainError, UnsupportedOperationError } from "../../src/core
 import { create } from "../../src/core/registry.js";
 
 describe("aptos provider", () => {
-  let provider: ReturnType<typeof create>;
+  let provider: Awaited<ReturnType<typeof create>>;
 
   beforeAll(async () => {
     provider = await create("aptos");

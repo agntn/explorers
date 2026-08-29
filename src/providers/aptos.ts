@@ -40,7 +40,7 @@ export class Aptos extends Provider {
   async getTxHistory(
     _address: string,
     chain?: ChainKey,
-    _options?: TxHistoryOptions,
+    _options?: Readonly<TxHistoryOptions>,
   ): Promise<Transaction[]> {
     const c = chain ?? "aptos";
     if (c !== "aptos") throw new UnsupportedChainError(c, this.name);

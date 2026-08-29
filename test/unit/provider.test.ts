@@ -7,7 +7,7 @@ class Custom extends Provider {
 
   readonly config: ProviderConfig;
 
-  constructor(config: ProviderConfig) {
+  constructor(config: Readonly<ProviderConfig>) {
     super(config);
     this.config = config;
   }

@@ -29,72 +29,96 @@ import type {
 const DEFAULT_BASE = "https://blockstream.info";
 
 interface EsploraAddressSummary {
-  chain_stats: {
-    funded_txo_sum: number | string;
-    spent_txo_sum: number | string;
+  readonly chain_stats: {
+    readonly funded_txo_sum: number | string;
+    readonly spent_txo_sum: number | string;
   };
 }
 
 interface EsploraAddressTx {
-  txid: string;
-  vin: Array<{
-    prevout: {
-      scriptpubkey_address?: string;
-      value: number;
+  readonly txid: string;
+  readonly vin: ReadonlyArray<{
+    readonly prevout: {
+      readonly scriptpubkey_address?: string;
+      readonly value: number;
     } | null;
   }>;
-  vout: Array<{
-    scriptpubkey_address?: string;
-    value: number;
+  readonly vout: ReadonlyArray<{
+    readonly scriptpubkey_address?: string;
+    readonly value: number;
   }>;
-  fee: number;
-  status: {
-    confirmed: boolean;
-    block_height?: number;
-    block_time?: number;
+  readonly fee: number;
+  readonly status: {
+    readonly confirmed: boolean;
+    readonly block_height?: number;
+    readonly block_time?: number;
   };
 }
 
 interface EsploraBlock {
-  id: string;
-  height: number;
-  timestamp: number;
-  tx_count: number;
-  size: number;
-  weight: number;
-  previousblockhash: string;
+  readonly id: string;
+  readonly height: number;
+  readonly timestamp: number;
+  readonly tx_count: number;
+  readonly size: number;
+  readonly weight: number;
+  readonly previousblockhash: string;
 }
 
-/** Convert satoshis to BTC without crossing the floating-point boundary. */
+/* Convert satoshis to BTC without crossing the floating-point boundary. */
 function satToBitcoin(satoshis: number | bigint): string {
   return formatWei(String(satoshis), 8);
 }
 
-function mapAddressTx(raw: EsploraAddressTx, address: string): Transaction {
+function transactionTimestamp(status: Readonly<EsploraAddressTx["status"]>): string | undefined {
+  return status.block_time ? new Date(status.block_time * 1000).toISOString() : undefined;
+}
+
+function addressTotals(
+  raw: Readonly<EsploraAddressTx>,
+  address: string,
+): { in: number; out: number } {
   const totalIn = raw.vin
     .filter((input) => input.prevout?.scriptpubkey_address === address)
     .reduce((sum, input) => sum + (input.prevout?.value ?? 0), 0);
   const totalOut = raw.vout
     .filter((output) => output.scriptpubkey_address === address)
     .reduce((sum, output) => sum + output.value, 0);
-  const netSatoshis = totalOut - totalIn;
-  const isSend = totalIn > 0;
+  return { in: totalIn, out: totalOut };
+}
+
+function sendingAddressParties(
+  raw: Readonly<EsploraAddressTx>,
+  address: string,
+): { readonly from: string; readonly to: string } {
+  const recipient = raw.vout.find((output) => output.scriptpubkey_address !== address);
+  const sender = raw.vin.find((input) => input.prevout?.scriptpubkey_address === address);
+  return {
+    from: sender?.prevout?.scriptpubkey_address ?? address,
+    to: recipient?.scriptpubkey_address ?? address,
+  };
+}
+
+function addressParties(
+  raw: Readonly<EsploraAddressTx>,
+  address: string,
+  isSend: boolean,
+): { readonly from: string; readonly to: string } {
+  if (isSend) return sendingAddressParties(raw, address);
+  return { from: raw.vin[0]?.prevout?.scriptpubkey_address ?? "unknown", to: address };
+}
+
+function mapAddressTx(raw: Readonly<EsploraAddressTx>, address: string): Transaction {
+  const totals = addressTotals(raw, address);
+  const netSatoshis = totals.out - totals.in;
+  const isSend = totals.in > 0;
   const transferredSatoshis = isSend ? Math.max(0, Math.abs(netSatoshis) - raw.fee) : netSatoshis;
-  const from = isSend
-    ? (raw.vin.find((input) => input.prevout?.scriptpubkey_address === address)?.prevout
-        ?.scriptpubkey_address ?? address)
-    : (raw.vin[0]?.prevout?.scriptpubkey_address ?? "unknown");
-  const to = isSend
-    ? (raw.vout.find((output) => output.scriptpubkey_address !== address)?.scriptpubkey_address ??
-      address)
-    : address;
+  const { from, to } = addressParties(raw, address, isSend);
 
   return {
     hash: raw.txid,
     blockNumber: raw.status.block_height ?? 0,
-    timestamp: raw.status.block_time
-      ? new Date(raw.status.block_time * 1000).toISOString()
-      : undefined,
+    timestamp: transactionTimestamp(raw.status),
     from,
     to,
     value: transferredSatoshis.toString(),
@@ -113,7 +137,7 @@ export class Blockstream extends Provider {
   private readonly baseUrl: string;
   private readonly defaultChain: ChainKey;
 
-  constructor(config: ProviderConfig) {
+  constructor(config: Readonly<ProviderConfig>) {
     super(config);
     this.baseUrl = normalizeBaseUrl(config.baseUrl ?? DEFAULT_BASE);
     this.defaultChain = config.defaultChain ?? "bitcoin";
@@ -162,7 +186,7 @@ export class Blockstream extends Provider {
   async getTxHistory(
     address: string,
     chain?: ChainKey,
-    options?: TxHistoryOptions,
+    options?: Readonly<TxHistoryOptions>,
   ): Promise<Transaction[]> {
     const selectedChain = chain ?? this.defaultChain;
     const transactions = await getEsploraAddressHistory(address, options?.limit, async (path) =>
@@ -184,9 +208,7 @@ export class Blockstream extends Provider {
     return {
       hash: transaction.txid,
       blockNumber: transaction.status.block_height ?? 0,
-      timestamp: transaction.status.block_time
-        ? new Date(transaction.status.block_time * 1000).toISOString()
-        : undefined,
+      timestamp: transactionTimestamp(transaction.status),
       from: transaction.vin[0]?.prevout?.scriptpubkey_address ?? "unknown",
       to: transaction.vout[0]?.scriptpubkey_address ?? null,
       value: totalOut.toString(),

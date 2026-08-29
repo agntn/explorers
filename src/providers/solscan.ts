@@ -24,48 +24,48 @@ const DEFAULT_BASE = "https://pro-api.solscan.io/v2.0";
 const TRANSACTION_PAGE_SIZE = 40;
 
 interface SolscanResponse<T> {
-  success: boolean;
-  data: T;
-  errors?: string | { message?: string };
+  readonly success: boolean;
+  readonly data: T;
+  readonly errors?: string | { readonly message?: string };
 }
 
 interface SolscanAccount {
-  account: string;
-  lamports: string | number;
+  readonly account: string;
+  readonly lamports: string | number;
 }
 
 interface SolscanAccountTransaction {
-  slot: number;
-  fee: string | number;
-  status: string;
-  signer: string;
-  block_time: number;
-  tx_hash: string;
-  program_ids?: string[];
+  readonly slot: number;
+  readonly fee: string | number;
+  readonly status: string;
+  readonly signer: string;
+  readonly block_time: number;
+  readonly tx_hash: string;
+  readonly program_ids?: readonly string[];
 }
 
 interface SolscanTransactionDetail {
-  tx_hash: string;
-  block_id: number;
-  block_time: number;
-  fee: string | number;
-  signer: string | string[];
-  status: number;
-  compute_units_consumed?: string | number;
-  programs_involved?: string[];
+  readonly tx_hash: string;
+  readonly block_id: number;
+  readonly block_time: number;
+  readonly fee: string | number;
+  readonly signer: string | readonly string[];
+  readonly status: number;
+  readonly compute_units_consumed?: string | number;
+  readonly programs_involved?: readonly string[];
 }
 
 interface SolscanBlock {
-  fee_rewards: string | number;
-  transactions_count: number;
-  current_slot: number;
-  block_height: number;
-  block_time: number;
-  blockhash: string;
-  parent_slot: number;
+  readonly fee_rewards: string | number;
+  readonly transactions_count: number;
+  readonly current_slot: number;
+  readonly block_height: number;
+  readonly block_time: number;
+  readonly blockhash: string;
+  readonly parent_slot: number;
 }
 
-function mapAccountTransaction(raw: SolscanAccountTransaction): Transaction {
+function mapAccountTransaction(raw: Readonly<SolscanAccountTransaction>): Transaction {
   return {
     hash: raw.tx_hash,
     blockNumber: raw.slot,
@@ -82,8 +82,28 @@ function mapAccountTransaction(raw: SolscanAccountTransaction): Transaction {
   };
 }
 
-function mapTransactionDetail(raw: SolscanTransactionDetail): Transaction {
-  const signer = Array.isArray(raw.signer) ? (raw.signer[0] ?? "") : raw.signer;
+async function collectAccountTransactions(
+  limit: number,
+  readPage: (before: string | undefined) => Promise<SolscanAccountTransaction[]>,
+): Promise<SolscanAccountTransaction[]> {
+  const transactions: SolscanAccountTransaction[] = [];
+  const seenCursors = new Set<string>();
+  let before: string | undefined;
+
+  while (transactions.length < limit) {
+    const page = await readPage(before);
+    const cursor = page.at(-1)?.tx_hash;
+    if (cursor !== undefined && seenCursors.has(cursor)) break;
+    transactions.push(...page.slice(0, limit - transactions.length));
+    if (page.length < TRANSACTION_PAGE_SIZE || cursor === undefined) break;
+    seenCursors.add(cursor);
+    before = cursor;
+  }
+  return transactions;
+}
+
+function mapTransactionDetail(raw: Readonly<SolscanTransactionDetail>): Transaction {
+  const signer = typeof raw.signer === "string" ? raw.signer : (raw.signer[0] ?? "");
   return {
     hash: raw.tx_hash,
     blockNumber: raw.block_id,
@@ -108,7 +128,7 @@ export class Solscan extends Provider {
   private readonly apiKey: string;
   private readonly baseUrl: string;
 
-  constructor(config: ProviderConfig) {
+  constructor(config: Readonly<ProviderConfig>) {
     super(config);
     const apiKey = config.apiKey ?? process.env.SOLSCAN_API_KEY ?? "";
     if (!apiKey) {
@@ -132,7 +152,7 @@ export class Solscan extends Provider {
 
   private async api<T>(
     path: string,
-    params: Record<string, string | number | undefined>,
+    params: Readonly<Record<string, string | number | undefined>>,
   ): Promise<T> {
     const response = await this.getJSON<SolscanResponse<T>>(
       `${this.baseUrl}${path}${buildQuery(params)}`,
@@ -165,33 +185,20 @@ export class Solscan extends Provider {
   async getTxHistory(
     address: string,
     chain?: ChainKey,
-    options?: TxHistoryOptions,
+    options?: Readonly<TxHistoryOptions>,
   ): Promise<Transaction[]> {
     const c = chain ?? "solana";
     if (c !== "solana") throw new UnsupportedChainError(c, this.name);
     assertSafePathSegment(address, "address");
 
     const limit = clampMaxResults(options?.limit);
-    const transactions: SolscanAccountTransaction[] = [];
-    const seenCursors = new Set<string>();
-    let before: string | undefined;
-
-    while (transactions.length < limit) {
-      const page = await this.api<SolscanAccountTransaction[]>("/account/transactions", {
+    const transactions = await collectAccountTransactions(limit, (before) =>
+      this.api<SolscanAccountTransaction[]>("/account/transactions", {
         address,
         before,
         limit: TRANSACTION_PAGE_SIZE,
-      });
-      const cursor = page.at(-1)?.tx_hash;
-      if (cursor !== undefined && seenCursors.has(cursor)) break;
-
-      transactions.push(...page.slice(0, limit - transactions.length));
-      if (page.length < TRANSACTION_PAGE_SIZE || cursor === undefined) break;
-
-      seenCursors.add(cursor);
-      before = cursor;
-    }
-
+      }),
+    );
     return transactions.map(mapAccountTransaction);
   }
 

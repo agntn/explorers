@@ -25,40 +25,45 @@ import { assertSafePathSegment } from "../core/path-safety.js";
 const DEFAULT_BASE = "https://tonapi.io";
 
 interface TonAccount {
-  address: string;
-  balance: string | number;
-  status: string;
-  last_activity: number;
-  name?: string;
-  is_scam?: boolean;
-  interfaces?: string[];
+  readonly address: string;
+  readonly balance: string | number;
+  readonly status: string;
+  readonly last_activity: number;
+  readonly name?: string;
+  readonly is_scam?: boolean;
+  readonly interfaces?: readonly string[];
 }
 
 interface TonEvent {
-  event_id: string;
-  timestamp: number;
-  actions: Array<{
-    type: string;
-    TonTransfer?: {
-      sender: { address: string };
-      recipient: { address: string };
-      amount: string | number;
-      comment?: string;
+  readonly event_id: string;
+  readonly timestamp: number;
+  readonly actions: ReadonlyArray<{
+    readonly type: string;
+    readonly TonTransfer?: {
+      readonly sender: { readonly address: string };
+      readonly recipient: { readonly address: string };
+      readonly amount: string | number;
+      readonly comment?: string;
     };
-    JettonTransfer?: {
-      sender: { address: string };
-      recipient: { address: string };
-      senders_wallet: string;
-      recipients_wallet: string;
-      amount: string;
-      jetton: { address: string; name: string; symbol: string; decimals: number };
+    readonly JettonTransfer?: {
+      readonly sender: { readonly address: string };
+      readonly recipient: { readonly address: string };
+      readonly senders_wallet: string;
+      readonly recipients_wallet: string;
+      readonly amount: string;
+      readonly jetton: {
+        readonly address: string;
+        readonly name: string;
+        readonly symbol: string;
+        readonly decimals: number;
+      };
     };
-    status: string;
+    readonly status: string;
   }>;
-  involved: Record<string, unknown>;
+  readonly involved: Readonly<Record<string, unknown>>;
 }
 
-function mapEventToTx(event: TonEvent): Transaction {
+function mapEventToTx(event: Readonly<TonEvent>): Transaction {
   const firstAction = event.actions[0];
   const timestamp = new Date(event.timestamp * 1000).toISOString();
   let from = "";
@@ -113,7 +118,7 @@ export class Ton extends Provider {
 
   private baseUrl: string;
 
-  constructor(config: ProviderConfig) {
+  constructor(config: Readonly<ProviderConfig>) {
     super(config);
     this.baseUrl = normalizeBaseUrl(config.baseUrl ?? DEFAULT_BASE);
   }
@@ -151,7 +156,7 @@ export class Ton extends Provider {
   async getTxHistory(
     address: string,
     chain?: ChainKey,
-    options?: TxHistoryOptions,
+    options?: Readonly<TxHistoryOptions>,
   ): Promise<Transaction[]> {
     const c = chain ?? "ton";
     if (c !== "ton") throw new UnsupportedChainError(c, "ton");

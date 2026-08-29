@@ -1,10 +1,25 @@
 /** List fungible-token transfers (supports ENS) */
 import { defineCommand } from "citty";
 import consola from "consola";
-import { resolveProvider, PROVIDER_DEFAULT_CHAIN } from "../core/resolve.js";
-import { create } from "../core/registry.js";
-import { normalizeChain } from "../core/types.js";
 import { resolveInput } from "../core/input.js";
+import type { TokenTransfer } from "../core/types.js";
+import { failCommand, parsePositiveInteger, reportCommandError, selectProvider } from "./shared.js";
+
+function renderTransfers(
+  providerName: string,
+  address: string,
+  chain: string,
+  /* oxlint-disable-next-line typescript/prefer-readonly-parameter-types */
+  transfers: readonly TokenTransfer[],
+): void {
+  consola.log(`[${providerName}] ${transfers.length} token transfers for ${address} on ${chain}`);
+  consola.log("");
+  for (const transfer of transfers) {
+    consola.log(
+      `  ${transfer.txHash.slice(0, 18)}…  ${transfer.from.slice(0, 10)}… → ${transfer.to.slice(0, 10)}…  ${transfer.valueFormatted} ${transfer.symbol}`,
+    );
+  }
+}
 
 export default defineCommand({
   meta: {
@@ -41,40 +56,23 @@ export default defineCommand({
   },
   async run({ args }) {
     try {
-      const chainInput = args.chain as string | undefined;
-      const requestedChain = chainInput === undefined ? undefined : normalizeChain(chainInput);
-      const providerName = resolveProvider(args.provider as string | undefined, requestedChain);
-      const provider = await create(providerName);
-      const chain = requestedChain ?? normalizeChain(PROVIDER_DEFAULT_CHAIN[providerName]);
-
-      const caps = provider.capabilities;
-      if (!caps.tokenTransfers || !provider.getTokenTransfers) {
-        consola.error(`Provider "${providerName}" does not support token transfers`);
-        process.exit(1);
+      const selected = await selectProvider(
+        args.chain as string | undefined,
+        args.provider as string | undefined,
+      );
+      const getTokenTransfers = selected.provider.getTokenTransfers?.bind(selected.provider);
+      if (!selected.provider.capabilities.tokenTransfers || !getTokenTransfers) {
+        failCommand(`Provider "${selected.name}" does not support token transfers`);
       }
-      const limitText = (args.limit as string).trim();
-      const limit = Number(limitText);
-      if (!/^\d+$/.test(limitText) || !Number.isSafeInteger(limit) || limit < 1) {
-        consola.error("Invalid --limit value");
-        process.exit(1);
-      }
-      const { address } = await resolveInput(args.address as string, chain);
-      const transfers = await provider.getTokenTransfers(address, chain, {
+      const limit = parsePositiveInteger(args.limit as string, "Invalid --limit value");
+      const { address } = await resolveInput(args.address as string, selected.chain);
+      const transfers = await getTokenTransfers(address, selected.chain, {
         limit,
         token: args.token as string | undefined,
       });
-      consola.log(
-        `[${providerName}] ${transfers.length} token transfers for ${address} on ${chain}`,
-      );
-      consola.log("");
-      for (const t of transfers) {
-        consola.log(
-          `  ${t.txHash.slice(0, 18)}…  ${t.from.slice(0, 10)}… → ${t.to.slice(0, 10)}…  ${t.valueFormatted} ${t.symbol}`,
-        );
-      }
+      renderTransfers(selected.name, address, selected.chain, transfers);
     } catch (error) {
-      consola.error(`Error: ${error instanceof Error ? error.message : error}`);
-      process.exit(1);
+      reportCommandError(error);
     }
   },
 });

@@ -42,32 +42,59 @@ export const PROVIDER_DEFAULT_CHAIN: Partial<Record<string, ChainKey>> = {
   koios: "cardano",
 };
 
+function hasConfiguredCredentials(envKeys: readonly string[]): boolean {
+  return envKeys.length > 0 && envKeys.every((key) => process.env[key]);
+}
+
+function isKeylessCandidate(
+  name: string,
+  envKeys: readonly string[],
+  mode: "primary" | "fallback",
+): boolean {
+  return (
+    envKeys.length === 0 || (mode === "fallback" && OPTIONAL_CREDENTIAL_PROVIDERS.includes(name))
+  );
+}
+
+function appendRankedProvider(
+  ranked: readonly string[],
+  name: string,
+  chain?: ChainKey,
+): readonly string[] {
+  const fits = chain === undefined || supportsChain(name, chain);
+  return has(name) && fits && !ranked.includes(name) ? [...ranked, name] : ranked;
+}
+
+function configuredProviderNames(): string[] {
+  return Object.entries(ENV_MAP)
+    .filter(([, envKeys]) => hasConfiguredCredentials(envKeys))
+    .map(([name]) => name);
+}
+
+function keylessProviderNames(mode: "primary" | "fallback"): string[] {
+  return Object.entries(ENV_MAP)
+    .filter(([name, envKeys]) => isKeylessCandidate(name, envKeys, mode))
+    .map(([name]) => name);
+}
+
+function appendCandidates(
+  ranked: readonly string[],
+  candidates: readonly string[],
+  chain?: ChainKey,
+): readonly string[] {
+  let result = ranked;
+  for (const name of candidates) result = appendRankedProvider(result, name, chain);
+  return result;
+}
+
 function rankProviders(chain?: ChainKey, mode: "primary" | "fallback" = "primary"): string[] {
-  const fits = (name: string) => chain === undefined || supportsChain(name, chain);
-  const ranked: string[] = [];
-  const add = (name: string) => {
-    if (has(name) && fits(name) && !ranked.includes(name)) ranked.push(name);
-  };
-
-  for (const [name, envKeys] of Object.entries(ENV_MAP)) {
-    if (envKeys.length > 0 && envKeys.every((key) => process.env[key])) add(name);
-  }
-
-  for (const [name, envKeys] of Object.entries(ENV_MAP)) {
-    if (
-      envKeys.length === 0 ||
-      (mode === "fallback" && OPTIONAL_CREDENTIAL_PROVIDERS.includes(name))
-    ) {
-      add(name);
-    }
-  }
-
+  let ranked = appendCandidates([], configuredProviderNames(), chain);
+  ranked = appendCandidates(ranked, keylessProviderNames(mode), chain);
   if (mode === "primary" && chain !== undefined) {
-    for (const name of providers()) add(name);
+    ranked = appendCandidates(ranked, providers(), chain);
   }
-
-  if (ranked.length === 0 && has("blockscout")) ranked.push("blockscout");
-  return ranked;
+  if (ranked.length === 0 && has("blockscout")) ranked = ["blockscout"];
+  return [...ranked];
 }
 
 /**
@@ -79,6 +106,10 @@ function rankProviders(chain?: ChainKey, mode: "primary" | "fallback" = "primary
  * finally Blockscout.
  *
  * @throws {UnknownProviderError} When an explicit preference is not registered.
+ *
+ * @param {string} preferred - The `preferred` value.
+ * @param {ChainKey} chain - The `chain` value.
+ * @returns {string} The resulting value.
  */
 export function resolveProvider(preferred?: string, chain?: ChainKey): string {
   if (preferred !== undefined) {
@@ -91,15 +122,44 @@ export function resolveProvider(preferred?: string, chain?: ChainKey): string {
 
 /** Provider and effective chain selected for one read. */
 export interface ProviderContext {
-  chain: ChainKey;
-  name: string;
-  provider: Provider;
+  readonly chain: ChainKey;
+  readonly name: string;
+  readonly provider: Provider;
 }
 
-/** Retry one automatic read after a rate limit. The callback must be safe to run twice. */
+function preservesPrimaryError(error: unknown): boolean {
+  return (
+    error instanceof AuthError ||
+    error instanceof UnsupportedChainError ||
+    error instanceof UnsupportedOperationError
+  );
+}
+
+async function runFallback<T>(
+  execute: (name: string) => Promise<T>,
+  fallbackName: string,
+  primaryError: unknown,
+): Promise<T> {
+  try {
+    return await execute(fallbackName);
+  } catch (fallbackError) {
+    if (preservesPrimaryError(fallbackError)) throw primaryError;
+    throw fallbackError;
+  }
+}
+
+/**
+ * Retry one automatic read after a rate limit. The callback must be safe to run twice.
+ *
+ * @param {string | undefined} preferred - The `preferred` value.
+ * @param {ChainKey | undefined} chain - The `chain` value.
+ * @param {(context: Readonly<ProviderContext>) => Promise<T>} run - The `run` value.
+ * @returns {Promise<T>} The resulting value.
+ */
 export async function withProvider<T>(
   preferred: string | undefined,
   chain: ChainKey | undefined,
+  /* oxlint-disable-next-line typescript/prefer-readonly-parameter-types */
   run: (context: ProviderContext) => Promise<T>,
 ): Promise<T> {
   const primaryName = resolveProvider(preferred, chain);
@@ -121,17 +181,6 @@ export async function withProvider<T>(
       throw error;
     }
 
-    try {
-      return await execute(fallbackName);
-    } catch (fallbackError) {
-      if (
-        fallbackError instanceof AuthError ||
-        fallbackError instanceof UnsupportedChainError ||
-        fallbackError instanceof UnsupportedOperationError
-      ) {
-        throw error;
-      }
-      throw fallbackError;
-    }
+    return runFallback(execute, fallbackName, error);
   }
 }

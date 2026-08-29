@@ -6,7 +6,7 @@ import { version } from "../version.js";
 
 let userAgent: string | undefined;
 
-/** Built on the first request so that loading the client evaluates nothing. */
+/* Built on the first request so that loading the client evaluates nothing. */
 function agent(): string {
   userAgent ??= `explorers/${version}`;
   return userAgent;
@@ -20,13 +20,26 @@ export interface ClientOptions {
   provider?: string;
 }
 
-/** Remove trailing separators before provider paths are appended. */
+/** Immutable view consumed by one HTTP request without freezing the public options DTO. */
+export interface ClientRequestOptions {
+  readonly timeout?: number;
+  readonly headers?: Readonly<Record<string, string>>;
+  readonly signal?: AbortSignal;
+  readonly provider?: string;
+}
+
+/**
+ * Remove trailing separators before provider paths are appended.
+ *
+ * @param {string} url - The `url` value.
+ * @returns {string} The resulting value.
+ */
 export function normalizeBaseUrl(url: string): string {
   return url.replace(/\/+$/, "");
 }
 
 function parseJSON(text: string): unknown {
-  type Reviver = (key: string, value: unknown, context: { source: string }) => unknown;
+  type Reviver = (key: string, value: unknown, context: Readonly<{ source: string }>) => unknown;
   const parseWithSource = JSON.parse as unknown as (value: string, reviver: Reviver) => unknown;
 
   return parseWithSource(text, (_key, value, context) => {
@@ -45,8 +58,12 @@ function parseJSON(text: string): unknown {
  * Fetch JSON with Explorers headers and a 15-second default timeout.
  *
  * Transport failures are normalized before they leave this boundary.
+ *
+ * @param {string} url - The `url` value.
+ * @param {ClientRequestOptions} options - Request metadata and cancellation.
+ * @returns {Promise<T>} The resulting value.
  */
-export async function getJSON<T>(url: string, options?: ClientOptions): Promise<T> {
+export async function getJSON<T>(url: string, options?: ClientRequestOptions): Promise<T> {
   try {
     return await ofetch<T>(url, {
       method: "GET",
@@ -65,7 +82,11 @@ export async function getJSON<T>(url: string, options?: ClientOptions): Promise<
   }
 }
 
-export async function postJSON<T>(url: string, body: unknown, options?: ClientOptions): Promise<T> {
+export async function postJSON<T>(
+  url: string,
+  body: unknown,
+  options?: ClientRequestOptions,
+): Promise<T> {
   try {
     return await ofetch<T>(url, {
       method: "POST",
@@ -93,8 +114,11 @@ export async function postJSON<T>(url: string, body: unknown, options?: ClientOp
  *   ```ts
  *   buildQuery({ page: 2, cursor: undefined }); // '?page=2'
  *   ```
+ *
+ * @param {Readonly<Record<string, string | number | undefined>>} params - The `params` value.
+ * @returns {string} The resulting value.
  */
-export function buildQuery(params: Record<string, string | number | undefined>): string {
+export function buildQuery(params: Readonly<Record<string, string | number | undefined>>): string {
   const usp = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {
     if (value !== undefined) usp.set(key, String(value));

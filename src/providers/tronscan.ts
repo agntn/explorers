@@ -23,40 +23,48 @@ import { clampMaxResults, formatWei } from "../core/types.js";
 const DEFAULT_BASE = "https://apilist.tronscanapi.com";
 
 interface TronscanAccount {
-  address: string;
-  balance?: string | number;
-  balanceStr?: string;
+  readonly address: string;
+  readonly balance?: string | number;
+  readonly balanceStr?: string;
 }
 
 interface TronscanTransaction {
-  hash: string;
-  timestamp: number;
-  block: number;
-  ownerAddress?: string;
-  toAddress?: string;
-  contractType?: number;
-  confirmed?: boolean;
-  revert?: boolean;
-  contractRet?: string;
-  amount?: string | number;
-  cost?: {
-    fee?: string | number;
-    net_fee?: string | number;
+  readonly hash: string;
+  readonly timestamp: number;
+  readonly block: number;
+  readonly ownerAddress?: string;
+  readonly toAddress?: string;
+  readonly contractType?: number;
+  readonly confirmed?: boolean;
+  readonly revert?: boolean;
+  readonly contractRet?: string;
+  readonly amount?: string | number;
+  readonly cost?: {
+    readonly fee?: string | number;
+    readonly net_fee?: string | number;
   };
 }
 
 interface TronscanBlock {
-  number: number;
-  hash: string;
-  timestamp: number;
-  nrOfTrx: number;
-  witnessAddress?: string;
+  readonly number: number;
+  readonly hash: string;
+  readonly timestamp: number;
+  readonly nrOfTrx: number;
+  readonly witnessAddress?: string;
 }
 
-function mapTransaction(raw: TronscanTransaction): Transaction {
-  const value = String(raw.amount ?? 0);
+function transactionStatus(raw: Readonly<TronscanTransaction>): TxStatus {
+  if (raw.confirmed === false) return "pending";
+  return raw.contractRet === "SUCCESS" && raw.revert !== true ? "success" : "failed";
+}
+
+function transactionFee(raw: Readonly<TronscanTransaction>): string | undefined {
   const fee = raw.cost?.fee ?? raw.cost?.net_fee;
-  const succeeded = raw.contractRet === "SUCCESS" && raw.revert !== true;
+  return fee === undefined ? undefined : String(fee);
+}
+
+function mapTransaction(raw: Readonly<TronscanTransaction>): Transaction {
+  const value = String(raw.amount ?? 0);
   return {
     hash: raw.hash,
     blockNumber: raw.block,
@@ -65,8 +73,8 @@ function mapTransaction(raw: TronscanTransaction): Transaction {
     to: raw.toAddress ?? null,
     value,
     valueFormatted: formatWei(value, 6),
-    fee: fee === undefined ? undefined : String(fee),
-    status: (raw.confirmed === false ? "pending" : succeeded ? "success" : "failed") as TxStatus,
+    fee: transactionFee(raw),
+    status: transactionStatus(raw),
     isContractInteraction: raw.contractType !== undefined && raw.contractType !== 1,
     tokenTransfers: [],
     raw: raw as unknown as Record<string, unknown>,
@@ -79,7 +87,7 @@ export class Tronscan extends Provider {
   private readonly apiKey: string;
   private readonly baseUrl: string;
 
-  constructor(config: ProviderConfig) {
+  constructor(config: Readonly<ProviderConfig>) {
     super(config);
     const apiKey = config.apiKey ?? process.env.TRONSCAN_API_KEY ?? "";
     if (!apiKey) {
@@ -101,7 +109,10 @@ export class Tronscan extends Provider {
     };
   }
 
-  private api<T>(path: string, params: Record<string, string | number | undefined>): Promise<T> {
+  private api<T>(
+    path: string,
+    params: Readonly<Record<string, string | number | undefined>>,
+  ): Promise<T> {
     return this.getJSON<T>(`${this.baseUrl}${path}${buildQuery(params)}`, {
       headers: { "TRON-PRO-API-KEY": this.apiKey },
     });
@@ -126,7 +137,7 @@ export class Tronscan extends Provider {
   async getTxHistory(
     address: string,
     chain?: ChainKey,
-    options?: TxHistoryOptions,
+    options?: Readonly<TxHistoryOptions>,
   ): Promise<Transaction[]> {
     const c = chain ?? "tron";
     if (c !== "tron") throw new UnsupportedChainError(c, this.name);

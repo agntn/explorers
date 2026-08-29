@@ -1,52 +1,44 @@
 import { ExplorerError } from "./errors.js";
 
-/**
- * Validate a string is safe to interpolate into a URL path segment.
- *
- * Rejects:
- *
- * - Empty / whitespace-only inputs
- * - Path traversal sequences (`..`, `.`)
- * - Path separators (`/`, `\`)
- * - Query and fragment delimiters (`?`, `#`)
- * - URL-encoded separators and control characters
- * - Control characters / NUL bytes
- *
- * Use for `address`, `hash`, `txhash`, `account`, `blockHeight`-style params that go into URL
- * paths. NOT for query params (use encodeURIComponent instead).
- *
- * @throws {ExplorerError} When the input is unsafe.
- */
-export function assertSafePathSegment(value: string, label = "value"): void {
-  if (typeof value !== "string") {
-    throw new ExplorerError(`${label} must be a string`);
-  }
-  if (value.length === 0 || /^\s*$/.test(value)) {
-    throw new ExplorerError(`${label} is empty`);
-  }
-  // Reject URL-encoded variants of separators/dots before checking the raw
-  // string — otherwise `%2F` looks safe and slips through.
-  // The decodeURIComponent can throw on malformed sequences; treat as unsafe.
+function decodePathSegment(value: string, label: string): string {
   let decoded: string;
   try {
     decoded = decodeURIComponent(value);
   } catch {
     throw new ExplorerError(`${label} contains malformed percent-encoding`);
   }
-  // After one round of decoding, repeat on the result so double-encoded
-  // payloads (`%252F`) don't bypass.
-  try {
-    decoded = decodeURIComponent(decoded);
-  } catch {
-    /* second pass failed — that's fine, the first decode already ran */
-  }
 
+  try {
+    return decodeURIComponent(decoded);
+  } catch {
+    return decoded;
+  }
+}
+
+function hasPathTraversal(value: string): boolean {
+  return value === ".." || value === "." || value.includes("../") || value.includes("..\\");
+}
+
+/**
+ * Validate a string is safe to interpolate into a URL path segment.
+ *
+ * Rejects empty values, traversal, separators, delimiters, encoded separators, and control bytes.
+ * Use this for values interpolated into URL paths, not query parameters.
+ *
+ * @param {string} value - Candidate path segment.
+ * @param {string} label - Human-readable field name used in failures.
+ * @throws {ExplorerError} When the input is unsafe.
+ */
+export function assertSafePathSegment(value: string, label = "value"): void {
+  if (typeof value !== "string") throw new ExplorerError(`${label} must be a string`);
+  if (value.length === 0 || /^\s*$/.test(value)) throw new ExplorerError(`${label} is empty`);
+
+  const decoded = decodePathSegment(value, label);
   // oxlint-disable-next-line no-control-regex -- Control chars are precisely what this boundary rejects.
-  if (/[/\x00-\x1f\\?#]/.test(decoded)) {
+  if (/[/\x00-\x1F\\?#]/.test(decoded)) {
     throw new ExplorerError(`${label} contains path separator or control char`);
   }
-  // Reject `..` (any segment traversal) and bare `.`
-  if (decoded === ".." || decoded === "." || decoded.includes("../") || decoded.includes("..\\")) {
+  if (hasPathTraversal(decoded)) {
     throw new ExplorerError(`${label} contains path traversal sequence`);
   }
 }

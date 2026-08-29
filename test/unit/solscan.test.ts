@@ -30,7 +30,7 @@ afterEach(() => {
 });
 
 describe("solscan provider", () => {
-  let provider: ReturnType<typeof create>;
+  let provider: Awaited<ReturnType<typeof create>>;
 
   beforeEach(async () => {
     provider = await create("solscan", { apiKey: "secret", baseUrl: "https://example.test/" });

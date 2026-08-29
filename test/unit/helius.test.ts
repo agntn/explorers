@@ -32,7 +32,7 @@ const SYSTEM_TRANSFER = {
   instructions: [{ programId: "11111111111111111111111111111111" }],
 };
 
-/** A string body is served verbatim, which is the only way to test integers JSON.stringify rounds. */
+/* A string body is served verbatim, which is the only way to test integers JSON.stringify rounds. */
 function stubJSON(body: unknown) {
   const text = typeof body === "string" ? body : JSON.stringify(body);
   const fetch = vi.fn(
@@ -43,8 +43,8 @@ function stubJSON(body: unknown) {
   return fetch;
 }
 
-/** Answer each call with the next body, repeating the last one once the list runs out. */
-function stubJSONPages(bodies: unknown[]) {
+/* Answer each call with the next body, repeating the last one once the list runs out. */
+function stubJSONPages(bodies: readonly unknown[]) {
   let call = 0;
   const fetch = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => {
     const body = bodies[Math.min(call++, bodies.length - 1)];
@@ -54,7 +54,7 @@ function stubJSONPages(bodies: unknown[]) {
   return fetch;
 }
 
-/** A page of interchangeable spam mints. */
+/* A page of interchangeable spam mints. */
 function spamPage(count: number) {
   const items = Array.from({ length: count }, (_, index) => ({
     interface: "FungibleToken",
@@ -71,7 +71,7 @@ afterEach(() => {
 });
 
 describe("helius provider", () => {
-  let provider: ReturnType<typeof create>;
+  let provider: Awaited<ReturnType<typeof create>>;
 
   beforeEach(async () => {
     provider = await create("helius", { apiKey: "secret", baseUrl: "https://example.test/" });

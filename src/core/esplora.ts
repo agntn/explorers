@@ -8,7 +8,14 @@ interface EsploraAddressTransaction {
   status: { confirmed: boolean };
 }
 
-/** Fetch an Esplora address feed across its initial page and confirmed-chain cursor pages. */
+/**
+ * Fetch an Esplora address feed across its initial page and confirmed-chain cursor pages.
+ *
+ * @param {string} address - The `address` value.
+ * @param {number | undefined} requestedLimit - The `requestedLimit` value.
+ * @param {(path: string) => Promise<T[]>} fetchPage - The `fetchPage` value.
+ * @returns {Promise<T[]>} The resulting value.
+ */
 export async function getEsploraAddressHistory<T extends EsploraAddressTransaction>(
   address: string,
   requestedLimit: number | undefined,
