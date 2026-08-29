@@ -66,7 +66,7 @@ function mapTransaction(raw: TronscanTransaction): Transaction {
     value,
     valueFormatted: formatWei(value, 6),
     fee: fee === undefined ? undefined : String(fee),
-    status: (succeeded ? "success" : "failed") as TxStatus,
+    status: (raw.confirmed === false ? "pending" : succeeded ? "success" : "failed") as TxStatus,
     isContractInteraction: raw.contractType !== undefined && raw.contractType !== 1,
     tokenTransfers: [],
     raw: raw as unknown as Record<string, unknown>,
