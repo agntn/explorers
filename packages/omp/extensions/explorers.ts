@@ -97,20 +97,27 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
       );
     },
     async execute(_toolCallId, params) {
-      const { lib, name, provider } = await getProvider(params.provider, params.chain);
-      const chain = resolveToolChain(lib, name, params.chain);
-      const addresses = await lib.resolveAddresses(params.address, chain);
-      const balances = await Promise.all(
-        addresses.map((address) => provider.getBalance(address, chain)),
+      const lib = await loadLib();
+      const requestedChain =
+        params.chain === undefined ? undefined : lib.normalizeChain(params.chain);
+      return lib.withProvider(
+        params.provider,
+        requestedChain,
+        async ({ chain, name, provider }) => {
+          const addresses = await lib.resolveAddresses(params.address, chain);
+          const balances = await Promise.all(
+            addresses.map((address) => provider.getBalance(address, chain)),
+          );
+          const lines = balances.map((balance) => {
+            const totals =
+              balance.funded === undefined || balance.spent === undefined
+                ? ""
+                : `; funded ${balance.funded}, spent ${balance.spent}`;
+            return `[${name}] ${balance.chain} balance for ${balance.address}: ${balance.balanceFormatted} ${balance.symbol} (${balance.balance} base units${totals}${balanceContext(balance)})`;
+          });
+          return textResult(lines.join("\n"));
+        },
       );
-      const lines = balances.map((balance) => {
-        const totals =
-          balance.funded === undefined || balance.spent === undefined
-            ? ""
-            : `; funded ${balance.funded}, spent ${balance.spent}`;
-        return `[${name}] ${balance.chain} balance for ${balance.address}: ${balance.balanceFormatted} ${balance.symbol} (${balance.balance} base units${totals}${balanceContext(balance)})`;
-      });
-      return textResult(lines.join("\n"));
     },
   });
 

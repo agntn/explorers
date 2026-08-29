@@ -17,6 +17,7 @@ const blockscoutEntry = builtins.find((entry) => entry.key === "blockscout")!;
 afterEach(async () => {
   register(blockscoutConstructor, blockscoutEntry);
   vi.useRealTimers();
+  vi.unstubAllEnvs();
   vi.unstubAllGlobals();
   await Promise.all(openConnections.splice(0).map((connection) => connection.close()));
 });
@@ -176,6 +177,40 @@ describe("Explorers MCP server", () => {
         text: expect.stringMatching(
           /"provider": "blockscout"[\s\S]*"balance": "1"[\s\S]*"fetchedAt": "2026-08-28T12:34:56.789Z"[\s\S]*"blockNumber": null[\s\S]*"blockHash": null/,
         ),
+      },
+    ]);
+  });
+
+  it("falls past an automatically selected provider's rate limit", async () => {
+    vi.stubEnv("ETHERSCAN_API_KEY", "configured");
+    vi.stubEnv("BLOCKCHAIR_API_KEY", "");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        const payload = url.includes("etherscan.io")
+          ? { status: "0", message: "NOTOK", result: "Max rate limit reached" }
+          : { coin_balance: "1" };
+        return new Response(JSON.stringify(payload), {
+          headers: { "content-type": "application/json" },
+        });
+      }),
+    );
+    const client = await connectTestClient();
+
+    const response = await client.callTool({
+      name: "explorers_balance",
+      arguments: {
+        address: "0x0000000000000000000000000000000000000001",
+        chain: "ethereum",
+      },
+    });
+
+    expect(response.isError).not.toBe(true);
+    expect(response.content).toEqual([
+      {
+        type: "text",
+        text: expect.stringMatching(/"provider": "blockscout"[\s\S]*"balance": "1"/),
       },
     ]);
   });
