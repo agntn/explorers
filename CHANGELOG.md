@@ -19,11 +19,11 @@
 
 ### 💅 Refactors
 
-- ⚠️  Adopt the full-name chain keys ([#24](https://github.com/agntn/explorers/pull/24))
+- ⚠️ Adopt the full-name chain keys ([#24](https://github.com/agntn/explorers/pull/24))
 
 #### ⚠️ Breaking Changes
 
-- ⚠️  Adopt the full-name chain keys ([#24](https://github.com/agntn/explorers/pull/24))
+- ⚠️ Adopt the full-name chain keys ([#24](https://github.com/agntn/explorers/pull/24))
 
 ### ❤️ Contributors
 
@@ -47,12 +47,12 @@
 ### 🩹 Fixes
 
 - Handle pending Blockscout transactions ([#5](https://github.com/agntn/explorers/pull/5))
-- ⚠️  Route provider auto-selection by requested chain ([#8](https://github.com/agntn/explorers/pull/8))
+- ⚠️ Route provider auto-selection by requested chain ([#8](https://github.com/agntn/explorers/pull/8))
 
 ### 💅 Refactors
 
-- ⚠️  Use the published @agntn/chains registry ([#4](https://github.com/agntn/explorers/pull/4))
-- ⚠️  Stop loading ten providers to use one ([#22](https://github.com/agntn/explorers/pull/22))
+- ⚠️ Use the published @agntn/chains registry ([#4](https://github.com/agntn/explorers/pull/4))
+- ⚠️ Stop loading ten providers to use one ([#22](https://github.com/agntn/explorers/pull/22))
 
 ### 🏡 Chore
 
@@ -64,9 +64,9 @@
 
 #### ⚠️ Breaking Changes
 
-- ⚠️  Route provider auto-selection by requested chain ([#8](https://github.com/agntn/explorers/pull/8))
-- ⚠️  Use the published @agntn/chains registry ([#4](https://github.com/agntn/explorers/pull/4))
-- ⚠️  Stop loading ten providers to use one ([#22](https://github.com/agntn/explorers/pull/22))
+- ⚠️ Route provider auto-selection by requested chain ([#8](https://github.com/agntn/explorers/pull/8))
+- ⚠️ Use the published @agntn/chains registry ([#4](https://github.com/agntn/explorers/pull/4))
+- ⚠️ Stop loading ten providers to use one ([#22](https://github.com/agntn/explorers/pull/22))
 
 ### ❤️ Contributors
 
