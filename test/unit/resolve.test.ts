@@ -122,6 +122,24 @@ describe("resolveProvider", () => {
 });
 
 describe("withProvider", () => {
+  it("defaults automatic reads to Ethereum despite credentials for another chain", async () => {
+    useNoProviderCredentials();
+    vi.stubEnv("HELIUS_API_KEY", "configured");
+
+    await expect(
+      withProvider(undefined, undefined, async ({ chain, name }) => ({ chain, name })),
+    ).resolves.toEqual({ chain: "ethereum", name: "blockscout" });
+  });
+
+  it("keeps an explicit provider's default chain", async () => {
+    useNoProviderCredentials();
+    vi.stubEnv("HELIUS_API_KEY", "configured");
+
+    await expect(
+      withProvider("helius", undefined, async ({ chain, name }) => ({ chain, name })),
+    ).resolves.toEqual({ chain: "solana", name: "helius" });
+  });
+
   it("keeps the primary chain when a rate limit triggers fallback", async () => {
     useOnlyEtherscanCredentials();
     const tried: string[] = [];

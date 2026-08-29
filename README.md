@@ -49,7 +49,7 @@ npx @agntn/explorers tx vitalik.eth -n 5
 npx @agntn/explorers providers
 ```
 
-An address-like first argument defaults to `balance`. No ceremonial subcommand needed.
+An address-like first argument defaults to `balance`. No ceremonial subcommand needed. When both provider and chain are omitted, balance reads start on Ethereum; selecting a provider explicitly keeps that provider's default chain.
 
 ### Commands
 
@@ -106,7 +106,7 @@ Required operations live on `Provider`. Optional operations stay absent when a b
 
 `create()` imports the provider it was asked for and nothing else, which is why it returns a promise. Everything the registry answers without an instance stays synchronous: `providers()`, `has()`, `supportsChain()`, `getDefaultURL()` and `resolveProvider()` read the metadata in `builtins`. A single backend can also skip the registry: `import { Mempool } from "@agntn/explorers/providers/mempool"` gives you the class and leaves the other eleven out of your bundle.
 
-`withProvider()` keeps an explicit provider strict. Automatic reads get one try on the next available built-in provider after `RateLimitError`. Every other failure stays with the first provider. Its callback can run twice, so it belongs to read operations. The CLI, MCP, Pi and OMP balance paths use this dispatcher.
+`withProvider()` keeps an explicit provider strict. With neither provider nor chain, it starts on Ethereum; an explicit provider without a chain keeps that provider's default. Automatic reads get one try on the next available built-in provider after `RateLimitError`. Every other failure stays with the first provider. Its callback can run twice, so it belongs to read operations. The CLI, MCP, Pi and OMP balance paths use this dispatcher.
 
 ## Providers
 
