@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { getChain } from "@agntn/chains";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { getDefaultURL, providers } from "../../src/core/registry.js";
 import { builtins } from "../../src/providers/index.js";
 
@@ -18,6 +18,30 @@ const modules = readdirSync(providerDir).filter(
 describe("built-in provider registry", () => {
   it("keeps every provider module in the list", () => {
     expect(builtins).toHaveLength(modules.length);
+  });
+
+  it("shares an in-flight provider load across concurrent creates", async () => {
+    vi.resetModules();
+    const { builtins: isolatedBuiltins } = await import("../../src/providers/index.js");
+    const { create: isolatedCreate } = await import("../../src/core/registry.js");
+    const entry = isolatedBuiltins.find((candidate) => candidate.key === "mempool");
+    expect(entry).toBeDefined();
+    if (!entry) throw new Error("Missing mempool provider entry");
+
+    const load = vi.spyOn(entry, "load");
+    try {
+      const [first, second] = await Promise.all([
+        isolatedCreate("mempool"),
+        isolatedCreate("mempool"),
+      ]);
+
+      expect(first.name).toBe("mempool");
+      expect(second.name).toBe("mempool");
+      expect(first).not.toBe(second);
+      expect(load).toHaveBeenCalledTimes(1);
+    } finally {
+      load.mockRestore();
+    }
   });
 
   it("registers the listed providers under their own keys, in order", () => {
