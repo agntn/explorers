@@ -9,6 +9,7 @@ import { UnknownProviderError } from "./errors.js";
 interface RegistryEntry extends ProviderMeta {
   load: () => Promise<ProviderConstructor>;
   providerClass?: ProviderConstructor;
+  providerClassPromise?: Promise<ProviderConstructor>;
 }
 
 let registry: Map<string, RegistryEntry> | undefined;
@@ -73,7 +74,15 @@ export async function create(name: string, config?: Readonly<ProviderConfig>): P
   if (!entry) {
     throw new UnknownProviderError(name);
   }
-  entry.providerClass ??= await entry.load();
+  if (!entry.providerClass) {
+    entry.providerClassPromise ??= entry.load();
+    try {
+      entry.providerClass = await entry.providerClassPromise;
+    } catch (error) {
+      entry.providerClassPromise = undefined;
+      throw error;
+    }
+  }
   return new entry.providerClass(config ?? {});
 }
 
