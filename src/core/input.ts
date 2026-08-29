@@ -5,7 +5,14 @@ import { isEnsName, isAddress, resolveEns } from "./ens.js";
 
 export type InputType = "address" | "txhash" | "ens";
 
-const HEX_HASH_CHAINS: readonly ChainKey[] = ["bitcoin", "litecoin", "ecash", "tron", "cardano"];
+const HEX_HASH_CHAINS: readonly ChainKey[] = [
+  "bitcoin",
+  "litecoin",
+  "pepecoin",
+  "ecash",
+  "tron",
+  "cardano",
+];
 
 function isChainTransactionHash(input: string, chain?: ChainKey): boolean {
   if (chain !== undefined && HEX_HASH_CHAINS.includes(chain))

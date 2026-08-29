@@ -100,6 +100,7 @@ describe("resolveProvider", () => {
 
     expect(resolveProvider(undefined, "solana")).toBe("solscan");
     expect(resolveProvider(undefined, "ecash")).toBe("blockchair");
+    expect(resolveProvider(undefined, "pepecoin")).toBe("mempool");
   });
 
   it("routes keyless single-chain networks to their explorer", () => {

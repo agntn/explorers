@@ -11,7 +11,7 @@ Unified block explorer provider library. Normalizes balances, tx history, contra
 | etherscan   | API key (free: 5 req/s) | eth, base, arbitrum, optimism, polygon, bsc, avalanche, gnosis, linea, bera      | Full: balances, tx, transfers, contract, tokens, gas, block |
 | blockscout  | none                    | eth, base, arbitrum, optimism, polygon, gnosis, linea, scroll, zksync, avalanche | Full: balances, tx, transfers, contract, tokens, gas, block |
 | blockchair  | optional key            | bitcoin, eth, ecash                                                              | balances, tx, block                                         |
-| mempool     | none                    | bitcoin, litecoin                                                                | balances, tx, gas, block                                    |
+| mempool     | none                    | bitcoin, litecoin, pepecoin                                                      | balances, tx; gas and block on Bitcoin and Litecoin         |
 | blockstream | none                    | bitcoin                                                                          | balances, tx detail/history, block                          |
 | solscan     | `SOLSCAN_API_KEY`       | solana                                                                           | balances, tx detail/history, block                          |
 | helius      | `HELIUS_API_KEY`        | solana                                                                           | tx detail/history, tokens; no balance endpoint              |
@@ -28,7 +28,7 @@ Unified block explorer provider library. Normalizes balances, tx history, contra
 - `noUncheckedIndexedAccess` and `noImplicitOverride` are enabled — guard indexed access and mark overrides explicitly
 - Provider registration runs off a manifest: `src/providers/index.ts` lists every built-in as `{ key, chains, defaultURL?, load }`, and `core/registry.ts` turns that list into its map on the first registry call. The class itself only owns `static readonly key`
 - Provider backends are explorer/indexer APIs only. Unsupported operations stay absent; required methods without an explorer contract throw `UnsupportedOperationError`.
-- Bitcoin and Litecoin transactions from `mempool` carry their OP_RETURN pushes in `Transaction.opReturn`; each payload keeps its raw `hex` and gets a `text` reading only when the bytes are printable UTF-8
+- Bitcoin, Litecoin and Pepecoin transactions from `mempool` carry their OP_RETURN pushes in `Transaction.opReturn`; each payload keeps its raw `hex` and gets a `text` reading only when the bytes are printable UTF-8
 - CLI default subcommand: `balance` (for address-like input) or `providers` (no input)
 - Error hierarchy: `ExplorerError` → `HTTPError`, `AuthError`, `RateLimitError`, `NotFoundError`, `UnsupportedChainError`, `UnsupportedOperationError`, `UnknownProviderError`
 - HTTP client uses `ofetch` with a 15s default timeout and preserves out-of-range JSON integers as strings
@@ -60,7 +60,7 @@ Unified block explorer provider library. Normalizes balances, tx history, contra
 - Helius `getTokenBalances` calls DAS `searchAssets` on the RPC root, so it answers over JSON-RPC and a failure arrives as `error` inside a 200 response. Pages hold 1000 assets and the walk stops after 20 of them.
 - Aptos Explorer has no documented account/history API; `aptos` remains registered with false capabilities and throws `UnsupportedOperationError` instead of using fullnode REST.
 - TONAPI and Blockberry do not expose block lookup compatible with the library's single block-number contract, so `blockInfo` is unsupported.
-- Mempool: Bitcoin and Litecoin; the LTC host is litecoinspace.org, a fork with the same API surface
+- Mempool: Bitcoin, Litecoin and Pepecoin; Litecoin uses litecoinspace.org, while peppool.space serves balances and transactions but lacks fee recommendations and complete normalized block metadata
 - Blockstream serves Bitcoin through the Esplora wire format; its `/api/fee-estimates` response does not match Mempool's recommendation shape, so gas data stays unsupported
 - Koios answers on POST with the address or hash in the request body, and the public instance rejects a body over 5120 bytes, so `getTxHistory` asks `tx_info` for 70 hashes at a time and reorders the answer, which comes back in the endpoint's own order
 - Koios `address_info` ships the whole UTxO set of an address, 222 kB for a busy one, so `getBalance` narrows the payload with the PostgREST `select` parameter; the endpoint still builds that set before it answers, and a busy address takes 3 to 9 seconds against the 15-second client timeout
@@ -91,7 +91,7 @@ graph TB
 
 1. **Multi-chain EVM** (etherscan, blockscout): support 10 EVM chains each
 2. **Bitcoin/Ethereum bridge** (blockchair): dashboard API for Bitcoin, Ethereum and eCash
-3. **Esplora-compatible UTXO** (mempool, blockstream): Mempool serves Bitcoin and Litecoin; Blockstream serves Bitcoin as an independent backend
+3. **Esplora-compatible UTXO** (mempool, blockstream): Mempool serves Bitcoin, Litecoin and Pepecoin; Blockstream serves Bitcoin as an independent backend
 4. **Single-chain non-EVM** (solscan, helius, ton, tronscan, aptos, blockberry, koios): capabilities mirror only their explorer APIs; Aptos is explicitly unsupported
 
 ## Patterns

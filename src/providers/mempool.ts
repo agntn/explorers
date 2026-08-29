@@ -1,8 +1,8 @@
 /**
- * Mempool.space provider for Bitcoin, with Litecoin served by the litecoinspace.org fork.
+ * Mempool.space provider for Bitcoin and compatible forks serving Litecoin and Pepecoin.
  *
- * Public API, no key needed. Best-in-class Bitcoin data: address balances, tx history, UTXO info,
- * fee estimates, block info. The fork exposes the same API surface.
+ * Public API, no key needed. All three serve address balances and transactions. Litecoin also
+ * carries the fee and block endpoints, while Pepecoin does not expose enough data for those reads.
  *
  * https://mempool.space/docs/api
  */
@@ -23,7 +23,7 @@ import type {
 } from "../core/types.js";
 import { Provider } from "../core/provider.js";
 import { normalizeBaseUrl } from "../core/client.js";
-import { NotFoundError, UnsupportedChainError } from "../core/errors.js";
+import { NotFoundError, UnsupportedChainError, UnsupportedOperationError } from "../core/errors.js";
 import { create as createChain } from "@agntn/chains";
 import { formatWei } from "../core/types.js";
 import { assertSafePathSegment } from "../core/path-safety.js";
@@ -34,6 +34,7 @@ const DEFAULT_BASE = "https://mempool.space";
 const CHAIN_BASES: Partial<Record<ChainKey, string>> = {
   bitcoin: DEFAULT_BASE,
   litecoin: "https://litecoinspace.org",
+  pepecoin: "https://peppool.space",
 };
 
 /** Fee rates come back in the chain's smallest unit per virtual byte. */
@@ -480,6 +481,7 @@ export class Mempool extends Provider {
 
   override async getGasData(chain?: ChainKey): Promise<GasData> {
     const c = chain ?? this.defaultChain;
+    if (c === "pepecoin") throw new UnsupportedOperationError("getGasData", this.name);
 
     const fees = await this.api<MempoolFees>(c, "/api/v1/fees/recommended");
 
@@ -495,6 +497,7 @@ export class Mempool extends Provider {
 
   override async getBlockInfo(blockNumber: number, chain?: ChainKey): Promise<BlockInfo> {
     const c = chain ?? this.defaultChain;
+    if (c === "pepecoin") throw new UnsupportedOperationError("getBlockInfo", this.name);
 
     assertSafePathSegment(String(blockNumber), "block number");
     const blocks = await this.api<MempoolBlock[]>(
