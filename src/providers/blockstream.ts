@@ -12,7 +12,8 @@ import { NotFoundError, UnsupportedChainError } from "../core/errors.js";
 import { assertSafePathSegment } from "../core/path-safety.js";
 import { Provider } from "../core/provider.js";
 import { normalizeBaseUrl } from "../core/client.js";
-import { clampMaxResults, formatWei } from "../core/types.js";
+import { formatWei } from "../core/types.js";
+import { getEsploraAddressHistory } from "../core/esplora.js";
 import type {
   Balance,
   BlockInfo,
@@ -164,15 +165,11 @@ export class Blockstream extends Provider {
     options?: TxHistoryOptions,
   ): Promise<Transaction[]> {
     const selectedChain = chain ?? this.defaultChain;
-    assertSafePathSegment(address, "address");
-    const transactions = await this.api<EsploraAddressTx[]>(
-      selectedChain,
-      `/api/address/${encodeURIComponent(address)}/txs`,
+    const transactions = await getEsploraAddressHistory(address, options?.limit, async (path) =>
+      this.api<EsploraAddressTx[]>(selectedChain, path),
     );
 
-    return transactions
-      .slice(0, clampMaxResults(options?.limit))
-      .map((transaction) => mapAddressTx(transaction, address));
+    return transactions.map((transaction) => mapAddressTx(transaction, address));
   }
 
   override async getTxDetail(hash: string, chain?: ChainKey): Promise<Transaction> {

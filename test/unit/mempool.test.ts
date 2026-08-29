@@ -25,6 +25,16 @@ function stubJSON(body: unknown) {
   return fetch;
 }
 
+function historyTransaction(index: number) {
+  return {
+    txid: index.toString(16).padStart(64, "0"),
+    vin: [],
+    vout: [],
+    fee: 0,
+    status: { confirmed: true, block_height: 900_000 - index, block_time: 1_749_188_499 },
+  };
+}
+
 /** Serve one canned transaction whose outputs are the interesting part. */
 function stubTxDetail(
   vout: Array<{ scriptpubkey?: string; scriptpubkey_address?: string; value: number }>,
@@ -219,6 +229,37 @@ describe("mempool provider", () => {
     expect(tx.hash).toMatch(/^[0-9a-f]{64}$/);
     expect(tx.status).toBe("success");
     expect(tx.blockNumber).toBeGreaterThan(0);
+  });
+
+  it("continues confirmed history until the requested limit", async () => {
+    const firstPage = Array.from({ length: 25 }, (_, index) => historyTransaction(index));
+    const secondPage = Array.from({ length: 25 }, (_, index) => historyTransaction(index + 25));
+    const cursor = firstPage.at(-1)!.txid;
+    const fetch = vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url.endsWith("/txs")) {
+        return new Response(JSON.stringify(firstPage), {
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      if (url.endsWith(`/txs/chain/${cursor}`)) {
+        return new Response(JSON.stringify(secondPage), {
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      return new Response(null, { status: 404 });
+    });
+    vi.stubGlobal("fetch", fetch);
+
+    const transactions = await provider.getTxHistory(KNOWN_BTC, "bitcoin", { limit: 30 });
+
+    expect(transactions.map((transaction) => transaction.hash)).toEqual(
+      Array.from({ length: 30 }, (_, index) => historyTransaction(index).txid),
+    );
+    expect(fetch.mock.calls.map(([input]) => String(input))).toEqual([
+      `https://mempool.space/api/address/${KNOWN_BTC}/txs`,
+      `https://mempool.space/api/address/${KNOWN_BTC}/txs/chain/${cursor}`,
+    ]);
   });
 
   it("reads the message an OP_RETURN output carries", async () => {
