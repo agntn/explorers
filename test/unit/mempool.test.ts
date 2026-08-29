@@ -406,6 +406,54 @@ describe("mempool provider", () => {
     );
   });
 
+  it.each([
+    ["bitcoin", "https://mempool.space"],
+    ["litecoin", "https://litecoinspace.org"],
+  ] as const)("gets %s blocks from the JSON endpoint", async (chain, host) => {
+    const height = 900_000;
+    const block = {
+      id: "0".repeat(64),
+      height,
+      timestamp: 1_749_188_499,
+      tx_count: 1_562,
+      size: 1_920_777,
+      weight: 3_130_335,
+      previousblockhash: "1".repeat(64),
+    };
+    const fetch = vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url.includes("/block-height/")) return new Response(block.id);
+      if (url.includes("/blocks/")) {
+        return new Response(JSON.stringify([block]), {
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      return new Response(null, { status: 404 });
+    });
+    vi.stubGlobal("fetch", fetch);
+
+    const result = await provider.getBlockInfo!(height, chain);
+
+    expect(result).toMatchObject({
+      number: height,
+      hash: block.id,
+      timestamp: new Date(block.timestamp * 1_000).toISOString(),
+      txCount: block.tx_count,
+    });
+    expect(fetch).toHaveBeenCalledOnce();
+    expect(String(fetch.mock.calls[0]?.[0])).toBe(`${host}/api/blocks/${height}`);
+  });
+
+  it("rejects a block page that does not contain the requested height", async () => {
+    stubJSON([{ id: "0".repeat(64), height: 899_999 }]);
+
+    await expect(provider.getBlockInfo!(900_000, "bitcoin")).rejects.toMatchObject({
+      name: "NotFoundError",
+      provider: "mempool",
+      message: "Not found: Block 900000",
+    });
+  });
+
   it("getGasData returns fee estimates", async () => {
     const gas = await provider.getGasData!("bitcoin");
 
