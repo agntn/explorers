@@ -104,10 +104,15 @@ export interface ProviderConstructor {
   new (config: Readonly<ProviderConfig>): Provider;
 }
 
+/** One operation that provider selection can require. */
+export type ProviderCapability = keyof ProviderCapabilities;
+
 /** What the registry answers about a provider without loading its module. */
 export interface ProviderMeta {
   /** Chains the provider can serve, consulted during auto-selection. */
   chains: readonly ChainKey[];
+  /** Operations the provider can serve. Omit to keep external registrations backward-compatible. */
+  capabilities?: readonly ProviderCapability[];
   /** Public endpoint advertised for the provider. */
   defaultURL?: string;
 }

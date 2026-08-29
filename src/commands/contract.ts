@@ -42,6 +42,7 @@ export default defineCommand({
       const selected = await selectProvider(
         args.chain as string | undefined,
         args.provider as string | undefined,
+        "contractInfo",
       );
       const getContractInfo = selected.provider.getContractInfo?.bind(selected.provider);
       if (!selected.provider.capabilities.contractInfo || !getContractInfo) {

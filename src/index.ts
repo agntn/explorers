@@ -18,7 +18,12 @@ export type {
   ProviderConfig,
 } from "./core/types.js";
 export { Provider } from "./core/provider.js";
-export type { ProviderConstructor, ProviderEntry, ProviderMeta } from "./core/provider.js";
+export type {
+  ProviderCapability,
+  ProviderConstructor,
+  ProviderEntry,
+  ProviderMeta,
+} from "./core/provider.js";
 export { builtins } from "./providers/index.js";
 export { clampMaxResults, formatWei, hexToWei, normalizeChain } from "./core/types.js";
 export {
@@ -35,6 +40,14 @@ export {
 export { isEnsName, isAddress, resolveEns } from "./core/ens.js";
 export { resolveAddresses } from "./core/input.js";
 export { getJSON, buildQuery } from "./core/client.js";
-export { register, create, providers, has, supportsChain, getDefaultURL } from "./core/registry.js";
+export {
+  register,
+  create,
+  providers,
+  has,
+  supportsChain,
+  supportsCapability,
+  getDefaultURL,
+} from "./core/registry.js";
 export { PROVIDER_DEFAULT_CHAIN, resolveProvider, withProvider } from "./core/resolve.js";
 export type { ProviderContext } from "./core/resolve.js";

@@ -2,7 +2,8 @@ import { readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { getChain } from "@agntn/chains";
 import { describe, expect, it, vi } from "vitest";
-import { getDefaultURL, providers } from "../../src/core/registry.js";
+import { getDefaultURL, providers, register, supportsCapability } from "../../src/core/registry.js";
+import type { ProviderCapability } from "../../src/core/provider.js";
 import { builtins } from "../../src/providers/index.js";
 
 const providerDir = fileURLToPath(new URL("../../src/providers/", import.meta.url));
@@ -67,6 +68,32 @@ describe("built-in provider registry", () => {
     for (const entry of builtins) {
       const providerClass = await entry.load();
       expect(providerClass.key).toBe(entry.key);
+    }
+  });
+
+  it("keeps selection capabilities aligned with provider instances", async () => {
+    for (const entry of builtins) {
+      const ProviderClass = await entry.load();
+      const provider = new ProviderClass({ apiKey: "configured" });
+      const capabilities = Object.entries(provider.capabilities) as [ProviderCapability, boolean][];
+
+      for (const [capability, supported] of capabilities) {
+        expect(supportsCapability(entry.key, capability)).toBe(supported);
+      }
+    }
+  });
+
+  it("keeps external registrations eligible when capability metadata is omitted", async () => {
+    const entry = builtins.find((candidate) => candidate.key === "mempool");
+    expect(entry).toBeDefined();
+    if (!entry) throw new Error("Missing mempool provider entry");
+    const ProviderClass = await entry.load();
+
+    try {
+      register(ProviderClass, { chains: entry.chains, defaultURL: entry.defaultURL });
+      expect(supportsCapability(entry.key, "contractInfo")).toBe(true);
+    } finally {
+      register(ProviderClass, entry);
     }
   });
 

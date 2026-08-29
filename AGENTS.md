@@ -26,7 +26,7 @@ Unified block explorer provider library. Normalizes balances, tx history, contra
 - Chain names normalized via `normalizeChain()`, which takes display names as well as aliases like `ethereum`, `mainnet`, `arb`, `btc`
 - Native and token amounts use strings in each chain's smallest unit — call `formatWei(value, decimals)` with the asset's decimals; its default is 18
 - `noUncheckedIndexedAccess` and `noImplicitOverride` are enabled — guard indexed access and mark overrides explicitly
-- Provider registration runs off a manifest: `src/providers/index.ts` lists every built-in as `{ key, chains, defaultURL?, load }`, and `core/registry.ts` turns that list into its map on the first registry call. The class itself only owns `static readonly key`
+- Provider registration runs off a manifest: `src/providers/index.ts` lists every built-in as `{ key, chains, capabilities, defaultURL?, load }`, and `core/registry.ts` turns that list into its map on the first registry call. The class itself only owns `static readonly key`
 - Provider backends are explorer/indexer APIs only. Unsupported operations stay absent; required methods without an explorer contract throw `UnsupportedOperationError`.
 - Bitcoin, Litecoin and Pepecoin transactions from `mempool` carry their OP_RETURN pushes in `Transaction.opReturn`; each payload keeps its raw `hex` and gets a `text` reading only when the bytes are printable UTF-8
 - CLI default subcommand: `balance` (for address-like input) or `providers` (no input)
@@ -103,12 +103,12 @@ graph TB
 - **Optional methods**: `getTxDetail`, `getContractInfo`, `getTokenBalances`, `getTokenTransfers`, `getGasData`, and `getBlockInfo` are optional on `Provider`. Always check both the `capabilities` getter and method presence before calling.
 - **Dynamic CLI imports**: Each subcommand is lazily loaded via `() => import('./commands/X.js').then(m => m.default)`.
 - **Chain normalization**: `normalizeChain()` delegates to `getChain()` from `@agntn/chains` and returns the canonical `ChainKey`. Aliases and display names both resolve (`ethereum→eth`, `btc→bitcoin`, `arb→arbitrum`). Missing input defaults to `eth`; unknown names and the empty string throw.
-- **Provider auto-selection**: `resolveProvider()` checks env vars and chain support. `withProvider()` keeps explicit choices strict and retries automatic reads once on another available built-in after `RateLimitError`. Its callback must be safe to run twice.
+- **Provider auto-selection**: `resolveProvider()` checks env vars, chain support, and an optional requested capability without loading provider modules. `withProvider()` keeps explicit choices strict and retries automatic reads once on another available built-in after `RateLimitError`. Its callback must be safe to run twice.
 - **Error sanitization**: `HTTPError` strips API keys from URLs in error messages. `normalizeError()` wraps unknown errors into typed `ExplorerError` subclasses.
 
 ## Anti-patterns to avoid
 
-- Writing a provider file without adding its class to `builtins` — the class never reaches the registry, and `test/unit/registry.test.ts` fails
+- Writing a provider file without adding its chains and capabilities to `builtins` — the class never reaches capability-aware routing, and `test/unit/registry.test.ts` fails
 - A top-level call in a module the library entry can reach (`new Set()`, `Object.keys()`, a decoder, a prebuilt map) — it pins that module into every consumer bundle, which `pnpm build` reports as growing `Side effects`
 - Calling an optional provider method without checking `capabilities` and method presence — unsupported operations stay absent at runtime
 - Assuming EVM address formats work on non-EVM chains (Solana base58, TON base64, TRON base58/hex)

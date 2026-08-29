@@ -2,6 +2,8 @@
 import { defineCommand } from "citty";
 import consola from "consola";
 import { classifyInput, resolveInput } from "../core/input.js";
+import { PROVIDER_DEFAULT_CHAIN, resolveProvider } from "../core/resolve.js";
+import { normalizeChain } from "../core/types.js";
 import type { ChainKey, Transaction } from "../core/types.js";
 import { failCommand, parsePositiveInteger, reportCommandError, selectProvider } from "./shared.js";
 import type { SelectedProvider } from "./shared.js";
@@ -110,12 +112,18 @@ export default defineCommand({
   },
   async run({ args }) {
     try {
-      const selected = await selectProvider(
-        args.chain as string | undefined,
-        args.provider as string | undefined,
-      );
+      const chainInput = args.chain as string | undefined;
+      const providerInput = args.provider as string | undefined;
+      const requestedChain = chainInput === undefined ? undefined : normalizeChain(chainInput);
+      const initialName = resolveProvider(providerInput, requestedChain);
+      const initialChain = requestedChain ?? normalizeChain(PROVIDER_DEFAULT_CHAIN[initialName]);
       const target = (args.target as string).trim();
-      const mode = transactionMode(args.mode as string | undefined, target, selected.chain);
+      const mode = transactionMode(args.mode as string | undefined, target, initialChain);
+      const selected = await selectProvider(
+        initialChain,
+        providerInput,
+        mode === "detail" ? "txDetail" : "txHistory",
+      );
       if (mode === "detail") await runDetail(selected, target);
       else await runHistory(selected, target, args.limit as string);
     } catch (error) {

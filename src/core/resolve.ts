@@ -1,6 +1,6 @@
-/** Auto-select provider by checking env vars */
+/** Auto-select providers by environment, chain, and operation capability. */
 
-import { create, providers, has, supportsChain } from "./registry.js";
+import { create, providers, has, supportsCapability, supportsChain } from "./registry.js";
 import {
   AuthError,
   RateLimitError,
@@ -8,7 +8,7 @@ import {
   UnsupportedChainError,
   UnsupportedOperationError,
 } from "./errors.js";
-import type { Provider } from "./provider.js";
+import type { Provider, ProviderCapability } from "./provider.js";
 import { normalizeChain } from "./types.js";
 import type { ChainKey } from "./types.js";
 
@@ -60,9 +60,13 @@ function appendRankedProvider(
   ranked: readonly string[],
   name: string,
   chain?: ChainKey,
+  capability?: ProviderCapability,
 ): readonly string[] {
-  const fits = chain === undefined || supportsChain(name, chain);
-  return has(name) && fits && !ranked.includes(name) ? [...ranked, name] : ranked;
+  const fitsChain = chain === undefined || supportsChain(name, chain);
+  const fitsCapability = capability === undefined || supportsCapability(name, capability);
+  return has(name) && fitsChain && fitsCapability && !ranked.includes(name)
+    ? [...ranked, name]
+    : ranked;
 }
 
 function configuredProviderNames(): string[] {
@@ -81,19 +85,23 @@ function appendCandidates(
   ranked: readonly string[],
   candidates: readonly string[],
   chain?: ChainKey,
+  capability?: ProviderCapability,
 ): readonly string[] {
   let result = ranked;
-  for (const name of candidates) result = appendRankedProvider(result, name, chain);
+  for (const name of candidates) result = appendRankedProvider(result, name, chain, capability);
   return result;
 }
 
-function rankProviders(chain?: ChainKey, mode: "primary" | "fallback" = "primary"): string[] {
-  let ranked = appendCandidates([], configuredProviderNames(), chain);
-  ranked = appendCandidates(ranked, keylessProviderNames(mode), chain);
+function rankProviders(
+  chain?: ChainKey,
+  mode: "primary" | "fallback" = "primary",
+  capability?: ProviderCapability,
+): string[] {
+  let ranked = appendCandidates([], configuredProviderNames(), chain, capability);
+  ranked = appendCandidates(ranked, keylessProviderNames(mode), chain, capability);
   if (mode === "primary" && chain !== undefined) {
-    ranked = appendCandidates(ranked, providers(), chain);
+    ranked = appendCandidates(ranked, providers(), chain, capability);
   }
-  if (ranked.length === 0 && has("blockscout")) ranked = ["blockscout"];
   return [...ranked];
 }
 
@@ -101,23 +109,38 @@ function rankProviders(chain?: ChainKey, mode: "primary" | "fallback" = "primary
  * Choose a registered provider for the current environment.
  *
  * An explicit preference wins, even for a chain it cannot serve, so misconfiguration stays visible.
- * Without one, candidates that declare support for the requested chain are considered in order:
- * configured credentials first, then keyless providers, then any chain-capable registry entry, and
- * finally Blockscout.
+ * Without one, candidates that declare support for the requested chain and optional capability are
+ * considered in order: configured credentials first, then keyless providers, then any matching
+ * registry entry, and finally Blockscout when no provider matches the chain.
  *
  * @throws {UnknownProviderError} When an explicit preference is not registered.
  *
  * @param {string} preferred - The `preferred` value.
  * @param {ChainKey} chain - The `chain` value.
+ * @param {ProviderCapability} capability - Operation required from an automatic selection.
  * @returns {string} The resulting value.
  */
-export function resolveProvider(preferred?: string, chain?: ChainKey): string {
+export function resolveProvider(
+  preferred?: string,
+  chain?: ChainKey,
+  capability?: ProviderCapability,
+): string {
   if (preferred !== undefined) {
     if (!has(preferred)) throw new UnknownProviderError(preferred);
     return preferred;
   }
 
-  return rankProviders(chain)[0] ?? providers()[0] ?? "blockscout";
+  const selected = rankProviders(chain, "primary", capability)[0];
+  if (selected !== undefined) return selected;
+
+  // If no backend serves the operation, preserve chain-aware selection so its typed limitation
+  // stays more useful than an unrelated provider's chain error.
+  if (capability !== undefined) {
+    const chainMatch = rankProviders(chain)[0];
+    if (chainMatch !== undefined) return chainMatch;
+  }
+
+  return has("blockscout") ? "blockscout" : (providers()[0] ?? "blockscout");
 }
 
 /** Provider and effective chain selected for one read. */
@@ -157,6 +180,7 @@ async function runFallback<T>(
  * @param {string | undefined} preferred - The `preferred` value.
  * @param {ChainKey | undefined} chain - The `chain` value.
  * @param {(context: Readonly<ProviderContext>) => Promise<T>} run - The `run` value.
+ * @param {ProviderCapability} capability - Operation required from an automatic selection.
  * @returns {Promise<T>} The resulting value.
  */
 export async function withProvider<T>(
@@ -164,11 +188,12 @@ export async function withProvider<T>(
   chain: ChainKey | undefined,
   /* oxlint-disable-next-line typescript/prefer-readonly-parameter-types */
   run: (context: ProviderContext) => Promise<T>,
+  capability?: ProviderCapability,
 ): Promise<T> {
   const requestedChain = chain ?? (preferred === undefined ? normalizeChain() : undefined);
-  const primaryName = resolveProvider(preferred, requestedChain);
+  const primaryName = resolveProvider(preferred, requestedChain, capability);
   const effectiveChain = requestedChain ?? normalizeChain(PROVIDER_DEFAULT_CHAIN[primaryName]);
-  const fallbackName = rankProviders(effectiveChain, "fallback").find(
+  const fallbackName = rankProviders(effectiveChain, "fallback", capability).find(
     (name) => name !== primaryName,
   );
   const execute = async (name: string) =>
