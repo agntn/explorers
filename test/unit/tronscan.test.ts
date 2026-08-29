@@ -94,6 +94,30 @@ describe("tronscan provider", () => {
     expect(String(fetch.mock.calls[0]?.[0])).toContain("sort=-timestamp");
   });
 
+  it("keeps unconfirmed transactions pending", async () => {
+    stubJSON({
+      data: [
+        {
+          hash: "a".repeat(64),
+          timestamp: 1_700_000_000_000,
+          block: 42,
+          ownerAddress: ADDRESS,
+          toAddress: "TRecipient",
+          contractType: 1,
+          confirmed: false,
+          revert: false,
+          contractRet: "SUCCESS",
+          amount: "1000000",
+          cost: { fee: "10" },
+        },
+      ],
+    });
+
+    await expect(provider.getTxHistory(ADDRESS, "tron", { limit: 1 })).resolves.toEqual([
+      expect.objectContaining({ status: "pending" }),
+    ]);
+  });
+
   it("maps transaction and block details", async () => {
     const fetch = vi
       .fn()
