@@ -2,7 +2,7 @@
 
 import { builtins } from "../providers/index.js";
 import { Provider } from "./provider.js";
-import type { ProviderConstructor, ProviderMeta } from "./provider.js";
+import type { ProviderCapability, ProviderConstructor, ProviderMeta } from "./provider.js";
 import type { ChainKey, ProviderConfig } from "./types.js";
 import { UnknownProviderError } from "./errors.js";
 
@@ -22,9 +22,9 @@ let registry: Map<string, RegistryEntry> | undefined;
  */
 function entries(): Map<string, RegistryEntry> {
   registry ??= new Map(
-    builtins.map(({ key, chains, defaultURL, load }): [string, RegistryEntry] => [
+    builtins.map(({ key, chains, capabilities, defaultURL, load }): [string, RegistryEntry] => [
       key,
-      { chains, defaultURL, load },
+      { chains, capabilities, defaultURL, load },
     ]),
   );
   return registry;
@@ -44,6 +44,7 @@ function entries(): Map<string, RegistryEntry> {
 export function register(providerClass: ProviderConstructor, meta: Readonly<ProviderMeta>): void {
   entries().set(providerClass.key, {
     chains: meta.chains,
+    capabilities: meta.capabilities,
     defaultURL: meta.defaultURL,
     load: () => Promise.resolve(providerClass),
     providerClass,
@@ -115,6 +116,21 @@ export function has(name: string): boolean {
 export function supportsChain(name: string, chain: ChainKey): boolean {
   const entry = entries().get(name);
   return entry !== undefined && entry.chains.includes(chain);
+}
+
+/**
+ * Check whether a registered provider declares support for `capability`.
+ *
+ * External registrations without capability metadata remain eligible so adding this routing hint
+ * does not silently remove existing providers from auto-selection.
+ *
+ * @param {string} name - The `name` value.
+ * @param {ProviderCapability} capability - The required operation.
+ * @returns {boolean} Whether the provider can be considered for the operation.
+ */
+export function supportsCapability(name: string, capability: ProviderCapability): boolean {
+  const entry = entries().get(name);
+  return entry !== undefined && (entry.capabilities?.includes(capability) ?? true);
 }
 
 /**

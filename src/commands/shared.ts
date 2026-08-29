@@ -1,5 +1,5 @@
 import consola from "consola";
-import type { Provider } from "../core/provider.js";
+import type { Provider, ProviderCapability } from "../core/provider.js";
 import { create } from "../core/registry.js";
 import { PROVIDER_DEFAULT_CHAIN, resolveProvider } from "../core/resolve.js";
 import { normalizeChain } from "../core/types.js";
@@ -14,9 +14,10 @@ export interface SelectedProvider {
 export async function selectProvider(
   chainInput: string | undefined,
   providerInput: string | undefined,
+  capability?: ProviderCapability,
 ): Promise<SelectedProvider> {
   const requestedChain = chainInput === undefined ? undefined : normalizeChain(chainInput);
-  const name = resolveProvider(providerInput, requestedChain);
+  const name = resolveProvider(providerInput, requestedChain, capability);
   const provider = await create(name);
   const chain = requestedChain ?? normalizeChain(PROVIDER_DEFAULT_CHAIN[name]);
   return { chain, name, provider };

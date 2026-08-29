@@ -16,7 +16,7 @@ src/
 ## Conventions
 
 - **Import paths**: Always use `.js` extension (`from './types.js'`) — ESM with Bundler resolution
-- **Provider registration**: Each concrete class is exported and owns a unique static `key`. Its chains and public endpoint live in the `builtins` entry in `providers/index.ts` next to a `load` that imports the module, and the registry builds its map from that list on first use.
+- **Provider registration**: Each concrete class is exported and owns a unique static `key`. Its chains, capabilities, and public endpoint live in the `builtins` entry in `providers/index.ts` next to a `load` that imports the module, and the registry builds its map from that list on first use.
 - **Side-effect-free modules**: no top-level calls. Derived state is built on demand (`entries()` in the registry, `decoder()` in mempool), and anything the registry needs about a provider lives in its `builtins` entry rather than in a computed class field.
 - **Command pattern**: Each command exports a `defineCommand()` result as default export
 - **Type imports**: Always `import type { ... }` for types, separate from value imports
@@ -30,7 +30,7 @@ src/
 
 ## Anti-patterns
 
-- Adding a new provider without an entry in `builtins` or an input in `build.config.ts`
+- Adding a new provider without matching chains and capabilities in `builtins` or an input in `build.config.ts`
 - Computing a static class field or module constant with a call at load time instead of a lazy helper
 - Calling optional methods without checking both `capabilities` and method presence
 - Using `process.exit()` in library code (only in commands)

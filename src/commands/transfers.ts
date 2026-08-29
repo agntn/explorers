@@ -59,6 +59,7 @@ export default defineCommand({
       const selected = await selectProvider(
         args.chain as string | undefined,
         args.provider as string | undefined,
+        "tokenTransfers",
       );
       const getTokenTransfers = selected.provider.getTokenTransfers?.bind(selected.provider);
       if (!selected.provider.capabilities.tokenTransfers || !getTokenTransfers) {

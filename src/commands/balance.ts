@@ -56,6 +56,7 @@ export default defineCommand({
             }
           }
         },
+        "balances",
       );
     } catch (error) {
       consola.error(`Error: ${error instanceof Error ? error.message : String(error)}`);

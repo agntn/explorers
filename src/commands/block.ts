@@ -46,6 +46,7 @@ export default defineCommand({
       const selected = await selectProvider(
         args.chain as string | undefined,
         args.provider as string | undefined,
+        "blockInfo",
       );
       const blockNumber = parseNonNegativeInteger(args.number as string, "Invalid block number");
       const getBlockInfo = selected.provider.getBlockInfo?.bind(selected.provider);

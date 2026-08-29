@@ -42,10 +42,14 @@ function textResult(text: string) {
   };
 }
 
-async function getProvider(preferred?: string, requestedChain?: string) {
+async function getProvider(
+  preferred: string | undefined,
+  requestedChain: string | undefined,
+  capability: ExplorersModule.ProviderCapability,
+) {
   const lib = await loadLib();
   const chain = requestedChain === undefined ? undefined : lib.normalizeChain(requestedChain);
-  const name = lib.resolveProvider(preferred, chain);
+  const name = lib.resolveProvider(preferred, chain, capability);
   return { lib, name, provider: await lib.create(name) };
 }
 
@@ -126,6 +130,7 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
           });
           return textResult(lines.join("\n"));
         },
+        "balances",
       );
     },
   });
@@ -159,7 +164,7 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
       );
     },
     async execute(_toolCallId, params) {
-      const { lib, name, provider } = await getProvider(params.provider, params.chain);
+      const { lib, name, provider } = await getProvider(params.provider, params.chain, "txHistory");
       const chain = resolveToolChain(lib, name, params.chain);
       const txs = await provider.getTxHistory(params.address, chain, { limit: params.limit });
 
@@ -188,7 +193,7 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
       return new Text(sanitizeTerminalText(`Tx detail: ${args.hash.slice(0, 18)}…`), 0, 0);
     },
     async execute(_toolCallId, params) {
-      const { lib, name, provider } = await getProvider(params.provider, params.chain);
+      const { lib, name, provider } = await getProvider(params.provider, params.chain, "txDetail");
       const chain = resolveToolChain(lib, name, params.chain);
       if (!provider.capabilities.txDetail || !provider.getTxDetail) {
         throw new lib.UnsupportedOperationError("getTxDetail", name);
@@ -289,7 +294,11 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
       return new Text(sanitizeTerminalText(`Contract: ${args.address}`), 0, 0);
     },
     async execute(_toolCallId, params) {
-      const { lib, name, provider } = await getProvider(params.provider, params.chain);
+      const { lib, name, provider } = await getProvider(
+        params.provider,
+        params.chain,
+        "contractInfo",
+      );
       const chain = resolveToolChain(lib, name, params.chain);
       if (!provider.capabilities.contractInfo || !provider.getContractInfo) {
         throw new lib.UnsupportedOperationError("getContractInfo", name);
@@ -337,7 +346,11 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
       );
     },
     async execute(_toolCallId, params) {
-      const { lib, name, provider } = await getProvider(params.provider, params.chain);
+      const { lib, name, provider } = await getProvider(
+        params.provider,
+        params.chain,
+        "tokenBalances",
+      );
       const chain = resolveToolChain(lib, name, params.chain);
       if (!provider.capabilities.tokenBalances || !provider.getTokenBalances) {
         throw new lib.UnsupportedOperationError("getTokenBalances", name);
@@ -387,7 +400,11 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
       );
     },
     async execute(_toolCallId, params) {
-      const { lib, name, provider } = await getProvider(params.provider, params.chain);
+      const { lib, name, provider } = await getProvider(
+        params.provider,
+        params.chain,
+        "tokenTransfers",
+      );
       const chain = resolveToolChain(lib, name, params.chain);
       if (!provider.capabilities.tokenTransfers || !provider.getTokenTransfers) {
         throw new lib.UnsupportedOperationError("getTokenTransfers", name);
@@ -428,7 +445,7 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
       );
     },
     async execute(_toolCallId, params) {
-      const { lib, name, provider } = await getProvider(params.provider, params.chain);
+      const { lib, name, provider } = await getProvider(params.provider, params.chain, "gasData");
       const chain = resolveToolChain(lib, name, params.chain);
 
       const caps = provider.capabilities;
@@ -471,7 +488,7 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
       );
     },
     async execute(_toolCallId, params) {
-      const { lib, name, provider } = await getProvider(params.provider, params.chain);
+      const { lib, name, provider } = await getProvider(params.provider, params.chain, "blockInfo");
       const chain = resolveToolChain(lib, name, params.chain);
       if (!provider.capabilities.blockInfo || !provider.getBlockInfo) {
         throw new lib.UnsupportedOperationError("getBlockInfo", name);

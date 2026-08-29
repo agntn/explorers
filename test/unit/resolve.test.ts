@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  AuthError,
   NotFoundError,
   RateLimitError,
   UnknownProviderError,
@@ -90,6 +91,18 @@ describe("resolveProvider", () => {
     expect(resolveProvider(undefined, "solana")).toBe("helius");
   });
 
+  it("skips configured providers that cannot serve the requested capability", () => {
+    useNoProviderCredentials();
+    vi.stubEnv("HELIUS_API_KEY", "configured");
+
+    expect(resolveProvider(undefined, "solana", "balances")).toBe("solscan");
+    expect(resolveProvider(undefined, "solana", "txHistory")).toBe("helius");
+
+    vi.stubEnv("SOLSCAN_API_KEY", "configured");
+    expect(resolveProvider(undefined, "solana", "tokenBalances")).toBe("helius");
+    expect(resolveProvider(undefined, "aptos", "balances")).toBe("aptos");
+  });
+
   it("falls back to a chain-capable provider even without credentials", () => {
     vi.stubEnv("ETHERSCAN_API_KEY", "");
     vi.stubEnv("BLOCKCHAIR_API_KEY", "");
@@ -116,8 +129,16 @@ describe("resolveProvider", () => {
     expect(resolveProvider(undefined, "cardano")).toBe("koios");
   });
 
-  it("lets an explicit provider win over the requested chain", () => {
+  it("keeps Blockscout as the backstop for chains without a matching provider", () => {
+    useNoProviderCredentials();
+
+    expect(resolveProvider(undefined, "fantom")).toBe("blockscout");
+    expect(resolveProvider(undefined, "fantom", "balances")).toBe("blockscout");
+  });
+
+  it("lets an explicit provider win over the requested chain and capability", () => {
     expect(resolveProvider("etherscan", "bitcoin")).toBe("etherscan");
+    expect(resolveProvider("helius", "solana", "balances")).toBe("helius");
   });
 });
 
@@ -136,8 +157,20 @@ describe("withProvider", () => {
     vi.stubEnv("HELIUS_API_KEY", "configured");
 
     await expect(
-      withProvider("helius", undefined, async ({ chain, name }) => ({ chain, name })),
+      withProvider("helius", undefined, async ({ chain, name }) => ({ chain, name }), "balances"),
     ).resolves.toEqual({ chain: "solana", name: "helius" });
+  });
+
+  it("routes automatic balance reads away from Helius", async () => {
+    useNoProviderCredentials();
+    vi.stubEnv("HELIUS_API_KEY", "configured");
+    const run = vi.fn();
+
+    await expect(withProvider(undefined, "solana", run, "balances")).rejects.toMatchObject({
+      name: AuthError.name,
+      provider: "solscan",
+    });
+    expect(run).not.toHaveBeenCalled();
   });
 
   it("keeps the primary chain when a rate limit triggers fallback", async () => {

@@ -35,6 +35,7 @@ export default defineCommand({
       const selected = await selectProvider(
         args.chain as string | undefined,
         args.provider as string | undefined,
+        "gasData",
       );
       const getGasData = selected.provider.getGasData?.bind(selected.provider);
       if (!selected.provider.capabilities.gasData || !getGasData) {

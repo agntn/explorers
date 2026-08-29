@@ -74,14 +74,14 @@ An address-like first argument defaults to `balance`. No ceremonial subcommand n
 | `-m, --mode`     | Force `tx` into `history` or `detail` mode when the input is ambiguous |
 | `-t, --token`    | Limit `transfers` to one token contract                                |
 
-Without `--provider`, Explorers first checks configured API keys and then falls back to Blockscout. It has no key requirement and is a much better default than failing before the first request.
+Without `--provider`, Explorers filters candidates by the requested chain and operation, then checks configured API keys before keyless providers. Blockscout remains the final backstop when no provider matches the chain.
 
 ## TypeScript
 
 ```typescript
 import { create, resolveEns, resolveProvider } from "@agntn/explorers";
 
-const provider = await create(resolveProvider());
+const provider = await create(resolveProvider(undefined, "ethereum"));
 const address = await resolveEns("vitalik.eth");
 if (!address) throw new Error("ENS name did not resolve");
 
@@ -104,9 +104,9 @@ UTXO providers that expose cumulative totals add `funded` and `spent` to `Balanc
 
 Required operations live on `Provider`. Optional operations stay absent when a backend cannot serve them, so check both `capabilities` and the method before calling. Unsupported operations have no stub that returns convincing nonsense. Every successful `Balance` includes its ISO read time plus nullable block height and hash fields, so an unavailable chain position stays explicit.
 
-`create()` imports the provider it was asked for and nothing else, which is why it returns a promise. Everything the registry answers without an instance stays synchronous: `providers()`, `has()`, `supportsChain()`, `getDefaultURL()` and `resolveProvider()` read the metadata in `builtins`. A single backend can also skip the registry: `import { Mempool } from "@agntn/explorers/providers/mempool"` gives you the class and leaves the other eleven out of your bundle.
+`create()` imports the provider it was asked for and nothing else, which is why it returns a promise. Everything the registry answers without an instance stays synchronous: `providers()`, `has()`, `supportsChain()`, `supportsCapability()`, `getDefaultURL()` and `resolveProvider()` read the metadata in `builtins`. Pass a capability as the third `resolveProvider()` argument when automatic selection must support a particular operation. A single backend can also skip the registry: `import { Mempool } from "@agntn/explorers/providers/mempool"` gives you the class and leaves the other eleven out of your bundle.
 
-`withProvider()` keeps an explicit provider strict. With neither provider nor chain, it starts on Ethereum; an explicit provider without a chain keeps that provider's default. Automatic reads get one try on the next available built-in provider after `RateLimitError`. Every other failure stays with the first provider. Its callback can run twice, so it belongs to read operations. The CLI, MCP, Pi and OMP balance paths use this dispatcher.
+`withProvider()` keeps an explicit provider strict. With neither provider nor chain, it starts on Ethereum; an explicit provider without a chain keeps that provider's default. Its optional fourth argument filters automatic selection by capability. Automatic reads get one try on the next available built-in provider after `RateLimitError`. Every other failure stays with the first provider. Its callback can run twice, so it belongs to read operations. The CLI, MCP, Pi and OMP balance paths request the `balances` capability through this dispatcher.
 
 ## Providers
 
