@@ -21,6 +21,7 @@ import { assertSafePathSegment } from "../core/path-safety.js";
 import { clampMaxResults, formatWei, toTimestamp } from "../core/types.js";
 
 const DEFAULT_BASE = "https://pro-api.solscan.io/v2.0";
+const TRANSACTION_PAGE_SIZE = 40;
 
 interface SolscanResponse<T> {
   success: boolean;
@@ -170,10 +171,27 @@ export class Solscan extends Provider {
     if (c !== "solana") throw new UnsupportedChainError(c, this.name);
     assertSafePathSegment(address, "address");
 
-    const transactions = await this.api<SolscanAccountTransaction[]>("/account/transactions", {
-      address,
-      limit: clampMaxResults(options?.limit, 40),
-    });
+    const limit = clampMaxResults(options?.limit);
+    const transactions: SolscanAccountTransaction[] = [];
+    const seenCursors = new Set<string>();
+    let before: string | undefined;
+
+    while (transactions.length < limit) {
+      const page = await this.api<SolscanAccountTransaction[]>("/account/transactions", {
+        address,
+        before,
+        limit: TRANSACTION_PAGE_SIZE,
+      });
+      const cursor = page.at(-1)?.tx_hash;
+      if (cursor !== undefined && seenCursors.has(cursor)) break;
+
+      transactions.push(...page.slice(0, limit - transactions.length));
+      if (page.length < TRANSACTION_PAGE_SIZE || cursor === undefined) break;
+
+      seenCursors.add(cursor);
+      before = cursor;
+    }
+
     return transactions.map(mapAccountTransaction);
   }
 
