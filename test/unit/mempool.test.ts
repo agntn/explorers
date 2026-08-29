@@ -1,7 +1,7 @@
 /**
- * Explorers - Mempool.space integration tests (Bitcoin and Litecoin)
+ * Explorers - Mempool.space integration tests for Bitcoin and compatible forks.
  *
- * Live roundtrips against the public mempool.space API and its litecoinspace.org fork.
+ * Live roundtrips cover mempool.space, litecoinspace.org and peppool.space.
  */
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { create } from "../../src/core/registry.js";
@@ -11,6 +11,9 @@ const KNOWN_BTC = "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh";
 
 // A Litecoin mining pool address with tens of thousands of transactions
 const KNOWN_LTC = "LfdYLbP9F9CpmCX6atZnHZb8KkS8T6x4DK";
+
+/** A Pepecoin puzzle address with confirmed history. */
+const KNOWN_PEP = "Pu5spyDwNEQxmWLkUHv779AWNkpMdQ29SZ";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -90,6 +93,15 @@ describe("mempool provider", () => {
     expect(Number(balance.balanceFormatted)).toBeGreaterThan(0);
   });
 
+  it("getBalance returns PEP balance from peppool", async () => {
+    const balance = await provider.getBalance(KNOWN_PEP, "pepecoin");
+
+    expect(balance.address).toBe(KNOWN_PEP);
+    expect(balance.chain).toBe("pepecoin");
+    expect(balance.symbol).toBe("PEP");
+    expect(balance.balance).toMatch(/^-?\d+$/);
+  });
+
   it("keeps confirmed funded and spent totals without losing integer precision", async () => {
     stubJSON({
       chain_stats: {
@@ -125,6 +137,48 @@ describe("mempool provider", () => {
       `https://litecoinspace.org/api/address/${KNOWN_LTC}`,
     );
   });
+
+  it("routes Pepecoin balances to peppool.space with exact amounts", async () => {
+    const fetch = stubJSON({
+      chain_stats: {
+        funded_txo_count: 2,
+        funded_txo_sum: "5000998512000",
+        spent_txo_count: 2,
+        spent_txo_sum: "5000000000000",
+      },
+    });
+
+    const balance = await provider.getBalance(KNOWN_PEP, "pepecoin");
+
+    expect(String(fetch.mock.calls[0]?.[0])).toBe(`https://peppool.space/api/address/${KNOWN_PEP}`);
+    expect(balance).toMatchObject({
+      chain: "pepecoin",
+      balance: "998512000",
+      balanceFormatted: "9.98512",
+      funded: "5000998512000",
+      spent: "5000000000000",
+      symbol: "PEP",
+    });
+  });
+
+  it.each(["getGasData", "getBlockInfo"] as const)(
+    "rejects unsupported Pepecoin %s reads before network access",
+    async (operation) => {
+      const fetch = vi.fn();
+      vi.stubGlobal("fetch", fetch);
+
+      const read =
+        operation === "getGasData"
+          ? provider.getGasData!("pepecoin")
+          : provider.getBlockInfo!(1, "pepecoin");
+
+      await expect(read).rejects.toMatchObject({
+        name: "UnsupportedOperationError",
+        provider: "mempool",
+      });
+      expect(fetch).not.toHaveBeenCalled();
+    },
+  );
 
   it("labels litecoin fee estimates in litoshi/vB", async () => {
     stubJSON({ fastestFee: 2, halfHourFee: 1, hourFee: 1, economyFee: 1, minimumFee: 1 });

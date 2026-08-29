@@ -39,6 +39,7 @@ describe("classifyInput", () => {
   it("uses unambiguous chain-specific transaction hash shapes", () => {
     expect(classifyInput("a".repeat(64), "bitcoin")).toBe("txhash");
     expect(classifyInput("a".repeat(64), "ecash")).toBe("txhash");
+    expect(classifyInput("a".repeat(64), "pepecoin")).toBe("txhash");
     expect(classifyInput("2".repeat(64), "solana")).toBe("txhash");
     expect(classifyInput("2".repeat(44), "sui")).toBe("txhash");
     expect(classifyInput("a".repeat(64), "cardano")).toBe("txhash");
