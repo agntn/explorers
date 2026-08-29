@@ -32,7 +32,7 @@ afterEach(() => {
 });
 
 describe("blockscout provider", () => {
-  let provider: ReturnType<typeof create>;
+  let provider: Awaited<ReturnType<typeof create>>;
 
   beforeAll(async () => {
     provider = await create("blockscout");
@@ -129,7 +129,10 @@ describe("blockscout provider", () => {
       status: "ok",
       transaction_types: [],
     });
-    const page = (items: unknown[], next: Record<string, string | number> | null): Response =>
+    const page = (
+      items: readonly unknown[],
+      next: Readonly<Record<string, string | number> | null>,
+    ): Response =>
       new Response(JSON.stringify({ items, next_page_params: next }), {
         headers: { "Content-Type": "application/json" },
       });
@@ -339,7 +342,7 @@ describe("blockscout provider", () => {
       block_number: block,
       timestamp: "2026-08-22T18:24:59.000000Z",
     });
-    const page = (items: unknown[], next: Record<string, number> | null) =>
+    const page = (items: readonly unknown[], next: Readonly<Record<string, number> | null>) =>
       new Response(JSON.stringify({ items, next_page_params: next }), {
         headers: { "Content-Type": "application/json" },
       });

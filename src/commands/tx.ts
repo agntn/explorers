@@ -1,10 +1,79 @@
 /** Transaction operations — history or detail (supports ENS) */
 import { defineCommand } from "citty";
 import consola from "consola";
-import { resolveProvider, PROVIDER_DEFAULT_CHAIN } from "../core/resolve.js";
-import { create } from "../core/registry.js";
-import { normalizeChain } from "../core/types.js";
 import { classifyInput, resolveInput } from "../core/input.js";
+import type { ChainKey, Transaction } from "../core/types.js";
+import { failCommand, parsePositiveInteger, reportCommandError, selectProvider } from "./shared.js";
+import type { SelectedProvider } from "./shared.js";
+
+type TransactionMode = "detail" | "history";
+
+function transactionMode(
+  requested: string | undefined,
+  target: string,
+  chain: ChainKey,
+): TransactionMode {
+  if (requested !== undefined && requested !== "history" && requested !== "detail") {
+    failCommand('Invalid --mode value (expected "history" or "detail")');
+  }
+  return requested ?? (classifyInput(target, chain) === "txhash" ? "detail" : "history");
+}
+
+/* oxlint-disable-next-line typescript/prefer-readonly-parameter-types */
+function renderOpReturns(transaction: Transaction): void {
+  for (const payload of transaction.opReturn ?? []) {
+    const [first = "", ...rest] = (payload.text ?? payload.hex).split("\n");
+    consola.log(`  OP_RETURN: ${first}`);
+    for (const line of rest) consola.log(`    ${line}`);
+  }
+}
+
+/* oxlint-disable-next-line typescript/prefer-readonly-parameter-types */
+function renderTransaction(providerName: string, transaction: Transaction): void {
+  consola.log(`[${providerName}] Tx ${transaction.hash}`);
+  consola.log(`  Block: ${transaction.blockNumber}`);
+  consola.log(`  From: ${transaction.from}`);
+  consola.log(`  To: ${transaction.to ?? "contract creation"}`);
+  consola.log(`  Value: ${transaction.valueFormatted}`);
+  consola.log(`  Status: ${transaction.status}`);
+  if (transaction.fee) consola.log(`  Fee: ${transaction.fee} base units`);
+  if (transaction.functionName) consola.log(`  Method: ${transaction.functionName}`);
+  if (transaction.tokenTransfers.length > 0) {
+    consola.log(`  Token transfers: ${transaction.tokenTransfers.length}`);
+  }
+  renderOpReturns(transaction);
+}
+
+/* oxlint-disable-next-line typescript/prefer-readonly-parameter-types */
+async function runDetail(selected: SelectedProvider, target: string): Promise<void> {
+  const getTxDetail = selected.provider.getTxDetail?.bind(selected.provider);
+  if (!selected.provider.capabilities.txDetail || !getTxDetail) {
+    failCommand(`Provider "${selected.name}" does not support transaction details`);
+  }
+  const transaction = await getTxDetail(target, selected.chain);
+  renderTransaction(selected.name, transaction);
+}
+
+async function runHistory(
+  /* oxlint-disable-next-line typescript/prefer-readonly-parameter-types */
+  selected: SelectedProvider,
+  target: string,
+  limitInput: string,
+): Promise<void> {
+  const { address } = await resolveInput(target, selected.chain);
+  const limit = parsePositiveInteger(limitInput, "Invalid --limit value");
+  const transactions = await selected.provider.getTxHistory(address, selected.chain, { limit });
+  consola.log(
+    `[${selected.name}] ${transactions.length} transactions for ${address} on ${selected.chain}`,
+  );
+  consola.log("");
+  for (const transaction of transactions) {
+    const value = transaction.valueFormatted !== "0" ? ` ${transaction.valueFormatted}` : "";
+    consola.log(
+      `  ${transaction.hash.slice(0, 18)}…  ${transaction.from.slice(0, 10)}… → ${(transaction.to ?? "?").slice(0, 10)}…${value}  [${transaction.status}]`,
+    );
+  }
+}
 
 export default defineCommand({
   meta: {
@@ -41,67 +110,16 @@ export default defineCommand({
   },
   async run({ args }) {
     try {
-      const chainInput = args.chain as string | undefined;
-      const requestedChain = chainInput === undefined ? undefined : normalizeChain(chainInput);
-      const providerName = resolveProvider(args.provider as string | undefined, requestedChain);
-      const provider = await create(providerName);
-      const chain = requestedChain ?? normalizeChain(PROVIDER_DEFAULT_CHAIN[providerName]);
-      const rawTarget = (args.target as string).trim();
-      const requestedMode = args.mode as string | undefined;
-      if (
-        requestedMode !== undefined &&
-        requestedMode !== "history" &&
-        requestedMode !== "detail"
-      ) {
-        consola.error('Invalid --mode value (expected "history" or "detail")');
-        process.exit(1);
-      }
-      const mode =
-        requestedMode ?? (classifyInput(rawTarget, chain) === "txhash" ? "detail" : "history");
-
-      if (mode === "detail") {
-        if (!provider.capabilities.txDetail || !provider.getTxDetail) {
-          consola.error(`Provider "${providerName}" does not support transaction details`);
-          process.exit(1);
-        }
-        const tx = await provider.getTxDetail(rawTarget, chain);
-        consola.log(`[${providerName}] Tx ${tx.hash}`);
-        consola.log(`  Block: ${tx.blockNumber}`);
-        consola.log(`  From: ${tx.from}`);
-        consola.log(`  To: ${tx.to ?? "contract creation"}`);
-        consola.log(`  Value: ${tx.valueFormatted}`);
-        consola.log(`  Status: ${tx.status}`);
-        if (tx.fee) consola.log(`  Fee: ${tx.fee} base units`);
-        if (tx.functionName) consola.log(`  Method: ${tx.functionName}`);
-        if (tx.tokenTransfers.length > 0) {
-          consola.log(`  Token transfers: ${tx.tokenTransfers.length}`);
-        }
-        for (const payload of tx.opReturn ?? []) {
-          const [first = "", ...rest] = (payload.text ?? payload.hex).split("\n");
-          consola.log(`  OP_RETURN: ${first}`);
-          for (const line of rest) consola.log(`    ${line}`);
-        }
-      } else {
-        const { address } = await resolveInput(rawTarget, chain);
-        const limitText = (args.limit as string).trim();
-        const limit = Number(limitText);
-        if (!/^\d+$/.test(limitText) || !Number.isSafeInteger(limit) || limit < 1) {
-          consola.error("Invalid --limit value");
-          process.exit(1);
-        }
-        const txs = await provider.getTxHistory(address, chain, { limit });
-        consola.log(`[${providerName}] ${txs.length} transactions for ${address} on ${chain}`);
-        consola.log("");
-        for (const tx of txs) {
-          const val = tx.valueFormatted !== "0" ? ` ${tx.valueFormatted}` : "";
-          consola.log(
-            `  ${tx.hash.slice(0, 18)}…  ${tx.from.slice(0, 10)}… → ${(tx.to ?? "?").slice(0, 10)}…${val}  [${tx.status}]`,
-          );
-        }
-      }
+      const selected = await selectProvider(
+        args.chain as string | undefined,
+        args.provider as string | undefined,
+      );
+      const target = (args.target as string).trim();
+      const mode = transactionMode(args.mode as string | undefined, target, selected.chain);
+      if (mode === "detail") await runDetail(selected, target);
+      else await runHistory(selected, target, args.limit as string);
     } catch (error) {
-      consola.error(`Error: ${error instanceof Error ? error.message : error}`);
-      process.exit(1);
+      reportCommandError(error);
     }
   },
 });

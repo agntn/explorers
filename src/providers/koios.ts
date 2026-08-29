@@ -41,49 +41,49 @@ const ASSET_MAX_PAGES = 20;
 const UNPRINTABLE = /[\p{C}\p{Zl}\p{Zp}]/u;
 
 interface KoiosAddressInfo {
-  address: string;
-  balance: string | number;
+  readonly address: string;
+  readonly balance: string | number;
 }
 
 interface KoiosAddressTx {
-  tx_hash: string;
-  epoch_no: number;
-  block_height: number;
-  block_time: number;
+  readonly tx_hash: string;
+  readonly epoch_no: number;
+  readonly block_height: number;
+  readonly block_time: number;
 }
 
 interface KoiosAsset {
-  policy_id: string;
-  asset_name: string | null;
-  fingerprint: string;
-  decimals: number | null;
-  quantity: string | number;
+  readonly policy_id: string;
+  readonly asset_name: string | null;
+  readonly fingerprint: string;
+  readonly decimals: number | null;
+  readonly quantity: string | number;
 }
 
 /** One side of a transaction. Koios gives inputs and outputs the same shape. */
 interface KoiosTxIo {
-  value: string | number;
-  payment_addr?: { bech32: string };
+  readonly value: string | number;
+  readonly payment_addr?: { readonly bech32: string };
 }
 
 interface KoiosTxInfo {
-  tx_hash: string;
-  block_height: number;
-  tx_timestamp: number;
-  total_output: string | number;
-  fee: string | number;
-  inputs: KoiosTxIo[];
-  outputs: KoiosTxIo[];
-  collateral_inputs: KoiosTxIo[];
+  readonly tx_hash: string;
+  readonly block_height: number;
+  readonly tx_timestamp: number;
+  readonly total_output: string | number;
+  readonly fee: string | number;
+  readonly inputs: readonly KoiosTxIo[];
+  readonly outputs: readonly KoiosTxIo[];
+  readonly collateral_inputs: readonly KoiosTxIo[];
 }
 
-/** ADA's supply in lovelace runs past `Number.MAX_SAFE_INTEGER`, so sums are taken in BigInt. */
+/* ADA's supply in lovelace runs past `Number.MAX_SAFE_INTEGER`, so sums are taken in BigInt. */
 function lovelace(value: string | number): bigint {
   return BigInt(String(value));
 }
 
-/** Sum the sides of a transaction that belong to one address. */
-function sumFor(sides: KoiosTxIo[], address: string): bigint {
+/* Sum the sides of a transaction that belong to one address. */
+function sumFor(sides: readonly KoiosTxIo[], address: string): bigint {
   return sides.reduce(
     (total, side) => (side.payment_addr?.bech32 === address ? total + lovelace(side.value) : total),
     0n,
@@ -97,7 +97,7 @@ function decoder(): TextDecoder {
   return utf8;
 }
 
-/** Read an asset name as text. A minter picks those bytes, so anything invisible stays unread. */
+/* Read an asset name as text. A minter picks those bytes, so anything invisible stays unread. */
 function decodeAssetName(hex: string | null): string | undefined {
   if (!hex || !/^(?:[0-9a-fA-F]{2})+$/.test(hex)) return undefined;
   const bytes = Uint8Array.from(hex.match(/../g) ?? [], (byte) => Number.parseInt(byte, 16));
@@ -109,8 +109,8 @@ function decodeAssetName(hex: string | null): string | undefined {
   }
 }
 
-/** Read one holding. The CIP-14 fingerprint names an asset whose own name is bytes, not text. */
-function mapTokenBalance(asset: KoiosAsset): TokenBalance {
+/* Read one holding. The CIP-14 fingerprint names an asset whose own name is bytes, not text. */
+function mapTokenBalance(asset: Readonly<KoiosAsset>): TokenBalance {
   const decimals = asset.decimals ?? 0;
   const balance = String(asset.quantity);
 
@@ -123,8 +123,8 @@ function mapTokenBalance(asset: KoiosAsset): TokenBalance {
   };
 }
 
-/** The transaction as a whole: who paid in first, who was paid first, and how much left it. */
-function wholeTx(raw: KoiosTxInfo): { from: string; to: string | null; value: bigint } {
+/* The transaction as a whole: who paid in first, who was paid first, and how much left it. */
+function wholeTx(raw: Readonly<KoiosTxInfo>): { from: string; to: string | null; value: bigint } {
   return {
     from: raw.inputs[0]?.payment_addr?.bech32 ?? "unknown",
     to: raw.outputs[0]?.payment_addr?.bech32 ?? null,
@@ -132,14 +132,24 @@ function wholeTx(raw: KoiosTxInfo): { from: string; to: string | null; value: bi
   };
 }
 
-/**
+/*
  * The same transaction seen from one address: what it sent or received, and its counterparty.
  *
  * Change returns to the sender, so what left is the shortfall minus the fee; an address that funded
  * the transaction and still came out ahead reports the gain.
  */
+function addressParties(
+  raw: Readonly<KoiosTxInfo>,
+  address: string,
+  isSend: boolean,
+): { readonly from: string; readonly to: string | null } {
+  if (!isSend) return { from: raw.inputs[0]?.payment_addr?.bech32 ?? "unknown", to: address };
+  const recipient = raw.outputs.find((output) => output.payment_addr?.bech32 !== address);
+  return { from: address, to: recipient?.payment_addr?.bech32 ?? address };
+}
+
 function addressView(
-  raw: KoiosTxInfo,
+  raw: Readonly<KoiosTxInfo>,
   address: string,
 ): { from: string; to: string | null; value: bigint } {
   const paidIn = sumFor(raw.inputs, address);
@@ -148,24 +158,17 @@ function addressView(
   const net = received - paidIn;
   const moved = net < 0n ? -net - lovelace(raw.fee) : net;
 
-  return {
-    from: isSend ? address : (raw.inputs[0]?.payment_addr?.bech32 ?? "unknown"),
-    to: isSend
-      ? (raw.outputs.find((output) => output.payment_addr?.bech32 !== address)?.payment_addr
-          ?.bech32 ?? address)
-      : address,
-    value: moved > 0n ? moved : 0n,
-  };
+  return { ...addressParties(raw, address, isSend), value: moved > 0n ? moved : 0n };
 }
 
-/**
+/*
  * Read one transaction, from the point of view of `address` when the caller has one.
  *
  * Many inputs spend into many outputs, so one from/to pair is a summary. Collateral is what marks a
  * contract call, and the phase-2 validity flag sits behind the heavier `_scripts` payload, so even
  * a script that failed and lost its collateral reads as `success`.
  */
-function mapTransaction(raw: KoiosTxInfo, address?: string): Transaction {
+function mapTransaction(raw: Readonly<KoiosTxInfo>, address?: string): Transaction {
   const { from, to, value } = address === undefined ? wholeTx(raw) : addressView(raw, address);
 
   return {
@@ -184,12 +187,38 @@ function mapTransaction(raw: KoiosTxInfo, address?: string): Transaction {
   };
 }
 
+function historyQuery(
+  options: Readonly<TxHistoryOptions> | undefined,
+  limit: number,
+  page: number,
+): Readonly<Record<string, string | number | undefined>> {
+  const endBlock = options?.endBlock;
+  return {
+    limit,
+    offset: (page - 1) * limit || undefined,
+    order: options?.sort === "asc" ? "block_height.asc" : "block_height.desc",
+    block_height: endBlock === undefined ? undefined : `lte.${endBlock}`,
+  };
+}
+
+function mapHistoryRows(
+  rows: readonly KoiosAddressTx[],
+  details: readonly KoiosTxInfo[],
+  address: string,
+): Transaction[] {
+  const byHash = new Map(details.map((detail) => [detail.tx_hash, detail]));
+  return rows.flatMap((row) => {
+    const detail = byHash.get(row.tx_hash);
+    return detail ? [mapTransaction(detail, address)] : [];
+  });
+}
+
 export class Koios extends Provider {
   static readonly key = "koios";
 
   private readonly baseUrl: string;
 
-  constructor(config: ProviderConfig) {
+  constructor(config: Readonly<ProviderConfig>) {
     super(config);
     this.baseUrl = normalizeBaseUrl(config.baseUrl ?? DEFAULT_BASE);
   }
@@ -207,11 +236,11 @@ export class Koios extends Provider {
     };
   }
 
-  /** Post to a Koios endpoint. Addresses and hashes ride in the body, so none reach the path. */
+  /* Post to a Koios endpoint. Addresses and hashes ride in the body, so none reach the path. */
   private post<T>(
     path: string,
     body: unknown,
-    params: Record<string, string | number | undefined> = {},
+    params: Readonly<Record<string, string | number | undefined>> = {},
   ): Promise<T> {
     return this.postJSON<T>(`${this.baseUrl}${path}${buildQuery(params)}`, body);
   }
@@ -222,8 +251,8 @@ export class Koios extends Provider {
     return c;
   }
 
-  /** Read full transactions in batches the body limit allows. */
-  private async txInfo(hashes: string[]): Promise<KoiosTxInfo[]> {
+  /* Read full transactions in batches the body limit allows. */
+  private async txInfo(hashes: readonly string[]): Promise<KoiosTxInfo[]> {
     const details: KoiosTxInfo[] = [];
     for (let start = 0; start < hashes.length; start += TX_INFO_BATCH) {
       const page = await this.post<KoiosTxInfo[]>("/tx_info", {
@@ -238,6 +267,10 @@ export class Koios extends Provider {
   /**
    * Read the ADA balance. Without `select` the endpoint also ships the whole UTxO set, 222 kB of
    * it, and an address the ledger never saw answers with an empty array just like a malformed one.
+   *
+   * @param {string} address - The `address` value.
+   * @param {ChainKey} chain - The `chain` value.
+   * @returns {Promise<Balance>} The resulting value.
    */
   async getBalance(address: string, chain?: ChainKey): Promise<Balance> {
     const c = this.assertChain(chain);
@@ -259,11 +292,18 @@ export class Koios extends Provider {
     });
   }
 
-  /** List transactions. `tx_info` answers in its own order, so the hash list sets the order. */
+  /**
+   * List transactions. `tx_info` answers in its own order, so the hash list sets the order.
+   *
+   * @param {string} address - The `address` value.
+   * @param {ChainKey} chain - The `chain` value.
+   * @param {Readonly<TxHistoryOptions>} options - The `options` value.
+   * @returns {Promise<Transaction[]>} The resulting value.
+   */
   async getTxHistory(
     address: string,
     chain?: ChainKey,
-    options?: TxHistoryOptions,
+    options?: Readonly<TxHistoryOptions>,
   ): Promise<Transaction[]> {
     this.assertChain(chain);
 
@@ -272,22 +312,12 @@ export class Koios extends Provider {
     const rows = await this.post<KoiosAddressTx[]>(
       "/address_txs",
       { _addresses: [address], _after_block_height: options?.startBlock },
-      {
-        limit,
-        offset: (page - 1) * limit || undefined,
-        order: `block_height.${options?.sort === "asc" ? "asc" : "desc"}`,
-        block_height: options?.endBlock === undefined ? undefined : `lte.${options.endBlock}`,
-      },
+      historyQuery(options, limit, page),
     );
     if (rows.length === 0) return [];
 
     const details = await this.txInfo(rows.map((row) => row.tx_hash));
-    const byHash = new Map(details.map((detail) => [detail.tx_hash, detail]));
-
-    return rows.flatMap((row) => {
-      const detail = byHash.get(row.tx_hash);
-      return detail ? [mapTransaction(detail, address)] : [];
-    });
+    return mapHistoryRows(rows, details, address);
   }
 
   override async getTxDetail(hash: string, chain?: ChainKey): Promise<Transaction> {
@@ -298,11 +328,18 @@ export class Koios extends Provider {
     return mapTransaction(detail);
   }
 
-  /** List the native assets an address holds. A single NFT project can fill several pages. */
+  /**
+   * List the native assets an address holds. A single NFT project can fill several pages.
+   *
+   * @param {string} address - The `address` value.
+   * @param {ChainKey} chain - The `chain` value.
+   * @param {Readonly<TokenBalanceOptions>} options - The `options` value.
+   * @returns {Promise<TokenBalance[]>} The resulting value.
+   */
   override async getTokenBalances(
     address: string,
     chain?: ChainKey,
-    options?: TokenBalanceOptions,
+    options?: Readonly<TokenBalanceOptions>,
   ): Promise<TokenBalance[]> {
     this.assertChain(chain);
 

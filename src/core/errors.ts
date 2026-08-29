@@ -18,9 +18,9 @@ export class ExplorerError extends Error {
   }
 }
 
-/** Strip API keys from URLs and URL-bearing text for safe error messages */
+/* Strip API keys from URLs and URL-bearing text for safe error messages */
 function sanitizeUrl(url: string): string {
-  return url.replace(/([?&])(api[-_]?key|key|secret|token)=[^&#]*/gi, "$1$2=REDACTED");
+  return url.replaceAll(/([?&])(api[-_]?key|key|secret|token)=[^&#]*/gi, "$1$2=REDACTED");
 }
 
 /** HTTP failure with a redacted request URL in its message and a redacted response body. */
@@ -106,7 +106,7 @@ function getFetchErrorUrl(error: FetchError): string | undefined {
   if (typeof request === "string") return request;
   if (request instanceof URL) return request.href;
   if (typeof Request !== "undefined" && request instanceof Request) return request.url;
-  return request === undefined ? undefined : String(request);
+  return undefined;
 }
 
 function getFetchErrorBody(error: FetchError): string | undefined {
@@ -119,11 +119,80 @@ function getFetchErrorBody(error: FetchError): string | undefined {
   }
 }
 
+interface FailureContext {
+  readonly fetchError?: FetchError;
+  readonly lowerMessage: string;
+  readonly message: string;
+  readonly provider?: string;
+  readonly resource: string;
+  readonly status: number;
+  readonly url?: string;
+}
+
+function isAuthenticationFailure(context: FailureContext): boolean {
+  return (
+    context.status === 401 ||
+    context.status === 403 ||
+    context.lowerMessage.includes("unauthorized")
+  );
+}
+
+function isTransportFailure(context: FailureContext): boolean {
+  if (context.status > 0 || context.url !== undefined) return true;
+  return ["econnrefused", "etimedout", "timeouterror"].some((fragment) =>
+    context.lowerMessage.includes(fragment),
+  );
+}
+
+function isNotFoundFailure(context: FailureContext): boolean {
+  return context.status === 404 || context.lowerMessage.includes("not found");
+}
+
+function isRateLimitFailure(context: FailureContext): boolean {
+  return context.status === 429 || context.lowerMessage.includes("rate limit");
+}
+
+function authenticationError(context: FailureContext): AuthError {
+  const detail = context.url ? `HTTP ${context.status} from ${context.url}` : context.message;
+  return new AuthError(context.provider ?? "unknown", detail);
+}
+
+function transportError(context: FailureContext): HTTPError {
+  const body = context.fetchError ? getFetchErrorBody(context.fetchError) : undefined;
+  return new HTTPError(
+    context.status,
+    context.url ?? "unknown",
+    body ?? context.message,
+    context.provider,
+  );
+}
+
+function classifyFailure(context: FailureContext): ExplorerError | undefined {
+  if (isNotFoundFailure(context)) return new NotFoundError(context.resource, context.provider);
+  if (isRateLimitFailure(context)) return new RateLimitError(context.provider ?? "unknown");
+  if (isAuthenticationFailure(context)) return authenticationError(context);
+  return isTransportFailure(context) ? transportError(context) : undefined;
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function errorStatus(error: FetchError | undefined, message: string): number {
+  const statusMatch = message.match(/HTTP (\d{3})/i);
+  return error?.statusCode ?? Number(statusMatch?.[1] ?? 0);
+}
+
 /**
  * Turn an unknown provider or transport failure into the Explorers error hierarchy.
  *
  * Existing `ExplorerError` instances pass through unchanged. Structured HTTP failures retain their
  * status, response body, and redacted request URL.
+ *
+ * @param {unknown} error - The `error` value.
+ * @param {string} provider - The `provider` value.
+ * @param {string} requestUrl - The `requestUrl` value.
+ * @returns {ExplorerError} The resulting value.
  */
 export function normalizeError(
   error: unknown,
@@ -132,41 +201,21 @@ export function normalizeError(
 ): ExplorerError {
   if (error instanceof ExplorerError) return error;
 
-  const message = error instanceof Error ? error.message : String(error);
+  const message = errorMessage(error);
   const lowerMessage = message.toLowerCase();
   const fetchError = error instanceof FetchError ? error : undefined;
-  const statusMatch = message.match(/HTTP (\d{3})/i);
-  const status = fetchError?.statusCode ?? Number(statusMatch?.[1] ?? 0);
-  const url = requestUrl ?? (fetchError ? getFetchErrorUrl(fetchError) : undefined);
-  const resource = url ?? message;
+  const status = errorStatus(fetchError, message);
+  const fetchUrl = fetchError ? getFetchErrorUrl(fetchError) : undefined;
+  const url = requestUrl ?? fetchUrl;
+  const context: FailureContext = {
+    fetchError,
+    lowerMessage,
+    message,
+    provider,
+    resource: url ?? message,
+    status,
+    url,
+  };
 
-  if (status === 404 || lowerMessage.includes("not found")) {
-    return new NotFoundError(resource, provider);
-  }
-
-  if (status === 429 || lowerMessage.includes("rate limit")) {
-    return new RateLimitError(provider ?? "unknown");
-  }
-
-  if (status === 401 || status === 403 || lowerMessage.includes("unauthorized")) {
-    const detail = url ? `HTTP ${status} from ${url}` : message;
-    return new AuthError(provider ?? "unknown", detail);
-  }
-
-  if (
-    status > 0 ||
-    url ||
-    lowerMessage.includes("econnrefused") ||
-    lowerMessage.includes("etimedout") ||
-    lowerMessage.includes("timeouterror")
-  ) {
-    return new HTTPError(
-      status,
-      url ?? "unknown",
-      (fetchError ? getFetchErrorBody(fetchError) : undefined) ?? message,
-      provider,
-    );
-  }
-
-  return new ExplorerError(message, provider);
+  return classifyFailure(context) ?? new ExplorerError(message, provider);
 }

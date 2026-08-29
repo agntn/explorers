@@ -13,7 +13,7 @@ interface RegistryEntry extends ProviderMeta {
 
 let registry: Map<string, RegistryEntry> | undefined;
 
-/**
+/*
  * Return the registry map, filling it with the built-in metadata on the first call.
  *
  * Only the metadata lands here. Provider modules stay unloaded until `create()` asks for one, so a
@@ -36,8 +36,11 @@ function entries(): Map<string, RegistryEntry> {
  * package, and their class is kept as is instead of being loaded on demand. Registering the same
  * name again replaces the previous entry. That is useful in tests, but easy to do by accident in
  * application code.
+ *
+ * @param {ProviderConstructor} providerClass - The `providerClass` value.
+ * @param {Readonly<ProviderMeta>} meta - The `meta` value.
  */
-export function register(providerClass: ProviderConstructor, meta: ProviderMeta): void {
+export function register(providerClass: ProviderConstructor, meta: Readonly<ProviderMeta>): void {
   entries().set(providerClass.key, {
     chains: meta.chains,
     defaultURL: meta.defaultURL,
@@ -60,8 +63,12 @@ export function register(providerClass: ProviderConstructor, meta: ProviderMeta)
  *   ```
  *
  * @throws {UnknownProviderError} When `name` has not been registered.
+ *
+ * @param {string} name - The `name` value.
+ * @param {Readonly<ProviderConfig>} config - The `config` value.
+ * @returns {Promise<Provider>} The resulting value.
  */
-export async function create(name: string, config?: ProviderConfig): Promise<Provider> {
+export async function create(name: string, config?: Readonly<ProviderConfig>): Promise<Provider> {
   const entry = entries().get(name);
   if (!entry) {
     throw new UnknownProviderError(name);
@@ -70,17 +77,32 @@ export async function create(name: string, config?: ProviderConfig): Promise<Pro
   return new entry.providerClass(config ?? {});
 }
 
-/** Return registered provider names in registration order. */
+/**
+ * Return registered provider names in registration order.
+ *
+ * @returns {string[]} The resulting value.
+ */
 export function providers(): string[] {
   return Array.from(entries().keys());
 }
 
-/** Check whether a name can be passed to `create`. */
+/**
+ * Check whether a name can be passed to `create`.
+ *
+ * @param {string} name - The `name` value.
+ * @returns {boolean} The resulting value.
+ */
 export function has(name: string): boolean {
   return entries().has(name);
 }
 
-/** Check whether a registered provider declares support for `chain`. */
+/**
+ * Check whether a registered provider declares support for `chain`.
+ *
+ * @param {string} name - The `name` value.
+ * @param {ChainKey} chain - The `chain` value.
+ * @returns {boolean} The resulting value.
+ */
 export function supportsChain(name: string, chain: ChainKey): boolean {
   const entry = entries().get(name);
   return entry !== undefined && entry.chains.includes(chain);
@@ -90,6 +112,9 @@ export function supportsChain(name: string, chain: ChainKey): boolean {
  * Return the public endpoint advertised for a provider.
  *
  * Per-instance `baseUrl` overrides are deliberately not reflected here.
+ *
+ * @param {string} name - The `name` value.
+ * @returns {string | undefined} The resulting value.
  */
 export function getDefaultURL(name: string): string | undefined {
   return entries().get(name)?.defaultURL;

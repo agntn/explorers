@@ -50,71 +50,71 @@ const SUPPORTED_CHAINS = new Set<ChainKey>([
 ]);
 
 interface EtherscanResponse<T> {
-  status?: string;
-  message?: string;
-  result?: T;
-  error?: { code: number; message: string };
+  readonly status?: string;
+  readonly message?: string;
+  readonly result?: T;
+  readonly error?: { readonly code: number; readonly message: string };
 }
 
 interface EtherscanTx {
-  blockNumber: string;
-  timeStamp: string;
-  hash: string;
-  from: string;
-  to: string;
-  value: string;
-  gas: string;
-  gasUsed: string;
-  gasPrice: string;
-  isError: string;
-  txreceipt_status: string;
-  input: string;
-  functionName?: string;
-  methodId?: string;
-  contractAddress: string;
-  confirmations: string;
+  readonly blockNumber: string;
+  readonly timeStamp: string;
+  readonly hash: string;
+  readonly from: string;
+  readonly to: string;
+  readonly value: string;
+  readonly gas: string;
+  readonly gasUsed: string;
+  readonly gasPrice: string;
+  readonly isError: string;
+  readonly txreceipt_status: string;
+  readonly input: string;
+  readonly functionName?: string;
+  readonly methodId?: string;
+  readonly contractAddress: string;
+  readonly confirmations: string;
 }
 
 interface EtherscanTokenTx {
-  blockNumber: string;
-  timeStamp: string;
-  hash: string;
-  from: string;
-  to: string;
-  value: string;
-  contractAddress: string;
-  tokenName: string;
-  tokenSymbol: string;
-  tokenDecimal: string;
+  readonly blockNumber: string;
+  readonly timeStamp: string;
+  readonly hash: string;
+  readonly from: string;
+  readonly to: string;
+  readonly value: string;
+  readonly contractAddress: string;
+  readonly tokenName: string;
+  readonly tokenSymbol: string;
+  readonly tokenDecimal: string;
 }
 
 interface EtherscanTokenBalance {
-  TokenAddress: string;
-  TokenName: string;
-  TokenSymbol: string;
-  TokenDivisor: string;
-  TokenQuantity: string;
+  readonly TokenAddress: string;
+  readonly TokenName: string;
+  readonly TokenSymbol: string;
+  readonly TokenDivisor: string;
+  readonly TokenQuantity: string;
 }
 
 interface EtherscanGasResult {
-  LastBlock: string;
-  SafeGasPrice: string;
-  ProposeGasPrice: string;
-  FastGasPrice: string;
-  suggestBaseFee: string;
-  gasUsedRatio: string;
+  readonly LastBlock: string;
+  readonly SafeGasPrice: string;
+  readonly ProposeGasPrice: string;
+  readonly FastGasPrice: string;
+  readonly suggestBaseFee: string;
+  readonly gasUsedRatio: string;
 }
 
 interface EtherscanBlockResult {
-  number: string;
-  hash: string;
-  parentHash: string;
-  timestamp: string;
-  miner: string;
-  gasLimit: string;
-  gasUsed: string;
-  baseFeePerGas?: string;
-  transactions: string[];
+  readonly number: string;
+  readonly hash: string;
+  readonly parentHash: string;
+  readonly timestamp: string;
+  readonly miner: string;
+  readonly gasLimit: string;
+  readonly gasUsed: string;
+  readonly baseFeePerGas?: string;
+  readonly transactions: readonly string[];
 }
 
 function getChainId(chain: ChainKey): string {
@@ -128,7 +128,7 @@ function getChainId(chain: ChainKey): string {
   return BigInt(chainId).toString();
 }
 
-function mapTx(raw: EtherscanTx): Transaction {
+function mapTx(raw: Readonly<EtherscanTx>): Transaction {
   const status: TxStatus =
     raw.isError === "1" || raw.txreceipt_status === "0" ? "failed" : "success";
   return {
@@ -151,6 +151,143 @@ function mapTx(raw: EtherscanTx): Transaction {
   };
 }
 
+function isEmptyEtherscanResult(action: string, message: string): boolean {
+  if (action === "txlist" || action === "tokentx") return /no transactions found/i.test(message);
+  return action === "addresstokenbalance" && /no (token|record)/i.test(message);
+}
+
+function etherscanFailure(action: string, message: string): never | [] {
+  if (isEmptyEtherscanResult(action, message)) return [];
+  if (/rate limit/i.test(message)) throw new RateLimitError("etherscan");
+  if (/invalid api key|missing\/invalid api key/i.test(message)) {
+    throw new AuthError("etherscan", "Invalid API key");
+  }
+  throw new ExplorerError(`Etherscan API error: ${message}`, "etherscan");
+}
+
+function unwrapEtherscanResponse<T>(response: Readonly<EtherscanResponse<T>>, action: string): T {
+  if (response.error) {
+    throw new ExplorerError(`Etherscan API error: ${response.error.message}`, "etherscan");
+  }
+  if (response.status === "0") {
+    const detail = typeof response.result === "string" ? response.result : response.message;
+    return etherscanFailure(action, detail || "Unknown Etherscan API error") as T;
+  }
+  if (!("result" in response)) {
+    throw new ExplorerError("Etherscan API response did not include a result", "etherscan");
+  }
+  return response.result as T;
+}
+
+function historyParams(
+  address: string,
+  options: Readonly<TxHistoryOptions> | undefined,
+  limit: number,
+): Readonly<Record<string, string | number | undefined>> {
+  return {
+    address,
+    startblock: options?.startBlock ?? 0,
+    endblock: options?.endBlock ?? 99999999,
+    page: options?.page ?? 1,
+    offset: limit,
+    sort: options?.sort ?? "desc",
+  };
+}
+
+function rpcQuantity(value: string | null | undefined): string | undefined {
+  return value ? BigInt(value).toString() : undefined;
+}
+
+function rpcStatus(receipt: Readonly<Record<string, string | null>> | null): TxStatus {
+  if (!receipt) return "pending";
+  return receipt.status === "0x1" ? "success" : "failed";
+}
+
+function rpcFee(gasUsed: string | undefined, gasPrice: string | undefined): string | undefined {
+  return gasUsed && gasPrice ? multiplyIntegerStrings(gasUsed, gasPrice) : undefined;
+}
+
+function rpcInput(input: string | null | undefined): {
+  readonly isContractInteraction: boolean;
+  readonly methodId?: string;
+} {
+  return {
+    methodId: input ? input.slice(0, 10) : undefined,
+    isContractInteraction: (input?.length ?? 0) > 10,
+  };
+}
+
+function mapRpcTransaction(
+  tx: Readonly<Record<string, string | null>>,
+  receipt: Readonly<Record<string, string | null>> | null,
+): Transaction {
+  const gasUsed = rpcQuantity(receipt?.gasUsed);
+  const gasPrice = rpcQuantity(tx.gasPrice);
+  const value = rpcQuantity(tx.value) ?? "0";
+  return {
+    hash: tx.hash ?? "",
+    blockNumber: Number(tx.blockNumber ?? "0x0"),
+    from: tx.from ?? "",
+    to: tx.to ?? null,
+    value,
+    valueFormatted: formatWei(value),
+    gasUsed,
+    gasPrice,
+    fee: rpcFee(gasUsed, gasPrice),
+    status: rpcStatus(receipt),
+    ...rpcInput(tx.input),
+    tokenTransfers: [],
+    raw: { ...tx, receipt } as Record<string, unknown>,
+  };
+}
+
+function optionalString(value: string | undefined): string | undefined {
+  return value || undefined;
+}
+
+function contractSource(
+  contract: Readonly<Record<string, string>> | undefined,
+): Pick<ContractInfo, "abi" | "compilerVersion" | "isVerified" | "name" | "sourceCode"> {
+  const abi = contract?.ABI;
+  const isVerified = abi !== undefined && abi !== "Contract source code not verified" && abi !== "";
+  return {
+    isVerified,
+    name: optionalString(contract?.ContractName),
+    compilerVersion: optionalString(contract?.CompilerVersion),
+    abi: isVerified ? abi : undefined,
+    sourceCode: isVerified ? contract?.SourceCode : undefined,
+  };
+}
+
+function mapContract(
+  address: string,
+  contract: Readonly<Record<string, string>> | undefined,
+): ContractInfo {
+  return {
+    address,
+    ...contractSource(contract),
+    isProxy: contract?.Proxy === "1",
+    implementationAddress: optionalString(contract?.Implementation),
+  };
+}
+
+function mapTokenTransfer(raw: Readonly<EtherscanTokenTx>): TokenTransfer {
+  const decimals = Number(raw.tokenDecimal);
+  return {
+    contract: raw.contractAddress,
+    symbol: raw.tokenSymbol,
+    name: raw.tokenName,
+    decimals,
+    value: raw.value,
+    valueFormatted: formatWei(raw.value, decimals),
+    from: raw.from,
+    to: raw.to,
+    txHash: raw.hash,
+    blockNumber: Number(raw.blockNumber),
+    timestamp: new Date(Number(raw.timeStamp) * 1000).toISOString(),
+  };
+}
+
 export class Etherscan extends Provider {
   static readonly key = "etherscan";
 
@@ -158,7 +295,7 @@ export class Etherscan extends Provider {
   private readonly apiUrl: string;
   private readonly defaultChain: ChainKey;
 
-  constructor(config: ProviderConfig) {
+  constructor(config: Readonly<ProviderConfig>) {
     super(config);
     const key = config.apiKey ?? process.env.ETHERSCAN_API_KEY ?? "";
     if (!key) {
@@ -186,7 +323,7 @@ export class Etherscan extends Provider {
     chain: ChainKey,
     module: string,
     action: string,
-    params: Record<string, string | number | undefined> = {},
+    params: Readonly<Record<string, string | number | undefined>> = {},
   ): Promise<T> {
     const query = buildQuery({
       chainid: getChainId(chain),
@@ -196,31 +333,7 @@ export class Etherscan extends Provider {
       ...params,
     });
     const response = await this.getJSON<EtherscanResponse<T>>(`${this.apiUrl}${query}`);
-
-    if (response.error) {
-      throw new ExplorerError(`Etherscan API error: ${response.error.message}`, "etherscan");
-    }
-
-    if (response.status === "0") {
-      const detail = typeof response.result === "string" ? response.result : response.message;
-      const message = detail || "Unknown Etherscan API error";
-      if (
-        ((action === "txlist" || action === "tokentx") && /no transactions found/i.test(message)) ||
-        (action === "addresstokenbalance" && /no (token|record)/i.test(message))
-      ) {
-        return [] as T;
-      }
-      if (/rate limit/i.test(message)) throw new RateLimitError("etherscan");
-      if (/invalid api key|missing\/invalid api key/i.test(message)) {
-        throw new AuthError("etherscan", "Invalid API key");
-      }
-      throw new ExplorerError(`Etherscan API error: ${message}`, "etherscan");
-    }
-
-    if (!("result" in response)) {
-      throw new ExplorerError("Etherscan API response did not include a result", "etherscan");
-    }
-    return response.result as T;
+    return unwrapEtherscanResponse(response, action);
   }
 
   async getBalance(address: string, chain?: ChainKey): Promise<Balance> {
@@ -242,18 +355,16 @@ export class Etherscan extends Provider {
   async getTxHistory(
     address: string,
     chain?: ChainKey,
-    options?: TxHistoryOptions,
+    options?: Readonly<TxHistoryOptions>,
   ): Promise<Transaction[]> {
     const c = chain ?? this.defaultChain;
     const limit = clampMaxResults(options?.limit);
-    const result = await this.api<EtherscanTx[]>(c, "account", "txlist", {
-      address,
-      startblock: options?.startBlock ?? 0,
-      endblock: options?.endBlock ?? 99999999,
-      page: options?.page ?? 1,
-      offset: limit,
-      sort: options?.sort ?? "desc",
-    });
+    const result = await this.api<EtherscanTx[]>(
+      c,
+      "account",
+      "txlist",
+      historyParams(address, options, limit),
+    );
 
     if (!Array.isArray(result)) return [];
     return result.map(mapTx);
@@ -279,25 +390,7 @@ export class Etherscan extends Provider {
       { txhash: hash },
     );
 
-    const gasUsed = receipt?.gasUsed ? BigInt(receipt.gasUsed).toString() : undefined;
-    const gasPrice = tx.gasPrice ? BigInt(tx.gasPrice).toString() : undefined;
-
-    return {
-      hash: tx.hash,
-      blockNumber: Number(tx.blockNumber ?? "0x0"),
-      from: tx.from ?? "",
-      to: tx.to ?? null,
-      value: tx.value ? BigInt(tx.value).toString() : "0",
-      valueFormatted: tx.value ? formatWei(BigInt(tx.value).toString()) : "0",
-      gasUsed,
-      gasPrice,
-      fee: gasUsed && gasPrice ? multiplyIntegerStrings(gasUsed, gasPrice) : undefined,
-      status: !receipt ? "pending" : receipt.status === "0x1" ? "success" : "failed",
-      methodId: tx.input ? tx.input.slice(0, 10) : undefined,
-      isContractInteraction: (tx.input?.length ?? 0) > 10,
-      tokenTransfers: [],
-      raw: { ...tx, receipt } as Record<string, unknown>,
-    };
+    return mapRpcTransaction(tx, receipt);
   }
 
   override async getContractInfo(address: string, chain?: ChainKey): Promise<ContractInfo> {
@@ -306,30 +399,13 @@ export class Etherscan extends Provider {
     const source = await this.api<Array<Record<string, string>>>(c, "contract", "getsourcecode", {
       address,
     });
-    const contract = source[0];
-    const isVerified = contract?.ABI !== "Contract source code not verified" && !!contract?.ABI;
-
-    const abi = isVerified ? contract.ABI : undefined;
-    const name = contract?.ContractName || undefined;
-    const compilerVersion = contract?.CompilerVersion || undefined;
-    const sourceCode = isVerified ? contract.SourceCode : undefined;
-
-    return {
-      address,
-      isVerified,
-      name,
-      compilerVersion,
-      abi,
-      sourceCode,
-      isProxy: contract?.Proxy === "1",
-      implementationAddress: contract?.Implementation || undefined,
-    };
+    return mapContract(address, source[0]);
   }
 
   override async getTokenBalances(
     address: string,
     chain?: ChainKey,
-    options?: TokenBalanceOptions,
+    options?: Readonly<TokenBalanceOptions>,
   ): Promise<TokenBalance[]> {
     const c = chain ?? this.defaultChain;
     const result = await this.api<EtherscanTokenBalance[]>(c, "account", "addresstokenbalance", {
@@ -358,37 +434,16 @@ export class Etherscan extends Provider {
   override async getTokenTransfers(
     address: string,
     chain?: ChainKey,
-    options?: TokenTransferOptions,
+    options?: Readonly<TokenTransferOptions>,
   ): Promise<TokenTransfer[]> {
     const c = chain ?? this.defaultChain;
     const limit = clampMaxResults(options?.limit);
     const result = await this.api<EtherscanTokenTx[]>(c, "account", "tokentx", {
-      address,
+      ...historyParams(address, options, limit),
       contractaddress: options?.token,
-      startblock: options?.startBlock ?? 0,
-      endblock: options?.endBlock ?? 99999999,
-      page: options?.page ?? 1,
-      offset: limit,
-      sort: options?.sort ?? "desc",
     });
 
-    if (!Array.isArray(result)) return [];
-    return result.map((raw) => {
-      const decimals = Number(raw.tokenDecimal);
-      return {
-        contract: raw.contractAddress,
-        symbol: raw.tokenSymbol,
-        name: raw.tokenName,
-        decimals,
-        value: raw.value,
-        valueFormatted: formatWei(raw.value, decimals),
-        from: raw.from,
-        to: raw.to,
-        txHash: raw.hash,
-        blockNumber: Number(raw.blockNumber),
-        timestamp: new Date(Number(raw.timeStamp) * 1000).toISOString(),
-      };
-    });
+    return Array.isArray(result) ? result.map(mapTokenTransfer) : [];
   }
 
   override async getGasData(chain?: ChainKey): Promise<GasData> {

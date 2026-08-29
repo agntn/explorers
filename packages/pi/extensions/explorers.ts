@@ -6,18 +6,27 @@ import type * as ExplorersModule from "../../../src/index.js";
 import { Text } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
 
+type ChainResolver = {
+  readonly PROVIDER_DEFAULT_CHAIN: Readonly<typeof ExplorersModule.PROVIDER_DEFAULT_CHAIN>;
+  readonly normalizeChain: typeof ExplorersModule.normalizeChain;
+};
+
 const sourceModuleUrl = new URL("../../../src/index.ts", import.meta.url);
 const distributionModuleUrl = new URL("../../../dist/index.mjs", import.meta.url);
 let explorersModulePromise: Promise<typeof ExplorersModule> | undefined;
 
-/** Return live source in a checkout, otherwise the built module shipped in the package. */
+/**
+ * Return live source in a checkout, otherwise the built module shipped in the package.
+ *
+ * @returns {string} The resulting value.
+ */
 export function resolveExplorersModuleUrl(): string {
   return existsSync(fileURLToPath(sourceModuleUrl))
     ? sourceModuleUrl.href
     : distributionModuleUrl.href;
 }
 
-/** Load the library from one unambiguous graph and retry after a failed import. */
+/* Load the library from one unambiguous graph and retry after a failed import. */
 function loadLib(): Promise<typeof ExplorersModule> {
   explorersModulePromise ??= (
     import(resolveExplorersModuleUrl()) as Promise<typeof ExplorersModule>
@@ -31,9 +40,9 @@ function loadLib(): Promise<typeof ExplorersModule> {
 
 /** Terminal control bytes that must not reach the TUI from tool arguments or explorer responses. */
 /* oxlint-disable-next-line no-control-regex */
-const UNSAFE_TERMINAL_CONTROLS = /[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/gu;
+const UNSAFE_TERMINAL_CONTROLS = /[\u0000-\u0008\u000B-\u001F\u007F-\u009F]/gu;
 
-/** Drop control bytes so an explorer response cannot inject ANSI or OSC sequences into the terminal. */
+/* Drop control bytes so an explorer response cannot inject ANSI or OSC sequences into the terminal. */
 function sanitizeTerminalText(text: string): string {
   return text.replace(UNSAFE_TERMINAL_CONTROLS, "");
 }
@@ -61,11 +70,11 @@ async function getProvider(preferred?: string, requestedChain?: string) {
   return { lib, name, provider: await lib.create(name) };
 }
 
-function resolveToolChain(lib: typeof ExplorersModule, providerName: string, requested?: string) {
+function resolveToolChain(lib: ChainResolver, providerName: string, requested?: string) {
   return lib.normalizeChain(requested ?? lib.PROVIDER_DEFAULT_CHAIN[providerName]);
 }
 
-function balanceContext(balance: ExplorersModule.Balance): string {
+function balanceContext(balance: Readonly<ExplorersModule.Balance>): string {
   const block = balance.blockNumber === null ? "block unknown" : `block ${balance.blockNumber}`;
   const hash = balance.blockHash === null ? "" : `; hash ${balance.blockHash}`;
   return `; fetched ${balance.fetchedAt}; ${block}${hash}`;
@@ -243,18 +252,23 @@ export default function explorersExtension(pi: ExtensionAPI) {
       const tx = details.transaction;
       const statusColor =
         tx.status === "success" ? "success" : tx.status === "failed" ? "error" : "warning";
-      const lines = [
-        `${theme.fg("muted", sanitizeTerminalText(`[${details.provider}]`))} ${theme.fg("accent", sanitizeTerminalText(tx.hash))}`,
-        `${theme.fg("muted", "Block")} ${sanitizeTerminalText(String(tx.blockNumber))}  ${theme.fg("muted", "Status")} ${theme.fg(statusColor, sanitizeTerminalText(tx.status))}`,
-        `${theme.fg("muted", "Value")} ${sanitizeTerminalText(tx.valueFormatted)}`,
-      ];
-
-      if (expanded) {
+      const opReturnLines = (): string[] => {
+        const lines: string[] = [];
+        for (const payload of tx.opReturn ?? []) {
+          const message = sanitizeTerminalText(payload.text ?? payload.hex);
+          const [first = "", ...rest] = message.split("\n");
+          lines.push(`${theme.fg("muted", "OP_RETURN")} ${first}`);
+          for (const line of rest) lines.push(`  ${line}`);
+        }
+        return lines;
+      };
+      const expandedLines = (): string[] => {
+        const lines: string[] = [];
         if (tx.fee) {
           lines.push(`${theme.fg("muted", "Fee")} ${sanitizeTerminalText(tx.fee)} base units`);
         }
-        lines.push(`${theme.fg("muted", "From")} ${sanitizeTerminalText(tx.from)}`);
         lines.push(
+          `${theme.fg("muted", "From")} ${sanitizeTerminalText(tx.from)}`,
           `${theme.fg("muted", "To")} ${sanitizeTerminalText(tx.to ?? "contract creation")}`,
         );
         if (tx.functionName) {
@@ -265,13 +279,15 @@ export default function explorersExtension(pi: ExtensionAPI) {
             `${theme.fg("muted", "Token transfers")} ${tx.tokenTransfers.length.toString()}`,
           );
         }
-        for (const payload of tx.opReturn ?? []) {
-          const message = sanitizeTerminalText(payload.text ?? payload.hex);
-          const [first = "", ...rest] = message.split("\n");
-          lines.push(`${theme.fg("muted", "OP_RETURN")} ${first}`);
-          for (const line of rest) lines.push(`  ${line}`);
-        }
-      }
+        lines.push(...opReturnLines());
+        return lines;
+      };
+      const lines = [
+        `${theme.fg("muted", sanitizeTerminalText(`[${details.provider}]`))} ${theme.fg("accent", sanitizeTerminalText(tx.hash))}`,
+        `${theme.fg("muted", "Block")} ${sanitizeTerminalText(String(tx.blockNumber))}  ${theme.fg("muted", "Status")} ${theme.fg(statusColor, sanitizeTerminalText(tx.status))}`,
+        `${theme.fg("muted", "Value")} ${sanitizeTerminalText(tx.valueFormatted)}`,
+      ];
+      if (expanded) lines.push(...expandedLines());
 
       return new Text(lines.join("\n"), 0, 0);
     },

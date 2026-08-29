@@ -257,13 +257,22 @@ export interface ProviderConfig {
  * Round a requested result limit and keep it inside the provider's range.
  *
  * A missing or zero limit uses `max`.
+ *
+ * @param {number} limit - The `limit` value.
+ * @param {number} max - Provider-specific upper bound.
+ * @returns {number} The resulting value.
  */
 export function clampMaxResults(limit?: number, max = 100): number {
   if (!limit) return max;
   return Math.min(Math.max(1, Math.round(limit)), max);
 }
 
-/** Convert a unix timestamp in seconds to an ISO 8601 string. */
+/**
+ * Convert a unix timestamp in seconds to an ISO 8601 string.
+ *
+ * @param {number} seconds - The `seconds` value.
+ * @returns {string} The resulting value.
+ */
 export function toTimestamp(seconds: number): string {
   return new Date(seconds * 1000).toISOString();
 }
@@ -275,6 +284,10 @@ export function toTimestamp(seconds: number): string {
  *   ```ts
  *   formatWei("1234500000000000000"); // '1.2345'
  *   ```
+ *
+ * @param {string | bigint} wei - The `wei` value.
+ * @param {number} decimals - Number of fractional base-10 digits.
+ * @returns {string} The resulting value.
  */
 export function formatWei(wei: string | bigint, decimals = 18): string {
   if (!Number.isInteger(decimals) || decimals < 0 || decimals > 255) {
@@ -298,12 +311,21 @@ export function formatWei(wei: string | bigint, decimals = 18): string {
  *   ```ts
  *   hexToWei("0xff"); // '255'
  *   ```
+ *
+ * @param {string} hex - The `hex` value.
+ * @returns {string} The resulting value.
  */
 export function hexToWei(hex: string): string {
   return BigInt(hex).toString();
 }
 
-/** Multiply decimal integer strings without crossing the IEEE-754 boundary. */
+/**
+ * Multiply decimal integer strings without crossing the IEEE-754 boundary.
+ *
+ * @param {string} left - The `left` value.
+ * @param {string} right - The `right` value.
+ * @returns {string} The resulting value.
+ */
 export function multiplyIntegerStrings(left: string, right: string): string {
   return (BigInt(left) * BigInt(right)).toString();
 }
@@ -318,6 +340,9 @@ export function multiplyIntegerStrings(left: string, right: string): string {
  *   ```ts
  *   normalizeChain("arb"); // 'arbitrum'
  *   ```
+ *
+ * @param {string} input - The `input` value.
+ * @returns {ChainKey} The resulting value.
  */
 export function normalizeChain(input?: string): ChainKey {
   try {

@@ -57,6 +57,7 @@ async function addressForChain(address: string, chain: Parameters<typeof resolve
 }
 
 function requireOperation<K extends ProviderOperation>(
+  /* oxlint-disable-next-line typescript/prefer-readonly-parameter-types */
   provider: Provider,
   operation: K,
 ): NonNullable<Provider[K]> {
@@ -67,7 +68,11 @@ function requireOperation<K extends ProviderOperation>(
   return method.bind(provider) as NonNullable<Provider[K]>;
 }
 
-/** Create an MCP server exposing the normalized explorer operations. */
+/**
+ * Create an MCP server exposing the normalized explorer operations.
+ *
+ * @returns {McpServer} The resulting value.
+ */
 export function createMcpServer(): McpServer {
   const server = new McpServer({ name: "explorers", version });
 

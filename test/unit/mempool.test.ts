@@ -35,9 +35,13 @@ function historyTransaction(index: number) {
   };
 }
 
-/** Serve one canned transaction whose outputs are the interesting part. */
+/* Serve one canned transaction whose outputs are the interesting part. */
 function stubTxDetail(
-  vout: Array<{ scriptpubkey?: string; scriptpubkey_address?: string; value: number }>,
+  vout: readonly {
+    readonly scriptpubkey?: string;
+    readonly scriptpubkey_address?: string;
+    readonly value: number;
+  }[],
 ): void {
   stubJSON({
     txid: "a".repeat(64),
@@ -49,7 +53,7 @@ function stubTxDetail(
 }
 
 describe("mempool provider", () => {
-  let provider: ReturnType<typeof create>;
+  let provider: Awaited<ReturnType<typeof create>>;
 
   beforeAll(async () => {
     provider = await create("mempool");

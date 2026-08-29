@@ -50,7 +50,7 @@ export default defineCommand({
         consola.log(`  ${t.symbol}: ${t.balanceFormatted}${usd}  [${t.contract.slice(0, 10)}…]`);
       }
     } catch (error) {
-      consola.error(`Error: ${error instanceof Error ? error.message : error}`);
+      consola.error(`Error: ${error instanceof Error ? error.message : String(error)}`);
       process.exit(1);
     }
   },

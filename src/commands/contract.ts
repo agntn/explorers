@@ -1,10 +1,19 @@
 /** Get contract info (supports ENS) */
 import { defineCommand } from "citty";
 import consola from "consola";
-import { resolveProvider, PROVIDER_DEFAULT_CHAIN } from "../core/resolve.js";
-import { create } from "../core/registry.js";
-import { normalizeChain } from "../core/types.js";
 import { resolveInput } from "../core/input.js";
+import type { ContractInfo } from "../core/types.js";
+import { failCommand, reportCommandError, selectProvider } from "./shared.js";
+
+function renderContract(providerName: string, info: Readonly<ContractInfo>): void {
+  consola.log(`[${providerName}] Contract ${info.address}`);
+  consola.log(`  Verified: ${info.isVerified}`);
+  if (info.name) consola.log(`  Name: ${info.name}`);
+  if (info.compilerVersion) consola.log(`  Compiler: ${info.compilerVersion}`);
+  if (info.isProxy) consola.log(`  Proxy → ${info.implementationAddress}`);
+  if (info.isToken) consola.log(`  Token standard: ${info.tokenStandard ?? "ERC-20 (inferred)"}`);
+  if (info.creator) consola.log(`  Creator: ${info.creator}`);
+}
 
 export default defineCommand({
   meta: {
@@ -30,28 +39,19 @@ export default defineCommand({
   },
   async run({ args }) {
     try {
-      const chainInput = args.chain as string | undefined;
-      const requestedChain = chainInput === undefined ? undefined : normalizeChain(chainInput);
-      const providerName = resolveProvider(args.provider as string | undefined, requestedChain);
-      const provider = await create(providerName);
-      const chain = requestedChain ?? normalizeChain(PROVIDER_DEFAULT_CHAIN[providerName]);
-      if (!provider.capabilities.contractInfo || !provider.getContractInfo) {
-        consola.error(`Provider "${providerName}" does not support contract info`);
-        process.exit(1);
+      const selected = await selectProvider(
+        args.chain as string | undefined,
+        args.provider as string | undefined,
+      );
+      const getContractInfo = selected.provider.getContractInfo?.bind(selected.provider);
+      if (!selected.provider.capabilities.contractInfo || !getContractInfo) {
+        failCommand(`Provider "${selected.name}" does not support contract info`);
       }
-      const { address } = await resolveInput(args.address as string, chain);
-      const info = await provider.getContractInfo(address, chain);
-      consola.log(`[${providerName}] Contract ${info.address}`);
-      consola.log(`  Verified: ${info.isVerified}`);
-      if (info.name) consola.log(`  Name: ${info.name}`);
-      if (info.compilerVersion) consola.log(`  Compiler: ${info.compilerVersion}`);
-      if (info.isProxy) consola.log(`  Proxy → ${info.implementationAddress}`);
-      if (info.isToken)
-        consola.log(`  Token standard: ${info.tokenStandard ?? "ERC-20 (inferred)"}`);
-      if (info.creator) consola.log(`  Creator: ${info.creator}`);
+      const { address } = await resolveInput(args.address as string, selected.chain);
+      const info = await getContractInfo(address, selected.chain);
+      renderContract(selected.name, info);
     } catch (error) {
-      consola.error(`Error: ${error instanceof Error ? error.message : error}`);
-      process.exit(1);
+      reportCommandError(error);
     }
   },
 });

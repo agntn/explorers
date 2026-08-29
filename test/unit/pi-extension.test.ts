@@ -24,10 +24,57 @@ function registerExtensionTools(): Map<string, ToolDefinition> {
   return tools;
 }
 
-function requireTool(tools: Map<string, ToolDefinition>, name: string): ToolDefinition {
+interface ToolLookup {
+  readonly get: (name: string) => ToolDefinition | undefined;
+}
+
+function requireTool(tools: ToolLookup, name: string): ToolDefinition {
   const tool = tools.get(name);
   if (!tool) throw new Error(`Tool not registered: ${name}`);
   return tool;
+}
+
+interface ToolContentView {
+  readonly type: string;
+  readonly text?: string;
+}
+
+interface ToolResultView {
+  readonly content: readonly ToolContentView[];
+  readonly isError: boolean;
+}
+
+function isUnknownArray(value: unknown): value is unknown[] {
+  return Array.isArray(value);
+}
+
+function parseToolResult(value: unknown): ToolResultView {
+  if (typeof value !== "object" || value === null || !("content" in value)) {
+    throw new TypeError("Tool returned no content array");
+  }
+  const contentValue = value.content;
+  if (!isUnknownArray(contentValue)) throw new TypeError("Tool content is not an array");
+
+  const content = contentValue.map((part): ToolContentView => {
+    if (typeof part !== "object" || part === null || !("type" in part)) {
+      throw new TypeError("Tool content item has no type");
+    }
+    const type = part.type;
+    const text = "text" in part ? part.text : undefined;
+    if (typeof type !== "string" || (text !== undefined && typeof text !== "string")) {
+      throw new TypeError("Tool content item has an invalid shape");
+    }
+    return { type, text };
+  });
+  return { content, isError: "isError" in value && value.isError === true };
+}
+
+function textContaining(expected: string): unknown {
+  return expect.stringContaining(expected);
+}
+
+function textMatching(expected: RegExp): unknown {
+  return expect.stringMatching(expected);
 }
 
 // SAFETY: the tested execute functions do not read ExtensionContext.
@@ -100,25 +147,27 @@ describe("explorers Pi extension", () => {
 
     type RenderCall = NonNullable<ToolDefinition["renderCall"]>;
     type RenderTheme = Parameters<RenderCall>[1];
-    const attack = "safe\u001b]52;c;SGVsbG8=\u0007address";
+    const attack = "safe\u001B]52;c;SGVsbG8=\u0007address";
     const rendered = renderCall({ address: attack }, {} as RenderTheme)
       .render(120)
       .join("\n");
 
     expect(rendered).toContain("safe]52;c;SGVsbG8=address");
     /* oxlint-disable-next-line no-control-regex */
-    expect(rendered).not.toMatch(/[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/u);
+    expect(rendered).not.toMatch(/[\u0000-\u0008\u000B-\u001F\u007F-\u009F]/u);
   });
 
   it("lists providers without model or network access", async () => {
     const tool = requireTool(registerExtensionTools(), "explorers_providers");
 
-    const result = await tool.execute("test", {}, undefined, undefined, unusedContext);
+    const result = parseToolResult(
+      await tool.execute("test", {}, undefined, undefined, unusedContext),
+    );
 
     expect(result.content).toEqual([
       {
         type: "text",
-        text: expect.stringMatching(/^Registered providers \(12\):/),
+        text: textMatching(/^Registered providers \(12\):/),
       },
     ]);
   });
@@ -137,12 +186,14 @@ describe("explorers Pi extension", () => {
     );
     const tool = requireTool(registerExtensionTools(), "explorers_balance");
 
-    const result = await tool.execute(
-      "test",
-      { address: "0x0000000000000000000000000000000000000001", provider: "blockscout" },
-      undefined,
-      undefined,
-      unusedContext,
+    const result = parseToolResult(
+      await tool.execute(
+        "test",
+        { address: "0x0000000000000000000000000000000000000001", provider: "blockscout" },
+        undefined,
+        undefined,
+        unusedContext,
+      ),
     );
 
     expect(result.content).toEqual([
@@ -169,21 +220,23 @@ describe("explorers Pi extension", () => {
     );
     const tool = requireTool(registerExtensionTools(), "explorers_balance");
 
-    const result = await tool.execute(
-      "test",
-      {
-        address: "0x0000000000000000000000000000000000000001",
-        chain: "ethereum",
-      },
-      undefined,
-      undefined,
-      unusedContext,
+    const result = parseToolResult(
+      await tool.execute(
+        "test",
+        {
+          address: "0x0000000000000000000000000000000000000001",
+          chain: "ethereum",
+        },
+        undefined,
+        undefined,
+        unusedContext,
+      ),
     );
 
     expect(result.content).toEqual([
       {
         type: "text",
-        text: expect.stringContaining("[blockscout] ethereum balance"),
+        text: textContaining("[blockscout] ethereum balance"),
       },
     ]);
   });
@@ -212,12 +265,14 @@ describe("explorers Pi extension", () => {
     );
     const tool = requireTool(registerExtensionTools(), "explorers_tx_history");
 
-    const result = await tool.execute(
-      "test",
-      { address, chain: "bitcoin", provider: "mempool", limit: 1 },
-      undefined,
-      undefined,
-      unusedContext,
+    const result = parseToolResult(
+      await tool.execute(
+        "test",
+        { address, chain: "bitcoin", provider: "mempool", limit: 1 },
+        undefined,
+        undefined,
+        unusedContext,
+      ),
     );
     const text = result.content.find((part) => part.type === "text")?.text ?? "";
 
@@ -305,7 +360,7 @@ describe("explorers Pi extension", () => {
     // SAFETY: simulates an untrusted explorer violating the declared numeric response type.
     const transaction = {
       hash: "0xabc",
-      blockNumber: "123\u001b]52;c;SGVsbG8=\u0007",
+      blockNumber: "123\u001B]52;c;SGVsbG8=\u0007",
       from: "0xfrom",
       to: "0xto",
       value: "1000000000000000000",
@@ -352,6 +407,6 @@ describe("explorers Pi extension", () => {
       "  Status: forged",
     ]);
     /* oxlint-disable-next-line no-control-regex */
-    expect(rendered.join("\n")).not.toMatch(/[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/u);
+    expect(rendered.join("\n")).not.toMatch(/[\u0000-\u0008\u000B-\u001F\u007F-\u009F]/u);
   });
 });

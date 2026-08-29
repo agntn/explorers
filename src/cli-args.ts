@@ -12,7 +12,7 @@ const SUBCOMMANDS = [
   "mcp",
 ];
 
-export function normalizeMainArgs(argv: string[]): string[] {
+export function normalizeMainArgs(argv: readonly string[]): string[] {
   if (argv.length === 0) return ["providers"];
 
   const first = argv[0]!;
@@ -24,7 +24,7 @@ export function normalizeMainArgs(argv: string[]): string[] {
     first === "--version" ||
     first === "-v"
   ) {
-    return argv;
+    return [...argv];
   }
 
   // Treat as address — default to 'balance'

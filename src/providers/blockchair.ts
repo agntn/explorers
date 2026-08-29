@@ -12,6 +12,7 @@ import type {
   Balance,
   Transaction,
   TxHistoryOptions,
+  TxStatus,
   BlockInfo,
 } from "../core/types.js";
 import { Provider } from "../core/provider.js";
@@ -36,79 +37,79 @@ const UTXO_DECIMALS: Partial<Record<ChainKey, number>> = {
 const DEFAULT_BASE = "https://api.blockchair.com";
 
 interface BlockchairResponse<T> {
-  data: T;
-  context: {
-    code: number;
-    error?: string;
-    limit?: string;
-    offset?: string;
-    state?: number;
+  readonly data: T;
+  readonly context: {
+    readonly code: number;
+    readonly error?: string;
+    readonly limit?: string;
+    readonly offset?: string;
+    readonly state?: number;
   };
 }
 
 interface BlockchairAddressData {
-  address: {
-    type: string;
-    address: string;
-    balance: string | number;
-    balance_usd?: number;
-    received: string | number;
-    spent: string | number;
-    unspent_output_count: number;
-    first_seen_receiving?: string;
-    last_seen_receiving?: string;
-    transaction_count: number;
-    output_count: number;
+  readonly address: {
+    readonly type: string;
+    readonly address: string;
+    readonly balance: string | number;
+    readonly balance_usd?: number;
+    readonly received: string | number;
+    readonly spent: string | number;
+    readonly unspent_output_count: number;
+    readonly first_seen_receiving?: string;
+    readonly last_seen_receiving?: string;
+    readonly transaction_count: number;
+    readonly output_count: number;
     // ETH-specific
-    call_count?: number;
-    type_is_contract?: boolean;
+    readonly call_count?: number;
+    readonly type_is_contract?: boolean;
   };
-  transactions?: string[];
-  utxo?: Array<{
-    block_id: number;
-    transaction_hash: string;
-    index: number;
-    value: number;
+  readonly transactions?: readonly string[];
+  readonly utxo?: ReadonlyArray<{
+    readonly block_id: number;
+    readonly transaction_hash: string;
+    readonly index: number;
+    readonly value: number;
   }>;
 }
 
 interface BlockchairTxData {
-  transaction: {
-    hash: string;
-    block_id: number;
-    time: string;
-    output_total?: string | number;
-    fee: string | number;
-    sender?: string;
-    recipient?: string | null;
-    value?: string;
-    gas_used?: number;
-    gas_price?: string | number;
-    failed?: boolean;
-    input_hex?: string;
+  readonly transaction: {
+    readonly hash: string;
+    readonly block_id: number;
+    readonly time: string;
+    readonly output_total?: string | number;
+    readonly fee: string | number;
+    readonly sender?: string;
+    readonly recipient?: string | null;
+    readonly value?: string;
+    readonly gas_used?: number;
+    readonly gas_price?: string | number;
+    readonly failed?: boolean;
+    readonly input_hex?: string;
   };
 }
 
 interface BlockchairDashboardsBlocks {
-  blocks: Array<{
-    id: number;
-    hash: string;
-    parent_hash: string;
-    time: string;
-    miner?: string;
-    size: number;
-    weight?: number;
-    version: number;
-    merkle_root: string;
-    bits: string;
-    nonce: number;
-    tx_count: number;
+  readonly blocks: ReadonlyArray<{
+    readonly id: number;
+    readonly hash: string;
+    readonly parent_hash: string;
+    readonly time: string;
+    readonly miner?: string;
+    readonly size: number;
+    readonly weight?: number;
+    readonly version: number;
+    readonly merkle_root: string;
+    readonly bits: string;
+    readonly nonce: number;
+    readonly tx_count: number;
     // ETH-specific
-    gas_used?: string | number;
-    gas_limit?: string | number;
-    base_fee_per_gas?: string | number;
-    difficulty?: string;
-    reward?: number;
+    readonly gas_used?: string | number;
+    readonly gas_limit?: string | number;
+    readonly base_fee_per_gas?: string | number;
+    readonly difficulty?: string;
+    readonly reward?: number;
   }>;
 }
 
@@ -122,6 +123,69 @@ function toIsoTimestamp(timestamp: string): string {
   return new Date(`${timestamp.replace(" ", "T")}Z`).toISOString();
 }
 
+function firstRecord<T>(data: Readonly<Record<string, T>>): T | undefined {
+  const key = Object.keys(data)[0];
+  return key === undefined ? undefined : data[key];
+}
+
+async function fetchTransactionDetails(
+  hashes: readonly string[],
+  read: (hash: string) => Promise<Transaction>,
+): Promise<Transaction[]> {
+  const transactions: Transaction[] = [];
+  for (const hash of hashes) {
+    try {
+      transactions.push(await read(hash));
+    } catch (error) {
+      if (!(error instanceof NotFoundError)) throw error;
+    }
+  }
+  return transactions;
+}
+
+function blockchairStatus(data: Readonly<BlockchairTxData["transaction"]>): TxStatus {
+  if (data.block_id < 0) return "pending";
+  return data.failed === true ? "failed" : "success";
+}
+
+function transactionValue(
+  data: Readonly<BlockchairTxData["transaction"]>,
+  decimals: number | undefined,
+): string {
+  return decimals === undefined ? (data.value ?? "0") : String(data.output_total ?? 0);
+}
+
+function isBlockchairContractCall(
+  data: Readonly<BlockchairTxData["transaction"]>,
+  decimals: number | undefined,
+): boolean {
+  return decimals === undefined && (data.input_hex?.length ?? 0) > 0;
+}
+
+function mapTransactionData(
+  data: Readonly<BlockchairTxData["transaction"]>,
+  chain: ChainKey,
+): Transaction {
+  const decimals = UTXO_DECIMALS[chain];
+  const value = transactionValue(data, decimals);
+  return {
+    hash: data.hash,
+    blockNumber: data.block_id,
+    timestamp: toIsoTimestamp(data.time),
+    from: data.sender ?? "",
+    to: data.recipient ?? null,
+    value,
+    valueFormatted: formatWei(value, decimals ?? 18),
+    gasUsed: data.gas_used?.toString(),
+    gasPrice: data.gas_price?.toString(),
+    fee: String(data.fee),
+    status: blockchairStatus(data),
+    isContractInteraction: isBlockchairContractCall(data, decimals),
+    tokenTransfers: [],
+    raw: data as unknown as Record<string, unknown>,
+  };
+}
+
 export class Blockchair extends Provider {
   static readonly key = "blockchair";
 
@@ -129,7 +193,7 @@ export class Blockchair extends Provider {
   private readonly baseUrl: string;
   private defaultChain: ChainKey;
 
-  constructor(config: ProviderConfig) {
+  constructor(config: Readonly<ProviderConfig>) {
     super(config);
     this.apiKey = config.apiKey ?? process.env.BLOCKCHAIR_API_KEY;
     this.baseUrl = normalizeBaseUrl(config.baseUrl ?? DEFAULT_BASE);
@@ -151,7 +215,7 @@ export class Blockchair extends Provider {
   private buildUrl(
     chain: ChainKey,
     path: string,
-    params: Record<string, string | number | undefined> = {},
+    params: Readonly<Record<string, string | number | undefined>> = {},
   ): string {
     const cn = chainName(chain);
     const base = `${this.baseUrl}/${cn}`;
@@ -197,7 +261,7 @@ export class Blockchair extends Provider {
   async getTxHistory(
     address: string,
     chain?: ChainKey,
-    options?: TxHistoryOptions,
+    options?: Readonly<TxHistoryOptions>,
   ): Promise<Transaction[]> {
     const c = chain ?? this.defaultChain;
     assertSafePathSegment(address, "address");
@@ -207,28 +271,12 @@ export class Blockchair extends Provider {
     });
     const res = await this.getJSON<BlockchairResponse<Record<string, BlockchairAddressData>>>(url);
 
-    const key = Object.keys(res.data)[0];
-    if (!key) return [];
-    const addrData = res.data[key];
-    if (!addrData) return [];
+    const transactions = firstRecord(res.data)?.transactions;
+    if (!transactions?.length) return [];
 
-    if (!addrData.transactions?.length) return [];
-
-    // Blockchair returns tx hashes for address; fetch details for each.
-    // Cap at limit to bound N+1 calls; errors are isolated per-hash so a
-    // single bad hash doesn't drop the whole page.
-    const txHashes = addrData.transactions.slice(0, limit);
-    const txs: Transaction[] = [];
-
-    for (const hash of txHashes) {
-      try {
-        txs.push(await this.getTxDetail(hash, c));
-      } catch (error) {
-        if (!(error instanceof NotFoundError)) throw error;
-      }
-    }
-
-    return txs;
+    return fetchTransactionDetails(transactions.slice(0, limit), (hash) =>
+      this.getTxDetail(hash, c),
+    );
   }
 
   override async getTxDetail(hash: string, chain?: ChainKey): Promise<Transaction> {
@@ -237,30 +285,9 @@ export class Blockchair extends Provider {
     const url = this.buildUrl(c, `/dashboards/transaction/${encodeURIComponent(hash)}`);
     const res = await this.getJSON<BlockchairResponse<Record<string, BlockchairTxData>>>(url);
 
-    const key = Object.keys(res.data)[0];
-    if (!key) throw new NotFoundError(`Transaction ${hash}`, "blockchair");
-    const entry = res.data[key];
+    const entry = firstRecord(res.data);
     if (!entry) throw new NotFoundError(`Transaction ${hash}`, "blockchair");
-    const data = entry.transaction;
-    const utxoDecimals = UTXO_DECIMALS[c];
-    const value = utxoDecimals === undefined ? (data.value ?? "0") : String(data.output_total ?? 0);
-
-    return {
-      hash: data.hash,
-      blockNumber: data.block_id,
-      timestamp: toIsoTimestamp(data.time),
-      from: data.sender ?? "",
-      to: data.recipient ?? null,
-      value,
-      valueFormatted: formatWei(value, utxoDecimals ?? 18),
-      gasUsed: data.gas_used?.toString(),
-      gasPrice: data.gas_price?.toString(),
-      fee: String(data.fee),
-      status: data.block_id < 0 ? "pending" : data.failed === true ? "failed" : "success",
-      isContractInteraction: utxoDecimals === undefined && (data.input_hex?.length ?? 0) > 0,
-      tokenTransfers: [],
-      raw: data as unknown as Record<string, unknown>,
-    };
+    return mapTransactionData(entry.transaction, c);
   }
 
   override async getBlockInfo(blockNumber: number, chain?: ChainKey): Promise<BlockInfo> {

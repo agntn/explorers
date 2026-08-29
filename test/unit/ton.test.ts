@@ -14,7 +14,7 @@ afterEach(() => {
 });
 
 describe("ton provider", () => {
-  let provider: ReturnType<typeof create>;
+  let provider: Awaited<ReturnType<typeof create>>;
 
   beforeAll(async () => {
     provider = await create("ton");

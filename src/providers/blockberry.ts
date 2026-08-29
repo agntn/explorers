@@ -23,30 +23,30 @@ const DEFAULT_BASE = "https://api.blockberry.one/sui";
 const SUI_COIN_TYPE = "0x2::sui::SUI";
 
 interface BlockberryBalance {
-  coinType: string;
-  coinSymbol: string;
-  balance: string | number;
-  decimals: number;
+  readonly coinType: string;
+  readonly coinSymbol: string;
+  readonly balance: string | number;
+  readonly decimals: number;
 }
 
 interface BlockberryActivity {
-  activityType: string[];
-  activityWith?: Array<{
-    objectType: string;
-    id: string;
+  readonly activityType: readonly string[];
+  readonly activityWith?: ReadonlyArray<{
+    readonly objectType: string;
+    readonly id: string;
   }>;
-  timestamp: number;
-  digest: string;
-  txStatus: "SUCCESS" | "FAILURE" | "ABORT";
-  gasFee: string | number;
+  readonly timestamp: number;
+  readonly digest: string;
+  readonly txStatus: "SUCCESS" | "FAILURE" | "ABORT";
+  readonly gasFee: string | number;
 }
 
 interface BlockberryActivityPage {
-  content: BlockberryActivity[];
-  nextCursor?: string;
+  readonly content: readonly BlockberryActivity[];
+  readonly nextCursor?: string;
 }
 
-function mapActivity(raw: BlockberryActivity): Transaction {
+function mapActivity(raw: Readonly<BlockberryActivity>): Transaction {
   const counterparty = raw.activityWith?.find((item) => item.objectType === "ACCOUNT")?.id;
   return {
     hash: raw.digest,
@@ -70,7 +70,7 @@ export class Blockberry extends Provider {
   private readonly apiKey: string;
   private readonly baseUrl: string;
 
-  constructor(config: ProviderConfig) {
+  constructor(config: Readonly<ProviderConfig>) {
     super(config);
     const apiKey = config.apiKey ?? process.env.BLOCKBERRY_API_KEY ?? "";
     if (!apiKey) {
@@ -123,7 +123,7 @@ export class Blockberry extends Provider {
   async getTxHistory(
     address: string,
     chain?: ChainKey,
-    options?: TxHistoryOptions,
+    options?: Readonly<TxHistoryOptions>,
   ): Promise<Transaction[]> {
     const c = chain ?? "sui";
     if (c !== "sui") throw new UnsupportedChainError(c, this.name);

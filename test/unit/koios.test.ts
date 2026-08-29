@@ -48,15 +48,15 @@ const RECEIVE = {
   collateral_inputs: [{ value: "5000000", payment_addr: { bech32: OTHER } }],
 };
 
-const rowOf = (tx: { tx_hash: string; block_height: number; tx_timestamp: number }) => ({
+const rowOf = (tx: Readonly<{ tx_hash: string; block_height: number; tx_timestamp: number }>) => ({
   tx_hash: tx.tx_hash,
   epoch_no: 651,
   block_height: tx.block_height,
   block_time: tx.tx_timestamp,
 });
 
-/** Answer each call with the next body, repeating the last one once the list runs out. */
-function stubJSONPages(bodies: unknown[]) {
+/* Answer each call with the next body, repeating the last one once the list runs out. */
+function stubJSONPages(bodies: readonly unknown[]) {
   let call = 0;
   const fetch = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => {
     const body = bodies[Math.min(call++, bodies.length - 1)];
@@ -69,7 +69,7 @@ function stubJSONPages(bodies: unknown[]) {
 
 const stubJSON = (body: unknown) => stubJSONPages([body]);
 
-const bodyOf = (call: [RequestInfo | URL, (RequestInit | undefined)?]) =>
+const bodyOf = (call: Readonly<[RequestInfo | URL, (RequestInit | undefined)?]>) =>
   JSON.parse(String(call[1]?.body)) as Record<string, unknown>;
 
 afterEach(() => {

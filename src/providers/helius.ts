@@ -42,54 +42,67 @@ const SYSTEM_PROGRAMS = new Set([
 ]);
 
 interface HeliusTransaction {
-  signature: string;
-  slot: number;
-  timestamp: number;
-  fee: string | number;
-  feePayer: string;
-  transactionError?: unknown;
-  instructions?: { programId: string }[];
+  readonly signature: string;
+  readonly slot: number;
+  readonly timestamp: number;
+  readonly fee: string | number;
+  readonly feePayer: string;
+  readonly transactionError?: unknown;
+  readonly instructions?: readonly { readonly programId: string }[];
 }
 
 /** JSON-RPC envelope shared by the DAS methods; failures arrive inside a 200 response. */
 interface HeliusRpcResponse<T> {
-  result?: T;
-  error?: { code: number; message: string };
+  readonly result?: T;
+  readonly error?: { readonly code: number; readonly message: string };
 }
 
 interface HeliusAsset {
-  id: string;
-  content?: { metadata?: { name?: string; symbol?: string } };
-  token_info?: {
-    balance?: string | number;
-    decimals?: number;
-    symbol?: string;
-    price_info?: { price_per_token?: number; total_price?: number };
+  readonly id: string;
+  readonly content?: { readonly metadata?: { readonly name?: string; readonly symbol?: string } };
+  readonly token_info?: {
+    readonly balance?: string | number;
+    readonly decimals?: number;
+    readonly symbol?: string;
+    readonly price_info?: { readonly price_per_token?: number; readonly total_price?: number };
   };
 }
 
-const isNonSystemProgram = (instruction: { programId: string }): boolean =>
+const isNonSystemProgram = (instruction: Readonly<{ programId: string }>): boolean =>
   !SYSTEM_PROGRAMS.has(instruction.programId);
 
-/** Read one holding off a DAS asset. Metaplex metadata names a token more often than its mint. */
-function mapTokenBalance(asset: HeliusAsset): TokenBalance {
+function tokenIdentity(asset: Readonly<HeliusAsset>): {
+  readonly name?: string;
+  readonly symbol: string;
+} {
+  const metadata = asset.content?.metadata;
+  return {
+    name: metadata?.name,
+    symbol: metadata?.symbol ?? asset.token_info?.symbol ?? "",
+  };
+}
+
+/* Read one holding off a DAS asset. Metaplex metadata names a token more often than its mint. */
+function mapTokenBalance(asset: Readonly<HeliusAsset>): TokenBalance {
   const info = asset.token_info;
+  const identity = tokenIdentity(asset);
   const decimals = info?.decimals ?? 0;
   const balance = String(info?.balance ?? "0");
+  const price = info?.price_info;
 
   return {
     contract: asset.id,
-    symbol: asset.content?.metadata?.symbol ?? info?.symbol ?? "",
-    name: asset.content?.metadata?.name,
+    symbol: identity.symbol,
+    name: identity.name,
     decimals,
     balance,
     balanceFormatted: formatWei(balance, decimals),
-    priceUsd: info?.price_info?.price_per_token,
-    valueUsd: info?.price_info?.total_price,
+    priceUsd: price?.price_per_token,
+    valueUsd: price?.total_price,
   };
 }
 
-function mapTransaction(raw: HeliusTransaction): Transaction {
+function mapTransaction(raw: Readonly<HeliusTransaction>): Transaction {
   return {
     hash: raw.signature,
     blockNumber: raw.slot,
@@ -99,7 +112,9 @@ function mapTransaction(raw: HeliusTransaction): Transaction {
     value: "0",
     valueFormatted: "0",
     fee: String(raw.fee),
-    status: (raw.transactionError == null ? "success" : "failed") as TxStatus,
+    status: (raw.transactionError === null || raw.transactionError === undefined
+      ? "success"
+      : "failed") as TxStatus,
     isContractInteraction: raw.instructions?.some(isNonSystemProgram) ?? false,
     tokenTransfers: [],
     raw: raw as unknown as Record<string, unknown>,
@@ -112,7 +127,7 @@ export class Helius extends Provider {
   private readonly apiKey: string;
   private readonly baseUrl: string;
 
-  constructor(config: ProviderConfig) {
+  constructor(config: Readonly<ProviderConfig>) {
     super(config);
     const apiKey = config.apiKey ?? process.env.HELIUS_API_KEY ?? "";
     if (!apiKey) {
@@ -137,7 +152,7 @@ export class Helius extends Provider {
 
   private api<T>(
     path: string,
-    params: Record<string, string | number | undefined> = {},
+    params: Readonly<Record<string, string | number | undefined>> = {},
   ): Promise<T> {
     return this.getJSON<T>(
       `${this.baseUrl}${path}${buildQuery({ "api-key": this.apiKey, ...params })}`,
@@ -151,7 +166,7 @@ export class Helius extends Provider {
     );
   }
 
-  /** Call a DAS method on the RPC root and unwrap its JSON-RPC envelope. */
+  /* Call a DAS method on the RPC root and unwrap its JSON-RPC envelope. */
   private async rpc<T>(method: string, params: unknown): Promise<T> {
     const response = await this.apiPost<HeliusRpcResponse<T>>("/", {
       jsonrpc: "2.0",
@@ -163,7 +178,7 @@ export class Helius extends Provider {
     if (response.error) {
       throw new ExplorerError(`Helius API error: ${response.error.message}`, this.name);
     }
-    if (response.result == null) {
+    if (response.result === null || response.result === undefined) {
       throw new ExplorerError(`Helius returned no result for ${method}`, this.name);
     }
     return response.result;
@@ -178,7 +193,7 @@ export class Helius extends Provider {
   async getTxHistory(
     address: string,
     chain?: ChainKey,
-    options?: TxHistoryOptions,
+    options?: Readonly<TxHistoryOptions>,
   ): Promise<Transaction[]> {
     const c = chain ?? "solana";
     if (c !== "solana") throw new UnsupportedChainError(c, this.name);
@@ -191,11 +206,18 @@ export class Helius extends Provider {
     return transactions.map(mapTransaction);
   }
 
-  /** List an owner's fungible holdings. Airdrop spam pushes ordinary wallets past one page. */
+  /**
+   * List an owner's fungible holdings. Airdrop spam pushes ordinary wallets past one page.
+   *
+   * @param {string} address - The `address` value.
+   * @param {ChainKey} chain - The `chain` value.
+   * @param {Readonly<TokenBalanceOptions>} options - The `options` value.
+   * @returns {Promise<TokenBalance[]>} The resulting value.
+   */
   override async getTokenBalances(
     address: string,
     chain?: ChainKey,
-    options?: TokenBalanceOptions,
+    options?: Readonly<TokenBalanceOptions>,
   ): Promise<TokenBalance[]> {
     const c = chain ?? "solana";
     if (c !== "solana") throw new UnsupportedChainError(c, this.name);

@@ -47,101 +47,101 @@ const CHAIN_BASES: Partial<Record<ChainKey, string>> = {
 };
 
 interface BlockscoutAddress {
-  hash: string;
-  coin_balance: string | null;
-  implementation_address?: string;
-  is_contract: boolean;
-  is_verified: boolean;
-  name?: string;
-  token?: {
-    name: string;
-    symbol: string;
-    decimals: string;
-    type: string;
+  readonly hash: string;
+  readonly coin_balance: string | null;
+  readonly implementation_address?: string;
+  readonly is_contract: boolean;
+  readonly is_verified: boolean;
+  readonly name?: string;
+  readonly token?: {
+    readonly name: string;
+    readonly symbol: string;
+    readonly decimals: string;
+    readonly type: string;
   };
 }
 
 interface BlockscoutTx {
-  hash: string;
+  readonly hash: string;
   /** Null until the transaction is mined. */
-  block_number: number | null;
-  timestamp: string | null;
-  from: { hash: string };
-  to: { hash: string } | null;
-  value: string;
-  gas_used: string | null;
-  gas_price: string | null;
+  readonly block_number: number | null;
+  readonly timestamp: string | null;
+  readonly from: { readonly hash: string };
+  readonly to: { readonly hash: string } | null;
+  readonly value: string;
+  readonly gas_used: string | null;
+  readonly gas_price: string | null;
   /** "ok", "error", or null while the transaction is still pending. */
-  status: string | null;
-  method?: string;
-  transaction_types?: string[];
-  token_transfers?: BlockscoutTokenTransfer[];
+  readonly status: string | null;
+  readonly method?: string;
+  readonly transaction_types?: readonly string[];
+  readonly token_transfers?: readonly BlockscoutTokenTransfer[];
 }
 
 interface BlockscoutTokenTransfer {
-  token: {
-    address_hash: string;
-    symbol: string;
-    name: string;
-    decimals: string;
-    type: string;
+  readonly token: {
+    readonly address_hash: string;
+    readonly symbol: string;
+    readonly name: string;
+    readonly decimals: string;
+    readonly type: string;
   };
-  from: { hash: string };
-  to: { hash: string };
+  readonly from: { readonly hash: string };
+  readonly to: { readonly hash: string };
   /** ERC-721/1155 transfers carry token_id here instead of value. */
-  total: { value?: string };
-  transaction_hash: string;
-  block_number: number;
-  timestamp: string;
+  readonly total: { readonly value?: string };
+  readonly transaction_hash: string;
+  readonly block_number: number;
+  readonly timestamp: string;
 }
 
 interface BlockscoutTokenBalance {
-  token: {
-    address_hash: string;
-    symbol: string;
-    name: string;
-    decimals: string;
-    type: string;
+  readonly token: {
+    readonly address_hash: string;
+    readonly symbol: string;
+    readonly name: string;
+    readonly decimals: string;
+    readonly type: string;
   };
-  value: string;
-  token_id?: string;
+  readonly value: string;
+  readonly token_id?: string;
 }
 
 interface BlockscoutContractInfo {
-  is_verified: boolean;
-  is_proxy?: boolean;
-  proxy_type?: string | null;
-  implementation_address?: string;
-  implementations?: Array<{ address_hash: string }>;
-  name?: string;
-  compiler_version?: string;
-  abi?: Array<Record<string, unknown>>;
-  source_code?: string;
-  creation_tx_hash?: string;
-  deployer?: string;
+  readonly is_verified: boolean;
+  readonly is_proxy?: boolean;
+  readonly proxy_type?: string | null;
+  readonly implementation_address?: string;
+  readonly implementations?: ReadonlyArray<{ readonly address_hash: string }>;
+  readonly name?: string;
+  readonly compiler_version?: string;
+  readonly abi?: ReadonlyArray<Readonly<Record<string, unknown>>>;
+  readonly source_code?: string;
+  readonly creation_tx_hash?: string;
+  readonly deployer?: string;
 }
 
 interface BlockscoutBlock {
-  height: number;
-  hash: string;
-  parent_hash: string;
-  timestamp: string;
-  miner: { hash: string };
-  gas_used: string;
-  gas_limit: string;
-  transactions_count: number;
-  base_fee_per_gas?: string;
+  readonly height: number;
+  readonly hash: string;
+  readonly parent_hash: string;
+  readonly timestamp: string;
+  readonly miner: { readonly hash: string };
+  readonly gas_used: string;
+  readonly gas_limit: string;
+  readonly transactions_count: number;
+  readonly base_fee_per_gas?: string;
 }
 
 interface BlockscoutGasPrice {
-  average?: string | number;
-  fast?: string | number;
-  slow?: string | number;
+  readonly average?: string | number;
+  readonly fast?: string | number;
+  readonly slow?: string | number;
 }
 
 interface BlockscoutTransactionPage {
-  items: BlockscoutTx[];
-  next_page_params?: Record<string, string | number> | null;
+  readonly items: readonly BlockscoutTx[];
+  readonly next_page_params?: Record<string, string | number> | null;
 }
 
 function getBase(chain: ChainKey): string {
@@ -150,11 +150,11 @@ function getBase(chain: ChainKey): string {
   return base;
 }
 
-/** Map fungible transfers to the domain shape; ERC-721/1155 items have no value and are skipped. */
-function mapTokenTransfers(raw: BlockscoutTokenTransfer[] | undefined): TokenTransfer[] {
+/* Map fungible transfers to the domain shape; ERC-721/1155 items have no value and are skipped. */
+function mapTokenTransfers(raw: Readonly<BlockscoutTokenTransfer[] | undefined>): TokenTransfer[] {
   const transfers: TokenTransfer[] = [];
   for (const tt of raw ?? []) {
-    if (tt.total.value == null) continue;
+    if (tt.total.value === null || tt.total.value === undefined) continue;
     const decimals = Number(tt.token.decimals);
     transfers.push({
       contract: tt.token.address_hash,
@@ -173,7 +173,18 @@ function mapTokenTransfers(raw: BlockscoutTokenTransfer[] | undefined): TokenTra
   return transfers;
 }
 
-function mapTx(raw: BlockscoutTx): Transaction {
+function transactionFee(raw: Readonly<BlockscoutTx>): string | undefined {
+  if (raw.gas_used === null || raw.gas_used === undefined) return undefined;
+  if (raw.gas_price === null || raw.gas_price === undefined) return undefined;
+  return multiplyIntegerStrings(raw.gas_used, raw.gas_price);
+}
+
+function transactionStatus(status: string | null | undefined): TxStatus {
+  if (status === "ok") return "success";
+  return status === null || status === undefined ? "pending" : "failed";
+}
+
+function mapTx(raw: Readonly<BlockscoutTx>): Transaction {
   const valueWei = BigInt(raw.value).toString();
 
   return {
@@ -188,15 +199,8 @@ function mapTx(raw: BlockscoutTx): Transaction {
     valueFormatted: formatWei(valueWei),
     gasUsed: raw.gas_used ?? undefined,
     gasPrice: raw.gas_price ?? undefined,
-    fee:
-      raw.gas_used != null && raw.gas_price != null
-        ? multiplyIntegerStrings(raw.gas_used, raw.gas_price)
-        : undefined,
-    status: (raw.status === "ok"
-      ? "success"
-      : raw.status == null
-        ? "pending"
-        : "failed") as TxStatus,
+    fee: transactionFee(raw),
+    status: transactionStatus(raw.status),
     methodId: undefined,
     functionName: raw.method,
     isContractInteraction: raw.transaction_types?.includes("contract_call") ?? false,
@@ -205,12 +209,44 @@ function mapTx(raw: BlockscoutTx): Transaction {
   };
 }
 
+function isTokenAbi(abi: readonly Readonly<Record<string, unknown>>[] | undefined): boolean {
+  return (
+    abi?.some((item) => {
+      if (item.type !== "function") return false;
+      const name = typeof item.name === "string" ? item.name : undefined;
+      return name === "transfer" || name === "balanceOf" || name === "totalSupply";
+    }) ?? false
+  );
+}
+
+function isProxyContract(data: Readonly<BlockscoutContractInfo>): boolean {
+  if (data.is_proxy !== null && data.is_proxy !== undefined) return data.is_proxy;
+  const hasProxyType = data.proxy_type !== null && data.proxy_type !== undefined;
+  return hasProxyType || (data.implementations?.length ?? 0) > 0;
+}
+
+function mapContractInfo(address: string, data: Readonly<BlockscoutContractInfo>): ContractInfo {
+  return {
+    address,
+    isVerified: data.is_verified,
+    isProxy: isProxyContract(data),
+    implementationAddress: data.implementation_address ?? data.implementations?.[0]?.address_hash,
+    name: data.name,
+    compilerVersion: data.compiler_version,
+    abi: data.abi ? JSON.stringify(data.abi) : undefined,
+    sourceCode: data.source_code,
+    isToken: isTokenAbi(data.abi),
+    creator: data.deployer,
+    creationTxHash: data.creation_tx_hash,
+  };
+}
+
 export class Blockscout extends Provider {
   static readonly key = "blockscout";
 
   private defaultChain: ChainKey;
 
-  constructor(config: ProviderConfig) {
+  constructor(config: Readonly<ProviderConfig>) {
     super(config);
     this.defaultChain = config.defaultChain ?? "ethereum";
   }
@@ -247,11 +283,18 @@ export class Blockscout extends Provider {
     });
   }
 
-  /** Follow Blockscout's 50-item keyset pages up to the 100-result provider limit. */
+  /**
+   * Follow Blockscout's 50-item keyset pages up to the 100-result provider limit.
+   *
+   * @param {string} address - The `address` value.
+   * @param {ChainKey} chain - The `chain` value.
+   * @param {Readonly<TxHistoryOptions>} options - The `options` value.
+   * @returns {Promise<Transaction[]>} The resulting value.
+   */
   async getTxHistory(
     address: string,
     chain?: ChainKey,
-    options?: TxHistoryOptions,
+    options?: Readonly<TxHistoryOptions>,
   ): Promise<Transaction[]> {
     const c = chain ?? this.defaultChain;
     assertSafePathSegment(address, "address");
@@ -286,28 +329,7 @@ export class Blockscout extends Provider {
     try {
       const url = `${this.base(c)}/api/v2/smart-contracts/${encodeURIComponent(address)}`;
       const data = await this.getJSON<BlockscoutContractInfo>(url);
-      const isToken =
-        data.abi?.some((item) => {
-          if (item.type !== "function") return false;
-          const name = item.name as string | undefined;
-          return name === "transfer" || name === "balanceOf" || name === "totalSupply";
-        }) ?? false;
-
-      return {
-        address,
-        isVerified: data.is_verified,
-        isProxy:
-          data.is_proxy ?? (data.proxy_type != null || (data.implementations?.length ?? 0) > 0),
-        implementationAddress:
-          data.implementation_address ?? data.implementations?.[0]?.address_hash,
-        name: data.name,
-        compilerVersion: data.compiler_version,
-        abi: data.abi ? JSON.stringify(data.abi) : undefined,
-        sourceCode: data.source_code,
-        isToken,
-        creator: data.deployer,
-        creationTxHash: data.creation_tx_hash,
-      };
+      return mapContractInfo(address, data);
     } catch (error) {
       if (!(error instanceof NotFoundError)) throw error;
       const addrUrl = `${this.base(c)}/api/v2/addresses/${encodeURIComponent(address)}`;
@@ -317,7 +339,7 @@ export class Blockscout extends Provider {
         address,
         isVerified: addr.is_verified,
         name: addr.name,
-        isToken: addr.token != null,
+        isToken: addr.token !== null && addr.token !== undefined,
       };
     }
   }
@@ -325,7 +347,7 @@ export class Blockscout extends Provider {
   override async getTokenBalances(
     address: string,
     chain?: ChainKey,
-    options?: TokenBalanceOptions,
+    options?: Readonly<TokenBalanceOptions>,
   ): Promise<TokenBalance[]> {
     const c = chain ?? this.defaultChain;
     assertSafePathSegment(address, "address");
@@ -358,11 +380,16 @@ export class Blockscout extends Provider {
    * The endpoint accepts only a token filter and a `next_page_params` cursor. Block range, sort,
    * and page have no server-side equivalent and are ignored, the same way `getTxHistory` ignores
    * them.
+   *
+   * @param {string} address - The `address` value.
+   * @param {ChainKey} chain - The `chain` value.
+   * @param {Readonly<TokenTransferOptions>} options - The `options` value.
+   * @returns {Promise<TokenTransfer[]>} The resulting value.
    */
   override async getTokenTransfers(
     address: string,
     chain?: ChainKey,
-    options?: TokenTransferOptions,
+    options?: Readonly<TokenTransferOptions>,
   ): Promise<TokenTransfer[]> {
     const c = chain ?? this.defaultChain;
     assertSafePathSegment(address, "address");
