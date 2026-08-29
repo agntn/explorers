@@ -32,6 +32,7 @@ import { create as createChain } from "@agntn/chains";
 import { clampMaxResults, formatWei, multiplyIntegerStrings } from "../core/types.js";
 
 const DEFAULT_BASE = "https://eth.blockscout.com";
+const TOKEN_BALANCE_DEFAULT_TIMEOUT = 60_000;
 
 const CHAIN_BASES: Partial<Record<ChainKey, string>> = {
   ethereum: DEFAULT_BASE,
@@ -98,11 +99,11 @@ interface BlockscoutTokenTransfer {
 interface BlockscoutTokenBalance {
   readonly token: {
     readonly address_hash: string;
-    readonly symbol: string;
-    readonly name: string;
-    readonly decimals: string;
+    readonly symbol: string | null;
+    readonly name: string | null;
+    readonly decimals: string | null;
     readonly type: string;
-  };
+  } | null;
   readonly value: string;
   readonly token_id?: string;
 }
@@ -245,10 +246,12 @@ export class Blockscout extends Provider {
   static readonly key = "blockscout";
 
   private defaultChain: ChainKey;
+  private readonly tokenBalanceTimeout: number;
 
   constructor(config: Readonly<ProviderConfig>) {
     super(config);
     this.defaultChain = config.defaultChain ?? "ethereum";
+    this.tokenBalanceTimeout = config.timeout ?? TOKEN_BALANCE_DEFAULT_TIMEOUT;
   }
   get capabilities(): ProviderCapabilities {
     return {
@@ -351,21 +354,26 @@ export class Blockscout extends Provider {
   ): Promise<TokenBalance[]> {
     const c = chain ?? this.defaultChain;
     assertSafePathSegment(address, "address");
-    const baseUrl = `${this.base(c)}/api/v2/addresses/${encodeURIComponent(address)}/tokens`;
-    const data = await this.getJSON<{ items: BlockscoutTokenBalance[] }>(
-      `${baseUrl}${buildQuery({ type: "ERC-20" })}`,
-    );
+    const url = `${this.base(c)}/api/v2/addresses/${encodeURIComponent(address)}/token-balances`;
+    const balances = await this.getJSON<BlockscoutTokenBalance[]>(url, {
+      timeout: this.tokenBalanceTimeout,
+    });
 
-    let tokens = data.items
-      .filter((item) => item.token.type === "ERC-20")
-      .map((item) => ({
-        contract: item.token.address_hash,
-        symbol: item.token.symbol,
-        name: item.token.name,
-        decimals: Number(item.token.decimals),
-        balance: item.value,
-        balanceFormatted: formatWei(item.value, Number(item.token.decimals)),
-      }));
+    let tokens = balances.flatMap<TokenBalance>((item) => {
+      const token = item.token;
+      if (token?.type !== "ERC-20") return [];
+      const decimals = Number(token.decimals ?? 0);
+      return [
+        {
+          contract: token.address_hash,
+          symbol: token.symbol ?? "",
+          name: token.name ?? undefined,
+          decimals,
+          balance: item.value,
+          balanceFormatted: formatWei(item.value, decimals),
+        },
+      ];
+    });
 
     if (options?.nonZeroOnly) {
       tokens = tokens.filter((t) => t.balance !== "0");

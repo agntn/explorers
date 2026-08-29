@@ -17,6 +17,19 @@ function stubJSON(body: unknown, status = 200) {
   return fetch;
 }
 
+function stubHangingFetch() {
+  const fetch = vi.fn(
+    (_input: string | URL | Request, init?: RequestInit) =>
+      new Promise<Response>((_resolve, reject) => {
+        init?.signal?.addEventListener("abort", () => reject(init.signal?.reason), {
+          once: true,
+        });
+      }),
+  );
+  vi.stubGlobal("fetch", fetch);
+  return fetch;
+}
+
 beforeEach(() => {
   vi.stubGlobal(
     "fetch",
@@ -48,6 +61,45 @@ describe("blockscout provider", () => {
     expect(caps.tokenTransfers).toBe(true);
     expect(caps.gasData).toBe(true);
     expect(caps.blockInfo).toBe(true);
+  });
+
+  it("allows complete balance responses 60 seconds by default", async () => {
+    vi.useFakeTimers();
+    stubHangingFetch();
+
+    let settled = false;
+    const request = provider.getTokenBalances!(VITALIK, "ethereum").finally(() => (settled = true));
+    const rejection = expect(request).rejects.toMatchObject({ provider: "blockscout" });
+
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(settled).toBe(false);
+    await vi.advanceTimersByTimeAsync(30_000);
+    await rejection;
+  });
+
+  it("keeps the shared 15-second timeout for other reads", async () => {
+    vi.useFakeTimers();
+    stubHangingFetch();
+
+    const rejection = expect(provider.getBalance(VITALIK, "ethereum")).rejects.toMatchObject({
+      provider: "blockscout",
+    });
+    await vi.advanceTimersByTimeAsync(15_000);
+
+    await rejection;
+  });
+
+  it("honors an explicit timeout for complete balance responses", async () => {
+    vi.useFakeTimers();
+    stubHangingFetch();
+    const configured = await create("blockscout", { timeout: 25 });
+
+    const rejection = expect(
+      configured.getTokenBalances!(VITALIK, "ethereum"),
+    ).rejects.toMatchObject({ provider: "blockscout" });
+    await vi.advanceTimersByTimeAsync(25);
+
+    await rejection;
   });
 
   it("dates an address balance response without inventing chain position", async () => {
@@ -200,44 +252,70 @@ describe("blockscout provider", () => {
     });
   });
 
-  it("requests and returns only fungible token balances", async () => {
-    const fetch = stubJSON({
-      items: [
-        {
-          token: {
-            address_hash: USDC_BASE,
-            symbol: "USDC",
-            name: "USD Coin",
-            decimals: "6",
-            type: "ERC-20",
-          },
-          value: "1250000",
-        },
-        {
-          token: {
-            address_hash: "0x57f1887a8BF19b14fC0dF6Fd9B2acc9Af147eA85",
-            symbol: "ENS",
-            name: "Ethereum Name Service",
-            decimals: null,
-            type: "ERC-721",
-          },
-          value: "473",
-        },
-      ],
-    });
-
-    await expect(provider.getTokenBalances!(VITALIK, "ethereum")).resolves.toEqual([
-      {
-        contract: USDC_BASE,
-        symbol: "USDC",
-        name: "USD Coin",
-        decimals: 6,
-        balance: "1250000",
-        balanceFormatted: "1.25",
+  it("uses Blockscout's complete balance endpoint for wallets with more than 50 entries", async () => {
+    const tokenBalance = (contract: string, symbol: string) => ({
+      token: {
+        address_hash: contract,
+        symbol,
+        name: symbol,
+        decimals: "6",
+        type: "ERC-20",
       },
+      value: "1250000",
+    });
+    const extraBalances = Array.from({ length: 50 }, (_, index) =>
+      tokenBalance(`0x${(index + 1).toString(16).padStart(40, "0")}`, `TOKEN${index + 1}`),
+    );
+    const fetch = stubJSON([
+      tokenBalance(USDC_BASE, "USDC"),
+      ...extraBalances,
+      {
+        token: {
+          address_hash: "0x9999999999999999999999999999999999999999",
+          symbol: null,
+          name: null,
+          decimals: null,
+          type: "ERC-20",
+        },
+        value: "7",
+      },
+      {
+        token: {
+          address_hash: "0x57f1887a8BF19b14fC0dF6Fd9B2acc9Af147eA85",
+          symbol: "ENS",
+          name: "Ethereum Name Service",
+          decimals: null,
+          type: "ERC-721",
+        },
+        value: "473",
+      },
+      { token: null, value: "0" },
     ]);
+
+    const balances = await provider.getTokenBalances!(VITALIK, "ethereum");
+
+    expect(balances).toHaveLength(52);
+    expect(balances[0]).toEqual({
+      contract: USDC_BASE,
+      symbol: "USDC",
+      name: "USDC",
+      decimals: 6,
+      balance: "1250000",
+      balanceFormatted: "1.25",
+    });
+    expect(balances[50]?.contract).toBe("0x0000000000000000000000000000000000000032");
+    expect(balances.at(-1)).toEqual({
+      contract: "0x9999999999999999999999999999999999999999",
+      symbol: "",
+      name: undefined,
+      decimals: 0,
+      balance: "7",
+      balanceFormatted: "7",
+    });
+    expect(fetch).toHaveBeenCalledTimes(1);
     const url = new URL(String(fetch.mock.calls[0]?.[0]));
-    expect(url.searchParams.get("type")).toBe("ERC-20");
+    expect(url.pathname).toBe(`/api/v2/addresses/${VITALIK}/token-balances`);
+    expect(url.search).toBe("");
   });
 
   it("normalizes numeric gas prices to domain strings", async () => {
