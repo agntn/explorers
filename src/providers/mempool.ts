@@ -23,7 +23,7 @@ import type {
 } from "../core/types.js";
 import { Provider } from "../core/provider.js";
 import { normalizeBaseUrl } from "../core/client.js";
-import { UnsupportedChainError } from "../core/errors.js";
+import { NotFoundError, UnsupportedChainError } from "../core/errors.js";
 import { create as createChain } from "@agntn/chains";
 import { clampMaxResults, formatWei } from "../core/types.js";
 import { assertSafePathSegment } from "../core/path-safety.js";
@@ -474,25 +474,23 @@ export class Mempool extends Provider {
   override async getBlockInfo(blockNumber: number, chain?: ChainKey): Promise<BlockInfo> {
     const c = chain ?? this.defaultChain;
 
-    // Get block hash from height, then fetch block details.
-    // Block numbers are ASCII hex from mempool.space — no traversal concern,
-    // but assert anyway for symmetry with sibling providers.
     assertSafePathSegment(String(blockNumber), "block number");
-    const blockHash = await this.api<string>(
+    const blocks = await this.api<MempoolBlock[]>(
       c,
-      `/api/block-height/${encodeURIComponent(String(blockNumber))}`,
+      `/api/blocks/${encodeURIComponent(String(blockNumber))}`,
     );
-    const data = await this.api<MempoolBlock>(c, `/api/block/${encodeURIComponent(blockHash)}`);
+    const block = blocks.find((candidate) => candidate.height === blockNumber);
+    if (!block) throw new NotFoundError(`Block ${blockNumber}`, "mempool");
 
     return {
-      number: data.height,
-      hash: data.id,
-      parentHash: data.previousblockhash,
-      timestamp: new Date(data.timestamp * 1000).toISOString(),
-      miner: "", // Mempool doesn't provide miner directly
-      gasUsed: data.size.toString(),
-      gasLimit: data.weight.toString(),
-      txCount: data.tx_count,
+      number: block.height,
+      hash: block.id,
+      parentHash: block.previousblockhash,
+      timestamp: new Date(block.timestamp * 1000).toISOString(),
+      miner: "",
+      gasUsed: block.size.toString(),
+      gasLimit: block.weight.toString(),
+      txCount: block.tx_count,
     };
   }
 }
