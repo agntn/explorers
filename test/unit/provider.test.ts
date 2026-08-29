@@ -42,6 +42,7 @@ const BUILT_IN_PROVIDERS = [
   "blockscout",
   "blockchair",
   "mempool",
+  "blockstream",
   "solscan",
   "ton",
   "tronscan",

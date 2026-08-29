@@ -11,6 +11,7 @@ export default defineBuildConfig({
         "./src/providers/blockscout.ts",
         "./src/providers/blockchair.ts",
         "./src/providers/mempool.ts",
+        "./src/providers/blockstream.ts",
         "./src/providers/solscan.ts",
         "./src/providers/helius.ts",
         "./src/providers/ton.ts",
