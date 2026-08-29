@@ -15,6 +15,16 @@ function jsonResponse(body: unknown): Response {
   });
 }
 
+function historyTransaction(index: number) {
+  return {
+    txid: index.toString(16).padStart(64, "0"),
+    vin: [],
+    vout: [],
+    fee: 0,
+    status: { confirmed: true, block_height: 900_000 - index, block_time: 1_749_188_499 },
+  };
+}
+
 describe("blockstream provider", () => {
   it("reports only the operations Blockstream serves through this contract", async () => {
     const provider = await create("blockstream");
@@ -112,6 +122,30 @@ describe("blockstream provider", () => {
       fee: "1000",
       status: "success",
     });
+  });
+
+  it("continues confirmed history until the requested limit", async () => {
+    const firstPage = Array.from({ length: 25 }, (_, index) => historyTransaction(index));
+    const secondPage = Array.from({ length: 25 }, (_, index) => historyTransaction(index + 25));
+    const cursor = firstPage.at(-1)!.txid;
+    const fetch = vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url.endsWith("/txs")) return jsonResponse(firstPage);
+      if (url.endsWith(`/txs/chain/${cursor}`)) return jsonResponse(secondPage);
+      return new Response(null, { status: 404 });
+    });
+    vi.stubGlobal("fetch", fetch);
+
+    const provider = await create("blockstream");
+    const transactions = await provider.getTxHistory(ADDRESS, "bitcoin", { limit: 30 });
+
+    expect(transactions.map((transaction) => transaction.hash)).toEqual(
+      Array.from({ length: 30 }, (_, index) => historyTransaction(index).txid),
+    );
+    expect(fetch.mock.calls.map(([input]) => String(input))).toEqual([
+      `https://blockstream.info/api/address/${ADDRESS}/txs`,
+      `https://blockstream.info/api/address/${ADDRESS}/txs/chain/${cursor}`,
+    ]);
   });
 
   it("reads one transaction by hash", async () => {

@@ -25,8 +25,9 @@ import { Provider } from "../core/provider.js";
 import { normalizeBaseUrl } from "../core/client.js";
 import { NotFoundError, UnsupportedChainError } from "../core/errors.js";
 import { create as createChain } from "@agntn/chains";
-import { clampMaxResults, formatWei } from "../core/types.js";
+import { formatWei } from "../core/types.js";
 import { assertSafePathSegment } from "../core/path-safety.js";
+import { getEsploraAddressHistory } from "../core/esplora.js";
 
 const DEFAULT_BASE = "https://mempool.space";
 
@@ -416,15 +417,11 @@ export class Mempool extends Provider {
     options?: TxHistoryOptions,
   ): Promise<Transaction[]> {
     const c = chain ?? this.defaultChain;
-
-    const limit = clampMaxResults(options?.limit);
-    assertSafePathSegment(address, "address");
-    const data = await this.api<MempoolAddressTx[]>(
-      c,
-      `/api/address/${encodeURIComponent(address)}/txs`,
+    const transactions = await getEsploraAddressHistory(address, options?.limit, async (path) =>
+      this.api<MempoolAddressTx[]>(c, path),
     );
 
-    return data.slice(0, limit).map((tx) => mapTx(tx, address));
+    return transactions.map((tx) => mapTx(tx, address));
   }
 
   override async getTxDetail(hash: string, chain?: ChainKey): Promise<Transaction> {
