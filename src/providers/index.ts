@@ -56,6 +56,12 @@ export const builtins: readonly ProviderEntry[] = [
     load: () => import("./mempool.js").then((m) => m.Mempool),
   },
   {
+    key: "blockstream",
+    chains: ["bitcoin"],
+    defaultURL: "https://blockstream.info",
+    load: () => import("./blockstream.js").then((m) => m.Blockstream),
+  },
+  {
     key: "solscan",
     chains: ["solana"],
     defaultURL: "https://pro-api.solscan.io/v2.0",

@@ -269,7 +269,7 @@ console.log(result.content[0].text);
     expect(result.content).toEqual([
       {
         type: "text",
-        text: expect.stringMatching(/^Registered providers \(11\):/),
+        text: expect.stringMatching(/^Registered providers \(12\):/),
       },
     ]);
   });

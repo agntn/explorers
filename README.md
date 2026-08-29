@@ -1,12 +1,12 @@
 # Explorers
 
-Eleven block explorer APIs, one shape.
+Twelve block explorer APIs, one shape.
 
 Block explorers keep returning roughly the same data in completely different formats. Explorers deals with that mess and gives scripts, agents and humans one TypeScript API and one CLI for balances, transactions, token transfers, contracts, tokens, gas and blocks.
 
 ## Features
 
-- **Eleven providers, one contract.** Etherscan, Blockscout, Blockchair, Mempool, Solscan, Helius, TON, TRONSCAN, Aptos, Blockberry and Koios.
+- **Twelve providers, one contract.** Etherscan, Blockscout, Blockchair, Mempool, Blockstream, Solscan, Helius, TON, TRONSCAN, Aptos, Blockberry and Koios.
 - **21 chains.** Ethereum, Base, Arbitrum, Optimism, Polygon, BSC, Avalanche, Gnosis, Linea, Berachain, zkSync, Scroll, Bitcoin, Litecoin, eCash, Solana, TON, TRON, Aptos, Sui and Cardano.
 - **Explorer data stays explorer data.** A provider never quietly falls back to a fullnode RPC just to pretend an operation is supported.
 - **Amounts stay exact.** Native and token values use strings in the chain's smallest unit instead of lossy JavaScript numbers.
@@ -104,25 +104,26 @@ UTXO providers that expose cumulative totals add `funded` and `spent` to `Balanc
 
 Required operations live on `Provider`. Optional operations stay absent when a backend cannot serve them, so check both `capabilities` and the method before calling. Unsupported operations have no stub that returns convincing nonsense. Every successful `Balance` includes its ISO read time plus nullable block height and hash fields, so an unavailable chain position stays explicit.
 
-`create()` imports the provider it was asked for and nothing else, which is why it returns a promise. Everything the registry answers without an instance stays synchronous: `providers()`, `has()`, `supportsChain()`, `getDefaultURL()` and `resolveProvider()` read the metadata in `builtins`. A single backend can also skip the registry: `import { Mempool } from "@agntn/explorers/providers/mempool"` gives you the class and leaves the other ten out of your bundle.
+`create()` imports the provider it was asked for and nothing else, which is why it returns a promise. Everything the registry answers without an instance stays synchronous: `providers()`, `has()`, `supportsChain()`, `getDefaultURL()` and `resolveProvider()` read the metadata in `builtins`. A single backend can also skip the registry: `import { Mempool } from "@agntn/explorers/providers/mempool"` gives you the class and leaves the other eleven out of your bundle.
 
 `withProvider()` keeps an explicit provider strict. Automatic reads get one try on the next available built-in provider after `RateLimitError`. Every other failure stays with the first provider. Its callback can run twice, so it belongs to read operations. The CLI, MCP, Pi and OMP balance paths use this dispatcher.
 
 ## Providers
 
-| Provider       | Auth                          | Chains                                                                                | Capabilities                                          |
-| -------------- | ----------------------------- | ------------------------------------------------------------------------------------- | ----------------------------------------------------- |
-| **etherscan**  | `ETHERSCAN_API_KEY`           | ethereum, base, arbitrum, optimism, polygon, bsc, avalanche, gnosis, linea, berachain | balances, tx, transfers, contract, tokens, gas, block |
-| **blockscout** | None                          | ethereum, base, arbitrum, optimism, polygon, gnosis, linea, scroll, zksync, avalanche | balances, tx, transfers, contract, tokens, gas, block |
-| **blockchair** | Optional `BLOCKCHAIR_API_KEY` | bitcoin, ethereum, ecash                                                              | balances, tx, block                                   |
-| **mempool**    | None                          | bitcoin, litecoin                                                                     | balances, tx, gas, block                              |
-| **solscan**    | `SOLSCAN_API_KEY`             | solana                                                                                | balances, tx detail/history, block                    |
-| **helius**     | `HELIUS_API_KEY`              | solana                                                                                | tx detail/history, tokens                             |
-| **ton**        | None                          | ton                                                                                   | balances, tx                                          |
-| **tronscan**   | `TRONSCAN_API_KEY`            | tron                                                                                  | balances, tx detail/history, block                    |
-| **aptos**      | None                          | aptos                                                                                 | no supported explorer operations                      |
-| **blockberry** | `BLOCKBERRY_API_KEY`          | sui                                                                                   | balances, tx history                                  |
-| **koios**      | None                          | cardano                                                                               | balances, tx detail/history, tokens                   |
+| Provider        | Auth                          | Chains                                                                                | Capabilities                                          |
+| --------------- | ----------------------------- | ------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| **etherscan**   | `ETHERSCAN_API_KEY`           | ethereum, base, arbitrum, optimism, polygon, bsc, avalanche, gnosis, linea, berachain | balances, tx, transfers, contract, tokens, gas, block |
+| **blockscout**  | None                          | ethereum, base, arbitrum, optimism, polygon, gnosis, linea, scroll, zksync, avalanche | balances, tx, transfers, contract, tokens, gas, block |
+| **blockchair**  | Optional `BLOCKCHAIR_API_KEY` | bitcoin, ethereum, ecash                                                              | balances, tx, block                                   |
+| **mempool**     | None                          | bitcoin, litecoin                                                                     | balances, tx, gas, block                              |
+| **blockstream** | None                          | bitcoin                                                                               | balances, tx detail/history, block                    |
+| **solscan**     | `SOLSCAN_API_KEY`             | solana                                                                                | balances, tx detail/history, block                    |
+| **helius**      | `HELIUS_API_KEY`              | solana                                                                                | tx detail/history, tokens                             |
+| **ton**         | None                          | ton                                                                                   | balances, tx                                          |
+| **tronscan**    | `TRONSCAN_API_KEY`            | tron                                                                                  | balances, tx detail/history, block                    |
+| **aptos**       | None                          | aptos                                                                                 | no supported explorer operations                      |
+| **blockberry**  | `BLOCKBERRY_API_KEY`          | sui                                                                                   | balances, tx history                                  |
+| **koios**       | None                          | cardano                                                                               | balances, tx detail/history, tokens                   |
 
 `aptos` is deliberately boring. It stays registered, advertises no capabilities and throws `UnsupportedOperationError` from required methods. Aptos Explorer has no documented account/history API, and hiding fullnode REST behind an explorer provider just to make the table look complete would be dishonest.
 
