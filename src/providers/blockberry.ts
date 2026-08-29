@@ -21,6 +21,7 @@ import { clampMaxResults, formatWei } from "../core/types.js";
 
 const DEFAULT_BASE = "https://api.blockberry.one/sui";
 const SUI_COIN_TYPE = "0x2::sui::SUI";
+const ACTIVITY_PAGE_SIZE = 50;
 
 interface BlockberryBalance {
   readonly coinType: string;
@@ -62,6 +63,25 @@ function mapActivity(raw: Readonly<BlockberryActivity>): Transaction {
     tokenTransfers: [],
     raw: raw as unknown as Record<string, unknown>,
   };
+}
+
+async function collectActivities(
+  limit: number,
+  readPage: (size: number, nextCursor: string | undefined) => Promise<BlockberryActivityPage>,
+): Promise<BlockberryActivity[]> {
+  const activities: BlockberryActivity[] = [];
+  const pageLimit = Math.ceil(limit / ACTIVITY_PAGE_SIZE);
+  let nextCursor: string | undefined;
+
+  for (let fetches = 0; fetches < pageLimit && activities.length < limit; fetches++) {
+    const size = Math.min(ACTIVITY_PAGE_SIZE, limit - activities.length);
+    const page = await readPage(size, nextCursor);
+    activities.push(...page.content.slice(0, size));
+    if (page.content.length < size || !page.nextCursor || page.nextCursor === nextCursor) break;
+    nextCursor = page.nextCursor;
+  }
+
+  return activities;
 }
 
 export class Blockberry extends Provider {
@@ -129,14 +149,19 @@ export class Blockberry extends Provider {
     if (c !== "sui") throw new UnsupportedChainError(c, this.name);
     assertSafePathSegment(address, "address");
 
-    const query = buildQuery({
-      actionType: "ALL",
-      size: clampMaxResults(options?.limit, 50),
-      orderBy: options?.sort === "asc" ? "ASC" : "DESC",
+    const limit = options?.limit ? clampMaxResults(options.limit) : ACTIVITY_PAGE_SIZE;
+    const activities = await collectActivities(limit, (size, nextCursor) => {
+      const query = buildQuery({
+        actionType: "ALL",
+        nextCursor,
+        size,
+        orderBy: options?.sort === "asc" ? "ASC" : "DESC",
+      });
+      return this.api<BlockberryActivityPage>(
+        `/v1/accounts/${encodeURIComponent(address)}/activity${query}`,
+      );
     });
-    const page = await this.api<BlockberryActivityPage>(
-      `/v1/accounts/${encodeURIComponent(address)}/activity${query}`,
-    );
-    return page.content.map(mapActivity);
+
+    return activities.map(mapActivity);
   }
 }

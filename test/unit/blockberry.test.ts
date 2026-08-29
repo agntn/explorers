@@ -102,6 +102,54 @@ describe("blockberry provider", () => {
     expect(String(url)).toContain("orderBy=ASC");
   });
 
+  it("keeps the default history limit to one activity page", async () => {
+    const fetch = stubJSON({
+      content: Array.from({ length: 50 }, (_, index) => ({
+        activityType: ["TRANSFER"],
+        timestamp: 1_700_000_000_000 + index,
+        digest: `digest-${index}`,
+        txStatus: "SUCCESS",
+        gasFee: "1",
+      })),
+      nextCursor: "next-50",
+    });
+
+    await expect(provider.getTxHistory(ADDRESS, "sui")).resolves.toHaveLength(50);
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("follows the activity cursor to return the requested history limit", async () => {
+    const activity = (index: number) => ({
+      activityType: ["TRANSFER"],
+      timestamp: 1_700_000_000_000 + index,
+      digest: `digest-${index}`,
+      txStatus: "SUCCESS",
+      gasFee: "1",
+    });
+    const page = (start: number, length: number, nextCursor?: string) =>
+      new Response(
+        JSON.stringify({
+          content: Array.from({ length }, (_, index) => activity(index + start)),
+          nextCursor,
+        }),
+        { headers: { "Content-Type": "application/json" } },
+      );
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(page(0, 50, "next-50"))
+      .mockResolvedValueOnce(page(50, 25));
+    vi.stubGlobal("fetch", fetch);
+
+    const transactions = await provider.getTxHistory(ADDRESS, "sui", { limit: 75 });
+
+    expect(transactions).toHaveLength(75);
+    expect(transactions.at(-1)?.hash).toBe("digest-74");
+    expect(fetch).toHaveBeenCalledTimes(2);
+    const secondUrl = String(fetch.mock.calls[1]?.[0]);
+    expect(secondUrl).toContain("nextCursor=next-50");
+    expect(secondUrl).toContain("size=25");
+  });
+
   it("returns zero when the explorer has no native SUI row", async () => {
     stubJSON([]);
     await expect(provider.getBalance(ADDRESS, "sui")).resolves.toMatchObject({
