@@ -53,17 +53,18 @@ export abstract class Provider {
   ): Promise<Transaction[]>;
 
   /**
-   * Execute a provider-attributed GET request using the configured timeout.
+   * Execute a provider-attributed GET request using the configured or per-request timeout.
    *
    * @param {string} url - The `url` value.
-   * @param {Omit<ClientRequestOptions, "provider" | "timeout">} options - Per-request headers and cancellation.
+   * @param {Omit<ClientRequestOptions, "provider">} options - Per-request headers, cancellation, and timeout override.
    * @returns {Promise<T>} The resulting value.
    */
-  protected getJSON<T>(
-    url: string,
-    options?: Omit<ClientRequestOptions, "provider" | "timeout">,
-  ): Promise<T> {
-    return getJSON<T>(url, { ...options, timeout: this.timeout, provider: this.name });
+  protected getJSON<T>(url: string, options?: Omit<ClientRequestOptions, "provider">): Promise<T> {
+    return getJSON<T>(url, {
+      ...options,
+      timeout: options?.timeout ?? this.timeout,
+      provider: this.name,
+    });
   }
 
   /**
