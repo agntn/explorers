@@ -213,7 +213,7 @@ function rpcInput(input: string | null | undefined): {
 } {
   return {
     methodId: input ? input.slice(0, 10) : undefined,
-    isContractInteraction: (input?.length ?? 0) > 10,
+    isContractInteraction: (input?.length ?? 0) > 2,
   };
 }
 
