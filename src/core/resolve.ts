@@ -149,7 +149,10 @@ async function runFallback<T>(
 }
 
 /**
- * Retry one automatic read after a rate limit. The callback must be safe to run twice.
+ * Run one read with provider selection and one automatic retry after a rate limit.
+ *
+ * When neither provider nor chain is explicit, selection starts on Ethereum. An explicit provider
+ * without a chain keeps that provider's default chain. The callback must be safe to run twice.
  *
  * @param {string | undefined} preferred - The `preferred` value.
  * @param {ChainKey | undefined} chain - The `chain` value.
@@ -162,8 +165,9 @@ export async function withProvider<T>(
   /* oxlint-disable-next-line typescript/prefer-readonly-parameter-types */
   run: (context: ProviderContext) => Promise<T>,
 ): Promise<T> {
-  const primaryName = resolveProvider(preferred, chain);
-  const effectiveChain = chain ?? normalizeChain(PROVIDER_DEFAULT_CHAIN[primaryName]);
+  const requestedChain = chain ?? (preferred === undefined ? normalizeChain() : undefined);
+  const primaryName = resolveProvider(preferred, requestedChain);
+  const effectiveChain = requestedChain ?? normalizeChain(PROVIDER_DEFAULT_CHAIN[primaryName]);
   const fallbackName = rankProviders(effectiveChain, "fallback").find(
     (name) => name !== primaryName,
   );
