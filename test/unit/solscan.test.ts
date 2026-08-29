@@ -4,6 +4,17 @@ import { create } from "../../src/core/registry.js";
 
 const ADDRESS = "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM";
 
+function accountTransaction(index: number) {
+  return {
+    slot: 100 - index,
+    fee: "5000",
+    status: "Success",
+    signer: ADDRESS,
+    block_time: 1_700_000_000 - index,
+    tx_hash: `signature-${index}`,
+  };
+}
+
 function stubJSON(body: unknown) {
   const fetch = vi.fn(
     async (_input: RequestInfo | URL, _init?: RequestInit) =>
@@ -89,6 +100,57 @@ describe("solscan provider", () => {
         isContractInteraction: true,
       }),
     ]);
+  });
+
+  it("continues account history until the requested limit", async () => {
+    const firstPage = Array.from({ length: 40 }, (_, index) => accountTransaction(index));
+    const secondPage = Array.from({ length: 40 }, (_, index) => accountTransaction(index + 40));
+    const thirdPage = Array.from({ length: 20 }, (_, index) => accountTransaction(index + 80));
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ success: true, data: firstPage }), {
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ success: true, data: secondPage }), {
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ success: true, data: thirdPage }), {
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    vi.stubGlobal("fetch", fetch);
+
+    const transactions = await provider.getTxHistory(ADDRESS, "solana", { limit: 100 });
+
+    expect(transactions.map(({ hash }) => hash)).toEqual(
+      Array.from({ length: 100 }, (_, index) => `signature-${index}`),
+    );
+    expect(fetch.mock.calls.map(([input]) => String(input))).toEqual([
+      `https://example.test/account/transactions?address=${ADDRESS}&limit=40`,
+      `https://example.test/account/transactions?address=${ADDRESS}&before=signature-39&limit=40`,
+      `https://example.test/account/transactions?address=${ADDRESS}&before=signature-79&limit=40`,
+    ]);
+  });
+
+  it("stops when Solscan repeats a transaction page", async () => {
+    const page = Array.from({ length: 40 }, (_, index) => accountTransaction(index));
+    const fetch = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ success: true, data: page }), {
+          headers: { "Content-Type": "application/json" },
+        }),
+    );
+    vi.stubGlobal("fetch", fetch);
+
+    const transactions = await provider.getTxHistory(ADDRESS, "solana", { limit: 80 });
+
+    expect(transactions).toHaveLength(40);
+    expect(fetch).toHaveBeenCalledTimes(2);
   });
 
   it("maps transaction and block details", async () => {
