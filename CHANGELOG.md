@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.5.1
+
+[compare changes](https://github.com/agntn/explorers/compare/v0.5.0...v0.5.1)
+
+### ✅ Tests
+
+- Isolate explicit provider case from env ([526ea29](https://github.com/agntn/explorers/commit/526ea29))
+
+### ❤️ Contributors
+
+- Aei ([@aeitwoen](https://github.com/aeitwoen))
+
 ## v0.5.0
 
 [compare changes](https://github.com/agntn/explorers/compare/v0.4.0...v0.5.0)
