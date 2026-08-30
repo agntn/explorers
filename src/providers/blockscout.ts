@@ -204,7 +204,10 @@ function mapTx(raw: Readonly<BlockscoutTx>): Transaction {
     status: transactionStatus(raw.status),
     methodId: undefined,
     functionName: raw.method,
-    isContractInteraction: raw.transaction_types?.includes("contract_call") ?? false,
+    isContractInteraction:
+      raw.transaction_types?.some(
+        (type) => type === "contract_call" || type === "contract_creation",
+      ) ?? false,
     tokenTransfers: mapTokenTransfers(raw.token_transfers),
     raw: raw as unknown as Record<string, unknown>,
   };

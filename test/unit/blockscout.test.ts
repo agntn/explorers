@@ -168,6 +168,27 @@ describe("blockscout provider", () => {
     ]);
   });
 
+  it("marks contract creation as a contract interaction", async () => {
+    const hash = "0xb95343413e459a0f97461812111254163ae53467855c0d73e0f1e7c5b8442fa3";
+    stubJSON({
+      hash,
+      block_number: 4_719_568,
+      timestamp: "2017-12-12T11:17:35.000000Z",
+      from: { hash: "0x4F26FfBe5F04ED43630fdC30A87638d53D0b0876" },
+      to: null,
+      value: "0",
+      gas_used: "966549",
+      gas_price: "21000000000",
+      status: "ok",
+      transaction_types: ["contract_creation", "token_creation"],
+    });
+
+    await expect(provider.getTxDetail!(hash, "ethereum")).resolves.toMatchObject({
+      to: null,
+      isContractInteraction: true,
+    });
+  });
+
   it("walks transaction pages until the requested limit is reached", async () => {
     const transaction = (block: number) => ({
       hash: `0x${block.toString(16).padStart(64, "0")}`,
