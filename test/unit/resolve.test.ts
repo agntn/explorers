@@ -205,12 +205,12 @@ describe("withProvider", () => {
     const tried: string[] = [];
 
     await expect(
-      withProvider("etherscan", "ethereum", async ({ name }) => {
+      withProvider("blockscout", "ethereum", async ({ name }) => {
         tried.push(name);
         throw new RateLimitError(name);
       }),
     ).rejects.toBeInstanceOf(RateLimitError);
-    expect(tried).toEqual(["etherscan"]);
+    expect(tried).toEqual(["blockscout"]);
   });
 
   it("keeps the original rate limit when fallback cannot serve the operation", async () => {
