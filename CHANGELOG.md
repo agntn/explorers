@@ -1,5 +1,48 @@
 # Changelog
 
+## v0.5.0
+
+[compare changes](https://github.com/agntn/explorers/compare/v0.4.0...v0.5.0)
+
+### 🚀 Enhancements
+
+- Expose UTXO funded and spent totals ([#43](https://github.com/agntn/explorers/pull/43))
+- ⚠️  Add read context to balances ([#45](https://github.com/agntn/explorers/pull/45))
+- Read Bitcoin through Blockstream ([#48](https://github.com/agntn/explorers/pull/48))
+- **mempool:** Add Pepecoin explorer support ([#53](https://github.com/agntn/explorers/pull/53))
+
+### 🩹 Fixes
+
+- **pi:** Load checkout source without dist ([#37](https://github.com/agntn/explorers/pull/37))
+- **omp:** Stop loading a second explorers copy ([#41](https://github.com/agntn/explorers/pull/41))
+- Make Blockscout tests deterministic ([#42](https://github.com/agntn/explorers/pull/42))
+- Keep null Blockscout balances readable ([#44](https://github.com/agntn/explorers/pull/44))
+- Retry throttled balance reads ([#46](https://github.com/agntn/explorers/pull/46))
+- **tronscan:** Preserve pending status ([#47](https://github.com/agntn/explorers/pull/47))
+- **mempool:** Restore block lookup ([#49](https://github.com/agntn/explorers/pull/49))
+- Page through Bitcoin address history ([#50](https://github.com/agntn/explorers/pull/50))
+- Paginate Solscan account history ([#51](https://github.com/agntn/explorers/pull/51))
+- Pin implicit balance reads to Ethereum ([#54](https://github.com/agntn/explorers/pull/54))
+- Deduplicate concurrent provider loads ([#55](https://github.com/agntn/explorers/pull/55))
+- **blockberry:** Paginate account activity ([#56](https://github.com/agntn/explorers/pull/56))
+- Route providers by operation capability ([#57](https://github.com/agntn/explorers/pull/57))
+- **blockscout:** Return every token balance ([#58](https://github.com/agntn/explorers/pull/58))
+- **etherscan:** Recognize selector-only calls ([#59](https://github.com/agntn/explorers/pull/59))
+- Mark Blockscout deployments as interactions ([#60](https://github.com/agntn/explorers/pull/60))
+
+### 🏡 Chore
+
+- Adopt shared type-aware linting ([#52](https://github.com/agntn/explorers/pull/52))
+
+#### ⚠️ Breaking Changes
+
+- ⚠️  Add read context to balances ([#45](https://github.com/agntn/explorers/pull/45))
+
+### ❤️ Contributors
+
+- Aeitwoen <aeitwoen@gmail.com>
+- Ori ([@oritwoen](https://github.com/oritwoen))
+
 ## v0.4.0
 
 [compare changes](https://github.com/agntn/explorers/compare/v0.3.0...v0.4.0)
