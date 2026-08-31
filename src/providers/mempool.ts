@@ -322,6 +322,10 @@ function mempoolTimestamp(status: Readonly<MempoolAddressTx["status"]>): string 
   return status.block_time ? new Date(status.block_time * 1000).toISOString() : undefined;
 }
 
+function peppoolHistoryPath(encodedAddress: string, encodedCursor: string): string {
+  return `/api/address/${encodedAddress}/txs?after_txid=${encodedCursor}`;
+}
+
 function mempoolAddressTotals(
   raw: Readonly<MempoolAddressTx>,
   address: string,
@@ -445,8 +449,11 @@ export class Mempool extends Provider {
     options?: Readonly<TxHistoryOptions>,
   ): Promise<Transaction[]> {
     const c = chain ?? this.defaultChain;
-    const transactions = await getEsploraAddressHistory(address, options?.limit, async (path) =>
-      this.api<MempoolAddressTx[]>(c, path),
+    const transactions = await getEsploraAddressHistory(
+      address,
+      options?.limit,
+      async (path) => this.api<MempoolAddressTx[]>(c, path),
+      c === "pepecoin" ? peppoolHistoryPath : undefined,
     );
 
     return transactions.map((tx) => mapTx(tx, address));
