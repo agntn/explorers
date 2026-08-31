@@ -70,6 +70,14 @@ export class RateLimitError extends ExplorerError {
   }
 }
 
+/** Provider credentials are valid, but the current plan does not cover the requested read. */
+export class PlanRestrictedError extends ExplorerError {
+  constructor(provider: string, detail?: string) {
+    super(`Plan restricted by ${provider}${detail ? `: ${detail}` : ""}`, provider);
+    this.name = "PlanRestrictedError";
+  }
+}
+
 /** Requested transaction, address, contract, or block was not found. */
 export class NotFoundError extends ExplorerError {
   constructor(resource: string, provider?: string) {

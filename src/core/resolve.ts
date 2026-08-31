@@ -3,6 +3,7 @@
 import { create, providers, has, supportsCapability, supportsChain } from "./registry.js";
 import {
   AuthError,
+  PlanRestrictedError,
   RateLimitError,
   UnknownProviderError,
   UnsupportedChainError,
@@ -172,7 +173,7 @@ async function runFallback<T>(
 }
 
 /**
- * Run one read with provider selection and one automatic retry after a rate limit.
+ * Run one read with provider selection and one automatic retry after a transient or plan limit.
  *
  * When neither provider nor chain is explicit, selection starts on Ethereum. An explicit provider
  * without a chain keeps that provider's default chain. The callback must be safe to run twice.
@@ -205,7 +206,7 @@ export async function withProvider<T>(
     if (
       preferred !== undefined ||
       fallbackName === undefined ||
-      !(error instanceof RateLimitError)
+      !(error instanceof RateLimitError || error instanceof PlanRestrictedError)
     ) {
       throw error;
     }

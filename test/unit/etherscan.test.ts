@@ -188,6 +188,36 @@ describe("etherscan provider", () => {
     );
   });
 
+  it.each([
+    "Free API access is not supported for this chain. Please upgrade your plan.",
+    "Sorry, it looks like you are trying to access an API Pro endpoint.",
+  ])("classifies plan restrictions: %s", async (result) => {
+    stubJSON({ status: "0", message: "NOTOK", result });
+    const provider = await create("etherscan", { apiKey: "secret" });
+
+    await expect(provider.getTokenBalances!(ADDRESS, "ethereum")).rejects.toMatchObject({
+      name: "PlanRestrictedError",
+      provider: "etherscan",
+    });
+  });
+
+  it("classifies plan restrictions from JSON-RPC error envelopes", async () => {
+    stubJSON({
+      jsonrpc: "2.0",
+      id: 1,
+      error: {
+        code: -32_000,
+        message: "Sorry, it looks like you are trying to access an API Pro endpoint.",
+      },
+    });
+    const provider = await create("etherscan", { apiKey: "secret" });
+
+    await expect(provider.getTokenBalances!(ADDRESS, "ethereum")).rejects.toMatchObject({
+      name: "PlanRestrictedError",
+      provider: "etherscan",
+    });
+  });
+
   it("returns an empty history for Etherscan's no-transactions response", async () => {
     stubJSON({ status: "0", message: "No transactions found", result: [] });
     const provider = await create("etherscan", { apiKey: "secret" });

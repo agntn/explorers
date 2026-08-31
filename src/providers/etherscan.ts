@@ -29,6 +29,7 @@ import {
   AuthError,
   ExplorerError,
   NotFoundError,
+  PlanRestrictedError,
   RateLimitError,
   UnsupportedChainError,
 } from "../core/errors.js";
@@ -156,9 +157,14 @@ function isEmptyEtherscanResult(action: string, message: string): boolean {
   return action === "addresstokenbalance" && /no (token|record)/i.test(message);
 }
 
+function isPlanRestriction(message: string): boolean {
+  return /free api access is not supported|api pro endpoint/i.test(message);
+}
+
 function etherscanFailure(action: string, message: string): never | [] {
   if (isEmptyEtherscanResult(action, message)) return [];
   if (/rate limit/i.test(message)) throw new RateLimitError("etherscan");
+  if (isPlanRestriction(message)) throw new PlanRestrictedError("etherscan", message);
   if (/invalid api key|missing\/invalid api key/i.test(message)) {
     throw new AuthError("etherscan", "Invalid API key");
   }
@@ -167,6 +173,9 @@ function etherscanFailure(action: string, message: string): never | [] {
 
 function unwrapEtherscanResponse<T>(response: Readonly<EtherscanResponse<T>>, action: string): T {
   if (response.error) {
+    if (isPlanRestriction(response.error.message)) {
+      throw new PlanRestrictedError("etherscan", response.error.message);
+    }
     throw new ExplorerError(`Etherscan API error: ${response.error.message}`, "etherscan");
   }
   if (response.status === "0") {
