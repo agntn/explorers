@@ -106,7 +106,7 @@ Required operations live on `Provider`. Optional operations stay absent when a b
 
 `create()` imports the provider it was asked for and nothing else, which is why it returns a promise. Everything the registry answers without an instance stays synchronous: `providers()`, `has()`, `supportsChain()`, `supportsCapability()`, `getDefaultURL()` and `resolveProvider()` read the metadata in `builtins`. Pass a capability as the third `resolveProvider()` argument when automatic selection must support a particular operation. A single backend can also skip the registry: `import { Mempool } from "@agntn/explorers/providers/mempool"` gives you the class and leaves the other eleven out of your bundle.
 
-`withProvider()` keeps an explicit provider strict. With neither provider nor chain, it starts on Ethereum; an explicit provider without a chain keeps that provider's default. Its optional fourth argument filters automatic selection by capability. Automatic reads get one try on the next available built-in provider after `RateLimitError`. Every other failure stays with the first provider. Its callback can run twice, so it belongs to read operations. Every CLI, MCP, Pi and OMP path that reads chain data requests its operation capability through this dispatcher.
+`withProvider()` keeps an explicit provider strict. With neither provider nor chain, it starts on Ethereum; an explicit provider without a chain keeps that provider's default. Its optional fourth argument filters automatic selection by capability. Automatic reads get one try on the next available built-in provider after `RateLimitError` or `PlanRestrictedError`. Every other failure stays with the first provider. Its callback can run twice, so it belongs to read operations. Every CLI, MCP, Pi and OMP path that reads chain data requests its operation capability through this dispatcher.
 
 ## Providers
 
@@ -135,7 +135,7 @@ Bitcoin, Litecoin and Pepecoin transactions from `mempool` expose their OP_RETUR
 
 `normalizeChain()` accepts practical aliases such as `mainnet`, `btc`, `coinbase` and `apt`. Unknown names fail instead of silently selecting another chain.
 
-Explorer APIs fail in enough creative ways, so errors share one hierarchy: `ExplorerError`, `HTTPError`, `AuthError`, `RateLimitError`, `NotFoundError`, `UnsupportedChainError`, `UnsupportedOperationError` and `UnknownProviderError`. `normalizeError()` turns unknown transport failures into that shape and strips API keys from URLs before they reach logs.
+Explorer APIs fail in enough creative ways, so errors share one hierarchy: `ExplorerError`, `HTTPError`, `AuthError`, `RateLimitError`, `PlanRestrictedError`, `NotFoundError`, `UnsupportedChainError`, `UnsupportedOperationError` and `UnknownProviderError`. `normalizeError()` turns unknown transport failures into that shape and strips API keys from URLs before they reach logs.
 
 ## Adding a provider
 

@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   AuthError,
   NotFoundError,
+  PlanRestrictedError,
   RateLimitError,
   UnknownProviderError,
   UnsupportedOperationError,
@@ -187,6 +188,20 @@ describe("withProvider", () => {
     expect(selected).toEqual({ chain: "ethereum", name: "blockscout" });
   });
 
+  it("falls back when the primary provider plan does not cover the read", async () => {
+    useOnlyEtherscanCredentials();
+    const tried: string[] = [];
+
+    const selected = await withProvider(undefined, "ethereum", async ({ chain, name }) => {
+      tried.push(name);
+      if (name === "etherscan") throw new PlanRestrictedError(name);
+      return { chain, name };
+    });
+
+    expect(tried).toEqual(["etherscan", "blockscout"]);
+    expect(selected).toEqual({ chain: "ethereum", name: "blockscout" });
+  });
+
   it("uses a provider with optional credentials after the keyless default", async () => {
     useNoProviderCredentials();
     const tried: string[] = [];
@@ -210,6 +225,18 @@ describe("withProvider", () => {
         throw new RateLimitError(name);
       }),
     ).rejects.toBeInstanceOf(RateLimitError);
+    expect(tried).toEqual(["blockscout"]);
+  });
+
+  it("does not replace an explicitly selected plan-restricted provider", async () => {
+    const tried: string[] = [];
+
+    await expect(
+      withProvider("blockscout", "ethereum", async ({ name }) => {
+        tried.push(name);
+        throw new PlanRestrictedError(name);
+      }),
+    ).rejects.toBeInstanceOf(PlanRestrictedError);
     expect(tried).toEqual(["blockscout"]);
   });
 

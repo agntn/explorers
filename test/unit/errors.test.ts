@@ -4,6 +4,7 @@ import {
   HTTPError,
   AuthError,
   RateLimitError,
+  PlanRestrictedError,
   NotFoundError,
   UnsupportedChainError,
   UnsupportedOperationError,
@@ -49,6 +50,11 @@ describe("ExplorerError", () => {
   it("RateLimitError", () => {
     const e = new RateLimitError("x402", 60);
     expect(e.retryAfter).toBe(60);
+  });
+  it("PlanRestrictedError", () => {
+    const e = new PlanRestrictedError("etherscan", "Upgrade required");
+    expect(e).toMatchObject({ name: "PlanRestrictedError", provider: "etherscan" });
+    expect(e.message).toContain("Upgrade required");
   });
   it("NotFoundError", () => {
     const e = new NotFoundError("x402", "rid");
