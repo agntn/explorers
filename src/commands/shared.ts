@@ -1,7 +1,6 @@
 import consola from "consola";
 import type { Provider, ProviderCapability } from "../core/provider.js";
-import { create } from "../core/registry.js";
-import { PROVIDER_DEFAULT_CHAIN, resolveProvider } from "../core/resolve.js";
+import { withProvider } from "../core/resolve.js";
 import { normalizeChain } from "../core/types.js";
 import type { ChainKey } from "../core/types.js";
 
@@ -11,16 +10,15 @@ export interface SelectedProvider {
   readonly provider: Provider;
 }
 
-export async function selectProvider(
+export function withSelectedProvider<T>(
   chainInput: string | undefined,
   providerInput: string | undefined,
-  capability?: ProviderCapability,
-): Promise<SelectedProvider> {
+  capability: ProviderCapability,
+  /* oxlint-disable-next-line typescript/prefer-readonly-parameter-types */
+  run: (selected: SelectedProvider) => Promise<T>,
+): Promise<T> {
   const requestedChain = chainInput === undefined ? undefined : normalizeChain(chainInput);
-  const name = resolveProvider(providerInput, requestedChain, capability);
-  const provider = await create(name);
-  const chain = requestedChain ?? normalizeChain(PROVIDER_DEFAULT_CHAIN[name]);
-  return { chain, name, provider };
+  return withProvider(providerInput, requestedChain, run, capability);
 }
 
 export function failCommand(message: string): never {

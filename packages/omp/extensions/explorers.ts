@@ -4,11 +4,6 @@ import { fileURLToPath } from "node:url";
 import type { ExtensionAPI } from "@oh-my-pi/pi-coding-agent";
 import type * as ExplorersModule from "../../../src/index.js";
 
-type ChainResolver = {
-  readonly PROVIDER_DEFAULT_CHAIN: Readonly<typeof ExplorersModule.PROVIDER_DEFAULT_CHAIN>;
-  readonly normalizeChain: typeof ExplorersModule.normalizeChain;
-};
-
 const sourceModulePath = fileURLToPath(new URL("../../../src/index.ts", import.meta.url));
 let explorersModulePromise: Promise<typeof ExplorersModule> | undefined;
 
@@ -42,19 +37,20 @@ function textResult(text: string) {
   };
 }
 
-async function getProvider(
+type SelectedProvider = ExplorersModule.ProviderContext & {
+  readonly lib: typeof ExplorersModule;
+};
+
+async function withSelected<T>(
   preferred: string | undefined,
   requestedChain: string | undefined,
   capability: ExplorersModule.ProviderCapability,
-) {
+  /* oxlint-disable-next-line typescript/prefer-readonly-parameter-types */
+  run: (selected: SelectedProvider) => Promise<T>,
+): Promise<T> {
   const lib = await loadLib();
   const chain = requestedChain === undefined ? undefined : lib.normalizeChain(requestedChain);
-  const name = lib.resolveProvider(preferred, chain, capability);
-  return { lib, name, provider: await lib.create(name) };
-}
-
-function resolveToolChain(lib: ChainResolver, providerName: string, requested?: string) {
-  return lib.normalizeChain(requested ?? lib.PROVIDER_DEFAULT_CHAIN[providerName]);
+  return lib.withProvider(preferred, chain, (selected) => run({ ...selected, lib }), capability);
 }
 
 function balanceContext(balance: Readonly<ExplorersModule.Balance>): string {
@@ -110,13 +106,11 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
       );
     },
     async execute(_toolCallId, params) {
-      const lib = await loadLib();
-      const requestedChain =
-        params.chain === undefined ? undefined : lib.normalizeChain(params.chain);
-      return lib.withProvider(
+      return withSelected(
         params.provider,
-        requestedChain,
-        async ({ chain, name, provider }) => {
+        params.chain,
+        "balances",
+        async ({ chain, lib, name, provider }) => {
           const addresses = await lib.resolveAddresses(params.address, chain);
           const balances = await Promise.all(
             addresses.map((address) => provider.getBalance(address, chain)),
@@ -130,7 +124,6 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
           });
           return textResult(lines.join("\n"));
         },
-        "balances",
       );
     },
   });
@@ -164,15 +157,20 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
       );
     },
     async execute(_toolCallId, params) {
-      const { lib, name, provider } = await getProvider(params.provider, params.chain, "txHistory");
-      const chain = resolveToolChain(lib, name, params.chain);
-      const txs = await provider.getTxHistory(params.address, chain, { limit: params.limit });
-
-      const lines = txs.map(
-        (tx) => `${tx.hash} ${tx.from}→${tx.to ?? "new"} ${tx.valueFormatted} [${tx.status}]`,
+      return withSelected(
+        params.provider,
+        params.chain,
+        "txHistory",
+        async ({ chain, name, provider }) => {
+          const txs = await provider.getTxHistory(params.address, chain, { limit: params.limit });
+          const lines = txs.map(
+            (tx) => `${tx.hash} ${tx.from}→${tx.to ?? "new"} ${tx.valueFormatted} [${tx.status}]`,
+          );
+          return textResult(
+            `[${name}] ${txs.length} transactions on ${chain}:\n${lines.join("\n")}`,
+          );
+        },
       );
-
-      return textResult(`[${name}] ${txs.length} transactions on ${chain}:\n${lines.join("\n")}`);
     },
   });
 
@@ -193,29 +191,32 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
       return new Text(sanitizeTerminalText(`Tx detail: ${args.hash.slice(0, 18)}…`), 0, 0);
     },
     async execute(_toolCallId, params) {
-      const { lib, name, provider } = await getProvider(params.provider, params.chain, "txDetail");
-      const chain = resolveToolChain(lib, name, params.chain);
-      if (!provider.capabilities.txDetail || !provider.getTxDetail) {
-        throw new lib.UnsupportedOperationError("getTxDetail", name);
-      }
-      const tx = await provider.getTxDetail(params.hash, chain);
-
-      const parts = [
-        `[${name}] Tx ${tx.hash}`,
-        `Block: ${tx.blockNumber} | Status: ${tx.status}`,
-        tx.fee ? `Fee: ${tx.fee} base units` : null,
-        `From: ${tx.from}`,
-        `To: ${tx.to ?? "contract creation"}`,
-        `Value: ${tx.valueFormatted}`,
-        tx.functionName ? `Method: ${tx.functionName}` : null,
-        tx.tokenTransfers.length > 0 ? `Token transfers: ${tx.tokenTransfers.length}` : null,
-        ...(tx.opReturn ?? []).map((payload) => `OP_RETURN: ${payload.text ?? payload.hex}`),
-      ].filter(Boolean);
-
-      return {
-        content: [{ type: "text", text: sanitizeTerminalText(parts.join("\n")) }],
-        details: { provider: name, transaction: tx },
-      };
+      return withSelected(
+        params.provider,
+        params.chain,
+        "txDetail",
+        async ({ chain, lib, name, provider }) => {
+          if (!provider.capabilities.txDetail || !provider.getTxDetail) {
+            throw new lib.UnsupportedOperationError("getTxDetail", name);
+          }
+          const tx = await provider.getTxDetail(params.hash, chain);
+          const parts = [
+            `[${name}] Tx ${tx.hash}`,
+            `Block: ${tx.blockNumber} | Status: ${tx.status}`,
+            tx.fee ? `Fee: ${tx.fee} base units` : null,
+            `From: ${tx.from}`,
+            `To: ${tx.to ?? "contract creation"}`,
+            `Value: ${tx.valueFormatted}`,
+            tx.functionName ? `Method: ${tx.functionName}` : null,
+            tx.tokenTransfers.length > 0 ? `Token transfers: ${tx.tokenTransfers.length}` : null,
+            ...(tx.opReturn ?? []).map((payload) => `OP_RETURN: ${payload.text ?? payload.hex}`),
+          ].filter(Boolean);
+          return {
+            content: [{ type: "text", text: sanitizeTerminalText(parts.join("\n")) }],
+            details: { provider: name, transaction: tx },
+          };
+        },
+      );
     },
     renderResult(result, { expanded, isPartial }, theme) {
       if (isPartial) return new Text(theme.fg("warning", "Loading transaction…"), 0, 0);
@@ -294,28 +295,27 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
       return new Text(sanitizeTerminalText(`Contract: ${args.address}`), 0, 0);
     },
     async execute(_toolCallId, params) {
-      const { lib, name, provider } = await getProvider(
+      return withSelected(
         params.provider,
         params.chain,
         "contractInfo",
+        async ({ chain, lib, name, provider }) => {
+          if (!provider.capabilities.contractInfo || !provider.getContractInfo) {
+            throw new lib.UnsupportedOperationError("getContractInfo", name);
+          }
+          const info = await provider.getContractInfo(params.address, chain);
+          const parts = [
+            `[${name}] Contract ${info.address}`,
+            `Verified: ${info.isVerified}`,
+            info.name ? `Name: ${info.name}` : null,
+            info.compilerVersion ? `Compiler: ${info.compilerVersion}` : null,
+            info.isProxy ? `Proxy → ${info.implementationAddress}` : null,
+            info.isToken ? "Is token: yes" : null,
+            info.creator ? `Creator: ${info.creator}` : null,
+          ].filter(Boolean);
+          return textResult(parts.join("\n"));
+        },
       );
-      const chain = resolveToolChain(lib, name, params.chain);
-      if (!provider.capabilities.contractInfo || !provider.getContractInfo) {
-        throw new lib.UnsupportedOperationError("getContractInfo", name);
-      }
-      const info = await provider.getContractInfo(params.address, chain);
-
-      const parts = [
-        `[${name}] Contract ${info.address}`,
-        `Verified: ${info.isVerified}`,
-        info.name ? `Name: ${info.name}` : null,
-        info.compilerVersion ? `Compiler: ${info.compilerVersion}` : null,
-        info.isProxy ? `Proxy → ${info.implementationAddress}` : null,
-        info.isToken ? "Is token: yes" : null,
-        info.creator ? `Creator: ${info.creator}` : null,
-      ].filter(Boolean);
-
-      return textResult(parts.join("\n"));
     },
   });
 
@@ -346,26 +346,25 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
       );
     },
     async execute(_toolCallId, params) {
-      const { lib, name, provider } = await getProvider(
+      return withSelected(
         params.provider,
         params.chain,
         "tokenBalances",
-      );
-      const chain = resolveToolChain(lib, name, params.chain);
-      if (!provider.capabilities.tokenBalances || !provider.getTokenBalances) {
-        throw new lib.UnsupportedOperationError("getTokenBalances", name);
-      }
-      const tokens = await provider.getTokenBalances(params.address, chain, {
-        nonZeroOnly: params.nonZeroOnly ?? true,
-      });
-
-      const lines = tokens.map((token) => {
-        const usd = token.valueUsd ? ` ($${token.valueUsd.toFixed(2)})` : "";
-        return `  ${token.symbol}: ${token.balanceFormatted}${usd}  [${token.contract.slice(0, 10)}…]`;
-      });
-
-      return textResult(
-        `[${name}] ${tokens.length} tokens for ${params.address} on ${chain}:\n${lines.join("\n")}`,
+        async ({ chain, lib, name, provider }) => {
+          if (!provider.capabilities.tokenBalances || !provider.getTokenBalances) {
+            throw new lib.UnsupportedOperationError("getTokenBalances", name);
+          }
+          const tokens = await provider.getTokenBalances(params.address, chain, {
+            nonZeroOnly: params.nonZeroOnly ?? true,
+          });
+          const lines = tokens.map((token) => {
+            const usd = token.valueUsd ? ` ($${token.valueUsd.toFixed(2)})` : "";
+            return `  ${token.symbol}: ${token.balanceFormatted}${usd}  [${token.contract.slice(0, 10)}…]`;
+          });
+          return textResult(
+            `[${name}] ${tokens.length} tokens for ${params.address} on ${chain}:\n${lines.join("\n")}`,
+          );
+        },
       );
     },
   });
@@ -400,27 +399,26 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
       );
     },
     async execute(_toolCallId, params) {
-      const { lib, name, provider } = await getProvider(
+      return withSelected(
         params.provider,
         params.chain,
         "tokenTransfers",
-      );
-      const chain = resolveToolChain(lib, name, params.chain);
-      if (!provider.capabilities.tokenTransfers || !provider.getTokenTransfers) {
-        throw new lib.UnsupportedOperationError("getTokenTransfers", name);
-      }
-      const transfers = await provider.getTokenTransfers(params.address, chain, {
-        limit: params.limit ?? 10,
-        token: params.token,
-      });
-
-      const lines = transfers.map(
-        (transfer) =>
-          `  ${transfer.txHash.slice(0, 18)}… ${transfer.from.slice(0, 10)}…→${transfer.to.slice(0, 10)}… ${transfer.valueFormatted} ${transfer.symbol}`,
-      );
-
-      return textResult(
-        `[${name}] ${transfers.length} token transfers for ${params.address} on ${chain}:\n${lines.join("\n")}`,
+        async ({ chain, lib, name, provider }) => {
+          if (!provider.capabilities.tokenTransfers || !provider.getTokenTransfers) {
+            throw new lib.UnsupportedOperationError("getTokenTransfers", name);
+          }
+          const transfers = await provider.getTokenTransfers(params.address, chain, {
+            limit: params.limit ?? 10,
+            token: params.token,
+          });
+          const lines = transfers.map(
+            (transfer) =>
+              `  ${transfer.txHash.slice(0, 18)}… ${transfer.from.slice(0, 10)}…→${transfer.to.slice(0, 10)}… ${transfer.valueFormatted} ${transfer.symbol}`,
+          );
+          return textResult(
+            `[${name}] ${transfers.length} token transfers for ${params.address} on ${chain}:\n${lines.join("\n")}`,
+          );
+        },
       );
     },
   });
@@ -445,25 +443,27 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
       );
     },
     async execute(_toolCallId, params) {
-      const { lib, name, provider } = await getProvider(params.provider, params.chain, "gasData");
-      const chain = resolveToolChain(lib, name, params.chain);
-
-      const caps = provider.capabilities;
-      if (!caps.gasData || !provider.getGasData) {
-        throw new lib.UnsupportedOperationError("getGasData", name);
-      }
-
-      const gas = await provider.getGasData(chain);
-      const parts = [
-        `[${name}] Gas on ${gas.chain}:`,
-        gas.safeGasPrice ? `  Safe: ${gas.safeGasPrice} ${gas.unit}` : null,
-        gas.proposedGasPrice ? `  Average: ${gas.proposedGasPrice} ${gas.unit}` : null,
-        gas.priorityFee ? `  Priority: ${gas.priorityFee} ${gas.unit}` : null,
-        gas.fastGasPrice ? `  Fast: ${gas.fastGasPrice} ${gas.unit}` : null,
-        gas.baseFee ? `  Base fee: ${gas.baseFee} ${gas.unit}` : null,
-      ].filter(Boolean);
-
-      return textResult(parts.join("\n"));
+      return withSelected(
+        params.provider,
+        params.chain,
+        "gasData",
+        async ({ chain, lib, name, provider }) => {
+          const caps = provider.capabilities;
+          if (!caps.gasData || !provider.getGasData) {
+            throw new lib.UnsupportedOperationError("getGasData", name);
+          }
+          const gas = await provider.getGasData(chain);
+          const parts = [
+            `[${name}] Gas on ${gas.chain}:`,
+            gas.safeGasPrice ? `  Safe: ${gas.safeGasPrice} ${gas.unit}` : null,
+            gas.proposedGasPrice ? `  Average: ${gas.proposedGasPrice} ${gas.unit}` : null,
+            gas.priorityFee ? `  Priority: ${gas.priorityFee} ${gas.unit}` : null,
+            gas.fastGasPrice ? `  Fast: ${gas.fastGasPrice} ${gas.unit}` : null,
+            gas.baseFee ? `  Base fee: ${gas.baseFee} ${gas.unit}` : null,
+          ].filter(Boolean);
+          return textResult(parts.join("\n"));
+        },
+      );
     },
   });
 
@@ -488,24 +488,27 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
       );
     },
     async execute(_toolCallId, params) {
-      const { lib, name, provider } = await getProvider(params.provider, params.chain, "blockInfo");
-      const chain = resolveToolChain(lib, name, params.chain);
-      if (!provider.capabilities.blockInfo || !provider.getBlockInfo) {
-        throw new lib.UnsupportedOperationError("getBlockInfo", name);
-      }
-      const block = await provider.getBlockInfo(params.blockNumber, chain);
-
-      const parts = [
-        `[${name}] Block #${block.number} on ${chain}`,
-        `Hash: ${block.hash}`,
-        `Timestamp: ${block.timestamp}`,
-        `Miner: ${block.miner}`,
-        `Gas used/limit: ${block.gasUsed} / ${block.gasLimit}`,
-        `Transactions: ${block.txCount}`,
-        block.baseFee ? `Base fee per gas: ${block.baseFee}` : null,
-      ].filter(Boolean);
-
-      return textResult(parts.join("\n"));
+      return withSelected(
+        params.provider,
+        params.chain,
+        "blockInfo",
+        async ({ chain, lib, name, provider }) => {
+          if (!provider.capabilities.blockInfo || !provider.getBlockInfo) {
+            throw new lib.UnsupportedOperationError("getBlockInfo", name);
+          }
+          const block = await provider.getBlockInfo(params.blockNumber, chain);
+          const parts = [
+            `[${name}] Block #${block.number} on ${chain}`,
+            `Hash: ${block.hash}`,
+            `Timestamp: ${block.timestamp}`,
+            `Miner: ${block.miner}`,
+            `Gas used/limit: ${block.gasUsed} / ${block.gasLimit}`,
+            `Transactions: ${block.txCount}`,
+            block.baseFee ? `Base fee per gas: ${block.baseFee}` : null,
+          ].filter(Boolean);
+          return textResult(parts.join("\n"));
+        },
+      );
     },
   });
 

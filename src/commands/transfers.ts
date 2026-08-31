@@ -3,7 +3,12 @@ import { defineCommand } from "citty";
 import consola from "consola";
 import { resolveInput } from "../core/input.js";
 import type { TokenTransfer } from "../core/types.js";
-import { failCommand, parsePositiveInteger, reportCommandError, selectProvider } from "./shared.js";
+import {
+  failCommand,
+  parsePositiveInteger,
+  reportCommandError,
+  withSelectedProvider,
+} from "./shared.js";
 
 function renderTransfers(
   providerName: string,
@@ -56,22 +61,24 @@ export default defineCommand({
   },
   async run({ args }) {
     try {
-      const selected = await selectProvider(
+      await withSelectedProvider(
         args.chain as string | undefined,
         args.provider as string | undefined,
         "tokenTransfers",
+        async (selected) => {
+          const getTokenTransfers = selected.provider.getTokenTransfers?.bind(selected.provider);
+          if (!selected.provider.capabilities.tokenTransfers || !getTokenTransfers) {
+            failCommand(`Provider "${selected.name}" does not support token transfers`);
+          }
+          const limit = parsePositiveInteger(args.limit as string, "Invalid --limit value");
+          const { address } = await resolveInput(args.address as string, selected.chain);
+          const transfers = await getTokenTransfers(address, selected.chain, {
+            limit,
+            token: args.token as string | undefined,
+          });
+          renderTransfers(selected.name, address, selected.chain, transfers);
+        },
       );
-      const getTokenTransfers = selected.provider.getTokenTransfers?.bind(selected.provider);
-      if (!selected.provider.capabilities.tokenTransfers || !getTokenTransfers) {
-        failCommand(`Provider "${selected.name}" does not support token transfers`);
-      }
-      const limit = parsePositiveInteger(args.limit as string, "Invalid --limit value");
-      const { address } = await resolveInput(args.address as string, selected.chain);
-      const transfers = await getTokenTransfers(address, selected.chain, {
-        limit,
-        token: args.token as string | undefined,
-      });
-      renderTransfers(selected.name, address, selected.chain, transfers);
     } catch (error) {
       reportCommandError(error);
     }

@@ -5,7 +5,8 @@ import { UnsupportedOperationError } from "./core/errors.js";
 import { resolveAddresses, resolveInput } from "./core/input.js";
 import type { Provider } from "./core/provider.js";
 import { create, getDefaultURL, providers } from "./core/registry.js";
-import { PROVIDER_DEFAULT_CHAIN, resolveProvider, withProvider } from "./core/resolve.js";
+import { withProvider } from "./core/resolve.js";
+import type { ProviderContext } from "./core/resolve.js";
 import { normalizeChain } from "./core/types.js";
 import type { ProviderCapabilities } from "./core/types.js";
 import { version } from "./version.js";
@@ -34,16 +35,15 @@ const OPERATION_CAPABILITIES = {
   getBlockInfo: "blockInfo",
 } as const satisfies Record<ProviderOperation, keyof ProviderCapabilities>;
 
-async function selectedProvider(
+function withSelectedProvider<T>(
   providerName: string | undefined,
   chainName: string | undefined,
   operation: ProviderOperation,
-) {
+  /* oxlint-disable-next-line typescript/prefer-readonly-parameter-types */
+  run: (selected: ProviderContext) => Promise<T>,
+): Promise<T> {
   const requestedChain = chainName === undefined ? undefined : normalizeChain(chainName);
-  const name = resolveProvider(providerName, requestedChain, OPERATION_CAPABILITIES[operation]);
-  const provider = await create(name);
-  const chain = requestedChain ?? normalizeChain(PROVIDER_DEFAULT_CHAIN[name]);
-  return { chain, name, provider };
+  return withProvider(providerName, requestedChain, run, OPERATION_CAPABILITIES[operation]);
 }
 
 function result(value: unknown): CallToolResult {
@@ -157,15 +157,15 @@ export function createMcpServer(): McpServer {
       },
       annotations: { readOnlyHint: true },
     },
-    async ({ address, chain, provider, ...options }) => {
-      const selected = await selectedProvider(provider, chain, "getTxHistory");
-      const resolvedAddress = await addressForChain(address, selected.chain);
-      const getTxHistory = requireOperation(selected.provider, "getTxHistory");
-      return providerResult(
-        selected.name,
-        await getTxHistory(resolvedAddress, selected.chain, options),
-      );
-    },
+    async ({ address, chain, provider, ...options }) =>
+      withSelectedProvider(provider, chain, "getTxHistory", async (selected) => {
+        const resolvedAddress = await addressForChain(address, selected.chain);
+        const getTxHistory = requireOperation(selected.provider, "getTxHistory");
+        return providerResult(
+          selected.name,
+          await getTxHistory(resolvedAddress, selected.chain, options),
+        );
+      }),
   );
 
   server.registerTool(
@@ -176,11 +176,11 @@ export function createMcpServer(): McpServer {
       inputSchema: { hash: z.string().min(1), ...providerInput },
       annotations: { readOnlyHint: true },
     },
-    async ({ hash, chain, provider }) => {
-      const selected = await selectedProvider(provider, chain, "getTxDetail");
-      const getTxDetail = requireOperation(selected.provider, "getTxDetail");
-      return providerResult(selected.name, await getTxDetail(hash, selected.chain));
-    },
+    async ({ hash, chain, provider }) =>
+      withSelectedProvider(provider, chain, "getTxDetail", async (selected) => {
+        const getTxDetail = requireOperation(selected.provider, "getTxDetail");
+        return providerResult(selected.name, await getTxDetail(hash, selected.chain));
+      }),
   );
 
   server.registerTool(
@@ -190,12 +190,15 @@ export function createMcpServer(): McpServer {
       inputSchema: { address: z.string().min(1), ...providerInput },
       annotations: { readOnlyHint: true },
     },
-    async ({ address, chain, provider }) => {
-      const selected = await selectedProvider(provider, chain, "getContractInfo");
-      const getContractInfo = requireOperation(selected.provider, "getContractInfo");
-      const resolvedAddress = await addressForChain(address, selected.chain);
-      return providerResult(selected.name, await getContractInfo(resolvedAddress, selected.chain));
-    },
+    async ({ address, chain, provider }) =>
+      withSelectedProvider(provider, chain, "getContractInfo", async (selected) => {
+        const getContractInfo = requireOperation(selected.provider, "getContractInfo");
+        const resolvedAddress = await addressForChain(address, selected.chain);
+        return providerResult(
+          selected.name,
+          await getContractInfo(resolvedAddress, selected.chain),
+        );
+      }),
   );
 
   server.registerTool(
@@ -209,15 +212,15 @@ export function createMcpServer(): McpServer {
       },
       annotations: { readOnlyHint: true },
     },
-    async ({ address, chain, provider, nonZeroOnly }) => {
-      const selected = await selectedProvider(provider, chain, "getTokenBalances");
-      const resolvedAddress = await addressForChain(address, selected.chain);
-      const getTokenBalances = requireOperation(selected.provider, "getTokenBalances");
-      return providerResult(
-        selected.name,
-        await getTokenBalances(resolvedAddress, selected.chain, { nonZeroOnly }),
-      );
-    },
+    async ({ address, chain, provider, nonZeroOnly }) =>
+      withSelectedProvider(provider, chain, "getTokenBalances", async (selected) => {
+        const resolvedAddress = await addressForChain(address, selected.chain);
+        const getTokenBalances = requireOperation(selected.provider, "getTokenBalances");
+        return providerResult(
+          selected.name,
+          await getTokenBalances(resolvedAddress, selected.chain, { nonZeroOnly }),
+        );
+      }),
   );
 
   server.registerTool(
@@ -242,15 +245,15 @@ export function createMcpServer(): McpServer {
       },
       annotations: { readOnlyHint: true },
     },
-    async ({ address, chain, provider, ...options }) => {
-      const selected = await selectedProvider(provider, chain, "getTokenTransfers");
-      const resolvedAddress = await addressForChain(address, selected.chain);
-      const getTokenTransfers = requireOperation(selected.provider, "getTokenTransfers");
-      return providerResult(
-        selected.name,
-        await getTokenTransfers(resolvedAddress, selected.chain, options),
-      );
-    },
+    async ({ address, chain, provider, ...options }) =>
+      withSelectedProvider(provider, chain, "getTokenTransfers", async (selected) => {
+        const resolvedAddress = await addressForChain(address, selected.chain);
+        const getTokenTransfers = requireOperation(selected.provider, "getTokenTransfers");
+        return providerResult(
+          selected.name,
+          await getTokenTransfers(resolvedAddress, selected.chain, options),
+        );
+      }),
   );
 
   server.registerTool(
@@ -260,11 +263,11 @@ export function createMcpServer(): McpServer {
       inputSchema: providerInput,
       annotations: { readOnlyHint: true },
     },
-    async ({ chain, provider }) => {
-      const selected = await selectedProvider(provider, chain, "getGasData");
-      const getGasData = requireOperation(selected.provider, "getGasData");
-      return providerResult(selected.name, await getGasData(selected.chain));
-    },
+    async ({ chain, provider }) =>
+      withSelectedProvider(provider, chain, "getGasData", async (selected) => {
+        const getGasData = requireOperation(selected.provider, "getGasData");
+        return providerResult(selected.name, await getGasData(selected.chain));
+      }),
   );
 
   server.registerTool(
@@ -277,11 +280,11 @@ export function createMcpServer(): McpServer {
       },
       annotations: { readOnlyHint: true },
     },
-    async ({ blockNumber, chain, provider }) => {
-      const selected = await selectedProvider(provider, chain, "getBlockInfo");
-      const getBlockInfo = requireOperation(selected.provider, "getBlockInfo");
-      return providerResult(selected.name, await getBlockInfo(blockNumber, selected.chain));
-    },
+    async ({ blockNumber, chain, provider }) =>
+      withSelectedProvider(provider, chain, "getBlockInfo", async (selected) => {
+        const getBlockInfo = requireOperation(selected.provider, "getBlockInfo");
+        return providerResult(selected.name, await getBlockInfo(blockNumber, selected.chain));
+      }),
   );
 
   return server;
