@@ -344,6 +344,37 @@ describe("mempool provider", () => {
     ]);
   });
 
+  it("uses Peppool's cursor query to continue Pepecoin history", async () => {
+    const firstPage = Array.from({ length: 25 }, (_, index) => historyTransaction(index));
+    const secondPage = Array.from({ length: 25 }, (_, index) => historyTransaction(index + 25));
+    const cursor = firstPage.at(-1)!.txid;
+    const fetch = vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url.endsWith("/txs")) {
+        return new Response(JSON.stringify(firstPage), {
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      if (url.endsWith(`/txs?after_txid=${cursor}`)) {
+        return new Response(JSON.stringify(secondPage), {
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      return new Response(null, { status: 404 });
+    });
+    vi.stubGlobal("fetch", fetch);
+
+    const transactions = await provider.getTxHistory(KNOWN_PEP, "pepecoin", { limit: 30 });
+
+    expect(transactions.map((transaction) => transaction.hash)).toEqual(
+      Array.from({ length: 30 }, (_, index) => historyTransaction(index).txid),
+    );
+    expect(fetch.mock.calls.map(([input]) => String(input))).toEqual([
+      `https://peppool.space/api/address/${KNOWN_PEP}/txs`,
+      `https://peppool.space/api/address/${KNOWN_PEP}/txs?after_txid=${cursor}`,
+    ]);
+  });
+
   it("reads the message an OP_RETURN output carries", async () => {
     stubTxDetail([
       { scriptpubkey: "0014c30f5f3fccac11feca2fd0322b607c9d73995fde", value: 2_000 },

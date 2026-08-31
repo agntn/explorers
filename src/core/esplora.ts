@@ -13,6 +13,10 @@ interface EsploraOutput {
   readonly value: number;
 }
 
+function confirmedHistoryPath(encodedAddress: string, encodedCursor: string): string {
+  return `/api/address/${encodedAddress}/txs/chain/${encodedCursor}`;
+}
+
 /**
  * Keep the singular normalized recipient and value on one Esplora output.
  *
@@ -35,12 +39,15 @@ export function getFirstEsploraOutput(
  * @param {string} address - The `address` value.
  * @param {number | undefined} requestedLimit - The `requestedLimit` value.
  * @param {(path: string) => Promise<T[]>} fetchPage - The `fetchPage` value.
+ * @param {(encodedAddress: string, encodedCursor: string) => string} nextPagePath - Build the
+ *   provider-specific confirmed-history cursor path.
  * @returns {Promise<T[]>} The resulting value.
  */
 export async function getEsploraAddressHistory<T extends EsploraAddressTransaction>(
   address: string,
   requestedLimit: number | undefined,
   fetchPage: (path: string) => Promise<T[]>,
+  nextPagePath: (encodedAddress: string, encodedCursor: string) => string = confirmedHistoryPath,
 ): Promise<T[]> {
   const limit = clampMaxResults(requestedLimit);
   assertSafePathSegment(address, "address");
@@ -50,9 +57,7 @@ export async function getEsploraAddressHistory<T extends EsploraAddressTransacti
   let cursor = firstPage.findLast((transaction) => transaction.status.confirmed)?.txid;
 
   while (transactions.length < limit && cursor !== undefined) {
-    const page = await fetchPage(
-      `/api/address/${encodedAddress}/txs/chain/${encodeURIComponent(cursor)}`,
-    );
+    const page = await fetchPage(nextPagePath(encodedAddress, encodeURIComponent(cursor)));
     const nextCursor = page.at(-1)?.txid;
     if (nextCursor === undefined || nextCursor === cursor) break;
 
