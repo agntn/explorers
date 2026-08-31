@@ -276,6 +276,30 @@ describe("mempool provider", () => {
     });
   });
 
+  it("pairs transaction detail with the first output value", async () => {
+    const hash = "221f3d64a45a95d6cf05a3fe5a84fac292790d39b05929ed213a492e02177160";
+    const sender = "bc1q4g77af2qqu7hjwh873ej7pltj7pvmmw7t9nz3u";
+    const recipient = "bc1q7x3p3rkmkxgf20n3apkccqcmn5mdtsf8zx5227";
+    stubJSON({
+      txid: hash,
+      vin: [{ prevout: { scriptpubkey_address: sender, value: 524_288 } }],
+      vout: [
+        { scriptpubkey_address: recipient, value: 500_000 },
+        { scriptpubkey_address: sender, value: 23_199 },
+      ],
+      fee: 1_089,
+      status: { confirmed: true, block_height: 856_786 },
+    });
+
+    const transaction = await provider.getTxDetail!(hash, "bitcoin");
+
+    expect(transaction).toMatchObject({
+      to: recipient,
+      value: "500000",
+      valueFormatted: "0.005",
+    });
+  });
+
   it("getTxHistory returns BTC transactions", async () => {
     const txs = await provider.getTxHistory(KNOWN_BTC, "bitcoin", { limit: 3 });
 

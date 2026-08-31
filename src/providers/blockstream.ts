@@ -13,7 +13,7 @@ import { assertSafePathSegment } from "../core/path-safety.js";
 import { Provider } from "../core/provider.js";
 import { normalizeBaseUrl } from "../core/client.js";
 import { formatWei } from "../core/types.js";
-import { getEsploraAddressHistory } from "../core/esplora.js";
+import { getEsploraAddressHistory, getFirstEsploraOutput } from "../core/esplora.js";
 import type {
   Balance,
   BlockInfo,
@@ -203,16 +203,16 @@ export class Blockstream extends Provider {
       selectedChain,
       `/api/tx/${encodeURIComponent(hash)}`,
     );
-    const totalOut = transaction.vout.reduce((sum, output) => sum + output.value, 0);
+    const output = getFirstEsploraOutput(transaction.vout);
 
     return {
       hash: transaction.txid,
       blockNumber: transaction.status.block_height ?? 0,
       timestamp: transactionTimestamp(transaction.status),
       from: transaction.vin[0]?.prevout?.scriptpubkey_address ?? "unknown",
-      to: transaction.vout[0]?.scriptpubkey_address ?? null,
-      value: totalOut.toString(),
-      valueFormatted: satToBitcoin(totalOut),
+      to: output.address,
+      value: output.value.toString(),
+      valueFormatted: satToBitcoin(output.value),
       fee: transaction.fee.toString(),
       status: (transaction.status.confirmed ? "success" : "pending") as TxStatus,
       isContractInteraction: false,

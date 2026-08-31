@@ -8,6 +8,27 @@ interface EsploraAddressTransaction {
   status: { confirmed: boolean };
 }
 
+interface EsploraOutput {
+  readonly scriptpubkey_address?: string;
+  readonly value: number;
+}
+
+/**
+ * Keep the singular normalized recipient and value on one Esplora output.
+ *
+ * @param {readonly EsploraOutput[]} outputs - Transaction outputs in provider order.
+ * @returns {Readonly<{ address: string | null; value: number }>} The first output pair.
+ */
+export function getFirstEsploraOutput(
+  outputs: readonly EsploraOutput[],
+): Readonly<{ address: string | null; value: number }> {
+  const output = outputs[0];
+  return {
+    address: output?.scriptpubkey_address ?? null,
+    value: output?.value ?? 0,
+  };
+}
+
 /**
  * Fetch an Esplora address feed across its initial page and confirmed-chain cursor pages.
  *
