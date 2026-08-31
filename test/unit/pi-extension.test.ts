@@ -69,10 +69,6 @@ function parseToolResult(value: unknown): ToolResultView {
   return { content, isError: "isError" in value && value.isError === true };
 }
 
-function textContaining(expected: string): unknown {
-  return expect.stringContaining(expected);
-}
-
 function textMatching(expected: RegExp): unknown {
   return expect.stringMatching(expected);
 }
@@ -204,7 +200,9 @@ describe("explorers Pi extension", () => {
     ]);
   });
 
-  it("falls past an automatically selected provider's rate limit", async () => {
+  it("falls back to Blockscout when Etherscan rate limits token transfers", async () => {
+    const address = "0x0000000000000000000000000000000000000001";
+    const hash = `0x${"a".repeat(64)}`;
     vi.stubEnv("ETHERSCAN_API_KEY", "configured");
     vi.stubEnv("BLOCKCHAIR_API_KEY", "");
     vi.stubGlobal(
@@ -212,21 +210,35 @@ describe("explorers Pi extension", () => {
       vi.fn(async (input: RequestInfo | URL) => {
         const payload = String(input).includes("etherscan.io")
           ? { status: "0", message: "NOTOK", result: "Max rate limit reached" }
-          : { coin_balance: "1" };
+          : {
+              items: [
+                {
+                  token: {
+                    address_hash: "0x0000000000000000000000000000000000000002",
+                    symbol: "TKN",
+                    decimals: "0",
+                    type: "ERC-20",
+                  },
+                  from: { hash: "0x0000000000000000000000000000000000000003" },
+                  to: { hash: address },
+                  total: { value: "1" },
+                  transaction_hash: hash,
+                  block_number: 1,
+                  timestamp: "2026-08-31T00:00:00.000Z",
+                },
+              ],
+            };
         return new Response(JSON.stringify(payload), {
           headers: { "content-type": "application/json" },
         });
       }),
     );
-    const tool = requireTool(registerExtensionTools(), "explorers_balance");
+    const tool = requireTool(registerExtensionTools(), "explorers_token_transfers");
 
     const result = parseToolResult(
       await tool.execute(
         "test",
-        {
-          address: "0x0000000000000000000000000000000000000001",
-          chain: "ethereum",
-        },
+        { address, chain: "ethereum", limit: 1 },
         undefined,
         undefined,
         unusedContext,
@@ -236,7 +248,7 @@ describe("explorers Pi extension", () => {
     expect(result.content).toEqual([
       {
         type: "text",
-        text: textContaining("[blockscout] ethereum balance"),
+        text: textMatching(/^\[blockscout\] 1 token transfers[\s\S]*1 TKN$/),
       },
     ]);
   });

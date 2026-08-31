@@ -2,7 +2,7 @@
 import { defineCommand } from "citty";
 import consola from "consola";
 import type { GasData } from "../core/types.js";
-import { failCommand, reportCommandError, selectProvider } from "./shared.js";
+import { failCommand, reportCommandError, withSelectedProvider } from "./shared.js";
 
 function renderGas(providerName: string, gas: Readonly<GasData>): void {
   consola.log(`[${providerName}] Gas prices on ${gas.chain}`);
@@ -32,17 +32,19 @@ export default defineCommand({
   },
   async run({ args }) {
     try {
-      const selected = await selectProvider(
+      await withSelectedProvider(
         args.chain as string | undefined,
         args.provider as string | undefined,
         "gasData",
+        async (selected) => {
+          const getGasData = selected.provider.getGasData?.bind(selected.provider);
+          if (!selected.provider.capabilities.gasData || !getGasData) {
+            failCommand(`Provider "${selected.name}" does not support gas data`);
+          }
+          const gas = await getGasData(selected.chain);
+          renderGas(selected.name, gas);
+        },
       );
-      const getGasData = selected.provider.getGasData?.bind(selected.provider);
-      if (!selected.provider.capabilities.gasData || !getGasData) {
-        failCommand(`Provider "${selected.name}" does not support gas data`);
-      }
-      const gas = await getGasData(selected.chain);
-      renderGas(selected.name, gas);
     } catch (error) {
       reportCommandError(error);
     }

@@ -5,7 +5,12 @@ import { classifyInput, resolveInput } from "../core/input.js";
 import { PROVIDER_DEFAULT_CHAIN, resolveProvider } from "../core/resolve.js";
 import { normalizeChain } from "../core/types.js";
 import type { ChainKey, Transaction } from "../core/types.js";
-import { failCommand, parsePositiveInteger, reportCommandError, selectProvider } from "./shared.js";
+import {
+  failCommand,
+  parsePositiveInteger,
+  reportCommandError,
+  withSelectedProvider,
+} from "./shared.js";
 import type { SelectedProvider } from "./shared.js";
 
 type TransactionMode = "detail" | "history";
@@ -119,13 +124,15 @@ export default defineCommand({
       const initialChain = requestedChain ?? normalizeChain(PROVIDER_DEFAULT_CHAIN[initialName]);
       const target = (args.target as string).trim();
       const mode = transactionMode(args.mode as string | undefined, target, initialChain);
-      const selected = await selectProvider(
+      await withSelectedProvider(
         initialChain,
         providerInput,
         mode === "detail" ? "txDetail" : "txHistory",
+        async (selected) => {
+          if (mode === "detail") await runDetail(selected, target);
+          else await runHistory(selected, target, args.limit as string);
+        },
       );
-      if (mode === "detail") await runDetail(selected, target);
-      else await runHistory(selected, target, args.limit as string);
     } catch (error) {
       reportCommandError(error);
     }

@@ -6,7 +6,7 @@ import {
   failCommand,
   parseNonNegativeInteger,
   reportCommandError,
-  selectProvider,
+  withSelectedProvider,
 } from "./shared.js";
 
 function renderBlock(providerName: string, block: Readonly<BlockInfo>): void {
@@ -43,18 +43,23 @@ export default defineCommand({
   },
   async run({ args }) {
     try {
-      const selected = await selectProvider(
+      await withSelectedProvider(
         args.chain as string | undefined,
         args.provider as string | undefined,
         "blockInfo",
+        async (selected) => {
+          const blockNumber = parseNonNegativeInteger(
+            args.number as string,
+            "Invalid block number",
+          );
+          const getBlockInfo = selected.provider.getBlockInfo?.bind(selected.provider);
+          if (!selected.provider.capabilities.blockInfo || !getBlockInfo) {
+            failCommand(`Provider "${selected.name}" does not support block info`);
+          }
+          const block = await getBlockInfo(blockNumber, selected.chain);
+          renderBlock(selected.name, block);
+        },
       );
-      const blockNumber = parseNonNegativeInteger(args.number as string, "Invalid block number");
-      const getBlockInfo = selected.provider.getBlockInfo?.bind(selected.provider);
-      if (!selected.provider.capabilities.blockInfo || !getBlockInfo) {
-        failCommand(`Provider "${selected.name}" does not support block info`);
-      }
-      const block = await getBlockInfo(blockNumber, selected.chain);
-      renderBlock(selected.name, block);
     } catch (error) {
       reportCommandError(error);
     }
