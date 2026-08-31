@@ -38,7 +38,9 @@ export function normalizeBaseUrl(url: string): string {
   return url.replace(/\/+$/, "");
 }
 
-function parseJSON(text: string): unknown {
+function parseJSON<T>(text: string | undefined): T {
+  if (text === undefined) return undefined as T;
+
   type Reviver = (key: string, value: unknown, context: Readonly<{ source: string }>) => unknown;
   const parseWithSource = JSON.parse as unknown as (value: string, reviver: Reviver) => unknown;
 
@@ -51,7 +53,7 @@ function parseJSON(text: string): unknown {
       return context.source;
     }
     return value;
-  });
+  }) as T;
 }
 
 /**
@@ -65,7 +67,7 @@ function parseJSON(text: string): unknown {
  */
 export async function getJSON<T>(url: string, options?: ClientRequestOptions): Promise<T> {
   try {
-    return await ofetch<T>(url, {
+    const response = await ofetch.raw<string, "text">(url, {
       method: "GET",
       headers: {
         Accept: "application/json",
@@ -75,8 +77,9 @@ export async function getJSON<T>(url: string, options?: ClientRequestOptions): P
       timeout: options?.timeout ?? 15_000,
       signal: options?.signal,
       retry: false,
-      parseResponse: parseJSON,
+      responseType: "text",
     });
+    return parseJSON<T>(response._data);
   } catch (error) {
     throw normalizeError(error, options?.provider, url);
   }
@@ -88,7 +91,7 @@ export async function postJSON<T>(
   options?: ClientRequestOptions,
 ): Promise<T> {
   try {
-    return await ofetch<T>(url, {
+    const response = await ofetch.raw<string, "text">(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -100,8 +103,9 @@ export async function postJSON<T>(
       timeout: options?.timeout ?? 15_000,
       signal: options?.signal,
       retry: false,
-      parseResponse: parseJSON,
+      responseType: "text",
     });
+    return parseJSON<T>(response._data);
   } catch (error) {
     throw normalizeError(error, options?.provider, url);
   }
