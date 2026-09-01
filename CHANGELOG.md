@@ -1,5 +1,22 @@
 # Changelog
 
+## v0.5.2
+
+[compare changes](https://github.com/agntn/explorers/compare/v0.5.1...v0.5.2)
+
+### 🩹 Fixes
+
+- Retain status from non-JSON errors ([#64](https://github.com/agntn/explorers/pull/64))
+- **bitcoin:** Pair detail value with recipient ([#65](https://github.com/agntn/explorers/pull/65))
+- Extend provider fallback past balances ([#66](https://github.com/agntn/explorers/pull/66))
+- Fall back from plan-restricted providers ([#67](https://github.com/agntn/explorers/pull/67))
+- **mempool:** Use Peppool's history cursor ([#68](https://github.com/agntn/explorers/pull/68))
+
+### ❤️ Contributors
+
+- Ori ([@oritwoen](https://github.com/oritwoen))
+- Aeitwoen <aeitwoen@gmail.com>
+
 ## v0.5.1
 
 [compare changes](https://github.com/agntn/explorers/compare/v0.5.0...v0.5.1)
