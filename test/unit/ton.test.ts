@@ -51,7 +51,44 @@ describe("ton provider", () => {
     const tx = txs[0]!;
     expect(tx.hash).toBeTruthy();
     expect(tx.timestamp).toBeTruthy();
-    expect(["success", "failed"]).toContain(tx.status);
+    expect(["success", "failed", "pending"]).toContain(tx.status);
+  });
+
+  it("reports unfinished events as pending", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              events: [
+                {
+                  event_id: "event",
+                  timestamp: 1,
+                  in_progress: true,
+                  actions: [
+                    {
+                      type: "TonTransfer",
+                      status: "ok",
+                      TonTransfer: {
+                        sender: { address: "sender" },
+                        recipient: { address: "recipient" },
+                        amount: "1",
+                      },
+                    },
+                  ],
+                  involved: {},
+                },
+              ],
+            }),
+            { headers: { "Content-Type": "application/json" } },
+          ),
+      ),
+    );
+
+    const [transaction] = await provider.getTxHistory(KNOWN_TON, "ton", { limit: 1 });
+
+    expect(transaction?.status).toBe("pending");
   });
 
   it("normalizes Jetton actions as token transfers", async () => {
