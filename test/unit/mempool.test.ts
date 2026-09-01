@@ -1,9 +1,5 @@
-/**
- * Explorers - Mempool.space integration tests for Bitcoin and compatible forks.
- *
- * Live roundtrips cover mempool.space, litecoinspace.org and peppool.space.
- */
-import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+/** Mempool provider tests with stubbed responses for Bitcoin, Litecoin and Pepecoin. */
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { create } from "../../src/core/registry.js";
 
 // A known Bitcoin address with history
@@ -14,6 +10,18 @@ const KNOWN_LTC = "LfdYLbP9F9CpmCX6atZnHZb8KkS8T6x4DK";
 
 /** A Pepecoin puzzle address with confirmed history. */
 const KNOWN_PEP = "Pu5spyDwNEQxmWLkUHv779AWNkpMdQ29SZ";
+
+/** Announces the genesis block puzzle in an OP_RETURN that holds three paragraphs of text. */
+const GENESIS_PUZZLE_TX = "b691de3657880d9a1eabd2783b1a9fa8c5313ced338495bf10e85727012d7a77";
+
+beforeEach(() => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => {
+      throw new Error("Unexpected network request in unit test");
+    }),
+  );
+});
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -73,35 +81,6 @@ describe("mempool provider", () => {
     expect(caps.tokenBalances).toBe(false);
   });
 
-  it("getBalance returns BTC balance for known address", async () => {
-    const balance = await provider.getBalance(KNOWN_BTC, "bitcoin");
-
-    expect(balance.address).toBe(KNOWN_BTC);
-    expect(balance.chain).toBe("bitcoin");
-    expect(balance.symbol).toBe("BTC");
-    expect(balance.balance).toMatch(/^-?\d+$/);
-    expect(Number(balance.balanceFormatted)).toBeGreaterThan(0);
-  });
-
-  it("getBalance returns LTC balance from litecoinspace", async () => {
-    const balance = await provider.getBalance(KNOWN_LTC, "litecoin");
-
-    expect(balance.address).toBe(KNOWN_LTC);
-    expect(balance.chain).toBe("litecoin");
-    expect(balance.symbol).toBe("LTC");
-    expect(balance.balance).toMatch(/^-?\d+$/);
-    expect(Number(balance.balanceFormatted)).toBeGreaterThan(0);
-  });
-
-  it("getBalance returns PEP balance from peppool", async () => {
-    const balance = await provider.getBalance(KNOWN_PEP, "pepecoin");
-
-    expect(balance.address).toBe(KNOWN_PEP);
-    expect(balance.chain).toBe("pepecoin");
-    expect(balance.symbol).toBe("PEP");
-    expect(balance.balance).toMatch(/^-?\d+$/);
-  });
-
   it("keeps confirmed funded and spent totals without losing integer precision", async () => {
     stubJSON({
       chain_stats: {
@@ -115,9 +94,13 @@ describe("mempool provider", () => {
     const balance = await provider.getBalance(KNOWN_BTC, "bitcoin");
 
     expect(balance).toMatchObject({
+      address: KNOWN_BTC,
+      chain: "bitcoin",
       balance: "9007199254740992",
+      balanceFormatted: "90071992.54740992",
       funded: "9007199254740993",
       spent: "1",
+      symbol: "BTC",
     });
   });
 
@@ -131,11 +114,12 @@ describe("mempool provider", () => {
       },
     });
 
-    await provider.getBalance(KNOWN_LTC, "litecoin");
+    const balance = await provider.getBalance(KNOWN_LTC, "litecoin");
 
     expect(String(fetch.mock.calls[0]?.[0])).toBe(
       `https://litecoinspace.org/api/address/${KNOWN_LTC}`,
     );
+    expect(balance).toMatchObject({ chain: "litecoin", symbol: "LTC" });
   });
 
   it("routes Pepecoin balances to peppool.space with exact amounts", async () => {
@@ -237,9 +221,12 @@ describe("mempool provider", () => {
     const [transaction] = await provider.getTxHistory(KNOWN_BTC, "bitcoin", { limit: 1 });
 
     expect(transaction).toMatchObject({
+      hash: "a".repeat(64),
+      blockNumber: 1,
       value: "70000",
       valueFormatted: "0.0007",
       fee: "1000",
+      status: "success",
     });
   });
 
@@ -298,19 +285,6 @@ describe("mempool provider", () => {
       value: "500000",
       valueFormatted: "0.005",
     });
-  });
-
-  it("getTxHistory returns BTC transactions", async () => {
-    const txs = await provider.getTxHistory(KNOWN_BTC, "bitcoin", { limit: 3 });
-
-    expect(Array.isArray(txs)).toBe(true);
-    expect(txs.length).toBeGreaterThan(0);
-    expect(txs.length).toBeLessThanOrEqual(3);
-
-    const tx = txs[0]!;
-    expect(tx.hash).toMatch(/^[0-9a-f]{64}$/);
-    expect(tx.status).toBe("success");
-    expect(tx.blockNumber).toBeGreaterThan(0);
   });
 
   it("continues confirmed history until the requested limit", async () => {
@@ -549,15 +523,25 @@ describe("mempool provider", () => {
     expect(transaction?.opReturn).toEqual([{ hex: "48656c6c6f", text: "Hello" }]);
   });
 
-  it("reads a live 252-byte OP_RETURN message", async () => {
-    const tx = await provider.getTxDetail!(
-      "b691de3657880d9a1eabd2783b1a9fa8c5313ced338495bf10e85727012d7a77",
-      "bitcoin",
-    );
+  it("keeps the paragraph breaks of an OP_RETURN message of 252 bytes", async () => {
+    const message = [
+      "I made a Bitcoin puzzle using information contained in the genesis block created by Satoshi to generate the wallet.",
+      "The entropy is extremely low. I didn't even need to back anything up. Everything I needed was already in the genesis block.",
+      "Good luck!",
+    ].join("\n\n");
+    const payload = Buffer.from(message, "utf8");
+    stubTxDetail([
+      {
+        scriptpubkey_address: "bc1qfkhx02v89u2qyyyljeczw6hu9sr437y44t7ae5yf09thrdukfqesnjg2wj",
+        value: 5_000,
+      },
+      { scriptpubkey: `6a4cfc${payload.toString("hex")}`, value: 0 },
+    ]);
 
-    expect(tx.opReturn?.[0]?.text).toContain(
-      "I made a Bitcoin puzzle using information contained in the genesis block",
-    );
+    const tx = await provider.getTxDetail!(GENESIS_PUZZLE_TX, "bitcoin");
+
+    expect(payload).toHaveLength(252);
+    expect(tx.opReturn).toEqual([{ hex: payload.toString("hex"), text: message }]);
   });
 
   it.each([
@@ -608,13 +592,24 @@ describe("mempool provider", () => {
     });
   });
 
-  it("getGasData returns fee estimates", async () => {
-    const gas = await provider.getGasData!("bitcoin");
+  it("maps Bitcoin fee recommendations onto the gas tiers", async () => {
+    const fetch = stubJSON({
+      fastestFee: 4,
+      halfHourFee: 4,
+      hourFee: 3,
+      economyFee: 2,
+      minimumFee: 1,
+    });
 
-    expect(gas.chain).toBe("bitcoin");
-    expect(gas.unit).toBe("sat/vB");
-    expect(gas.proposedGasPrice).toBeTruthy();
-    expect(Number(gas.proposedGasPrice)).toBeGreaterThan(0);
+    await expect(provider.getGasData!("bitcoin")).resolves.toEqual({
+      chain: "bitcoin",
+      unit: "sat/vB",
+      safeGasPrice: "2",
+      proposedGasPrice: "4",
+      fastGasPrice: "4",
+      priorityFee: "1",
+    });
+    expect(String(fetch.mock.calls[0]?.[0])).toBe("https://mempool.space/api/v1/fees/recommended");
   });
 
   it("getBalance throws for a chain mempool does not serve", async () => {

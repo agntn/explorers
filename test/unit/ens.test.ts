@@ -1,10 +1,15 @@
-/**
- * Explorers — ENS resolution tests
- *
- * Live roundtrips against public ENS APIs.
- */
-import { afterEach, describe, it, expect, vi } from "vitest";
+/** ENS helper tests with stubbed resolver responses. */
+import { afterEach, beforeEach, describe, it, expect, vi } from "vitest";
 import { isEnsName, isAddress, resolveEns } from "../../src/core/ens.js";
+
+beforeEach(() => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => {
+      throw new Error("Unexpected network request in unit test");
+    }),
+  );
+});
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -43,13 +48,37 @@ describe("ens helpers", () => {
     expect(init?.signal).toBeInstanceOf(AbortSignal);
   });
 
-  it("resolveEns resolves vitalik.eth to known address", async () => {
-    const addr = await resolveEns("vitalik.eth");
-    expect(addr).toBe("0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045");
+  it("falls through to the next resolver when the first one fails", async () => {
+    const fetch = vi.fn(async (input: string | URL | Request) =>
+      String(input).startsWith("https://api.ensideas.com/")
+        ? new Response(null, { status: 503 })
+        : new Response(JSON.stringify({ address: "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045" }), {
+            headers: { "Content-Type": "application/json" },
+          }),
+    );
+    vi.stubGlobal("fetch", fetch);
+
+    await expect(resolveEns("vitalik.eth")).resolves.toBe(
+      "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
+    );
+    expect(fetch.mock.calls.map(([input]) => String(input))).toEqual([
+      "https://api.ensideas.com/ens/resolve/vitalik.eth",
+      "https://api.ensdata.net/vitalik.eth",
+    ]);
   });
 
-  it("resolveEns returns null for non-existent name", async () => {
-    const addr = await resolveEns("this-name-definitely-does-not-exist-12345678.eth");
-    expect(addr).toBeNull();
-  }, 15000);
+  it("returns null when no resolver knows the name", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string | URL | Request) =>
+        String(input).startsWith("https://api.ensideas.com/")
+          ? new Response(null, { status: 404 })
+          : new Response(JSON.stringify({ address: null }), {
+              headers: { "Content-Type": "application/json" },
+            }),
+      ),
+    );
+
+    await expect(resolveEns("nobody.eth")).resolves.toBeNull();
+  });
 });
