@@ -37,6 +37,7 @@ interface TonAccount {
 interface TonEvent {
   readonly event_id: string;
   readonly timestamp: number;
+  readonly in_progress: boolean;
   readonly actions: ReadonlyArray<{
     readonly type: string;
     readonly TonTransfer?: {
@@ -61,6 +62,11 @@ interface TonEvent {
     readonly status: string;
   }>;
   readonly involved: Readonly<Record<string, unknown>>;
+}
+
+function eventStatus(event: Readonly<TonEvent>): TxStatus {
+  if (event.in_progress) return "pending";
+  return event.actions[0]?.status === "ok" ? "success" : "failed";
 }
 
 function mapEventToTx(event: Readonly<TonEvent>): Transaction {
@@ -107,7 +113,7 @@ function mapEventToTx(event: Readonly<TonEvent>): Transaction {
     to,
     value: value.toString(),
     valueFormatted: formatWei(String(value), 9),
-    status: (firstAction?.status === "ok" ? "success" : "failed") as TxStatus,
+    status: eventStatus(event),
     isContractInteraction: firstAction?.type !== "TonTransfer",
     tokenTransfers,
   };
