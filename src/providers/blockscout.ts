@@ -25,7 +25,7 @@ import type {
   TokenTransfer,
 } from "../core/types.js";
 import { Provider } from "../core/provider.js";
-import { buildQuery } from "../core/client.js";
+import { buildQuery, normalizeBaseUrl } from "../core/client.js";
 import { NotFoundError, UnsupportedChainError } from "../core/errors.js";
 import { assertSafePathSegment } from "../core/path-safety.js";
 import { create as createChain } from "@agntn/chains";
@@ -249,11 +249,13 @@ export class Blockscout extends Provider {
   static readonly key = "blockscout";
 
   private defaultChain: ChainKey;
+  private readonly baseUrl: string | undefined;
   private readonly tokenBalanceTimeout: number;
 
   constructor(config: Readonly<ProviderConfig>) {
     super(config);
     this.defaultChain = config.defaultChain ?? "ethereum";
+    this.baseUrl = config.baseUrl ? normalizeBaseUrl(config.baseUrl) : undefined;
     this.tokenBalanceTimeout = config.timeout ?? TOKEN_BALANCE_DEFAULT_TIMEOUT;
   }
   get capabilities(): ProviderCapabilities {
@@ -270,7 +272,8 @@ export class Blockscout extends Provider {
   }
 
   private base(chain?: ChainKey): string {
-    return getBase(chain ?? this.defaultChain);
+    const chainBase = getBase(chain ?? this.defaultChain);
+    return this.baseUrl ?? chainBase;
   }
 
   async getBalance(address: string, chain?: ChainKey): Promise<Balance> {
