@@ -102,6 +102,21 @@ describe("blockscout provider", () => {
     await rejection;
   });
 
+  it("uses a custom base URL without a duplicate separator", async () => {
+    const fetch = stubJSON({ coin_balance: "0" });
+    const configured = await create("blockscout", { baseUrl: "https://example.test/" });
+
+    await configured.getBalance(VITALIK, "ethereum");
+
+    expect(fetch).toHaveBeenCalledOnce();
+    expect(fetch.mock.calls[0]?.[0]).toBe(`https://example.test/api/v2/addresses/${VITALIK}`);
+    await expect(configured.getBalance(VITALIK, "bitcoin")).rejects.toMatchObject({
+      name: "UnsupportedChainError",
+      provider: "blockscout",
+    });
+    expect(fetch).toHaveBeenCalledOnce();
+  });
+
   it("dates an address balance response without inventing chain position", async () => {
     vi.useFakeTimers();
     vi.setSystemTime("2026-08-28T12:34:56.789Z");
