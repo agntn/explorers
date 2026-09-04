@@ -87,7 +87,7 @@ function mapEventToTx(event: Readonly<TonEvent>): Transaction {
 
   const tokenTransfers: TokenTransfer[] = event.actions.flatMap((action) => {
     const transfer = action.JettonTransfer;
-    if (!transfer) return [];
+    if (!transfer || action.status !== "ok") return [];
     return [
       {
         contract: transfer.jetton.address,
