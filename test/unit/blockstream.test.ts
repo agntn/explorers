@@ -153,7 +153,10 @@ describe("blockstream provider", () => {
       jsonResponse({
         txid: TXID,
         vin: [{ prevout: null }],
-        vout: [{ value: 5_000_000_000 }],
+        vout: [
+          { scriptpubkey_type: "p2pk", value: 5_000_000_000 },
+          { scriptpubkey_address: ADDRESS, scriptpubkey_type: "p2pkh", value: 1 },
+        ],
         fee: 0,
         status: { confirmed: true, block_height: 0, block_time: 1_231_006_505 },
       }),
@@ -176,22 +179,26 @@ describe("blockstream provider", () => {
     expect(String(fetch.mock.calls[0]?.[0])).toBe(`https://blockstream.info/api/tx/${TXID}`);
   });
 
-  it("pairs transaction detail with the first output value", async () => {
-    const hash = "221f3d64a45a95d6cf05a3fe5a84fac292790d39b05929ed213a492e02177160";
-    const sender = "bc1q4g77af2qqu7hjwh873ej7pltj7pvmmw7t9nz3u";
-    const recipient = "bc1q7x3p3rkmkxgf20n3apkccqcmn5mdtsf8zx5227";
+  it("skips an OP_RETURN when pairing transaction detail", async () => {
+    const hash = "000000000fdf0c619cd8e0d512c7e2c0da5a5808e60f12f1e0d01522d2986a51";
+    const sender = "bc1qjvm9jkrjw9uvsn8905dwa6eau0guyc9laau03a";
+    const recipient = "bc1qt2mdkehmphggajer3ur3g8l754scj4fdrmw3rn";
     vi.stubGlobal(
       "fetch",
       vi.fn(async () =>
         jsonResponse({
           txid: hash,
-          vin: [{ prevout: { scriptpubkey_address: sender, value: 524_288 } }],
+          vin: [{ prevout: { scriptpubkey_address: sender, value: 576_504 } }],
           vout: [
-            { scriptpubkey_address: recipient, value: 500_000 },
-            { scriptpubkey_address: sender, value: 23_199 },
+            { scriptpubkey_type: "op_return", value: 1 },
+            { scriptpubkey_address: recipient, scriptpubkey_type: "v0_p2wpkh", value: 100_000 },
+            {
+              scriptpubkey_address: "bc1q92qk9r9gwnlcajuls7dgrt30545fs5xuff30an",
+              value: 445_166,
+            },
           ],
-          fee: 1_089,
-          status: { confirmed: true, block_height: 856_786 },
+          fee: 31_337,
+          status: { confirmed: true, block_height: 674_611 },
         }),
       ),
     );
@@ -201,8 +208,8 @@ describe("blockstream provider", () => {
 
     expect(transaction).toMatchObject({
       to: recipient,
-      value: "500000",
-      valueFormatted: "0.005",
+      value: "100000",
+      valueFormatted: "0.001",
     });
   });
 

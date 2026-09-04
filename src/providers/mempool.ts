@@ -27,7 +27,7 @@ import { NotFoundError, UnsupportedChainError, UnsupportedOperationError } from 
 import { create as createChain } from "@agntn/chains";
 import { formatWei } from "../core/types.js";
 import { assertSafePathSegment } from "../core/path-safety.js";
-import { getEsploraAddressHistory, getFirstEsploraOutput } from "../core/esplora.js";
+import { getEsploraAddressHistory, selectEsploraRecipientOutput } from "../core/esplora.js";
 
 const DEFAULT_BASE = "https://mempool.space";
 
@@ -465,7 +465,7 @@ export class Mempool extends Provider {
     assertSafePathSegment(hash, "tx hash");
     const data = await this.api<MempoolTx>(c, `/api/tx/${encodeURIComponent(hash)}`);
 
-    const output = getFirstEsploraOutput(data.vout);
+    const output = selectEsploraRecipientOutput(data.vout);
     const fromAddr = data.vin[0]?.prevout?.scriptpubkey_address ?? "unknown";
 
     return {
