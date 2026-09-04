@@ -200,6 +200,51 @@ describe("explorers Pi extension", () => {
     ]);
   });
 
+  it("resolves ENS for transaction, contract, and token lookups", async () => {
+    const resolved = `0x${"a".repeat(40)}`;
+    const explorerUrls: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("ensideas")) {
+          return new Response(JSON.stringify({ address: resolved }), {
+            headers: { "content-type": "application/json" },
+          });
+        }
+        explorerUrls.push(url);
+        const payload = url.endsWith("token-balances")
+          ? []
+          : url.includes("/smart-contracts/")
+            ? { is_verified: false }
+            : { items: [] };
+        return new Response(JSON.stringify(payload), {
+          headers: { "content-type": "application/json" },
+        });
+      }),
+    );
+    const tools = registerExtensionTools();
+
+    for (const name of [
+      "explorers_tx_history",
+      "explorers_contract",
+      "explorers_tokens",
+      "explorers_token_transfers",
+    ]) {
+      const tool = requireTool(tools, name);
+      await tool.execute(
+        "test",
+        { address: "vitalik.eth", chain: "ethereum", provider: "blockscout" },
+        undefined,
+        undefined,
+        unusedContext,
+      );
+    }
+
+    expect(explorerUrls).toHaveLength(4);
+    for (const url of explorerUrls) expect(url).toContain(resolved);
+  });
+
   it("falls back to Blockscout when Etherscan rate limits token transfers", async () => {
     const address = "0x0000000000000000000000000000000000000001";
     const hash = `0x${"a".repeat(64)}`;
