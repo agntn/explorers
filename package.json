@@ -47,7 +47,7 @@
     "dev": "obuild --stub",
     "fmt": "oxlint . --fix && oxfmt .",
     "lint": "oxlint . && oxfmt --check .",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "pnpm build && tsc --noEmit",
     "test": "vitest",
     "test:run": "vitest --run",
     "prepack": "pnpm run build",
