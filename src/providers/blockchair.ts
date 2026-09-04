@@ -90,27 +90,18 @@ interface BlockchairTxData {
   };
 }
 
-interface BlockchairDashboardsBlocks {
-  readonly blocks: ReadonlyArray<{
+interface BlockchairBlockData {
+  readonly block: {
     readonly id: number;
     readonly hash: string;
-    readonly parent_hash: string;
+    readonly parent_hash?: string;
     readonly time: string;
     readonly miner?: string;
-    readonly size: number;
-    readonly weight?: number;
-    readonly version: number;
-    readonly merkle_root: string;
-    readonly bits: string;
-    readonly nonce: number;
-    readonly tx_count: number;
-    // ETH-specific
+    readonly transaction_count: number;
     readonly gas_used?: string | number;
     readonly gas_limit?: string | number;
     readonly base_fee_per_gas?: string | number;
-    readonly difficulty?: string;
-    readonly reward?: number;
-  }>;
+  };
 }
 
 function chainName(chain: ChainKey): string {
@@ -294,20 +285,20 @@ export class Blockchair extends Provider {
     const c = chain ?? this.defaultChain;
     assertSafePathSegment(String(blockNumber), "block number");
     const url = this.buildUrl(c, `/dashboards/blocks/${encodeURIComponent(String(blockNumber))}`);
-    const res = await this.getJSON<BlockchairResponse<BlockchairDashboardsBlocks>>(url);
+    const res = await this.getJSON<BlockchairResponse<Record<string, BlockchairBlockData>>>(url);
 
-    const block = res.data.blocks[0];
+    const block = res.data[blockNumber]?.block;
     if (!block) throw new NotFoundError(`Block ${blockNumber}`, "blockchair");
 
     return {
       number: block.id,
       hash: block.hash,
-      parentHash: block.parent_hash,
+      parentHash: block.parent_hash ?? "",
       timestamp: toIsoTimestamp(block.time),
       miner: block.miner ?? "",
       gasUsed: (block.gas_used ?? 0).toString(),
       gasLimit: (block.gas_limit ?? 0).toString(),
-      txCount: block.tx_count,
+      txCount: block.transaction_count,
       baseFee: block.base_fee_per_gas?.toString(),
     };
   }
