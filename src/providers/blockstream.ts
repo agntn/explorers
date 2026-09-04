@@ -92,11 +92,11 @@ function sendingAddressParties(
   raw: Readonly<EsploraAddressTx>,
   address: string,
 ): { readonly from: string; readonly to: string } {
-  const recipient = raw.vout.find((output) => output.scriptpubkey_address !== address);
+  const recipient = selectEsploraRecipientOutput(raw.vout, address);
   const sender = raw.vin.find((input) => input.prevout?.scriptpubkey_address === address);
   return {
     from: sender?.prevout?.scriptpubkey_address ?? address,
-    to: recipient?.scriptpubkey_address ?? address,
+    to: recipient.address ?? address,
   };
 }
 

@@ -19,16 +19,29 @@ function confirmedHistoryPath(encodedAddress: string, encodedCursor: string): st
 }
 
 /**
- * Choose the first output other than OP_RETURN, falling back to the first raw output.
+ * Choose the first non-OP_RETURN output, optionally excluding an address from recipient selection.
  *
  * @param {readonly EsploraOutput[]} outputs - Transaction outputs in provider order.
+ * @param {string} [excludedAddress] - Address whose own outputs should not win when another
+ *   non-OP_RETURN output exists.
  * @returns {Readonly<{ address: string | null; value: number }>} The selected output pair.
  */
 export function selectEsploraRecipientOutput(
   outputs: readonly EsploraOutput[],
+  excludedAddress?: string,
 ): Readonly<{ address: string | null; value: number }> {
+  const firstTransfer = outputs.find((candidate) => candidate.scriptpubkey_type !== "op_return");
   const output =
-    outputs.find((candidate) => candidate.scriptpubkey_type !== "op_return") ?? outputs[0];
+    (excludedAddress === undefined
+      ? firstTransfer
+      : outputs.find(
+          (candidate) =>
+            candidate.scriptpubkey_type !== "op_return" &&
+            candidate.scriptpubkey_address !== excludedAddress,
+        )) ??
+    firstTransfer ??
+    outputs[0];
+
   return {
     address: output?.scriptpubkey_address ?? null,
     value: output?.value ?? 0,

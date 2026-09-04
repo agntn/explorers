@@ -195,7 +195,7 @@ describe("mempool provider", () => {
     expect(String(fetch.mock.calls[0]?.[0])).toBe(`https://example.test/api/address/${KNOWN_BTC}`);
   });
 
-  it("separates a sent value from its transaction fee", async () => {
+  it("skips OP_RETURN when mapping a sent value and its fee", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(
@@ -206,8 +206,17 @@ describe("mempool provider", () => {
                 txid: "a".repeat(64),
                 vin: [{ prevout: { scriptpubkey_address: KNOWN_BTC, value: 100_000 } }],
                 vout: [
-                  { scriptpubkey_address: "bc1qrecipient", value: 70_000 },
-                  { scriptpubkey_address: KNOWN_BTC, value: 29_000 },
+                  { scriptpubkey: "6a00", scriptpubkey_type: "op_return", value: 0 },
+                  {
+                    scriptpubkey_address: "bc1qrecipient",
+                    scriptpubkey_type: "v0_p2wpkh",
+                    value: 70_000,
+                  },
+                  {
+                    scriptpubkey_address: KNOWN_BTC,
+                    scriptpubkey_type: "v0_p2wpkh",
+                    value: 29_000,
+                  },
                 ],
                 fee: 1_000,
                 status: { confirmed: true, block_height: 1, block_time: 1 },
@@ -223,6 +232,7 @@ describe("mempool provider", () => {
     expect(transaction).toMatchObject({
       hash: "a".repeat(64),
       blockNumber: 1,
+      to: "bc1qrecipient",
       value: "70000",
       valueFormatted: "0.0007",
       fee: "1000",
