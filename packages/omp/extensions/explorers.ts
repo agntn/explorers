@@ -59,6 +59,16 @@ function balanceContext(balance: Readonly<ExplorersModule.Balance>): string {
   return `; fetched ${balance.fetchedAt}; ${block}${hash}`;
 }
 
+async function resolveAddress(
+  resolveAddresses: typeof ExplorersModule.resolveAddresses,
+  input: string,
+  chain: ExplorersModule.ChainKey,
+): Promise<string> {
+  const [address] = await resolveAddresses(input, chain);
+  if (address === undefined) throw new TypeError("Address resolution returned no result");
+  return address;
+}
+
 /**
  * Register Explorers tools with the OMP extension host.
  *
@@ -129,7 +139,7 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
   });
 
   const txHistoryParameters = Type.Object({
-    address: Type.String({ description: "Blockchain address" }),
+    address: Type.String({ description: "Blockchain address or ENS name" }),
     chain: Type.Optional(Type.String({ description: "Chain" })),
     limit: Type.Optional(
       Type.Integer({
@@ -146,7 +156,7 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
     name: "explorers_tx_history",
     label: "Explorers Tx History",
     description:
-      "Get normalized transaction history for a blockchain address, including from, to, value, and status. Returns 10 transactions by default and at most 100.",
+      "Get normalized transaction history for a blockchain address or ENS name, including from, to, value, and status. Returns 10 transactions by default and at most 100.",
     parameters: txHistoryParameters,
     approval: "read",
     renderCall(args, _options, _theme) {
@@ -161,8 +171,9 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
         params.provider,
         params.chain,
         "txHistory",
-        async ({ chain, name, provider }) => {
-          const txs = await provider.getTxHistory(params.address, chain, { limit: params.limit });
+        async ({ chain, lib, name, provider }) => {
+          const address = await resolveAddress(lib.resolveAddresses, params.address, chain);
+          const txs = await provider.getTxHistory(address, chain, { limit: params.limit });
           const lines = txs.map(
             (tx) => `${tx.hash} ${tx.from}→${tx.to ?? "new"} ${tx.valueFormatted} [${tx.status}]`,
           );
@@ -279,7 +290,7 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
   });
 
   const contractParameters = Type.Object({
-    address: Type.String({ description: "Contract address" }),
+    address: Type.String({ description: "Contract address or ENS name" }),
     chain: Type.Optional(Type.String({ description: "Chain" })),
     provider: Type.Optional(Type.String({ description: "Provider" })),
   });
@@ -288,7 +299,7 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
     name: "explorers_contract",
     label: "Explorers Contract",
     description:
-      "Get smart-contract verification, compiler, token, creator, and proxy metadata from the selected explorer.",
+      "Get smart contract verification, compiler, token, creator, and proxy metadata for an address or ENS name from the selected explorer.",
     parameters: contractParameters,
     approval: "read",
     renderCall(args, _options, _theme) {
@@ -303,7 +314,8 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
           if (!provider.capabilities.contractInfo || !provider.getContractInfo) {
             throw new lib.UnsupportedOperationError("getContractInfo", name);
           }
-          const info = await provider.getContractInfo(params.address, chain);
+          const address = await resolveAddress(lib.resolveAddresses, params.address, chain);
+          const info = await provider.getContractInfo(address, chain);
           const parts = [
             `[${name}] Contract ${info.address}`,
             `Verified: ${info.isVerified}`,
@@ -320,7 +332,7 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
   });
 
   const tokensParameters = Type.Object({
-    address: Type.String({ description: "Blockchain address" }),
+    address: Type.String({ description: "Blockchain address or ENS name" }),
     chain: Type.Optional(Type.String({ description: "Chain" })),
     nonZeroOnly: Type.Optional(
       Type.Boolean({
@@ -335,7 +347,7 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
     name: "explorers_tokens",
     label: "Explorers Tokens",
     description:
-      "List token holdings for a blockchain address, each with its contract, symbol, human-readable balance, and USD value when the explorer prices it. Zero balances are dropped unless nonZeroOnly is false.",
+      "List token holdings for a blockchain address or ENS name, each with its contract, symbol, readable balance, and USD value when the explorer prices it. Zero balances are dropped unless nonZeroOnly is false.",
     parameters: tokensParameters,
     approval: "read",
     renderCall(args, _options, _theme) {
@@ -354,7 +366,8 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
           if (!provider.capabilities.tokenBalances || !provider.getTokenBalances) {
             throw new lib.UnsupportedOperationError("getTokenBalances", name);
           }
-          const tokens = await provider.getTokenBalances(params.address, chain, {
+          const address = await resolveAddress(lib.resolveAddresses, params.address, chain);
+          const tokens = await provider.getTokenBalances(address, chain, {
             nonZeroOnly: params.nonZeroOnly ?? true,
           });
           const lines = tokens.map((token) => {
@@ -370,7 +383,7 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
   });
 
   const tokenTransfersParameters = Type.Object({
-    address: Type.String({ description: "Blockchain address" }),
+    address: Type.String({ description: "Blockchain address or ENS name" }),
     chain: Type.Optional(Type.String({ description: "Chain" })),
     limit: Type.Optional(
       Type.Integer({
@@ -388,7 +401,7 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
     name: "explorers_token_transfers",
     label: "Explorers Token Transfers",
     description:
-      "List fungible-token transfers involving a blockchain address, including transfers a third party sent to it that never show up in its native transaction history. Returns 10 transfers by default and at most 100.",
+      "List fungible token transfers involving a blockchain address or ENS name, including transfers a third party sent to it that never show up in its native transaction history. Returns 10 transfers by default and at most 100.",
     parameters: tokenTransfersParameters,
     approval: "read",
     renderCall(args, _options, _theme) {
@@ -407,7 +420,8 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
           if (!provider.capabilities.tokenTransfers || !provider.getTokenTransfers) {
             throw new lib.UnsupportedOperationError("getTokenTransfers", name);
           }
-          const transfers = await provider.getTokenTransfers(params.address, chain, {
+          const address = await resolveAddress(lib.resolveAddresses, params.address, chain);
+          const transfers = await provider.getTokenTransfers(address, chain, {
             limit: params.limit ?? 10,
             token: params.token,
           });

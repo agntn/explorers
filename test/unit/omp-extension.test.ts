@@ -237,6 +237,51 @@ console.log(result.content[0].text);
     ]);
   });
 
+  it("resolves ENS for transaction, contract, and token lookups", async () => {
+    const resolved = `0x${"a".repeat(40)}`;
+    const explorerUrls: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("ensideas")) {
+          return new Response(JSON.stringify({ address: resolved }), {
+            headers: { "content-type": "application/json" },
+          });
+        }
+        explorerUrls.push(url);
+        const payload = url.endsWith("token-balances")
+          ? []
+          : url.includes("/smart-contracts/")
+            ? { is_verified: false }
+            : { items: [] };
+        return new Response(JSON.stringify(payload), {
+          headers: { "content-type": "application/json" },
+        });
+      }),
+    );
+    const { tools } = registerExtensionTools();
+
+    for (const name of [
+      "explorers_tx_history",
+      "explorers_contract",
+      "explorers_tokens",
+      "explorers_token_transfers",
+    ]) {
+      const tool = requireTool(tools, name);
+      await tool.execute(
+        "test",
+        { address: "vitalik.eth", chain: "ethereum", provider: "blockscout" },
+        undefined,
+        undefined,
+        unusedContext,
+      );
+    }
+
+    expect(explorerUrls).toHaveLength(4);
+    for (const url of explorerUrls) expect(url).toContain(resolved);
+  });
+
   it("falls past an automatically selected provider's rate limit", async () => {
     vi.stubEnv("ETHERSCAN_API_KEY", "configured");
     vi.stubEnv("BLOCKCHAIR_API_KEY", "");
@@ -390,7 +435,7 @@ console.log(result.content[0].text);
     const tool = requireTool(registerExtensionTools().tools, "explorers_contract");
 
     expect(tool.description).toBe(
-      "Get smart-contract verification, compiler, token, creator, and proxy metadata from the selected explorer.",
+      "Get smart contract verification, compiler, token, creator, and proxy metadata for an address or ENS name from the selected explorer.",
     );
     expect(tool.description).not.toMatch(/\b(?:ABI|source)\b/i);
   });
