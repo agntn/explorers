@@ -1,13 +1,14 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { UnsupportedChainError } from "../../src/core/errors.js";
+import { NotFoundError, UnsupportedChainError } from "../../src/core/errors.js";
 import { create } from "../../src/core/registry.js";
+import { Blockchair } from "../../src/providers/blockchair.js";
 
 const BTC_ADDRESS = "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh";
 const ETH_ADDRESS = "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045";
 const XEC_ADDRESS = "ecash:prfhcnyqnl5cgrnmlfmms675w93ld7mvvqd0y8lz07";
 
 function stubJSON(body: unknown) {
-  const fetch = vi.fn(
+  const fetch = vi.fn<typeof globalThis.fetch>(
     async () =>
       new Response(JSON.stringify(body), { headers: { "Content-Type": "application/json" } }),
   );
@@ -153,6 +154,77 @@ describe("blockchair provider", () => {
       status: "failed",
       isContractInteraction: true,
     });
+  });
+
+  it.each(["bitcoin", "ecash"] as const)(
+    "reads the genesis block on %s by height",
+    async (chain) => {
+      const hash = "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f";
+      const fetch = stubJSON({
+        data: {
+          "0": {
+            block: { id: 0, hash, time: "2009-01-03 18:15:05", transaction_count: 1 },
+            transactions: [],
+          },
+        },
+        context: { code: 200 },
+      });
+      const provider = new Blockchair({});
+
+      expect(await provider.getBlockInfo(0, chain)).toEqual({
+        number: 0,
+        hash,
+        parentHash: "",
+        timestamp: "2009-01-03T18:15:05.000Z",
+        miner: "",
+        gasUsed: "0",
+        gasLimit: "0",
+        txCount: 1,
+        baseFee: undefined,
+      });
+      expect(String(fetch.mock.calls[0]?.[0])).toContain(`/${chain}/dashboards/blocks/0`);
+    },
+  );
+
+  it("maps Ethereum block fields without counting the paginated transaction list", async () => {
+    const hash = "0xda214d1b1d458e7ae0e626b69a52a59d19762c51a53ff64813c4d31256282fdf";
+    stubJSON({
+      data: {
+        "2345678": {
+          block: {
+            id: 2345678,
+            hash,
+            time: "2016-09-29 01:39:41",
+            miner: "0x4bb96091ee9d802ed039c4d1a5f6216f90f81b01",
+            gas_used: 105000,
+            gas_limit: 1500000,
+            transaction_count: 5,
+          },
+          transactions: [],
+        },
+      },
+      context: { code: 200 },
+    });
+    const provider = new Blockchair({});
+
+    expect(await provider.getBlockInfo(2345678, "ethereum")).toEqual({
+      number: 2345678,
+      hash,
+      parentHash: "",
+      timestamp: "2016-09-29T01:39:41.000Z",
+      miner: "0x4bb96091ee9d802ed039c4d1a5f6216f90f81b01",
+      gasUsed: "105000",
+      gasLimit: "1500000",
+      txCount: 5,
+      baseFee: undefined,
+    });
+  });
+
+  it("reports a missing block as not found", async () => {
+    stubJSON({ data: {}, context: { code: 200, results: 0 } });
+    const provider = new Blockchair({});
+
+    await expect(provider.getBlockInfo(9999999, "ecash")).rejects.toBeInstanceOf(NotFoundError);
   });
 
   it("joins a custom base URL with the chain path exactly once", async () => {
