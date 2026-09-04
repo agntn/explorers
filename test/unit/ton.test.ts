@@ -145,7 +145,7 @@ describe("ton provider", () => {
     expect(transaction?.status).toBe("pending");
   });
 
-  it("normalizes Jetton actions as token transfers", async () => {
+  it("normalizes only successful Jetton actions as token transfers", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(
@@ -170,6 +170,23 @@ describe("ton provider", () => {
                           address: "jetton",
                           name: "Token",
                           symbol: "TKN",
+                          decimals: 6,
+                        },
+                      },
+                    },
+                    {
+                      type: "JettonTransfer",
+                      status: "failed",
+                      JettonTransfer: {
+                        sender: { address: "sender" },
+                        recipient: { address: "recipient" },
+                        senders_wallet: "sender-wallet",
+                        recipients_wallet: "recipient-wallet",
+                        amount: "9990000",
+                        jetton: {
+                          address: "failed-jetton",
+                          name: "Failed Token",
+                          symbol: "FAIL",
                           decimals: 6,
                         },
                       },
@@ -199,6 +216,7 @@ describe("ton provider", () => {
         },
       ],
     });
+    expect(transaction?.tokenTransfers).toHaveLength(1);
   });
 
   it("getBalance throws for non-ton chain", async () => {
