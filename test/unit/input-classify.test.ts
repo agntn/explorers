@@ -103,6 +103,31 @@ describe("resolveAddresses", () => {
     await expect(resolveAddresses([first, second])).resolves.toEqual([first, second]);
   });
 
+  it("resolves a serialized address list from tool input", async () => {
+    const first = "0x" + "1".repeat(40);
+    const second = "0x" + "2".repeat(40);
+    await expect(resolveAddresses(JSON.stringify([first, second]))).resolves.toEqual([
+      first,
+      second,
+    ]);
+  });
+
+  it("keeps the tool batch limit for serialized lists", async () => {
+    const addresses = Array.from({ length: 20 }, (_, index) => `address${index}`);
+    await expect(resolveAddresses(JSON.stringify(addresses))).resolves.toEqual(addresses);
+    await expect(resolveAddresses(JSON.stringify([...addresses, "address20"]))).rejects.toThrow(
+      "Address list must contain 1 to 20 nonblank strings",
+    );
+  });
+
+  it("rejects serialized lists that bypass tool item constraints", async () => {
+    for (const addresses of [[], [" "], ["address", 1]]) {
+      await expect(resolveAddresses(JSON.stringify(addresses))).rejects.toThrow(
+        "Address list must contain 1 to 20 nonblank strings",
+      );
+    }
+  });
+
   it("trims whitespace around each address", async () => {
     const addr = "0x" + "a".repeat(40);
     await expect(resolveAddresses([`  ${addr}  `])).resolves.toEqual([addr]);

@@ -69,10 +69,37 @@ export async function resolveInput(
   return { address: resolved, type };
 }
 
+const MAX_TOOL_ADDRESS_BATCH = 20;
+
+function parseSerializedAddressList(input: string): readonly string[] | undefined {
+  const trimmed = input.trim();
+  if (!trimmed.startsWith("[")) return undefined;
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(trimmed);
+  } catch {
+    return undefined;
+  }
+
+  if (!Array.isArray(parsed)) return undefined;
+  if (
+    parsed.length === 0 ||
+    parsed.length > MAX_TOOL_ADDRESS_BATCH ||
+    !parsed.every(
+      (item: unknown): item is string => typeof item === "string" && item.trim().length > 0,
+    )
+  ) {
+    throw new TypeError("Address list must contain 1 to 20 nonblank strings");
+  }
+  return parsed;
+}
+
 /**
- * Resolve one address or a list of addresses, preserving order.
+ * Resolve one address or an address list, including lists serialized by a tool host.
  *
  * @throws {NotFoundError} When any ENS name cannot be resolved.
+ * @throws {TypeError} When a serialized tool list falls outside its input contract.
  *
  * @param {string | readonly string[]} input - The `input` value.
  * @param {ChainKey} chain - The `chain` value.
@@ -82,7 +109,7 @@ export async function resolveAddresses(
   input: string | readonly string[],
   chain?: ChainKey,
 ): Promise<string[]> {
-  const list = typeof input === "string" ? [input] : input;
+  const list = typeof input === "string" ? (parseSerializedAddressList(input) ?? [input]) : input;
   const resolved = await Promise.all(list.map((item) => resolveInput(item, chain)));
   return resolved.map((entry) => entry.address);
 }
