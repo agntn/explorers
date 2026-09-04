@@ -13,7 +13,7 @@ import { assertSafePathSegment } from "../core/path-safety.js";
 import { Provider } from "../core/provider.js";
 import { normalizeBaseUrl } from "../core/client.js";
 import { formatWei } from "../core/types.js";
-import { getEsploraAddressHistory, getFirstEsploraOutput } from "../core/esplora.js";
+import { getEsploraAddressHistory, selectEsploraRecipientOutput } from "../core/esplora.js";
 import type {
   Balance,
   BlockInfo,
@@ -45,6 +45,7 @@ interface EsploraAddressTx {
   }>;
   readonly vout: ReadonlyArray<{
     readonly scriptpubkey_address?: string;
+    readonly scriptpubkey_type: string;
     readonly value: number;
   }>;
   readonly fee: number;
@@ -203,7 +204,7 @@ export class Blockstream extends Provider {
       selectedChain,
       `/api/tx/${encodeURIComponent(hash)}`,
     );
-    const output = getFirstEsploraOutput(transaction.vout);
+    const output = selectEsploraRecipientOutput(transaction.vout);
 
     return {
       hash: transaction.txid,

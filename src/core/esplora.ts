@@ -10,6 +10,7 @@ interface EsploraAddressTransaction {
 
 interface EsploraOutput {
   readonly scriptpubkey_address?: string;
+  readonly scriptpubkey_type: string;
   readonly value: number;
 }
 
@@ -18,15 +19,16 @@ function confirmedHistoryPath(encodedAddress: string, encodedCursor: string): st
 }
 
 /**
- * Keep the singular normalized recipient and value on one Esplora output.
+ * Choose the first output other than OP_RETURN, falling back to the first raw output.
  *
  * @param {readonly EsploraOutput[]} outputs - Transaction outputs in provider order.
- * @returns {Readonly<{ address: string | null; value: number }>} The first output pair.
+ * @returns {Readonly<{ address: string | null; value: number }>} The selected output pair.
  */
-export function getFirstEsploraOutput(
+export function selectEsploraRecipientOutput(
   outputs: readonly EsploraOutput[],
 ): Readonly<{ address: string | null; value: number }> {
-  const output = outputs[0];
+  const output =
+    outputs.find((candidate) => candidate.scriptpubkey_type !== "op_return") ?? outputs[0];
   return {
     address: output?.scriptpubkey_address ?? null,
     value: output?.value ?? 0,
