@@ -113,6 +113,7 @@ interface MempoolAddressTx {
   }>;
   readonly vout: ReadonlyArray<{
     readonly scriptpubkey?: string;
+    readonly scriptpubkey_type: string;
     readonly scriptpubkey_address?: string;
     readonly value: number;
   }>;
@@ -344,10 +345,10 @@ function mempoolSendingParties(
   address: string,
 ): { readonly from: string; readonly to: string } {
   const sender = raw.vin.find((item) => item.prevout?.scriptpubkey_address === address);
-  const recipient = raw.vout.find((item) => item.scriptpubkey_address !== address);
+  const recipient = selectEsploraRecipientOutput(raw.vout, address);
   return {
     from: sender?.prevout?.scriptpubkey_address ?? address,
-    to: recipient?.scriptpubkey_address ?? address,
+    to: recipient.address ?? address,
   };
 }
 

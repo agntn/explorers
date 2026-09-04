@@ -82,7 +82,7 @@ describe("blockstream provider", () => {
     );
   });
 
-  it("maps address history and respects the requested limit", async () => {
+  it("skips OP_RETURN when mapping address history", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async () =>
@@ -91,8 +91,13 @@ describe("blockstream provider", () => {
             txid: TXID,
             vin: [{ prevout: { scriptpubkey_address: ADDRESS, value: 100_000 } }],
             vout: [
-              { scriptpubkey_address: "bc1qrecipient", value: 70_000 },
-              { scriptpubkey_address: ADDRESS, value: 29_000 },
+              { scriptpubkey_type: "op_return", value: 0 },
+              {
+                scriptpubkey_address: "bc1qrecipient",
+                scriptpubkey_type: "v0_p2wpkh",
+                value: 70_000,
+              },
+              { scriptpubkey_address: ADDRESS, scriptpubkey_type: "v0_p2wpkh", value: 29_000 },
             ],
             fee: 1_000,
             status: { confirmed: true, block_height: 900_000, block_time: 1_749_188_499 },
