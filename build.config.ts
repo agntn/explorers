@@ -19,6 +19,7 @@ export default defineBuildConfig({
         "./src/providers/aptos.ts",
         "./src/providers/blockberry.ts",
         "./src/providers/koios.ts",
+        "./src/providers/arweave.ts",
       ],
     },
   ],

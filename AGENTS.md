@@ -20,6 +20,7 @@ Unified block explorer provider library. Normalizes balances, tx history, contra
 | aptos       | none                    | aptos                                                                            | none; required methods throw                                |
 | blockberry  | `BLOCKBERRY_API_KEY`    | sui                                                                              | balances, tx history                                        |
 | koios       | none                    | cardano                                                                          | balances, tx detail/history, tokens                         |
+| arweave     | none                    | arweave                                                                          | balances, tx detail/history, block                          |
 
 ## Conventions
 
@@ -27,7 +28,7 @@ Unified block explorer provider library. Normalizes balances, tx history, contra
 - Native and token amounts use strings in each chain's smallest unit — call `formatWei(value, decimals)` with the asset's decimals; its default is 18
 - `noUncheckedIndexedAccess` and `noImplicitOverride` are enabled — guard indexed access and mark overrides explicitly
 - Provider registration runs off a manifest: `src/providers/index.ts` lists every built-in as `{ key, chains, capabilities, defaultURL?, load }`, and `core/registry.ts` turns that list into its map on the first registry call. The class itself only owns `static readonly key`
-- Provider backends are explorer/indexer APIs only. Unsupported operations stay absent; required methods without an explorer contract throw `UnsupportedOperationError`.
+- Provider backends are explorer/indexer APIs, including documented gateway APIs. Judge support by the service and response contract, not REST versus GraphQL: a gateway may expose REST routes shared with nodes. Do not silently switch to another node to fill a missing capability. Unsupported operations stay absent; required methods without a supported service contract throw `UnsupportedOperationError`.
 - Bitcoin, Litecoin and Pepecoin transactions from `mempool` carry their OP_RETURN pushes in `Transaction.opReturn`; each payload keeps its raw `hex` and gets a `text` reading only when the bytes are printable UTF-8
 - CLI default subcommand: `balance` (for address-like input) or `providers` (no input)
 - Error hierarchy: `ExplorerError` → `HTTPError`, `AuthError`, `RateLimitError`, `PlanRestrictedError`, `NotFoundError`, `UnsupportedChainError`, `UnsupportedOperationError`, `UnknownProviderError`
@@ -59,6 +60,7 @@ Unified block explorer provider library. Normalizes balances, tx history, contra
 - Solscan, Helius, TONAPI, TRONSCAN, Aptos, and Blockberry are single-chain providers and throw `UnsupportedChainError` for other chains.
 - Helius Enhanced Transactions v0 exposes no REST balance endpoint, so `getBalance` throws `UnsupportedOperationError`; the key travels as the `api-key` query parameter, which `sanitizeUrl` redacts.
 - Helius `getTokenBalances` calls DAS `searchAssets` on the RPC root, so it answers over JSON-RPC and a failure arrives as `error` inside a 200 response. Pages hold 1000 assets and the walk stops after 20 of them.
+- Arweave uses gateway REST for `/wallet/{address}/balance` and `/block/height/{height}`, and GraphQL for transactions. It merges owner and recipient queries, removes self-transfer duplicates, and caps the history window at `page * limit <= 1000` with `limit` from 1 to 100. `baseUrl` is the gateway root for both APIs. Balance snapshot height/hash stay null because the endpoint does not return them. Block gas fields use `"0"` as the existing non-EVM convention; storage price quotes are not gas data. Contracts and token operations stay unsupported. Amounts use winstons (12 decimals), missing recipients stay empty strings, and bundle fees are not attributed to individual data items. Arweave transaction IDs and addresses share their shape, so CLI detail reads require `-m detail`.
 - Aptos Explorer has no documented account/history API; `aptos` remains registered with false capabilities and throws `UnsupportedOperationError` instead of using fullnode REST.
 - TONAPI and Blockberry do not expose block lookup compatible with the library's single block-number contract, so `blockInfo` is unsupported.
 - Mempool: Bitcoin, Litecoin and Pepecoin; Litecoin uses litecoinspace.org, while peppool.space serves balances and transactions but lacks fee recommendations and complete normalized block metadata. Peppool paginates confirmed address history with `?after_txid=`, not Esplora's `/txs/chain/:txid` route
@@ -85,7 +87,7 @@ graph TB
 
 - **CLI Layer** (`cli.ts`, `commands/*.ts`): citty-based CLI, lazy-loads subcommands via dynamic `import()`. `cli-args.ts` normalizes bare address input to `balance` subcommand.
 - **Core Layer** (`core/*.ts`): Domain types, provider registry (built lazily from the barrel list), HTTP client (ofetch, 15s timeout), ENS resolution (public APIs), input classification, error hierarchy.
-- **Provider Layer** (`providers/*.ts`): 12 providers. Each file defines API types, helper mappers and a concrete `Provider` subclass with a static registry key, exports that class, and ships as its own bundle so `create()` can import it alone.
+- **Provider Layer** (`providers/*.ts`): 13 providers. Each file defines API types, helper mappers and a concrete `Provider` subclass with a static registry key, exports that class, and ships as its own bundle so `create()` can import it alone.
 - **Pi Extension** (`packages/pi/extensions/explorers.ts`): Exposes 9 tools to Pi coding agent, matching the MCP server's tool set. Lazy-loads live `src/` from a checkout and the relative `dist/` module from an installed package, without self-importing the package by name. `packages/omp/extensions/explorers.ts` registers the same nine for OMP.
 
 ### Provider categories
@@ -93,7 +95,7 @@ graph TB
 1. **Multi-chain EVM** (etherscan, blockscout): support 10 EVM chains each
 2. **Bitcoin/Ethereum bridge** (blockchair): dashboard API for Bitcoin, Ethereum and eCash
 3. **Esplora-compatible UTXO** (mempool, blockstream): Mempool serves Bitcoin, Litecoin and Pepecoin; Blockstream serves Bitcoin as an independent backend
-4. **Single-chain non-EVM** (solscan, helius, ton, tronscan, aptos, blockberry, koios): capabilities mirror only their explorer APIs; Aptos is explicitly unsupported
+4. **Single-chain non-EVM** (solscan, helius, ton, tronscan, aptos, blockberry, koios, arweave): capabilities mirror only their explorer APIs; Aptos is explicitly unsupported
 
 ## Patterns
 
@@ -117,7 +119,7 @@ graph TB
 
 ## Test coverage gaps
 
-**Covered** (25 test files): provider base/registry, provider resolution, HTTP client, path safety, amount formatting, errors, input classification, chain normalization, CLI argument routing, plus all twelve providers.
+**Covered** (28 test files): provider base/registry, provider resolution, HTTP client, path safety, amount formatting, errors, input classification, chain normalization, CLI argument routing, extension integration, plus all thirteen providers.
 **Missing**: CLI command execution.
 **Test style**: Focused unit tests for local contracts and mocked explorer-API responses; public no-key providers may additionally use live roundtrips.
 

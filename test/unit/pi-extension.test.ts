@@ -163,7 +163,7 @@ describe("explorers Pi extension", () => {
     expect(result.content).toEqual([
       {
         type: "text",
-        text: textMatching(/^Registered providers \(12\):/),
+        text: textMatching(/^Registered providers \(\d+\):[\s\S]*\n  arweave$/),
       },
     ]);
   });
@@ -197,6 +197,57 @@ describe("explorers Pi extension", () => {
         type: "text",
         text: "[blockscout] ethereum balance for 0x0000000000000000000000000000000000000001: 1 ETH (1000000000000000000 base units; fetched 2026-08-28T12:34:56.789Z; block unknown)",
       },
+    ]);
+  });
+
+  it("routes Arweave balance and block tools through gateway REST", async () => {
+    const address = "FPjbN_btYKzcf8QASjs30v5C0FPv7XpwKXENBW8dqVw";
+    const fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/balance")) return new Response("9007199254740993");
+      return new Response(
+        JSON.stringify({
+          height: 42,
+          indep_hash: "block-hash",
+          previous_block: "parent-hash",
+          timestamp: 1528491598,
+          reward_addr: "miner",
+          txs: ["a", "b"],
+        }),
+      );
+    });
+    vi.stubGlobal("fetch", fetch);
+    const tools = registerExtensionTools();
+    const balance = parseToolResult(
+      await requireTool(tools, "explorers_balance").execute(
+        "test",
+        { address, chain: "arweave" },
+        undefined,
+        undefined,
+        unusedContext,
+      ),
+    );
+    expect(balance.isError).toBe(false);
+    expect(balance.content[0]?.text).toContain(
+      "9007.199254740993 AR (9007199254740993 base units;",
+    );
+    expect(balance.content[0]?.text).toContain("block unknown");
+    const block = parseToolResult(
+      await requireTool(tools, "explorers_block").execute(
+        "test",
+        { blockNumber: 42, chain: "arweave" },
+        undefined,
+        undefined,
+        unusedContext,
+      ),
+    );
+    expect(block.isError).toBe(false);
+    expect(block.content[0]?.text).toContain("[arweave] Block #42 on arweave");
+    expect(block.content[0]?.text).toContain("Hash: block-hash");
+    expect(block.content[0]?.text).toContain("Transactions: 2");
+    expect(fetch.mock.calls.map(([url]) => String(url))).toEqual([
+      `https://arweave.net/wallet/${address}/balance`,
+      "https://arweave.net/block/height/42",
     ]);
   });
 

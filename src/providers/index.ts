@@ -1,6 +1,7 @@
 /** Built-in providers: registry metadata plus a loader for the implementation */
 
 import type { ProviderCapability, ProviderEntry } from "../core/provider.js";
+import { ARWEAVE_GATEWAY_URL } from "../core/endpoints.js";
 
 type BuiltinProviderEntry = ProviderEntry & {
   capabilities: readonly ProviderCapability[];
@@ -135,5 +136,12 @@ export const builtins: readonly ProviderEntry[] = [
     capabilities: ["balances", "txHistory", "txDetail", "tokenBalances"],
     defaultURL: "https://api.koios.rest/api/v1",
     load: () => import("./koios.js").then((m) => m.Koios),
+  },
+  {
+    key: "arweave",
+    chains: ["arweave"],
+    capabilities: ["balances", "txHistory", "txDetail", "blockInfo"],
+    defaultURL: ARWEAVE_GATEWAY_URL,
+    load: () => import("./arweave.js").then((m) => m.Arweave),
   },
 ] satisfies readonly BuiltinProviderEntry[];
