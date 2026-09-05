@@ -2,12 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { Arweave } from "../../src/providers/arweave.js";
 import { create, supportsCapability } from "../../src/core/registry.js";
 import { withProvider } from "../../src/core/resolve.js";
-import {
-  ExplorerError,
-  NotFoundError,
-  UnsupportedChainError,
-  UnsupportedOperationError,
-} from "../../src/core/errors.js";
+import { ExplorerError, NotFoundError, UnsupportedChainError } from "../../src/core/errors.js";
 
 const ADDRESS = "FPjbN_btYKzcf8QASjs30v5C0FPv7XpwKXENBW8dqVw";
 const HASH = "2Bg8S0GcQmbC-FeT5dDKcj0WOK2YmH7Y4mlW-mO8_yE";
@@ -49,27 +44,125 @@ function connection(nodes: readonly unknown[], hasNextPage = false, cursor = "cu
 
 afterEach(() => vi.unstubAllGlobals());
 
-describe("Arweave gateway index", () => {
-  it("registers only transaction reads and selects its default chain", async () => {
+describe("Arweave gateway", () => {
+  it("registers gateway reads and selects its default chain", async () => {
     const provider = await create("arweave");
     expect(provider).toBeInstanceOf(Arweave);
     expect(provider.capabilities).toEqual({
-      balances: false,
+      balances: true,
       txHistory: true,
       txDetail: true,
       contractInfo: false,
       tokenBalances: false,
       tokenTransfers: false,
       gasData: false,
-      blockInfo: false,
+      blockInfo: true,
     });
-    expect(supportsCapability("arweave", "balances")).toBe(false);
-    expect(provider.getBlockInfo).toBeUndefined();
+    expect(supportsCapability("arweave", "balances")).toBe(true);
+    expect(supportsCapability("arweave", "blockInfo")).toBe(true);
     expect(provider.getTokenBalances).toBeUndefined();
     await expect(withProvider("arweave", undefined, async ({ chain }) => chain)).resolves.toBe(
       "arweave",
     );
-    await expect(provider.getBalance(ADDRESS)).rejects.toThrow(UnsupportedOperationError);
+  });
+
+  it.each([
+    ["0", "0"],
+    ["141635438646382", "141.635438646382"],
+    ["9007199254740993", "9007.199254740993"],
+  ])("reads an exact native balance of %s from gateway REST", async (amount, formatted) => {
+    const fetch = vi.fn(
+      async () => new Response(amount, { headers: { "Content-Type": "text/plain" } }),
+    );
+    vi.stubGlobal("fetch", fetch);
+    const provider = new Arweave({ baseUrl: "https://example.test/custom///" });
+    const balance = await provider.getBalance(ADDRESS);
+    expect(balance).toMatchObject({
+      address: ADDRESS,
+      chain: "arweave",
+      balance: amount,
+      symbol: "AR",
+      blockNumber: null,
+      blockHash: null,
+    });
+    expect(balance.balanceFormatted).toBe(formatted);
+    expect(Number.isNaN(Date.parse(balance.fetchedAt))).toBe(false);
+    expect(fetch).toHaveBeenCalledWith(
+      `https://example.test/custom/wallet/${ADDRESS}/balance`,
+      expect.objectContaining({ method: "GET" }),
+    );
+  });
+
+  it.each([-1, 1.5, {}, null, "not a balance"])(
+    "rejects malformed native balance responses",
+    async (body) => {
+      stub(body);
+      await expect(new Arweave().getBalance(ADDRESS)).rejects.toMatchObject({
+        provider: "arweave",
+        name: "ExplorerError",
+      });
+    },
+  );
+
+  it("reads block metadata, including genesis without a parent", async () => {
+    const fetch = stub({
+      height: 0,
+      indep_hash: "7wIU7KolICAjClMlcZ38LZzshhI7xGkm2tDCJR7Wvhe3ESUo2-Z4-y0x1uaglRJE",
+      previous_block: "",
+      timestamp: 1528491597,
+      reward_addr: "unclaimed",
+      txs: [HASH],
+    });
+    const block = await new Arweave({ baseUrl: "https://example.test/custom///" }).getBlockInfo(0);
+    expect(block).toEqual({
+      number: 0,
+      hash: "7wIU7KolICAjClMlcZ38LZzshhI7xGkm2tDCJR7Wvhe3ESUo2-Z4-y0x1uaglRJE",
+      parentHash: "",
+      timestamp: "2018-06-08T20:59:57.000Z",
+      miner: "unclaimed",
+      txCount: 1,
+      gasUsed: "0",
+      gasLimit: "0",
+    });
+    expect(fetch.mock.calls[0]?.[0]).toBe("https://example.test/custom/block/height/0");
+  });
+
+  it("rejects a malformed block or a different height", async () => {
+    stub({
+      height: 1,
+      indep_hash: "hash",
+      previous_block: "parent",
+      timestamp: 1528491598,
+      reward_addr: "miner",
+      txs: [],
+    });
+    await expect(new Arweave().getBlockInfo(1)).resolves.toMatchObject({
+      number: 1,
+      parentHash: "parent",
+      txCount: 0,
+    });
+    await expect(new Arweave().getBlockInfo(2)).rejects.toThrow(ExplorerError);
+    stub({});
+    await expect(new Arweave().getBlockInfo(0)).rejects.toThrow(ExplorerError);
+  });
+
+  it.each([-1, 1.5, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1])(
+    "rejects invalid block heights before I/O",
+    async (height) => {
+      const fetch = stub({});
+      await expect(new Arweave().getBlockInfo(height)).rejects.toThrow(ExplorerError);
+      expect(fetch).not.toHaveBeenCalled();
+    },
+  );
+
+  it("keeps gateway REST failures attributed without another backend", async () => {
+    const fetch = vi.fn(async () => new Response("not found", { status: 404 }));
+    vi.stubGlobal("fetch", fetch);
+    await expect(new Arweave().getBlockInfo(999999999)).rejects.toMatchObject({
+      name: "NotFoundError",
+      provider: "arweave",
+    });
+    expect(fetch).toHaveBeenCalledTimes(1);
   });
 
   it("maps exact winstons and preserves data metadata through the real HTTP client", async () => {
@@ -209,6 +302,8 @@ describe("Arweave gateway index", () => {
     await expect(provider.getTxHistory(ADDRESS, "ethereum")).rejects.toThrow(UnsupportedChainError);
     await expect(provider.getTxDetail(HASH, "ethereum")).rejects.toThrow(UnsupportedChainError);
     await expect(provider.getBalance(ADDRESS, "ethereum")).rejects.toThrow(UnsupportedChainError);
+    await expect(provider.getBlockInfo(0, "ethereum")).rejects.toThrow(UnsupportedChainError);
+    await expect(provider.getBalance("../other")).rejects.toThrow(ExplorerError);
     expect(fetch).not.toHaveBeenCalled();
   });
 

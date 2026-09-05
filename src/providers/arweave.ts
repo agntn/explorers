@@ -1,15 +1,12 @@
 import { z } from "zod";
 import { Provider } from "../core/provider.js";
 import { ARWEAVE_GATEWAY_URL } from "../core/endpoints.js";
-import {
-  ExplorerError,
-  NotFoundError,
-  UnsupportedChainError,
-  UnsupportedOperationError,
-} from "../core/errors.js";
+import { normalizeBaseUrl } from "../core/client.js";
+import { ExplorerError, NotFoundError, UnsupportedChainError } from "../core/errors.js";
 import { formatWei, toTimestamp } from "../core/types.js";
 import type {
   Balance,
+  BlockInfo,
   ChainKey,
   ProviderCapabilities,
   ProviderConfig,
@@ -109,33 +106,84 @@ function assertBlockBounds(options: Readonly<TxHistoryOptions>): void {
   }
 }
 
-/** Arweave transaction metadata from a gateway's GraphQL index, without fullnode reads. */
+/** Arweave balances and blocks from gateway REST, transactions from its GraphQL index. */
 export class Arweave extends Provider {
   static readonly key = "arweave";
+  private readonly base: string;
   private readonly endpoint: string;
 
   constructor(config: Readonly<ProviderConfig> = {}) {
     super(config);
-    const base = config.baseUrl ?? ARWEAVE_GATEWAY_URL;
-    this.endpoint = `${base.replace(/\/$/, "")}/graphql`;
+    this.base = normalizeBaseUrl(config.baseUrl ?? ARWEAVE_GATEWAY_URL);
+    this.endpoint = `${this.base}/graphql`;
   }
 
   get capabilities(): ProviderCapabilities {
     return {
-      balances: false,
+      balances: true,
       txHistory: true,
       txDetail: true,
       contractInfo: false,
       tokenBalances: false,
       tokenTransfers: false,
       gasData: false,
-      blockInfo: false,
+      blockInfo: true,
     };
   }
 
-  async getBalance(_address: string, chain: ChainKey = "arweave"): Promise<Balance> {
+  async getBalance(address: string, chain: ChainKey = "arweave"): Promise<Balance> {
     assertChain(chain);
-    throw new UnsupportedOperationError("getBalance", this.name);
+    assertIdentifier(address);
+    const raw = await this.getJSON<unknown>(`${this.base}/wallet/${address}/balance`);
+    /** Integers served as text pass through the shared lossless JSON parser. */
+    const parsed = z
+      .union([z.string().regex(/^\d+$/), z.number().int().nonnegative().safe()])
+      .safeParse(raw);
+    if (!parsed.success) throw new ExplorerError("Invalid Arweave balance response", this.name);
+    const balance = String(parsed.data);
+    return {
+      address,
+      chain,
+      fetchedAt: new Date().toISOString(),
+      blockNumber: null,
+      blockHash: null,
+      balance,
+      balanceFormatted: formatWei(balance, 12),
+      symbol: "AR",
+    };
+  }
+
+  override async getBlockInfo(
+    blockNumber: number,
+    chain: ChainKey = "arweave",
+  ): Promise<BlockInfo> {
+    assertChain(chain);
+    if (!validInteger(blockNumber, 0, Number.MAX_SAFE_INTEGER))
+      throw new ExplorerError("Arweave block number must be a nonnegative safe integer", this.name);
+    const raw = await this.getJSON<unknown>(`${this.base}/block/height/${blockNumber}`);
+    const parsed = z
+      .object({
+        height: z.literal(blockNumber),
+        indep_hash: z.string().min(1),
+        previous_block: z.string(),
+        timestamp: z.number().int().nonnegative().max(8_640_000_000_000),
+        reward_addr: z.string().min(1),
+        txs: z.array(z.string()),
+      })
+      .safeParse(raw);
+    if (!parsed.success) throw new ExplorerError("Invalid Arweave block response", this.name);
+    const block = parsed.data;
+    return {
+      number: block.height,
+      hash: block.indep_hash,
+      parentHash: block.previous_block,
+      timestamp: new Date(block.timestamp * 1000).toISOString(),
+      miner: block.reward_addr,
+      /** Arweave has no gas; retain the existing non-EVM BlockInfo convention. */
+      gasUsed: "0",
+      gasLimit: "0",
+      txCount: block.txs.length,
+    };
   }
 
   private async query<T>(

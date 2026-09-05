@@ -14,6 +14,6 @@ Concrete explorer and indexer backends. One service per TypeScript file.
 
 ## Constraints
 
-- Providers expose explorer or indexer data only. Do not hide fullnode RPC behind this layer.
+- Providers expose explorer, indexer or documented gateway APIs. Gateway REST is allowed alongside GraphQL; do not hide a fallback to a different fullnode behind this layer.
 - No module-load calls or registration side effects.
 - Amounts stay as strings at public boundaries.

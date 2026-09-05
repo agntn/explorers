@@ -124,15 +124,17 @@ Required operations live on `Provider`. Optional operations stay absent when a b
 | **aptos**       | None                          | aptos                                                                                 | no supported explorer operations                      |
 | **blockberry**  | `BLOCKBERRY_API_KEY`          | sui                                                                                   | balances, tx history                                  |
 | **koios**       | None                          | cardano                                                                               | balances, tx detail/history, tokens                   |
-| **arweave**     | None                          | arweave                                                                               | tx detail/history                                     |
+| **arweave**     | None                          | arweave                                                                               | balances, tx detail/history, block                    |
 
-`arweave` reads transaction history and details from the [gateway GraphQL index](https://docs.ar.io/apis/ar-io-node/index-querying), without an API key. `baseUrl` is the gateway root, defaulting to `https://arweave.net`. Balances, blocks, gas, contracts and token holdings remain unsupported rather than falling back to node HTTP endpoints.
+`arweave` reads balances and blocks through the gateway's [wallet](https://docs.ar.io/apis/ar-io-node/wallets) and [block](https://docs.ar.io/apis/ar-io-node/blocks) REST endpoints, and transaction history and details through its [GraphQL index](https://docs.ar.io/apis/ar-io-node/index-querying). No API key is needed. `baseUrl` is the gateway root, defaulting to `https://arweave.net`; every request stays on that gateway, without a fallback to another node. Balance responses have no block height or hash, so both snapshot fields remain `null`. Arweave has no gas: block gas fields use `"0"`, following the existing non-EVM convention. Gas quotes, contracts and token holdings remain unsupported; `/price/{bytes}` quotes a storage cost, not a price per gas unit.
 
 History includes sent and received transactions, removes self-transfer duplicates, and supports `sort`, inclusive `startBlock`/`endBlock`, `limit` (1 to 100, default 100) and `page` (starting at 1). Each read is limited to a window where `page * limit <= 1000`; use block bounds to narrow older history. Index coverage depends on the gateway, particularly for bundled data items. Quantity and top-level transaction fees use winstons (12 decimals). Bundle membership, data metadata and tags remain in `raw`; a data item's fee is omitted because its parent pays the network fee. An empty recipient stays `""`, not contract creation. A missing block means pending, with block number 0 and no timestamp. SmartWeave and AO execution status are not inferred from inclusion in an Arweave block.
 
 Arweave addresses and transaction IDs have the same shape. Use `-m detail` for a transaction ID:
 
 ```bash
+explorers balance FPjbN_btYKzcf8QASjs30v5C0FPv7XpwKXENBW8dqVw -c arweave
+explorers block 1994692 -c arweave
 explorers tx FPjbN_btYKzcf8QASjs30v5C0FPv7XpwKXENBW8dqVw -c arweave -n 3
 explorers tx 2Bg8S0GcQmbC-FeT5dDKcj0WOK2YmH7Y4mlW-mO8_yE -p arweave -m detail
 ```
