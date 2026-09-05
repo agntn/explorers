@@ -128,6 +128,7 @@ describe("resolveProvider", () => {
     expect(resolveProvider(undefined, "ton")).toBe("ton");
     expect(resolveProvider(undefined, "aptos")).toBe("aptos");
     expect(resolveProvider(undefined, "cardano")).toBe("koios");
+    expect(resolveProvider(undefined, "arweave", "txHistory")).toBe("arweave");
   });
 
   it("keeps Blockscout as the backstop for chains without a matching provider", () => {

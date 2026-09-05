@@ -1,13 +1,13 @@
 # Explorers
 
-Twelve block explorer APIs, one shape.
+Thirteen block explorer APIs, one shape.
 
 Block explorers keep returning roughly the same data in completely different formats. Explorers deals with that mess and gives scripts, agents and humans one TypeScript API and one CLI for balances, transactions, token transfers, contracts, tokens, gas and blocks.
 
 ## Features
 
-- **Twelve providers, one contract.** Etherscan, Blockscout, Blockchair, Mempool, Blockstream, Solscan, Helius, TON, TRONSCAN, Aptos, Blockberry and Koios.
-- **22 chains.** Ethereum, Base, Arbitrum, Optimism, Polygon, BSC, Avalanche, Gnosis, Linea, Berachain, zkSync, Scroll, Bitcoin, Litecoin, Pepecoin, eCash, Solana, TON, TRON, Aptos, Sui and Cardano.
+- **Thirteen providers, one contract.** Etherscan, Blockscout, Blockchair, Mempool, Blockstream, Solscan, Helius, TON, TRONSCAN, Aptos, Blockberry, Koios and Arweave.
+- **23 chains.** Ethereum, Base, Arbitrum, Optimism, Polygon, BSC, Avalanche, Gnosis, Linea, Berachain, zkSync, Scroll, Bitcoin, Litecoin, Pepecoin, eCash, Solana, TON, TRON, Aptos, Sui, Cardano and Arweave.
 - **Explorer data stays explorer data.** A provider never quietly falls back to a fullnode RPC just to pretend an operation is supported.
 - **Amounts stay exact.** Native and token values use strings in the chain's smallest unit instead of lossy JavaScript numbers.
 - **CLI, library and agent extensions.** Use the same provider contract from a terminal, TypeScript, OMP or Pi.
@@ -104,7 +104,7 @@ UTXO providers that expose cumulative totals add `funded` and `spent` to `Balanc
 
 Required operations live on `Provider`. Optional operations stay absent when a backend cannot serve them, so check both `capabilities` and the method before calling. Unsupported operations have no stub that returns convincing nonsense. Every successful `Balance` includes its ISO read time plus nullable block height and hash fields, so an unavailable chain position stays explicit.
 
-`create()` imports the provider it was asked for and nothing else, which is why it returns a promise. Everything the registry answers without an instance stays synchronous: `providers()`, `has()`, `supportsChain()`, `supportsCapability()`, `getDefaultURL()` and `resolveProvider()` read the metadata in `builtins`. Pass a capability as the third `resolveProvider()` argument when automatic selection must support a particular operation. A single backend can also skip the registry: `import { Mempool } from "@agntn/explorers/providers/mempool"` gives you the class and leaves the other eleven out of your bundle.
+`create()` imports the provider it was asked for and nothing else, which is why it returns a promise. Everything the registry answers without an instance stays synchronous: `providers()`, `has()`, `supportsChain()`, `supportsCapability()`, `getDefaultURL()` and `resolveProvider()` read the metadata in `builtins`. Pass a capability as the third `resolveProvider()` argument when automatic selection must support a particular operation. A single backend can also skip the registry: `import { Mempool } from "@agntn/explorers/providers/mempool"` gives you the class and leaves the other providers out of your bundle.
 
 `withProvider()` keeps an explicit provider strict. With neither provider nor chain, it starts on Ethereum; an explicit provider without a chain keeps that provider's default. Its optional fourth argument filters automatic selection by capability. Automatic reads get one try on the next available built-in provider after `RateLimitError` or `PlanRestrictedError`. Every other failure stays with the first provider. Its callback can run twice, so it belongs to read operations. Every CLI, MCP, Pi and OMP path that reads chain data requests its operation capability through this dispatcher.
 
@@ -124,6 +124,18 @@ Required operations live on `Provider`. Optional operations stay absent when a b
 | **aptos**       | None                          | aptos                                                                                 | no supported explorer operations                      |
 | **blockberry**  | `BLOCKBERRY_API_KEY`          | sui                                                                                   | balances, tx history                                  |
 | **koios**       | None                          | cardano                                                                               | balances, tx detail/history, tokens                   |
+| **arweave**     | None                          | arweave                                                                               | tx detail/history                                     |
+
+`arweave` reads transaction history and details from the [gateway GraphQL index](https://docs.ar.io/apis/ar-io-node/index-querying), without an API key. `baseUrl` is the gateway root, defaulting to `https://arweave.net`. Balances, blocks, gas, contracts and token holdings remain unsupported rather than falling back to node HTTP endpoints.
+
+History includes sent and received transactions, removes self-transfer duplicates, and supports `sort`, inclusive `startBlock`/`endBlock`, `limit` (1 to 100, default 100) and `page` (starting at 1). Each read is limited to a window where `page * limit <= 1000`; use block bounds to narrow older history. Index coverage depends on the gateway, particularly for bundled data items. Quantity and top-level transaction fees use winstons (12 decimals). Bundle membership, data metadata and tags remain in `raw`; a data item's fee is omitted because its parent pays the network fee. An empty recipient stays `""`, not contract creation. A missing block means pending, with block number 0 and no timestamp. SmartWeave and AO execution status are not inferred from inclusion in an Arweave block.
+
+Arweave addresses and transaction IDs have the same shape. Use `-m detail` for a transaction ID:
+
+```bash
+explorers tx FPjbN_btYKzcf8QASjs30v5C0FPv7XpwKXENBW8dqVw -c arweave -n 3
+explorers tx 2Bg8S0GcQmbC-FeT5dDKcj0WOK2YmH7Y4mlW-mO8_yE -p arweave -m detail
+```
 
 `aptos` is deliberately boring. It stays registered, advertises no capabilities and throws `UnsupportedOperationError` from required methods. Aptos Explorer has no documented account/history API, and hiding fullnode REST behind an explorer provider just to make the table look complete would be dishonest.
 

@@ -367,7 +367,7 @@ console.log(result.content[0].text);
     expect(result.content).toEqual([
       {
         type: "text",
-        text: textMatching(/^Registered providers \(12\):/),
+        text: textMatching(/^Registered providers \(\d+\):[\s\S]*\n  arweave$/),
       },
     ]);
   });
