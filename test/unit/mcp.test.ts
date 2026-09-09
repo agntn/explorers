@@ -165,6 +165,35 @@ describe("Explorers MCP server", () => {
     });
   });
 
+  it("routes Decred history, transaction details and blocks through MCP", async () => {
+    const address = "Dcur2mcGjmENx4DhNqDctW5wJCVyT3Qeqkx";
+    const hash = "4b064b5a6255ed94bb9c4347e370c5ad034db4d0550e5bd6775cbed65015ebe3";
+    const tx = { txid: hash, blockheight: 1000, confirmations: 1, vin: [], vout: [] };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const path = new URL(String(input)).pathname;
+        const body = path.includes("/addrs/")
+          ? { totalItems: 1, from: 0, to: 1, items: [tx] }
+          : path.includes("/block/")
+            ? [{ height: 1000, hash, previousblockhash: hash, time: 1, tx: [hash] }]
+            : tx;
+        return new Response(JSON.stringify(body));
+      }),
+    );
+    const client = await connectTestClient();
+    for (const [name, args, data] of [
+      ["explorers_tx_history", { address, chain: "dcr", limit: 1 }, [{ hash }]],
+      ["explorers_tx_detail", { hash, chain: "dcr" }, { hash, status: "success" }],
+      ["explorers_block", { blockNumber: 1000, chain: "dcr" }, { number: 1000, txCount: 1 }],
+    ] as const) {
+      const result = parseToolResult(await client.callTool({ name, arguments: args }));
+      expect(result.isError).toBe(false);
+      const payload: unknown = JSON.parse(result.content[0]?.text ?? "null");
+      expect(payload).toMatchObject({ provider: "dcrdata", data });
+    }
+  });
+
   it("discovers every explorer tool and executes provider discovery", async () => {
     const client = await connectTestClient();
 

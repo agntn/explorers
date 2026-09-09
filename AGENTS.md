@@ -21,7 +21,7 @@ Unified block explorer provider library. Normalizes balances, tx history, contra
 | blockberry  | `BLOCKBERRY_API_KEY`    | sui                                                                              | balances, tx history                                        |
 | koios       | none                    | cardano                                                                          | balances, tx detail/history, tokens                         |
 | arweave     | none                    | arweave                                                                          | balances, tx detail/history, block                          |
-| dcrdata     | none                    | decred                                                                           | balances                                                    |
+| dcrdata     | none                    | decred                                                                           | balances, tx detail/history, block                          |
 
 ## Conventions
 
@@ -69,7 +69,7 @@ Unified block explorer provider library. Normalizes balances, tx history, contra
 - Koios answers on POST with the address or hash in the request body, and the public instance rejects a body over 5120 bytes, so `getTxHistory` asks `tx_info` for 70 hashes at a time and reorders the answer, which comes back in the endpoint's own order
 - Koios `address_info` ships the whole UTxO set of an address, 222 kB for a busy one, so `getBalance` narrows the payload with the PostgREST `select` parameter; the endpoint still builds that set before it answers, and a busy address takes 3 to 9 seconds against the 15-second client timeout
 - Koios keeps the phase-2 validity flag behind the heavier `_scripts` payload, so a Cardano transaction reads as `success` even when a failing script consumed its collateral; `isContractInteraction` comes from the presence of collateral inputs
-- dcrdata implements only Decred balances through Insight `/addr/{address}?noTxList=1`. Amounts use atoms (8 decimals), adding the signed mempool delta to the confirmed balance. Funded/spent totals remain confirmed, snapshot height/hash are null, and the balance is not a spendability check. `baseUrl` is the Insight API root. Chain/address format checks use `@agntn/chains`; checksum validation belongs to the service. History throws `UnsupportedOperationError`, and optional methods remain absent.
+- dcrdata uses Insight for Decred balances, transaction history/details and blocks. `baseUrl` is the Insight API root. Amounts use atoms (8 decimals). Balances add the mempool delta; funded/spent totals remain confirmed and snapshot fields stay null. The balance is not a spendability check. Chain/address format checks use `@agntn/chains`; checksum validation belongs to the service. History uses `from`/`to` pagination, supports limits 1 to 250 and both sort directions, and rejects unsupported block bounds. Transaction values pair with one addressed output, with full inputs/outputs in `raw`; positive confirmations do not independently prove stake-vote approval. Block responses are arrays and count regular plus stake transactions; miner stays empty and gas fields use "0". Insight's estimatefee is only a relay fee, so gas data remains unsupported.
 
 ## Architecture
 
@@ -121,7 +121,7 @@ graph TB
 
 ## Test coverage gaps
 
-**Covered** (29 test files): provider base/registry, provider resolution, HTTP client, path safety, amount formatting, errors, input classification, chain normalization, CLI argument routing, extension integration, plus all fourteen providers.
+**Covered** (30 test files): provider base/registry, provider resolution, HTTP client, path safety, amount formatting, errors, input classification, chain normalization, CLI argument routing, extension integration, plus all fourteen providers.
 **Missing**: CLI command execution.
 **Test style**: Focused unit tests for local contracts and mocked explorer-API responses; public no-key providers may additionally use live roundtrips.
 

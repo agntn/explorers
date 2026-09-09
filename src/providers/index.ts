@@ -147,7 +147,7 @@ export const builtins: readonly ProviderEntry[] = [
   {
     key: "dcrdata",
     chains: ["decred"],
-    capabilities: ["balances"],
+    capabilities: ["balances", "txHistory", "txDetail", "blockInfo"],
     defaultURL: DCRDATA_INSIGHT_URL,
     load: () => import("./dcrdata.js").then((m) => m.Dcrdata),
   },

@@ -2,12 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { create, getDefaultURL, supportsCapability } from "../../src/core/registry.js";
 import { normalizeChain } from "../../src/core/types.js";
 import { withProvider } from "../../src/core/resolve.js";
-import {
-  ExplorerError,
-  HTTPError,
-  UnsupportedChainError,
-  UnsupportedOperationError,
-} from "../../src/core/errors.js";
+import { ExplorerError, HTTPError, UnsupportedChainError } from "../../src/core/errors.js";
 
 const ADDRESS = "Dcur2mcGjmENx4DhNqDctW5wJCVyT3Qeqkx";
 
@@ -66,7 +61,7 @@ describe("dcrdata balances", () => {
     );
     expect(getDefaultURL("dcrdata")).toBe("https://explorer.dcrdata.org/insight/api");
     expect(supportsCapability("dcrdata", "balances")).toBe(true);
-    expect(supportsCapability("dcrdata", "txHistory")).toBe(false);
+    expect(supportsCapability("dcrdata", "txHistory")).toBe(true);
   });
 
   it.each([100000001, -100000001, 0])(
@@ -145,18 +140,10 @@ describe("dcrdata balances", () => {
     await expect(provider.getBalance(ADDRESS, "bitcoin")).rejects.toBeInstanceOf(
       UnsupportedChainError,
     );
-    await expect(provider.getTxHistory(ADDRESS)).rejects.toBeInstanceOf(UnsupportedOperationError);
     await expect(provider.getTxHistory(ADDRESS, "bitcoin")).rejects.toBeInstanceOf(
       UnsupportedChainError,
     );
-    for (const name of [
-      "getTxDetail",
-      "getBlockInfo",
-      "getGasData",
-      "getTokenBalances",
-      "getTokenTransfers",
-      "getContractInfo",
-    ]) {
+    for (const name of ["getGasData", "getTokenBalances", "getTokenTransfers", "getContractInfo"]) {
       expect(name in provider).toBe(false);
     }
     expect(fetch).not.toHaveBeenCalled();
