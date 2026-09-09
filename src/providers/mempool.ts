@@ -73,7 +73,7 @@ interface MempoolTx {
       readonly scriptpubkey_asm: string;
       readonly scriptpubkey_type: string;
       readonly scriptpubkey_address?: string;
-      readonly value: number;
+      readonly value: number | string;
     } | null;
     readonly scriptsig: string;
     readonly sequence: number;
@@ -84,11 +84,11 @@ interface MempoolTx {
     readonly scriptpubkey_asm: string;
     readonly scriptpubkey_type: string;
     readonly scriptpubkey_address?: string;
-    readonly value: number;
+    readonly value: number | string;
   }>;
   readonly size: number;
   readonly weight: number;
-  readonly fee: number;
+  readonly fee: number | string;
   readonly status: {
     readonly confirmed: boolean;
     readonly block_height?: number;
@@ -106,7 +106,7 @@ interface MempoolAddressTx {
     readonly vout: number;
     readonly prevout: {
       readonly scriptpubkey_address?: string;
-      readonly value: number;
+      readonly value: number | string;
     } | null;
     readonly scriptsig: string;
     readonly sequence: number;
@@ -115,11 +115,11 @@ interface MempoolAddressTx {
     readonly scriptpubkey?: string;
     readonly scriptpubkey_type: string;
     readonly scriptpubkey_address?: string;
-    readonly value: number;
+    readonly value: number | string;
   }>;
   readonly size: number;
   readonly weight: number;
-  readonly fee: number;
+  readonly fee: number | string;
   readonly status: {
     readonly confirmed: boolean;
     readonly block_height?: number;
@@ -152,7 +152,7 @@ interface MempoolBlock {
 }
 
 /* Convert the smallest unit to a coin string without floating-point arithmetic. */
-function satToCoin(sat: number | bigint): string {
+function satToCoin(sat: number | string | bigint): string {
   return formatWei(String(sat), 8);
 }
 
@@ -330,13 +330,13 @@ function peppoolHistoryPath(encodedAddress: string, encodedCursor: string): stri
 function mempoolAddressTotals(
   raw: Readonly<MempoolAddressTx>,
   address: string,
-): { readonly input: number; readonly output: number } {
+): { readonly input: bigint; readonly output: bigint } {
   const input = raw.vin
     .filter((item) => item.prevout?.scriptpubkey_address === address)
-    .reduce((sum, item) => sum + (item.prevout?.value ?? 0), 0);
+    .reduce((sum, item) => sum + BigInt(item.prevout?.value ?? 0), 0n);
   const output = raw.vout
     .filter((item) => item.scriptpubkey_address === address)
-    .reduce((sum, item) => sum + item.value, 0);
+    .reduce((sum, item) => sum + BigInt(item.value), 0n);
   return { input, output };
 }
 
@@ -364,8 +364,10 @@ function mempoolAddressParties(
 function mapTx(raw: Readonly<MempoolAddressTx>, address: string): Transaction {
   const totals = mempoolAddressTotals(raw, address);
   const netSat = totals.output - totals.input;
-  const isSend = totals.input > 0;
-  const transferredSat = isSend ? Math.max(0, Math.abs(netSat) - raw.fee) : netSat;
+  const isSend = totals.input > 0n;
+  const absoluteNetSat = netSat < 0n ? -netSat : netSat;
+  const amount = isSend ? absoluteNetSat - BigInt(raw.fee) : netSat;
+  const transferredSat = amount < 0n ? 0n : amount;
   const { from, to } = mempoolAddressParties(raw, address, isSend);
 
   return {

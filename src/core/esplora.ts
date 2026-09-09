@@ -11,7 +11,7 @@ interface EsploraAddressTransaction {
 interface EsploraOutput {
   readonly scriptpubkey_address?: string;
   readonly scriptpubkey_type: string;
-  readonly value: number;
+  readonly value: number | string;
 }
 
 function confirmedHistoryPath(encodedAddress: string, encodedCursor: string): string {
@@ -24,12 +24,12 @@ function confirmedHistoryPath(encodedAddress: string, encodedCursor: string): st
  * @param {readonly EsploraOutput[]} outputs - Transaction outputs in provider order.
  * @param {string} [excludedAddress] - Address whose own outputs should not win when another
  *   non-OP_RETURN output exists.
- * @returns {Readonly<{ address: string | null; value: number }>} The selected output pair.
+ * @returns {Readonly<{ address: string | null; value: number | string }>} The selected output pair.
  */
 export function selectEsploraRecipientOutput(
   outputs: readonly EsploraOutput[],
   excludedAddress?: string,
-): Readonly<{ address: string | null; value: number }> {
+): Readonly<{ address: string | null; value: number | string }> {
   const firstTransfer = outputs.find((candidate) => candidate.scriptpubkey_type !== "op_return");
   const output =
     (excludedAddress === undefined

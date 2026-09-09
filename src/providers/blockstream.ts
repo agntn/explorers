@@ -71,7 +71,7 @@ interface EsploraBlock {
 }
 
 /* Convert satoshis to BTC without crossing the floating-point boundary. */
-function satToBitcoin(satoshis: number | bigint): string {
+function satToBitcoin(satoshis: number | string | bigint): string {
   return formatWei(String(satoshis), 8);
 }
 
