@@ -89,6 +89,7 @@ ${offline}
 
   it.each([
     [["balance", "bc1qexample", "--provider", "mempool"], "0.00001 BTC"],
+    [["balance", "bc1qexample", "--provider", "mempool"], "Unconfirmed delta: -600 base units"],
     [["tx", "bc1qexample", "--provider", "mempool", "--mode", "history"], "0 transactions"],
     [["tx", "a".repeat(64), "--provider", "mempool"], "Value: 0.00001"],
   ] as const)("executes reads after loading the backend: %j", (args, expected) => {
@@ -105,7 +106,7 @@ globalThis.fetch = async (input) => {
   if (url.endsWith("/address/bc1qexample/txs")) return new Response("[]");
   if (url.endsWith("/address/bc1qexample")) return Response.json({
     chain_stats: { funded_txo_sum: 1000, spent_txo_sum: 0, tx_count: 0 },
-    mempool_stats: { funded_txo_sum: 0, spent_txo_sum: 0, tx_count: 0 },
+    mempool_stats: { funded_txo_sum: 0, spent_txo_sum: 600, tx_count: 1 },
   });
   throw new Error("Unexpected network request: " + url);
 };

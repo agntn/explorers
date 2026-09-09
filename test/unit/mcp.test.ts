@@ -136,6 +136,32 @@ class ContractProvider extends DisabledProvider {
 }
 
 describe("Explorers MCP server", () => {
+  it("keeps the unconfirmed balance delta in MCP JSON", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json({
+          chain_stats: { funded_txo_sum: 10000, spent_txo_sum: 2000 },
+          mempool_stats: { funded_txo_sum: 0, spent_txo_sum: 6000 },
+        }),
+      ),
+    );
+    const client = await connectTestClient();
+    const result = parseToolResult(
+      await client.callTool({
+        name: "explorers_balance",
+        arguments: { address: "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh", provider: "mempool" },
+      }),
+    );
+    expect(result.isError).toBe(false);
+    const text = result.content[0]?.text;
+    if (!text) throw new Error("Missing balance content");
+    expect(JSON.parse(text)).toMatchObject({
+      provider: "mempool",
+      data: { balance: "8000", unconfirmed: "-6000" },
+    });
+  });
+
   it("reads Decred balances through the MCP transport", async () => {
     const address = "Dcur2mcGjmENx4DhNqDctW5wJCVyT3Qeqkx";
     vi.stubGlobal(

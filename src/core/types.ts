@@ -100,6 +100,8 @@ export interface Balance {
   funded?: string;
   /** Cumulative value spent in the smallest native unit, when the provider exposes it */
   spent?: string;
+  /** Signed mempool delta in base units, separate from balance; absent when unavailable. */
+  unconfirmed?: string;
   /** Native token symbol (ETH, BNB, etc.) */
   symbol: string;
 }

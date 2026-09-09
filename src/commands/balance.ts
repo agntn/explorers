@@ -47,6 +47,9 @@ export default defineCommand({
             consola.log(`[${name}] ${balance.chain} balance for ${balance.address}`);
             consola.log(`  ${balance.balanceFormatted} ${balance.symbol}`);
             consola.log(`  Raw: ${balance.balance} base units`);
+            if (balance.unconfirmed !== undefined) {
+              consola.log(`  Unconfirmed delta: ${balance.unconfirmed} base units`);
+            }
             consola.log(`  Fetched: ${balance.fetchedAt}`);
             consola.log(`  Block: ${balance.blockNumber ?? "unknown"}`);
             if (balance.blockHash !== null) {

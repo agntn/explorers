@@ -227,6 +227,34 @@ describe("explorers Pi extension", () => {
     ]);
   });
 
+  it.each([0, -6000])(
+    "shows an unconfirmed delta of %s separately from confirmed balance",
+    async (delta) => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () =>
+          Response.json({
+            chain_stats: { funded_txo_sum: 10000, spent_txo_sum: 2000 },
+            mempool_stats: { funded_txo_sum: 0, spent_txo_sum: -delta },
+          }),
+        ),
+      );
+      const tool = requireTool(registerExtensionTools(), "explorers_balance");
+      const result = parseToolResult(
+        await tool.execute(
+          "test",
+          { address: "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh", provider: "mempool" },
+          undefined,
+          undefined,
+          unusedContext,
+        ),
+      );
+      expect(result.isError).toBe(false);
+      expect(result.content[0]?.text).toContain("0.00008 BTC (8000 base units");
+      expect(result.content[0]?.text).toContain(`unconfirmed delta ${delta} base units`);
+    },
+  );
+
   it("routes Arweave balance and block tools through gateway REST", async () => {
     const address = "FPjbN_btYKzcf8QASjs30v5C0FPv7XpwKXENBW8dqVw";
     const fetch = vi.fn(async (input: RequestInfo | URL) => {

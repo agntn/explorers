@@ -52,7 +52,7 @@ interface MempoolAddressSummary {
     readonly spent_txo_sum: number | string;
     readonly tx_count: number;
   };
-  readonly mempool_stats: {
+  readonly mempool_stats?: {
     readonly funded_txo_count: number;
     readonly funded_txo_sum: number | string;
     readonly spent_txo_count: number;
@@ -433,7 +433,12 @@ export class Mempool extends Provider {
     const spentSat = BigInt(data.chain_stats.spent_txo_sum);
     const balanceSat = fundedSat - spentSat;
 
+    const unconfirmed = data.mempool_stats
+      ? BigInt(data.mempool_stats.funded_txo_sum) - BigInt(data.mempool_stats.spent_txo_sum)
+      : undefined;
+
     return this.snapshotBalance({
+      ...(unconfirmed === undefined ? {} : { unconfirmed: unconfirmed.toString() }),
       address,
       chain: c,
       balance: balanceSat.toString(),
