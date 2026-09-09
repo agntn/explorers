@@ -1,7 +1,6 @@
 /** List fungible token holdings (supports ENS) */
 import { defineCommand } from "citty";
 import consola from "consola";
-import { resolveInput } from "../core/input.js";
 import { withSelectedProvider } from "./shared.js";
 
 export default defineCommand({
@@ -28,6 +27,7 @@ export default defineCommand({
   },
   async run({ args }) {
     try {
+      const { resolveInput } = await import("../core/input.js");
       await withSelectedProvider(
         args.chain as string | undefined,
         args.provider as string | undefined,

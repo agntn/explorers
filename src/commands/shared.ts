@@ -1,7 +1,5 @@
 import consola from "consola";
 import type { Provider, ProviderCapability } from "../core/provider.js";
-import { withProvider } from "../core/resolve.js";
-import { normalizeChain } from "../core/types.js";
 import type { ChainKey } from "../core/types.js";
 
 export interface SelectedProvider {
@@ -10,13 +8,17 @@ export interface SelectedProvider {
   readonly provider: Provider;
 }
 
-export function withSelectedProvider<T>(
+export async function withSelectedProvider<T>(
   chainInput: string | undefined,
   providerInput: string | undefined,
   capability: ProviderCapability,
   /* oxlint-disable-next-line typescript/prefer-readonly-parameter-types */
   run: (selected: SelectedProvider) => Promise<T>,
 ): Promise<T> {
+  const [{ withProvider }, { normalizeChain }] = await Promise.all([
+    import("../core/resolve.js"),
+    import("../core/types.js"),
+  ]);
   const requestedChain = chainInput === undefined ? undefined : normalizeChain(chainInput);
   return withProvider(providerInput, requestedChain, run, capability);
 }

@@ -1,9 +1,6 @@
 /** Get native token balance for one or more addresses (supports ENS) */
 import { defineCommand } from "citty";
 import consola from "consola";
-import { withProvider } from "../core/resolve.js";
-import { normalizeChain } from "../core/types.js";
-import { resolveAddresses } from "../core/input.js";
 
 export default defineCommand({
   meta: {
@@ -30,6 +27,11 @@ export default defineCommand({
   },
   async run({ args }) {
     try {
+      const [{ withProvider }, { normalizeChain }, { resolveAddresses }] = await Promise.all([
+        import("../core/resolve.js"),
+        import("../core/types.js"),
+        import("../core/input.js"),
+      ]);
       const chainInput = args.chain as string | undefined;
       const requestedChain = chainInput === undefined ? undefined : normalizeChain(chainInput);
       await withProvider(

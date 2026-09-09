@@ -1,7 +1,6 @@
 /** Get contract info (supports ENS) */
 import { defineCommand } from "citty";
 import consola from "consola";
-import { resolveInput } from "../core/input.js";
 import type { ContractInfo } from "../core/types.js";
 import { failCommand, reportCommandError, withSelectedProvider } from "./shared.js";
 
@@ -39,6 +38,7 @@ export default defineCommand({
   },
   async run({ args }) {
     try {
+      const { resolveInput } = await import("../core/input.js");
       await withSelectedProvider(
         args.chain as string | undefined,
         args.provider as string | undefined,
