@@ -6,8 +6,8 @@ Block explorers keep returning roughly the same data in completely different for
 
 ## Features
 
-- **Thirteen providers, one contract.** Etherscan, Blockscout, Blockchair, Mempool, Blockstream, Solscan, Helius, TON, TRONSCAN, Aptos, Blockberry, Koios and Arweave.
-- **23 chains.** Ethereum, Base, Arbitrum, Optimism, Polygon, BSC, Avalanche, Gnosis, Linea, Berachain, zkSync, Scroll, Bitcoin, Litecoin, Pepecoin, eCash, Solana, TON, TRON, Aptos, Sui, Cardano and Arweave.
+- **Fourteen providers, one contract.** Etherscan, Blockscout, Blockchair, Mempool, Blockstream, Solscan, Helius, TON, TRONSCAN, Aptos, Blockberry, Koios, Arweave and dcrdata.
+- **24 chains.** Ethereum, Base, Arbitrum, Optimism, Polygon, BSC, Avalanche, Gnosis, Linea, Berachain, zkSync, Scroll, Bitcoin, Litecoin, Pepecoin, eCash, Solana, TON, TRON, Aptos, Sui, Cardano, Arweave and Decred.
 - **Explorer data stays explorer data.** A provider never quietly falls back to a fullnode RPC just to pretend an operation is supported.
 - **Amounts stay exact.** Native and token values use strings in the chain's smallest unit instead of lossy JavaScript numbers.
 - **CLI, library and agent extensions.** Use the same provider contract from a terminal, TypeScript, OMP or Pi.
@@ -125,6 +125,16 @@ Required operations live on `Provider`. Optional operations stay absent when a b
 | **blockberry**  | `BLOCKBERRY_API_KEY`          | sui                                                                                   | balances, tx history                                  |
 | **koios**       | None                          | cardano                                                                               | balances, tx detail/history, tokens                   |
 | **arweave**     | None                          | arweave                                                                               | balances, tx detail/history, block                    |
+| **dcrdata**     | None                          | decred                                                                                | balances                                              |
+
+`dcrdata` adds Decred balance reads without an API key. It uses the [Insight address endpoint](https://github.com/decred/dcrdata/blob/master/docs/Insight_API_documentation.md#addr) with `noTxList=1`, not the full transaction list. Amounts come from integer atom fields (8 decimals), including the signed mempool balance delta. `funded` and `spent` cover confirmed activity only. Insight supplies no snapshot height or hash, so both stay `null`. These are indexed balances, not a guarantee that every output is mature or spendable.
+
+`baseUrl` is the Insight API root, defaulting to `https://explorer.dcrdata.org/insight/api`. Address shape and mainnet version checks come from `@agntn/chains`; dcrdata checks the checksum. Only balances are implemented here. History throws `UnsupportedOperationError`, and other optional methods stay absent.
+
+```bash
+explorers balance Dcur2mcGjmENx4DhNqDctW5wJCVyT3Qeqkx -c dcr
+explorers balance Dcur2mcGjmENx4DhNqDctW5wJCVyT3Qeqkx -p dcrdata
+```
 
 `arweave` reads balances and blocks through the gateway's [wallet](https://docs.ar.io/apis/ar-io-node/wallets) and [block](https://docs.ar.io/apis/ar-io-node/blocks) REST endpoints, and transaction history and details through its [GraphQL index](https://docs.ar.io/apis/ar-io-node/index-querying). No API key is needed. `baseUrl` is the gateway root, defaulting to `https://arweave.net`; every request stays on that gateway, without a fallback to another node. Balance responses have no block height or hash, so both snapshot fields remain `null`. Arweave has no gas: block gas fields use `"0"`, following the existing non-EVM convention. Gas quotes, contracts and token holdings remain unsupported; `/price/{bytes}` quotes a storage cost, not a price per gas unit.
 
@@ -157,7 +167,7 @@ A new backend is five steps:
 
 1. Create a class extending `Provider` in `src/providers/`.
 2. Give it one unique `static readonly key`.
-3. Implement balances and transaction history, then advertise only the optional methods that really work.
+3. Implement supported operations and advertise their capabilities. Required methods without an implementation throw `UnsupportedOperationError`.
 4. Export the class.
 5. Add an entry to `builtins` in `src/providers/index.ts` with its chains, its public endpoint and a `load` that imports the module.
 6. Add the file to `build.config.ts` so it ships as its own bundle.

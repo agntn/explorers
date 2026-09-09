@@ -408,6 +408,33 @@ console.log(result.content[0].text);
     expect(rendered).not.toMatch(/[\u0000-\u0008\u000B-\u001F\u007F-\u009F]/u);
   });
 
+  it("reads Decred atoms through automatic provider selection", async () => {
+    const address = "Dcur2mcGjmENx4DhNqDctW5wJCVyT3Qeqkx";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              addrStr: address,
+              balanceSat: 100000001,
+              unconfirmedBalanceSat: -1,
+              totalReceivedSat: 100000001,
+              totalSentSat: 0,
+            }),
+          ),
+      ),
+    );
+    const tool = requireTool(registerExtensionTools().tools, "explorers_balance");
+    const result = parseToolResult(
+      await tool.execute("test", { address, chain: "dcr" }, undefined, undefined, unusedContext),
+    );
+    expect(result.isError).toBe(false);
+    expect(result.content[0]?.text).toContain(
+      `[dcrdata] decred balance for ${address}: 1 DCR (100000000 base units;`,
+    );
+  });
+
   it("lists providers without model or network access", async () => {
     const tool = requireTool(registerExtensionTools().tools, "explorers_providers");
 
@@ -418,7 +445,7 @@ console.log(result.content[0].text);
     expect(result.content).toEqual([
       {
         type: "text",
-        text: textMatching(/^Registered providers \(\d+\):[\s\S]*\n  arweave$/),
+        text: textMatching(/^Registered providers \(\d+\):[\s\S]*\n  arweave\n  dcrdata$/),
       },
     ]);
   });

@@ -136,6 +136,35 @@ class ContractProvider extends DisabledProvider {
 }
 
 describe("Explorers MCP server", () => {
+  it("reads Decred balances through the MCP transport", async () => {
+    const address = "Dcur2mcGjmENx4DhNqDctW5wJCVyT3Qeqkx";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              addrStr: address,
+              balanceSat: 100000001,
+              unconfirmedBalanceSat: -1,
+              totalReceivedSat: 100000001,
+              totalSentSat: 0,
+            }),
+          ),
+      ),
+    );
+    const client = await connectTestClient();
+    const result = parseToolResult(
+      await client.callTool({ name: "explorers_balance", arguments: { address, chain: "dcr" } }),
+    );
+    expect(result.isError).toBe(false);
+    const balance: unknown = JSON.parse(result.content[0]?.text ?? "null");
+    expect(balance).toMatchObject({
+      provider: "dcrdata",
+      data: { chain: "decred", balance: "100000000", balanceFormatted: "1", symbol: "DCR" },
+    });
+  });
+
   it("discovers every explorer tool and executes provider discovery", async () => {
     const client = await connectTestClient();
 

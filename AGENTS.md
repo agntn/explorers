@@ -21,6 +21,7 @@ Unified block explorer provider library. Normalizes balances, tx history, contra
 | blockberry  | `BLOCKBERRY_API_KEY`    | sui                                                                              | balances, tx history                                        |
 | koios       | none                    | cardano                                                                          | balances, tx detail/history, tokens                         |
 | arweave     | none                    | arweave                                                                          | balances, tx detail/history, block                          |
+| dcrdata     | none                    | decred                                                                           | balances                                                    |
 
 ## Conventions
 
@@ -68,6 +69,7 @@ Unified block explorer provider library. Normalizes balances, tx history, contra
 - Koios answers on POST with the address or hash in the request body, and the public instance rejects a body over 5120 bytes, so `getTxHistory` asks `tx_info` for 70 hashes at a time and reorders the answer, which comes back in the endpoint's own order
 - Koios `address_info` ships the whole UTxO set of an address, 222 kB for a busy one, so `getBalance` narrows the payload with the PostgREST `select` parameter; the endpoint still builds that set before it answers, and a busy address takes 3 to 9 seconds against the 15-second client timeout
 - Koios keeps the phase-2 validity flag behind the heavier `_scripts` payload, so a Cardano transaction reads as `success` even when a failing script consumed its collateral; `isContractInteraction` comes from the presence of collateral inputs
+- dcrdata implements only Decred balances through Insight `/addr/{address}?noTxList=1`. Amounts use atoms (8 decimals), adding the signed mempool delta to the confirmed balance. Funded/spent totals remain confirmed, snapshot height/hash are null, and the balance is not a spendability check. `baseUrl` is the Insight API root. Chain/address format checks use `@agntn/chains`; checksum validation belongs to the service. History throws `UnsupportedOperationError`, and optional methods remain absent.
 
 ## Architecture
 
@@ -87,7 +89,7 @@ graph TB
 
 - **CLI Layer** (`cli.ts`, `commands/*.ts`): citty-based CLI, lazy-loads subcommands via dynamic `import()`. `cli-args.ts` normalizes bare address input to `balance` subcommand.
 - **Core Layer** (`core/*.ts`): Domain types, provider registry (built lazily from the barrel list), HTTP client (ofetch, 15s timeout), ENS resolution (public APIs), input classification, error hierarchy.
-- **Provider Layer** (`providers/*.ts`): 13 providers. Each file defines API types, helper mappers and a concrete `Provider` subclass with a static registry key, exports that class, and ships as its own bundle so `create()` can import it alone.
+- **Provider Layer** (`providers/*.ts`): 14 providers. Each file defines API types, helper mappers and a concrete `Provider` subclass with a static registry key, exports that class, and ships as its own bundle so `create()` can import it alone.
 - **Pi Extension** (`packages/pi/extensions/explorers.ts`): Exposes 9 tools to Pi coding agent, matching the MCP server's tool set. Lazy-loads live `src/` from a checkout and the relative `dist/` module from an installed package, without self-importing the package by name. `packages/omp/extensions/explorers.ts` registers the same nine for OMP.
 
 ### Provider categories
@@ -95,7 +97,7 @@ graph TB
 1. **Multi-chain EVM** (etherscan, blockscout): support 10 EVM chains each
 2. **Bitcoin/Ethereum bridge** (blockchair): dashboard API for Bitcoin, Ethereum and eCash
 3. **Esplora-compatible UTXO** (mempool, blockstream): Mempool serves Bitcoin, Litecoin and Pepecoin; Blockstream serves Bitcoin as an independent backend
-4. **Single-chain non-EVM** (solscan, helius, ton, tronscan, aptos, blockberry, koios, arweave): capabilities mirror only their explorer APIs; Aptos is explicitly unsupported
+4. **Single-chain non-EVM** (solscan, helius, ton, tronscan, aptos, blockberry, koios, arweave, dcrdata): capabilities mirror only their explorer APIs; Aptos is explicitly unsupported
 
 ## Patterns
 
@@ -119,7 +121,7 @@ graph TB
 
 ## Test coverage gaps
 
-**Covered** (28 test files): provider base/registry, provider resolution, HTTP client, path safety, amount formatting, errors, input classification, chain normalization, CLI argument routing, extension integration, plus all thirteen providers.
+**Covered** (29 test files): provider base/registry, provider resolution, HTTP client, path safety, amount formatting, errors, input classification, chain normalization, CLI argument routing, extension integration, plus all fourteen providers.
 **Missing**: CLI command execution.
 **Test style**: Focused unit tests for local contracts and mocked explorer-API responses; public no-key providers may additionally use live roundtrips.
 
