@@ -102,6 +102,8 @@ if (provider.capabilities.contractInfo && provider.getContractInfo) {
 
 UTXO providers that expose cumulative totals add `funded` and `spent` to `Balance`, in the chain's smallest native unit.
 
+Mempool (Bitcoin, Litecoin and Pepecoin) and Blockstream keep `balance`, `funded` and `spent` confirmed. Their optional `unconfirmed` field is the signed mempool delta in base units: pending receipts minus pending spends. A negative value means pending activity reduces the balance. Add it to `balance` for a total including pending activity, not a spendability guarantee. Missing mempool statistics leave the field absent, not zero. The CLI and agent tools show the delta separately.
+
 Required operations live on `Provider`. Optional operations stay absent when a backend cannot serve them, so check both `capabilities` and the method before calling. Unsupported operations have no stub that returns convincing nonsense. Every successful `Balance` includes its ISO read time plus nullable block height and hash fields, so an unavailable chain position stays explicit.
 
 `create()` imports the provider it was asked for and nothing else, which is why it returns a promise. Everything the registry answers without an instance stays synchronous: `providers()`, `has()`, `supportsChain()`, `supportsCapability()`, `getDefaultURL()` and `resolveProvider()` read the metadata in `builtins`. Pass a capability as the third `resolveProvider()` argument when automatic selection must support a particular operation. A single backend can also skip the registry: `import { Mempool } from "@agntn/explorers/providers/mempool"` gives you the class and leaves the other providers out of your bundle.

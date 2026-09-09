@@ -126,11 +126,15 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
             addresses.map((address) => provider.getBalance(address, chain)),
           );
           const lines = balances.map((balance) => {
+            const unconfirmed =
+              balance.unconfirmed === undefined
+                ? ""
+                : `; unconfirmed delta ${balance.unconfirmed} base units`;
             const totals =
               balance.funded === undefined || balance.spent === undefined
                 ? ""
                 : `; funded ${balance.funded}, spent ${balance.spent}`;
-            return `[${name}] ${balance.chain} balance for ${balance.address}: ${balance.balanceFormatted} ${balance.symbol} (${balance.balance} base units${totals}${balanceContext(balance)})`;
+            return `[${name}] ${balance.chain} balance for ${balance.address}: ${balance.balanceFormatted} ${balance.symbol} (${balance.balance} base units${totals}${unconfirmed}${balanceContext(balance)})`;
           });
           return textResult(lines.join("\n"));
         },
