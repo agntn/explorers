@@ -1,7 +1,6 @@
 /** List registered providers and their capabilities */
 import { defineCommand } from "citty";
 import consola from "consola";
-import { create, providers as listProviders } from "../core/registry.js";
 
 export default defineCommand({
   meta: {
@@ -9,6 +8,7 @@ export default defineCommand({
     description: "List registered block explorer providers and capabilities",
   },
   async run() {
+    const { create, providers: listProviders } = await import("../core/registry.js");
     const names = listProviders();
     consola.info(`Registered providers (${names.length}):`);
     consola.log("");

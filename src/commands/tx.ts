@@ -1,9 +1,6 @@
 /** Transaction operations — history or detail (supports ENS) */
 import { defineCommand } from "citty";
 import consola from "consola";
-import { classifyInput, resolveInput } from "../core/input.js";
-import { PROVIDER_DEFAULT_CHAIN, resolveProvider } from "../core/resolve.js";
-import { normalizeChain } from "../core/types.js";
 import type { ChainKey, Transaction } from "../core/types.js";
 import {
   failCommand,
@@ -15,14 +12,15 @@ import type { SelectedProvider } from "./shared.js";
 
 type TransactionMode = "detail" | "history";
 
-function transactionMode(
+async function transactionMode(
   requested: string | undefined,
   target: string,
   chain: ChainKey,
-): TransactionMode {
+): Promise<TransactionMode> {
   if (requested !== undefined && requested !== "history" && requested !== "detail") {
     failCommand('Invalid --mode value (expected "history" or "detail")');
   }
+  const { classifyInput } = await import("../core/input.js");
   return requested ?? (classifyInput(target, chain) === "txhash" ? "detail" : "history");
 }
 
@@ -67,6 +65,7 @@ async function runHistory(
   target: string,
   limitInput: string,
 ): Promise<void> {
+  const { resolveInput } = await import("../core/input.js");
   const { address } = await resolveInput(target, selected.chain);
   const limit = parsePositiveInteger(limitInput, "Invalid --limit value");
   const transactions = await selected.provider.getTxHistory(address, selected.chain, { limit });
@@ -117,13 +116,17 @@ export default defineCommand({
   },
   async run({ args }) {
     try {
+      const [{ PROVIDER_DEFAULT_CHAIN, resolveProvider }, { normalizeChain }] = await Promise.all([
+        import("../core/resolve.js"),
+        import("../core/types.js"),
+      ]);
       const chainInput = args.chain as string | undefined;
       const providerInput = args.provider as string | undefined;
       const requestedChain = chainInput === undefined ? undefined : normalizeChain(chainInput);
       const initialName = resolveProvider(providerInput, requestedChain);
       const initialChain = requestedChain ?? normalizeChain(PROVIDER_DEFAULT_CHAIN[initialName]);
       const target = (args.target as string).trim();
-      const mode = transactionMode(args.mode as string | undefined, target, initialChain);
+      const mode = await transactionMode(args.mode as string | undefined, target, initialChain);
       await withSelectedProvider(
         initialChain,
         providerInput,

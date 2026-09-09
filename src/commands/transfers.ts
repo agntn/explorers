@@ -1,7 +1,6 @@
 /** List fungible-token transfers (supports ENS) */
 import { defineCommand } from "citty";
 import consola from "consola";
-import { resolveInput } from "../core/input.js";
 import type { TokenTransfer } from "../core/types.js";
 import {
   failCommand,
@@ -61,6 +60,7 @@ export default defineCommand({
   },
   async run({ args }) {
     try {
+      const { resolveInput } = await import("../core/input.js");
       await withSelectedProvider(
         args.chain as string | undefined,
         args.provider as string | undefined,
