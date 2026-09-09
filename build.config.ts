@@ -20,6 +20,7 @@ export default defineBuildConfig({
         "./src/providers/blockberry.ts",
         "./src/providers/koios.ts",
         "./src/providers/arweave.ts",
+        "./src/providers/dcrdata.ts",
       ],
     },
   ],

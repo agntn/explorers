@@ -27,6 +27,7 @@ const ENV_MAP: Record<string, string[]> = {
   blockberry: ["BLOCKBERRY_API_KEY"],
   koios: [],
   arweave: [],
+  dcrdata: [],
 };
 
 const OPTIONAL_CREDENTIAL_PROVIDERS: readonly string[] = ["blockchair"];
@@ -43,6 +44,7 @@ export const PROVIDER_DEFAULT_CHAIN: Partial<Record<string, ChainKey>> = {
   blockberry: "sui",
   koios: "cardano",
   arweave: "arweave",
+  dcrdata: "decred",
 };
 
 function hasConfiguredCredentials(envKeys: readonly string[]): boolean {

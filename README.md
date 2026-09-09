@@ -6,8 +6,8 @@ Block explorers keep returning roughly the same data in completely different for
 
 ## Features
 
-- **Thirteen providers, one contract.** Etherscan, Blockscout, Blockchair, Mempool, Blockstream, Solscan, Helius, TON, TRONSCAN, Aptos, Blockberry, Koios and Arweave.
-- **23 chains.** Ethereum, Base, Arbitrum, Optimism, Polygon, BSC, Avalanche, Gnosis, Linea, Berachain, zkSync, Scroll, Bitcoin, Litecoin, Pepecoin, eCash, Solana, TON, TRON, Aptos, Sui, Cardano and Arweave.
+- **Fourteen providers, one contract.** Etherscan, Blockscout, Blockchair, Mempool, Blockstream, Solscan, Helius, TON, TRONSCAN, Aptos, Blockberry, Koios, Arweave and dcrdata.
+- **24 chains.** Ethereum, Base, Arbitrum, Optimism, Polygon, BSC, Avalanche, Gnosis, Linea, Berachain, zkSync, Scroll, Bitcoin, Litecoin, Pepecoin, eCash, Solana, TON, TRON, Aptos, Sui, Cardano, Arweave and Decred.
 - **Explorer data stays explorer data.** A provider never quietly falls back to a fullnode RPC just to pretend an operation is supported.
 - **Amounts stay exact.** Native and token values use strings in the chain's smallest unit instead of lossy JavaScript numbers.
 - **CLI, library and agent extensions.** Use the same provider contract from a terminal, TypeScript, OMP or Pi.
@@ -125,6 +125,25 @@ Required operations live on `Provider`. Optional operations stay absent when a b
 | **blockberry**  | `BLOCKBERRY_API_KEY`          | sui                                                                                   | balances, tx history                                  |
 | **koios**       | None                          | cardano                                                                               | balances, tx detail/history, tokens                   |
 | **arweave**     | None                          | arweave                                                                               | balances, tx detail/history, block                    |
+| **dcrdata**     | None                          | decred                                                                                | balances, tx detail/history, block                    |
+
+`dcrdata` reads Decred balances, transactions and blocks without an API key. Balance calls use the [Insight address endpoint](https://github.com/decred/dcrdata/blob/master/docs/Insight_API_documentation.md#addr) with `noTxList=1`, not the full transaction list. Amounts come from integer atom fields (8 decimals), including the signed mempool balance delta. `funded` and `spent` cover confirmed activity only. Insight supplies no snapshot height or hash, so both stay `null`. These are indexed balances, not a guarantee that every output is mature or spendable.
+
+`baseUrl` is the Insight API root, defaulting to `https://explorer.dcrdata.org/insight/api`. Address shape and mainnet version checks come from `@agntn/chains`; dcrdata checks the checksum. History, transaction details and blocks use the same Insight API root. Contracts, tokens and gas quotes stay unsupported. Insight's `estimatefee` endpoint returns the node relay fee regardless of the confirmation target, not a fee-market estimate.
+
+```bash
+explorers balance Dcur2mcGjmENx4DhNqDctW5wJCVyT3Qeqkx -c dcr
+explorers balance Dcur2mcGjmENx4DhNqDctW5wJCVyT3Qeqkx -p dcrdata
+explorers tx Dcur2mcGjmENx4DhNqDctW5wJCVyT3Qeqkx -c dcr -n 2
+explorers tx 4b064b5a6255ed94bb9c4347e370c5ad034db4d0550e5bd6775cbed65015ebe3 -c dcr
+explorers block 1000 -c dcr
+```
+
+Decred history supports `limit` (1 to 250, default 100), `page` (starting at 1) and both sort directions. Ascending pages read from the end of the index, not a reversed page of recent transactions. If the total changes during that two-request read, retry it. Insight has no block-range filter, so `startBlock` and `endBlock` are rejected rather than silently ignored.
+
+A transaction's `to` and `value` describe one addressed output, not the total of all outputs. History prefers an external output for outgoing transactions and the queried address for incoming ones. Detail reads use the first addressed output. Data-only outputs are skipped, and all inputs, outputs and stake-specific scripts remain in `raw`. Decimal DCR output values and fees become integer atom strings without floating-point multiplication. `success` means positive confirmations, not an independent check of stake-vote approval; zero confirmations mean pending and negative confirmations mean failed. Coinbase and treasurybase fees are zero.
+
+Insight returns blocks as a one-element array. Its transaction list includes both regular and stake trees, so `txCount` counts both. There is no miner address in that response: `miner` stays empty. Decred has no gas, so block gas fields use `"0"`, as with the other non-EVM providers.
 
 `arweave` reads balances and blocks through the gateway's [wallet](https://docs.ar.io/apis/ar-io-node/wallets) and [block](https://docs.ar.io/apis/ar-io-node/blocks) REST endpoints, and transaction history and details through its [GraphQL index](https://docs.ar.io/apis/ar-io-node/index-querying). No API key is needed. `baseUrl` is the gateway root, defaulting to `https://arweave.net`; every request stays on that gateway, without a fallback to another node. Balance responses have no block height or hash, so both snapshot fields remain `null`. Arweave has no gas: block gas fields use `"0"`, following the existing non-EVM convention. Gas quotes, contracts and token holdings remain unsupported; `/price/{bytes}` quotes a storage cost, not a price per gas unit.
 
@@ -157,7 +176,7 @@ A new backend is five steps:
 
 1. Create a class extending `Provider` in `src/providers/`.
 2. Give it one unique `static readonly key`.
-3. Implement balances and transaction history, then advertise only the optional methods that really work.
+3. Implement supported operations and advertise their capabilities. Required methods without an implementation throw `UnsupportedOperationError`.
 4. Export the class.
 5. Add an entry to `builtins` in `src/providers/index.ts` with its chains, its public endpoint and a `load` that imports the module.
 6. Add the file to `build.config.ts` so it ships as its own bundle.
