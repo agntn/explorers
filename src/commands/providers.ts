@@ -21,7 +21,7 @@ export default defineCommand({
               .filter(([, supported]) => supported)
               .map(([capability]) => capability)
               .join(", ") || "(no supported explorer operations)";
-      consola.log(`  ${name}: ${capList} on ${chains.join(", ") || "no declared chains"}`);
+      consola.log(`  ${name}: ${capList}; chains: ${chains.join(", ") || "none"}`);
     }
 
     consola.log("");

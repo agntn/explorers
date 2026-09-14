@@ -98,7 +98,7 @@ ${offline}
     expect(result.status, result.stderr).toBe(0);
     expect(result.stdout).toContain("Registered providers (14)");
     expect(result.stdout).toContain(
-      "mempool: balances, txHistory, txDetail, gasData, blockInfo on bitcoin, litecoin, pepecoin",
+      "mempool: balances, txHistory, txDetail, gasData, blockInfo; chains: bitcoin, litecoin, pepecoin",
     );
     expect(result.stdout).toContain("etherscan: balances, txHistory");
     expect(result.stdout).not.toContain("requires API key");

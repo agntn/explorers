@@ -27,7 +27,9 @@ export interface ProviderListing {
   /**
    * Operations the provider declares, in the shape of the instance getter.
    *
-   * Absent when an external registration left capability metadata out.
+   * Declared for the provider as a whole, not per chain: a provider can still refuse one of them on
+   * one of its chains at call time. Absent when an external registration left capability metadata
+   * out.
    */
   readonly capabilities?: Readonly<ProviderCapabilities>;
 }
