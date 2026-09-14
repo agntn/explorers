@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import { getEsploraAddressHistory, selectEsploraRecipientOutput } from "../../src/core/esplora.js";
+import {
+  getEsploraAddressHistory,
+  getEsploraUtxos,
+  selectEsploraRecipientOutput,
+} from "../../src/core/esplora.js";
 
 const ADDRESS = "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa";
 
@@ -43,6 +47,58 @@ describe("Esplora recipient selection", () => {
     ]);
 
     expect(output).toEqual({ address: null, value: 1 });
+  });
+});
+
+describe("Esplora unspent outputs", () => {
+  it("rejects an unsafe address before requesting outputs", async () => {
+    const fetchUtxos = vi.fn(async () => []);
+
+    await expect(getEsploraUtxos("../admin", fetchUtxos)).rejects.toThrow(/separator|traversal/);
+    expect(fetchUtxos).not.toHaveBeenCalled();
+  });
+
+  it("keeps a large value exact and leaves a mempool output without a block", async () => {
+    const fetchUtxos = vi.fn(async () => [
+      {
+        txid: "a".repeat(64),
+        vout: 1,
+        value: "9007199254740993",
+        status: {
+          confirmed: true,
+          block_height: 947_507,
+          block_hash: "b".repeat(64),
+          block_time: 1_749_188_499,
+        },
+      },
+      { txid: "c".repeat(64), vout: 0, value: 546, status: { confirmed: false } },
+    ]);
+
+    const utxos = await getEsploraUtxos(ADDRESS, fetchUtxos);
+
+    expect(fetchUtxos.mock.calls.map(([path]) => path)).toEqual([`/api/address/${ADDRESS}/utxo`]);
+    expect(utxos).toEqual([
+      {
+        txid: "a".repeat(64),
+        vout: 1,
+        value: "9007199254740993",
+        valueFormatted: "90071992.54740993",
+        confirmed: true,
+        blockNumber: 947_507,
+        blockHash: "b".repeat(64),
+        timestamp: "2025-06-06T05:41:39.000Z",
+      },
+      {
+        txid: "c".repeat(64),
+        vout: 0,
+        value: "546",
+        valueFormatted: "0.00000546",
+        confirmed: false,
+        blockNumber: null,
+        blockHash: null,
+        timestamp: undefined,
+      },
+    ]);
   });
 });
 

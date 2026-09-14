@@ -97,6 +97,7 @@ describe("explorers Pi extension", () => {
       "explorers_balance",
       "explorers_tx_history",
       "explorers_tx_detail",
+      "explorers_utxos",
       "explorers_contract",
       "explorers_tokens",
       "explorers_token_transfers",
@@ -202,7 +203,7 @@ describe("explorers Pi extension", () => {
     ]);
     const text = result.content[0]?.text ?? "";
     expect(text).toContain(
-      "\n  mempool: balances, txHistory, txDetail, gasData, blockInfo; chains: bitcoin, litecoin, pepecoin; endpoint: https://mempool.space\n",
+      "\n  mempool: balances, txHistory, txDetail, utxos, gasData, blockInfo; chains: bitcoin, litecoin, pepecoin; endpoint: https://mempool.space\n",
     );
     expect(text).toContain("\n  aptos: no supported explorer operations; chains: aptos\n");
     expect(raw).toMatchObject({
@@ -463,8 +464,51 @@ describe("explorers Pi extension", () => {
     );
   });
 
+  it("lists unspent outputs as outpoints with their confirmation state", async () => {
+    const address = "bc1qexample";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify([
+              {
+                txid: "a".repeat(64),
+                vout: 1,
+                value: 100_000,
+                status: { confirmed: true, block_height: 947_507, block_time: 1 },
+              },
+              { txid: "c".repeat(64), vout: 0, value: 546, status: { confirmed: false } },
+            ]),
+            { headers: { "Content-Type": "application/json" } },
+          ),
+      ),
+    );
+    const tool = requireTool(registerExtensionTools(), "explorers_utxos");
+
+    const result = parseToolResult(
+      await tool.execute(
+        "test",
+        { address, chain: "bitcoin", provider: "mempool" },
+        undefined,
+        undefined,
+        unusedContext,
+      ),
+    );
+    const text = result.content.find((part) => part.type === "text")?.text ?? "";
+
+    expect(text).toBe(
+      [
+        `[mempool] 2 unspent outputs for ${address} on bitcoin, 100000 base units confirmed, 1 pending:`,
+        `  ${"a".repeat(64)}:1  0.001 (100000 base units)  [block 947507]`,
+        `  ${"c".repeat(64)}:0  0.00000546 (546 base units)  [pending]`,
+      ].join("\n"),
+    );
+  });
+
   it.each([
     ["explorers_tx_detail", { hash: "0xdead", provider: "aptos" }, "getTxDetail"],
+    ["explorers_utxos", { address: "0x1", provider: "aptos" }, "getUtxos"],
     ["explorers_contract", { address: "0x1", provider: "aptos" }, "getContractInfo"],
     ["explorers_tokens", { address: "0x1", provider: "aptos" }, "getTokenBalances"],
     ["explorers_token_transfers", { address: "0x1", provider: "aptos" }, "getTokenTransfers"],

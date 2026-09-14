@@ -13,7 +13,12 @@ import { assertSafePathSegment } from "../core/path-safety.js";
 import { Provider } from "../core/provider.js";
 import { normalizeBaseUrl } from "../core/client.js";
 import { formatWei } from "../core/types.js";
-import { getEsploraAddressHistory, selectEsploraRecipientOutput } from "../core/esplora.js";
+import {
+  getEsploraAddressHistory,
+  getEsploraUtxos,
+  selectEsploraRecipientOutput,
+} from "../core/esplora.js";
+import type { EsploraUnspentOutput } from "../core/esplora.js";
 import type {
   Balance,
   BlockInfo,
@@ -24,6 +29,7 @@ import type {
   Transaction,
   TxHistoryOptions,
   TxStatus,
+  Utxo,
 } from "../core/types.js";
 
 const DEFAULT_BASE = "https://blockstream.info";
@@ -153,6 +159,7 @@ export class Blockstream extends Provider {
       balances: true,
       txHistory: true,
       txDetail: true,
+      utxos: true,
       contractInfo: false,
       tokenBalances: false,
       tokenTransfers: false,
@@ -204,6 +211,13 @@ export class Blockstream extends Provider {
     );
 
     return transactions.map((transaction) => mapAddressTx(transaction, address));
+  }
+
+  override async getUtxos(address: string, chain?: ChainKey): Promise<Utxo[]> {
+    const selectedChain = chain ?? this.defaultChain;
+    return getEsploraUtxos(address, async (path) =>
+      this.api<EsploraUnspentOutput[]>(selectedChain, path),
+    );
   }
 
   override async getTxDetail(hash: string, chain?: ChainKey): Promise<Transaction> {

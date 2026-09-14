@@ -20,6 +20,7 @@ import type {
   TxStatus,
   TokenTransfer,
   OpReturnPayload,
+  Utxo,
 } from "../core/types.js";
 import { Provider } from "../core/provider.js";
 import { normalizeBaseUrl } from "../core/client.js";
@@ -27,7 +28,12 @@ import { NotFoundError, UnsupportedChainError, UnsupportedOperationError } from 
 import { create as createChain } from "@agntn/chains";
 import { formatWei } from "../core/types.js";
 import { assertSafePathSegment } from "../core/path-safety.js";
-import { getEsploraAddressHistory, selectEsploraRecipientOutput } from "../core/esplora.js";
+import {
+  getEsploraAddressHistory,
+  getEsploraUtxos,
+  selectEsploraRecipientOutput,
+} from "../core/esplora.js";
+import type { EsploraUnspentOutput } from "../core/esplora.js";
 
 const DEFAULT_BASE = "https://mempool.space";
 
@@ -403,6 +409,7 @@ export class Mempool extends Provider {
       balances: true,
       txHistory: true,
       txDetail: true,
+      utxos: true,
       contractInfo: false,
       tokenBalances: false,
       tokenTransfers: false,
@@ -465,6 +472,11 @@ export class Mempool extends Provider {
     );
 
     return transactions.map((tx) => mapTx(tx, address));
+  }
+
+  override async getUtxos(address: string, chain?: ChainKey): Promise<Utxo[]> {
+    const c = chain ?? this.defaultChain;
+    return getEsploraUtxos(address, async (path) => this.api<EsploraUnspentOutput[]>(c, path));
   }
 
   override async getTxDetail(hash: string, chain?: ChainKey): Promise<Transaction> {

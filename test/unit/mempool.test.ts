@@ -75,6 +75,7 @@ describe("mempool provider", () => {
     expect(caps.balances).toBe(true);
     expect(caps.txHistory).toBe(true);
     expect(caps.txDetail).toBe(true);
+    expect(caps.utxos).toBe(true);
     expect(caps.gasData).toBe(true);
     expect(caps.blockInfo).toBe(true);
     expect(caps.contractInfo).toBe(false);
@@ -163,6 +164,37 @@ describe("mempool provider", () => {
       expect(fetch).not.toHaveBeenCalled();
     },
   );
+
+  it("lists unspent outputs from the Esplora utxo endpoint", async () => {
+    const fetch = stubJSON([
+      {
+        txid: "a".repeat(64),
+        vout: 1,
+        value: 100_000,
+        status: { confirmed: true, block_height: 1 },
+      },
+    ]);
+
+    const utxos = await provider.getUtxos!(KNOWN_BTC, "bitcoin");
+
+    expect(String(fetch.mock.calls[0]?.[0])).toBe(
+      `https://mempool.space/api/address/${KNOWN_BTC}/utxo`,
+    );
+    expect(utxos).toEqual([
+      expect.objectContaining({ txid: "a".repeat(64), vout: 1, value: "100000", blockNumber: 1 }),
+    ]);
+  });
+
+  it("routes Pepecoin unspent outputs to peppool.space", async () => {
+    const fetch = stubJSON([]);
+
+    const utxos = await provider.getUtxos!(KNOWN_PEP, "pepecoin");
+
+    expect(String(fetch.mock.calls[0]?.[0])).toBe(
+      `https://peppool.space/api/address/${KNOWN_PEP}/utxo`,
+    );
+    expect(utxos).toEqual([]);
+  });
 
   it("labels litecoin fee estimates in litoshi/vB", async () => {
     stubJSON({ fastestFee: 2, halfHourFee: 1, hourFee: 1, economyFee: 1, minimumFee: 1 });

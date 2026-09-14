@@ -12,6 +12,7 @@ const main = defineCommand({
   subCommands: {
     balance: () => import("./commands/balance.js").then((m) => m.default),
     tx: () => import("./commands/tx.js").then((m) => m.default),
+    utxos: () => import("./commands/utxos.js").then((m) => m.default),
     contract: () => import("./commands/contract.js").then((m) => m.default),
     tokens: () => import("./commands/tokens.js").then((m) => m.default),
     transfers: () => import("./commands/transfers.js").then((m) => m.default),

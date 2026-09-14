@@ -94,6 +94,7 @@ class DisabledProvider extends Provider {
       balances: false,
       txHistory: false,
       txDetail: false,
+      utxos: false,
       contractInfo: false,
       tokenBalances: false,
       tokenTransfers: false,
@@ -130,6 +131,7 @@ class ContractProvider extends DisabledProvider {
       balances: false,
       txHistory: false,
       txDetail: false,
+      utxos: false,
       contractInfo: true,
       tokenBalances: false,
       tokenTransfers: false,
@@ -167,6 +169,44 @@ describe("Explorers MCP server", () => {
     expect(JSON.parse(text)).toMatchObject({
       provider: "mempool",
       data: { balance: "8000", unconfirmed: "-6000" },
+    });
+  });
+
+  it("lists unspent outputs with their funding block through MCP", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json([
+          {
+            txid: "a".repeat(64),
+            vout: 1,
+            value: "9007199254740993",
+            status: { confirmed: true, block_height: 947_507, block_hash: "b".repeat(64) },
+          },
+        ]),
+      ),
+    );
+    const client = await connectTestClient();
+    const result = parseToolResult(
+      await client.callTool({
+        name: "explorers_utxos",
+        arguments: { address: "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh", chain: "bitcoin" },
+      }),
+    );
+    expect(result.isError).toBe(false);
+    expect(JSON.parse(result.content[0]?.text ?? "null")).toEqual({
+      provider: "mempool",
+      data: [
+        {
+          txid: "a".repeat(64),
+          vout: 1,
+          value: "9007199254740993",
+          valueFormatted: "90071992.54740993",
+          confirmed: true,
+          blockNumber: 947_507,
+          blockHash: "b".repeat(64),
+        },
+      ],
     });
   });
 
@@ -237,6 +277,7 @@ describe("Explorers MCP server", () => {
       "explorers_balance",
       "explorers_tx_history",
       "explorers_tx_detail",
+      "explorers_utxos",
       "explorers_contract",
       "explorers_tokens",
       "explorers_token_transfers",
@@ -453,6 +494,11 @@ describe("Explorers MCP server", () => {
     {
       tool: "explorers_tx_history",
       operation: "getTxHistory",
+      arguments: { address: "0x1", provider: DisabledProvider.key },
+    },
+    {
+      tool: "explorers_utxos",
+      operation: "getUtxos",
       arguments: { address: "0x1", provider: DisabledProvider.key },
     },
   ])("honors the disabled capability for $tool", async ({ tool, operation, arguments: args }) => {

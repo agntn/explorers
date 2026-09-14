@@ -78,14 +78,14 @@ export const builtins: readonly ProviderEntry[] = [
   {
     key: "mempool",
     chains: ["bitcoin", "litecoin", "pepecoin"],
-    capabilities: ["balances", "txHistory", "txDetail", "gasData", "blockInfo"],
+    capabilities: ["balances", "txHistory", "txDetail", "utxos", "gasData", "blockInfo"],
     defaultURL: "https://mempool.space",
     load: () => import("./mempool.js").then((m) => m.Mempool),
   },
   {
     key: "blockstream",
     chains: ["bitcoin"],
-    capabilities: ["balances", "txHistory", "txDetail", "blockInfo"],
+    capabilities: ["balances", "txHistory", "txDetail", "utxos", "blockInfo"],
     defaultURL: "https://blockstream.info",
     load: () => import("./blockstream.js").then((m) => m.Blockstream),
   },

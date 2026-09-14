@@ -142,6 +142,7 @@ export class Helius extends Provider {
       balances: false,
       txHistory: true,
       txDetail: true,
+      utxos: false,
       contractInfo: false,
       tokenBalances: true,
       tokenTransfers: false,

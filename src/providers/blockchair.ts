@@ -195,6 +195,7 @@ export class Blockchair extends Provider {
       balances: true,
       txHistory: true,
       txDetail: true,
+      utxos: false,
       contractInfo: false,
       tokenBalances: false,
       tokenTransfers: false,

@@ -80,6 +80,26 @@ export interface Transaction {
   raw?: Record<string, unknown>;
 }
 
+/** Unspent output an address still controls */
+export interface Utxo {
+  /** Transaction that created the output */
+  txid: string;
+  /** Output index inside that transaction */
+  vout: number;
+  /** Value in the chain's smallest native unit */
+  value: string;
+  /** Human-readable value in native token */
+  valueFormatted: string;
+  /** Whether the funding transaction is in a block */
+  confirmed: boolean;
+  /** Block number of the funding transaction, or null while it waits in the mempool */
+  blockNumber: number | null;
+  /** Block hash of the funding transaction, or null while it waits in the mempool */
+  blockHash: string | null;
+  /** Timestamp (ISO) of the funding block */
+  timestamp?: string;
+}
+
 /** Normalized address balance */
 export interface Balance {
   /** Address */
@@ -205,6 +225,8 @@ export interface ProviderCapabilities {
   txHistory: boolean;
   /** Can get single tx detail */
   txDetail: boolean;
+  /** Can list the unspent outputs of an address */
+  utxos: boolean;
   /** Can get contract info (ABI, source) */
   contractInfo: boolean;
   /** Can get token holdings for address */

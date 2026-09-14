@@ -34,6 +34,7 @@ describe("CLI loading", () => {
     "",
     "balance",
     "tx",
+    "utxos",
     "contract",
     "tokens",
     "transfers",
@@ -66,6 +67,7 @@ ${offline}
   it.each([
     ["balance", "address"],
     ["tx", "address"],
+    ["utxos", "address"],
     ["contract", "address"],
     ["tokens", "address"],
     ["transfers", "address"],
@@ -98,7 +100,7 @@ ${offline}
     expect(result.status, result.stderr).toBe(0);
     expect(result.stdout).toContain("Registered providers (14)");
     expect(result.stdout).toContain(
-      "mempool: balances, txHistory, txDetail, gasData, blockInfo; chains: bitcoin, litecoin, pepecoin",
+      "mempool: balances, txHistory, txDetail, utxos, gasData, blockInfo; chains: bitcoin, litecoin, pepecoin",
     );
     expect(result.stdout).toContain("etherscan: balances, txHistory");
     expect(result.stdout).not.toContain("requires API key");
@@ -109,6 +111,10 @@ ${offline}
     [["balance", "bc1qexample", "--provider", "mempool"], "Unconfirmed delta: -600 base units"],
     [["tx", "bc1qexample", "--provider", "mempool", "--mode", "history"], "0 transactions"],
     [["tx", "a".repeat(64), "--provider", "mempool"], "Value: 0.00001"],
+    [
+      ["utxos", "bc1qexample", "--provider", "mempool"],
+      "b".repeat(64) + ":0  0.00001  [block 1000]",
+    ],
   ] as const)("executes reads after loading the backend: %j", (args, expected) => {
     const result = runCLI(
       args,
@@ -121,6 +127,9 @@ globalThis.fetch = async (input) => {
     status: { confirmed: true, block_height: 1000, block_time: 1700000000 },
   });
   if (url.endsWith("/address/bc1qexample/txs")) return new Response("[]");
+  if (url.endsWith("/address/bc1qexample/utxo")) return Response.json([
+    { txid: "b".repeat(64), vout: 0, value: 1000, status: { confirmed: true, block_height: 1000 } },
+  ]);
   if (url.endsWith("/address/bc1qexample")) return Response.json({
     chain_stats: { funded_txo_sum: 1000, spent_txo_sum: 0, tx_count: 0 },
     mempool_stats: { funded_txo_sum: 0, spent_txo_sum: 600, tx_count: 1 },
