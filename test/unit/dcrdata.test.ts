@@ -52,6 +52,7 @@ describe("dcrdata balances", () => {
       balanceFormatted: "40472.13133726",
       funded: "112982935252499",
       spent: "108935722118773",
+      unconfirmed: "0",
       blockNumber: null,
       blockHash: null,
     });
@@ -65,12 +66,13 @@ describe("dcrdata balances", () => {
   });
 
   it.each([100000001, -100000001, 0])(
-    "includes a signed mempool delta of %s atoms",
+    "reports a signed mempool delta of %s atoms without touching the balance",
     async (delta) => {
       const fetch = stub({ ...summary(), balanceSat: 200000000, unconfirmedBalanceSat: delta });
       const provider = await create("dcrdata", { baseUrl: "https://example.test/custom///" });
       const result = await provider.getBalance(ADDRESS);
-      expect(result.balance).toBe(String(200000000n + BigInt(delta)));
+      expect(result.balance).toBe("200000000");
+      expect(result.unconfirmed).toBe(String(delta));
       expect(fetch).toHaveBeenCalledWith(
         `https://example.test/custom/addr/${ADDRESS}?noTxList=1`,
         expect.objectContaining({ method: "GET" }),
@@ -90,10 +92,11 @@ describe("dcrdata balances", () => {
     );
     const provider = await create("dcrdata");
     expect(await provider.getBalance(ADDRESS)).toMatchObject({
-      balance: "9007199254740992",
-      balanceFormatted: "90071992.54740992",
+      balance: "9007199254740993",
+      balanceFormatted: "90071992.54740993",
       funded: "9007199254740995",
       spent: "2",
+      unconfirmed: "-1",
     });
   });
 

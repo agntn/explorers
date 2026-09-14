@@ -235,7 +235,13 @@ describe("Explorers MCP server", () => {
     const balance: unknown = JSON.parse(result.content[0]?.text ?? "null");
     expect(balance).toMatchObject({
       provider: "dcrdata",
-      data: { chain: "decred", balance: "100000000", balanceFormatted: "1", symbol: "DCR" },
+      data: {
+        chain: "decred",
+        balance: "100000001",
+        balanceFormatted: "1.00000001",
+        unconfirmed: "-1",
+        symbol: "DCR",
+      },
     });
   });
 

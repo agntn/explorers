@@ -178,8 +178,9 @@ describe("explorers Pi extension", () => {
     );
     expect(result.isError).toBe(false);
     expect(result.content[0]?.text).toContain(
-      `[dcrdata] decred balance for ${address}: 1 DCR (100000000 base units;`,
+      `[dcrdata] decred balance for ${address}: 1.00000001 DCR (100000001 base units;`,
     );
+    expect(result.content[0]?.text).toContain("; unconfirmed delta -1 base units");
   });
 
   it("lists provider chains, capabilities, and endpoints without network access", async () => {
