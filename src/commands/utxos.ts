@@ -1,8 +1,7 @@
 /** List the unspent outputs an address still controls */
 import { defineCommand } from "citty";
-import consola from "consola";
 import type { Utxo } from "../core/types.js";
-import { failCommand, reportCommandError, withSelectedProvider } from "./shared.js";
+import { failCommand, print, reportCommandError, withSelectedProvider } from "./shared.js";
 
 function renderUtxos(
   providerName: string,
@@ -12,15 +11,15 @@ function renderUtxos(
 ): void {
   const confirmed = utxos.filter((utxo) => utxo.confirmed);
   const total = confirmed.reduce((sum, utxo) => sum + BigInt(utxo.value), 0n);
-  consola.log(`[${providerName}] ${utxos.length} unspent outputs for ${address} on ${chain}`);
-  consola.log(`  Confirmed total: ${total} base units`);
+  print(`[${providerName}] ${utxos.length} unspent outputs for ${address} on ${chain}`);
+  print(`  Confirmed total: ${total} base units`);
   if (confirmed.length < utxos.length) {
-    consola.log(`  Pending: ${utxos.length - confirmed.length}`);
+    print(`  Pending: ${utxos.length - confirmed.length}`);
   }
-  consola.log("");
+  print("");
   for (const utxo of utxos) {
     const position = utxo.confirmed ? `block ${utxo.blockNumber ?? "unknown"}` : "pending";
-    consola.log(`  ${utxo.txid}:${utxo.vout}  ${utxo.valueFormatted}  [${position}]`);
+    print(`  ${utxo.txid}:${utxo.vout}  ${utxo.valueFormatted}  [${position}]`);
   }
 }
 

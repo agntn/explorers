@@ -1,7 +1,7 @@
 /** List fungible token holdings (supports ENS) */
 import { defineCommand } from "citty";
 import consola from "consola";
-import { withSelectedProvider } from "./shared.js";
+import { print, withSelectedProvider } from "./shared.js";
 
 export default defineCommand({
   meta: {
@@ -40,11 +40,11 @@ export default defineCommand({
           }
           const { address } = await resolveInput(args.address as string, chain);
           const tokens = await provider.getTokenBalances(address, chain, { nonZeroOnly: true });
-          consola.log(`[${name}] ${tokens.length} tokens for ${address} on ${chain}`);
-          consola.log("");
+          print(`[${name}] ${tokens.length} tokens for ${address} on ${chain}`);
+          print("");
           for (const token of tokens) {
             const usd = token.valueUsd ? ` ($${token.valueUsd.toFixed(2)})` : "";
-            consola.log(
+            print(
               `  ${token.symbol}: ${token.balanceFormatted}${usd}  [${token.contract.slice(0, 10)}…]`,
             );
           }

@@ -1,6 +1,7 @@
 /** Get native token balance for one or more addresses (supports ENS) */
 import { defineCommand } from "citty";
 import consola from "consola";
+import { print } from "./shared.js";
 
 export default defineCommand({
   meta: {
@@ -44,20 +45,20 @@ export default defineCommand({
             addresses.map((address) => provider.getBalance(address, chain)),
           );
           for (const balance of balances) {
-            consola.log(`[${name}] ${balance.chain} balance for ${balance.address}`);
-            consola.log(`  ${balance.balanceFormatted} ${balance.symbol}`);
-            consola.log(`  Raw: ${balance.balance} base units`);
+            print(`[${name}] ${balance.chain} balance for ${balance.address}`);
+            print(`  ${balance.balanceFormatted} ${balance.symbol}`);
+            print(`  Raw: ${balance.balance} base units`);
             if (balance.unconfirmed !== undefined) {
-              consola.log(`  Unconfirmed delta: ${balance.unconfirmed} base units`);
+              print(`  Unconfirmed delta: ${balance.unconfirmed} base units`);
             }
-            consola.log(`  Fetched: ${balance.fetchedAt}`);
-            consola.log(`  Block: ${balance.blockNumber ?? "unknown"}`);
+            print(`  Fetched: ${balance.fetchedAt}`);
+            print(`  Block: ${balance.blockNumber ?? "unknown"}`);
             if (balance.blockHash !== null) {
-              consola.log(`  Block hash: ${balance.blockHash}`);
+              print(`  Block hash: ${balance.blockHash}`);
             }
             if (balance.funded !== undefined && balance.spent !== undefined) {
-              consola.log(`  Funded: ${balance.funded} base units`);
-              consola.log(`  Spent: ${balance.spent} base units`);
+              print(`  Funded: ${balance.funded} base units`);
+              print(`  Spent: ${balance.spent} base units`);
             }
           }
         },
