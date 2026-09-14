@@ -1,8 +1,12 @@
 /** Provider registry for Explorers, built from the built-in list on first use */
 
 import { builtins } from "../providers/index.js";
-import { Provider } from "./provider.js";
-import type { ProviderCapability, ProviderConstructor, ProviderMeta } from "./provider.js";
+import type {
+  Provider,
+  ProviderCapability,
+  ProviderConstructor,
+  ProviderMeta,
+} from "./provider.js";
 import type { ChainKey, ProviderCapabilities, ProviderConfig } from "./types.js";
 import { UnknownProviderError } from "./errors.js";
 
