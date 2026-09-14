@@ -228,6 +228,7 @@ export class Koios extends Provider {
       balances: true,
       txHistory: true,
       txDetail: true,
+      utxos: false,
       contractInfo: false,
       tokenBalances: true,
       tokenTransfers: false,

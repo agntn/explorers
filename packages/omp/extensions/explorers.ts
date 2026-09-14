@@ -73,6 +73,26 @@ async function resolveAddress(
   return address;
 }
 
+/* One line per output: the outpoint, its value, and the block that funded it. */
+function describeUtxo(utxo: Readonly<ExplorersModule.Utxo>): string {
+  const position = utxo.confirmed ? `block ${utxo.blockNumber ?? "unknown"}` : "pending";
+  return `  ${utxo.txid}:${utxo.vout}  ${utxo.valueFormatted} (${utxo.value} base units)  [${position}]`;
+}
+
+function describeUtxos(
+  name: string,
+  address: string,
+  chain: ExplorersModule.ChainKey,
+  utxos: readonly Readonly<ExplorersModule.Utxo>[],
+): string {
+  const confirmed = utxos.filter((utxo) => utxo.confirmed);
+  const total = confirmed.reduce((sum, utxo) => sum + BigInt(utxo.value), 0n);
+  const pending = utxos.length - confirmed.length;
+  const suffix = pending > 0 ? `, ${pending} pending` : "";
+  const header = `[${name}] ${utxos.length} unspent outputs for ${address} on ${chain}, ${total} base units confirmed${suffix}:`;
+  return [header, ...utxos.map(describeUtxo)].join("\n");
+}
+
 /* One line per provider: supported operations, declared chains, and the public endpoint. */
 function describeProvider(listing: Readonly<ExplorersModule.ProviderListing>): string {
   const operations =
@@ -308,6 +328,45 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
       if (expanded) lines.push(...expandedLines());
 
       return new Text(lines.join("\n"), 0, 0);
+    },
+  });
+
+  const utxosParameters = Type.Object({
+    address: Type.String({ description: "Blockchain address" }),
+    chain: Type.Optional(Type.String({ description: "Chain" })),
+    provider: Type.Optional(Type.String({ description: "Provider" })),
+  });
+
+  pi.registerTool({
+    name: "explorers_utxos",
+    label: "Explorers UTXOs",
+    description:
+      "List the unspent outputs a Bitcoin-like address still controls, each as txid and vout with its value in base units and whether its funding transaction is confirmed. Use it when a balance total is not enough to prove what an address can spend.",
+    parameters: utxosParameters,
+    approval: "read",
+    renderCall(args, _options, _theme) {
+      return new Text(
+        sanitizeTerminalText(
+          `Unspent outputs: ${args.address} (${args.chain ?? "provider default"})`,
+        ),
+        0,
+        0,
+      );
+    },
+    async execute(_toolCallId, params) {
+      return withSelected(
+        params.provider,
+        params.chain,
+        "utxos",
+        async ({ chain, lib, name, provider }) => {
+          if (!provider.capabilities.utxos || !provider.getUtxos) {
+            throw new lib.UnsupportedOperationError("getUtxos", name);
+          }
+          const address = await resolveAddress(lib.resolveAddresses, params.address, chain);
+          const utxos = await provider.getUtxos(address, chain);
+          return textResult(describeUtxos(name, address, chain, utxos));
+        },
+      );
     },
   });
 

@@ -19,6 +19,7 @@ type ProviderOperation =
   | "getBalance"
   | "getTxHistory"
   | "getTxDetail"
+  | "getUtxos"
   | "getContractInfo"
   | "getTokenBalances"
   | "getTokenTransfers"
@@ -28,6 +29,7 @@ const OPERATION_CAPABILITIES = {
   getBalance: "balances",
   getTxHistory: "txHistory",
   getTxDetail: "txDetail",
+  getUtxos: "utxos",
   getContractInfo: "contractInfo",
   getTokenBalances: "tokenBalances",
   getTokenTransfers: "tokenTransfers",
@@ -161,6 +163,22 @@ export function createMcpServer(): McpServer {
       withSelectedProvider(provider, chain, "getTxDetail", async (selected) => {
         const getTxDetail = requireOperation(selected.provider, "getTxDetail");
         return providerResult(selected.name, await getTxDetail(hash, selected.chain));
+      }),
+  );
+
+  server.registerTool(
+    "explorers_utxos",
+    {
+      description:
+        "List the unspent outputs a Bitcoin-like address still controls, each as txid and vout with its value in base units and confirmation state",
+      inputSchema: { address: z.string().min(1), ...providerInput },
+      annotations: { readOnlyHint: true },
+    },
+    async ({ address, chain, provider }) =>
+      withSelectedProvider(provider, chain, "getUtxos", async (selected) => {
+        const resolvedAddress = await addressForChain(address, selected.chain);
+        const getUtxos = requireOperation(selected.provider, "getUtxos");
+        return providerResult(selected.name, await getUtxos(resolvedAddress, selected.chain));
       }),
   );
 

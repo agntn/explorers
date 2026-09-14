@@ -133,6 +133,7 @@ export class Ton extends Provider {
       balances: true,
       txHistory: true,
       txDetail: false,
+      utxos: false,
       contractInfo: false,
       tokenBalances: false,
       tokenTransfers: false,

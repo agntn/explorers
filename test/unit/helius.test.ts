@@ -87,6 +87,7 @@ describe("helius provider", () => {
       balances: false,
       txHistory: true,
       txDetail: true,
+      utxos: false,
       contractInfo: false,
       tokenBalances: true,
       tokenTransfers: false,

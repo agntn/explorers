@@ -6,6 +6,7 @@ export type {
   OpReturnPayload,
   Transaction,
   Balance,
+  Utxo,
   TokenBalance,
   ContractInfo,
   GasData,

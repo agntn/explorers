@@ -35,6 +35,7 @@ describe("blockberry provider", () => {
       balances: true,
       txHistory: true,
       txDetail: false,
+      utxos: false,
       contractInfo: false,
       tokenBalances: false,
       tokenTransfers: false,

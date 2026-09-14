@@ -1,7 +1,11 @@
 import { assertSafePathSegment } from "./path-safety.js";
-import { clampMaxResults } from "./types.js";
+import { clampMaxResults, formatWei, toTimestamp } from "./types.js";
+import type { Utxo } from "./types.js";
 
 const CHAIN_PAGE_SIZE = 25;
+
+/** Every Esplora backend served here counts in satoshi-sized units. */
+const ESPLORA_DECIMALS = 8;
 
 interface EsploraAddressTransaction {
   txid: string;
@@ -12,6 +16,49 @@ interface EsploraOutput {
   readonly scriptpubkey_address?: string;
   readonly scriptpubkey_type: string;
   readonly value: number | string;
+}
+
+export interface EsploraUnspentOutput {
+  readonly txid: string;
+  readonly vout: number;
+  readonly value: number | string;
+  readonly status: {
+    readonly confirmed: boolean;
+    readonly block_height?: number;
+    readonly block_hash?: string;
+    readonly block_time?: number;
+  };
+}
+
+function mapEsploraUtxo(raw: Readonly<EsploraUnspentOutput>): Utxo {
+  const value = String(raw.value);
+  return {
+    txid: raw.txid,
+    vout: raw.vout,
+    value,
+    valueFormatted: formatWei(value, ESPLORA_DECIMALS),
+    confirmed: raw.status.confirmed,
+    blockNumber: raw.status.block_height ?? null,
+    blockHash: raw.status.block_hash ?? null,
+    timestamp: raw.status.block_time ? toTimestamp(raw.status.block_time) : undefined,
+  };
+}
+
+/**
+ * Fetch the unspent outputs of an Esplora address, in the order the backend lists them.
+ *
+ * @param {string} address - The `address` value.
+ * @param {(path: string) => Promise<readonly EsploraUnspentOutput[]>} fetchUtxos - Read one
+ *   provider path.
+ * @returns {Promise<Utxo[]>} The resulting value.
+ */
+export async function getEsploraUtxos(
+  address: string,
+  fetchUtxos: (path: string) => Promise<readonly EsploraUnspentOutput[]>,
+): Promise<Utxo[]> {
+  assertSafePathSegment(address, "address");
+  const outputs = await fetchUtxos(`/api/address/${encodeURIComponent(address)}/utxo`);
+  return outputs.map(mapEsploraUtxo);
 }
 
 function confirmedHistoryPath(encodedAddress: string, encodedCursor: string): string {

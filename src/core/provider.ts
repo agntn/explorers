@@ -11,6 +11,7 @@ import type {
   TokenTransferOptions,
   Transaction,
   TxHistoryOptions,
+  Utxo,
 } from "./types.js";
 import { getJSON, postJSON } from "./client.js";
 import type { ClientRequestOptions } from "./client.js";
@@ -138,6 +139,9 @@ export interface ProviderEntry extends ProviderMeta {
 export interface Provider {
   /** Fetch one transaction by its hash. */
   getTxDetail?(hash: string, chain?: ChainKey): Promise<Transaction>;
+
+  /** List the unspent outputs an address still controls, on chains that track them. */
+  getUtxos?(address: string, chain?: ChainKey): Promise<Utxo[]>;
 
   /** Fetch available metadata, ABI, and source for a contract address. */
   getContractInfo?(address: string, chain?: ChainKey): Promise<ContractInfo>;

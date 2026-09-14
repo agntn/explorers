@@ -2,7 +2,7 @@
 
 Thirteen block explorer APIs, one shape.
 
-Block explorers keep returning roughly the same data in completely different formats. Explorers deals with that mess and gives scripts, agents and humans one TypeScript API and one CLI for balances, transactions, token transfers, contracts, tokens, gas and blocks.
+Block explorers keep returning roughly the same data in completely different formats. Explorers deals with that mess and gives scripts, agents and humans one TypeScript API and one CLI for balances, unspent outputs, transactions, token transfers, contracts, tokens, gas and blocks.
 
 ## Features
 
@@ -37,7 +37,7 @@ From a source checkout, link the local package instead:
 omp install .
 ```
 
-OMP loads `packages/omp/extensions/explorers.ts` through the package's `omp.extensions` manifest. It registers nine read-only tools for balances, transaction history and details, contract metadata, token holdings, token transfers, gas prices, blocks and provider discovery. The existing Pi entrypoint remains under `packages/pi/extensions/` and registers the same nine.
+OMP loads `packages/omp/extensions/explorers.ts` through the package's `omp.extensions` manifest. It registers ten read-only tools for balances, transaction history and details, unspent outputs, contract metadata, token holdings, token transfers, gas prices, blocks and provider discovery. The existing Pi entrypoint remains under `packages/pi/extensions/` and registers the same ten.
 
 ## CLI
 
@@ -57,6 +57,7 @@ An address-like first argument defaults to `balance`. No ceremonial subcommand n
 | ----------- | ------------------------------------------- | --------------------------------- |
 | `balance`   | Native token balance, including ENS         | `explorers balance vitalik.eth`   |
 | `tx`        | Transaction history or one transaction      | `explorers tx vitalik.eth -n 5`   |
+| `utxos`     | Unspent outputs of a Bitcoin-like address   | `explorers utxos bc1q... -c btc`  |
 | `contract`  | ABI, source and verification status         | `explorers contract 0x1f984...`   |
 | `tokens`    | ERC-20, SPL and Cardano native holdings     | `explorers tokens vitalik.eth`    |
 | `transfers` | ERC-20 transfer history for an address      | `explorers transfers vitalik.eth` |
@@ -104,6 +105,8 @@ UTXO providers that expose cumulative totals add `funded` and `spent` to `Balanc
 
 Mempool (Bitcoin, Litecoin and Pepecoin) and Blockstream keep `balance`, `funded` and `spent` confirmed. Their optional `unconfirmed` field is the signed mempool delta in base units: pending receipts minus pending spends. A negative value means pending activity reduces the balance. Add it to `balance` for a total including pending activity, not a spendability guarantee. Missing mempool statistics leave the field absent, not zero. The CLI and agent tools show the delta separately.
 
+Both also list what an address can still spend. `getUtxos()` returns every unspent output the explorer knows as `txid`, `vout`, `value` in base units and the block that funded it, with `blockNumber` and `blockHash` at `null` while the funding transaction waits in the mempool. Custody checks want this rather than a balance, because a positive balance never names the spendable set. Providers without an unspent-output endpoint advertise `utxos: false` and have no `getUtxos` method.
+
 Required operations live on `Provider`. Optional operations stay absent when a backend cannot serve them, so check both `capabilities` and the method before calling. Unsupported operations have no stub that returns convincing nonsense. Every successful `Balance` includes its ISO read time plus nullable block height and hash fields, so an unavailable chain position stays explicit.
 
 `create()` imports the provider it was asked for and nothing else, which is why it returns a promise. Everything the registry answers without an instance stays synchronous: `providers()`, `listProviders()`, `has()`, `supportsChain()`, `supportsCapability()`, `getDefaultURL()` and `resolveProvider()` read the metadata in `builtins`. `listProviders()` returns one record per provider with its chains, capability flags and public endpoint, which is what `explorers providers` prints and what the `explorers_providers` tool reports on MCP, Pi and OMP. The flags describe the provider, not each chain: Mempool declares gas and block data yet refuses both on Pepecoin, and such a call ends in `UnsupportedOperationError`. Pass a capability as the third `resolveProvider()` argument when automatic selection must support a particular operation. A single backend can also skip the registry: `import { Mempool } from "@agntn/explorers/providers/mempool"` gives you the class and leaves the other providers out of your bundle.
@@ -112,22 +115,22 @@ Required operations live on `Provider`. Optional operations stay absent when a b
 
 ## Providers
 
-| Provider        | Auth                          | Chains                                                                                | Capabilities                                          |
-| --------------- | ----------------------------- | ------------------------------------------------------------------------------------- | ----------------------------------------------------- |
-| **etherscan**   | `ETHERSCAN_API_KEY`           | ethereum, base, arbitrum, optimism, polygon, bsc, avalanche, gnosis, linea, berachain | balances, tx, transfers, contract, tokens, gas, block |
-| **blockscout**  | None                          | ethereum, base, arbitrum, optimism, polygon, gnosis, linea, scroll, zksync, avalanche | balances, tx, transfers, contract, tokens, gas, block |
-| **blockchair**  | Optional `BLOCKCHAIR_API_KEY` | bitcoin, ethereum, ecash                                                              | balances, tx, block                                   |
-| **mempool**     | None                          | bitcoin, litecoin, pepecoin                                                           | balances, tx; gas and block on Bitcoin and Litecoin   |
-| **blockstream** | None                          | bitcoin                                                                               | balances, tx detail/history, block                    |
-| **solscan**     | `SOLSCAN_API_KEY`             | solana                                                                                | balances, tx detail/history, block                    |
-| **helius**      | `HELIUS_API_KEY`              | solana                                                                                | tx detail/history, tokens                             |
-| **ton**         | None                          | ton                                                                                   | balances, tx                                          |
-| **tronscan**    | `TRONSCAN_API_KEY`            | tron                                                                                  | balances, tx detail/history, block                    |
-| **aptos**       | None                          | aptos                                                                                 | no supported explorer operations                      |
-| **blockberry**  | `BLOCKBERRY_API_KEY`          | sui                                                                                   | balances, tx history                                  |
-| **koios**       | None                          | cardano                                                                               | balances, tx detail/history, tokens                   |
-| **arweave**     | None                          | arweave                                                                               | balances, tx detail/history, block                    |
-| **dcrdata**     | None                          | decred                                                                                | balances, tx detail/history, block                    |
+| Provider        | Auth                          | Chains                                                                                | Capabilities                                               |
+| --------------- | ----------------------------- | ------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| **etherscan**   | `ETHERSCAN_API_KEY`           | ethereum, base, arbitrum, optimism, polygon, bsc, avalanche, gnosis, linea, berachain | balances, tx, transfers, contract, tokens, gas, block      |
+| **blockscout**  | None                          | ethereum, base, arbitrum, optimism, polygon, gnosis, linea, scroll, zksync, avalanche | balances, tx, transfers, contract, tokens, gas, block      |
+| **blockchair**  | Optional `BLOCKCHAIR_API_KEY` | bitcoin, ethereum, ecash                                                              | balances, tx, block                                        |
+| **mempool**     | None                          | bitcoin, litecoin, pepecoin                                                           | balances, tx, utxos; gas and block on Bitcoin and Litecoin |
+| **blockstream** | None                          | bitcoin                                                                               | balances, tx detail/history, utxos, block                  |
+| **solscan**     | `SOLSCAN_API_KEY`             | solana                                                                                | balances, tx detail/history, block                         |
+| **helius**      | `HELIUS_API_KEY`              | solana                                                                                | tx detail/history, tokens                                  |
+| **ton**         | None                          | ton                                                                                   | balances, tx                                               |
+| **tronscan**    | `TRONSCAN_API_KEY`            | tron                                                                                  | balances, tx detail/history, block                         |
+| **aptos**       | None                          | aptos                                                                                 | no supported explorer operations                           |
+| **blockberry**  | `BLOCKBERRY_API_KEY`          | sui                                                                                   | balances, tx history                                       |
+| **koios**       | None                          | cardano                                                                               | balances, tx detail/history, tokens                        |
+| **arweave**     | None                          | arweave                                                                               | balances, tx detail/history, block                         |
+| **dcrdata**     | None                          | decred                                                                                | balances, tx detail/history, block                         |
 
 `dcrdata` reads Decred balances, transactions and blocks without an API key. Balance calls use the [Insight address endpoint](https://github.com/decred/dcrdata/blob/master/docs/Insight_API_documentation.md#addr) with `noTxList=1`, not the full transaction list. Amounts come from integer atom fields (8 decimals), including the signed mempool balance delta. `funded` and `spent` cover confirmed activity only. Insight supplies no snapshot height or hash, so both stay `null`. These are indexed balances, not a guarantee that every output is mature or spendable.
 

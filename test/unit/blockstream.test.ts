@@ -33,6 +33,7 @@ describe("blockstream provider", () => {
       balances: true,
       txHistory: true,
       txDetail: true,
+      utxos: true,
       contractInfo: false,
       tokenBalances: false,
       tokenTransfers: false,
@@ -150,6 +151,44 @@ describe("blockstream provider", () => {
     expect(fetch.mock.calls.map(([input]) => String(input))).toEqual([
       `https://blockstream.info/api/address/${ADDRESS}/txs`,
       `https://blockstream.info/api/address/${ADDRESS}/txs/chain/${cursor}`,
+    ]);
+  });
+
+  it("lists the unspent outputs Blockstream reports for an address", async () => {
+    const fetch = vi.fn(async () =>
+      jsonResponse([
+        {
+          txid: TXID,
+          vout: 0,
+          value: 20_000,
+          status: {
+            confirmed: true,
+            block_height: 947_508,
+            block_hash: BLOCK_HASH,
+            block_time: 1_749_188_499,
+          },
+        },
+      ]),
+    );
+    vi.stubGlobal("fetch", fetch);
+
+    const provider = await create("blockstream");
+    const utxos = await provider.getUtxos!(ADDRESS, "bitcoin");
+
+    expect(utxos).toEqual([
+      {
+        txid: TXID,
+        vout: 0,
+        value: "20000",
+        valueFormatted: "0.0002",
+        confirmed: true,
+        blockNumber: 947_508,
+        blockHash: BLOCK_HASH,
+        timestamp: "2025-06-06T05:41:39.000Z",
+      },
+    ]);
+    expect(fetch.mock.calls.map(([input]) => String(input))).toEqual([
+      `https://blockstream.info/api/address/${ADDRESS}/utxo`,
     ]);
   });
 
