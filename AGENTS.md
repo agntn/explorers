@@ -111,6 +111,7 @@ graph TB
 - **Chain normalization**: `normalizeChain()` delegates to `getChain()` from `@agntn/chains` and returns the canonical `ChainKey`. Aliases and display names both resolve (`ethereum→eth`, `btc→bitcoin`, `arb→arbitrum`). Missing input defaults to `eth`; unknown names and the empty string throw.
 - **Provider auto-selection**: `resolveProvider()` checks env vars, chain support, and an optional requested capability without loading provider modules. `withProvider()` keeps explicit choices strict and retries automatic reads once on another available built-in after `RateLimitError` or `PlanRestrictedError`. Its callback must be safe to run twice.
 - **Error sanitization**: `HTTPError` strips API keys from URLs in error messages. `normalizeError()` wraps unknown errors into typed `ExplorerError` subclasses.
+- **Terminal boundary**: CLI result lines go through `print()` in `commands/shared.ts`, which drops control bytes before a token symbol, contract name or decoded method reaches the terminal. The OMP and Pi extensions apply the same filter in `sanitizeTerminalText()`; MCP output is JSON, where those bytes arrive escaped.
 
 ## Anti-patterns to avoid
 
@@ -123,7 +124,7 @@ graph TB
 ## Test coverage gaps
 
 **Covered** (31 test files): provider base/registry, provider resolution, HTTP client, path safety, amount formatting, errors, input classification, chain normalization, CLI argument routing, extension integration, plus all fourteen providers.
-**CLI coverage**: help without backend imports, errors for unknown chains, provider listing, and mocked balance and transaction reads. Successful contract, token, transfer, gas, and block command execution remains untested.
+**CLI coverage**: help without backend imports, errors for unknown chains, provider listing, and mocked balance, transaction and token reads. Successful contract, transfer, gas, and block command execution remains untested.
 **Test style**: Focused unit tests for local contracts and mocked explorer-API responses; public no-key providers may additionally use live roundtrips.
 
 ## Dependencies

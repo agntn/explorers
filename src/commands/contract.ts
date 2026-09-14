@@ -1,17 +1,16 @@
 /** Get contract info (supports ENS) */
 import { defineCommand } from "citty";
-import consola from "consola";
 import type { ContractInfo } from "../core/types.js";
-import { failCommand, reportCommandError, withSelectedProvider } from "./shared.js";
+import { failCommand, print, reportCommandError, withSelectedProvider } from "./shared.js";
 
 function renderContract(providerName: string, info: Readonly<ContractInfo>): void {
-  consola.log(`[${providerName}] Contract ${info.address}`);
-  consola.log(`  Verified: ${info.isVerified}`);
-  if (info.name) consola.log(`  Name: ${info.name}`);
-  if (info.compilerVersion) consola.log(`  Compiler: ${info.compilerVersion}`);
-  if (info.isProxy) consola.log(`  Proxy → ${info.implementationAddress}`);
-  if (info.isToken) consola.log(`  Token standard: ${info.tokenStandard ?? "ERC-20 (inferred)"}`);
-  if (info.creator) consola.log(`  Creator: ${info.creator}`);
+  print(`[${providerName}] Contract ${info.address}`);
+  print(`  Verified: ${info.isVerified}`);
+  if (info.name) print(`  Name: ${info.name}`);
+  if (info.compilerVersion) print(`  Compiler: ${info.compilerVersion}`);
+  if (info.isProxy) print(`  Proxy → ${info.implementationAddress}`);
+  if (info.isToken) print(`  Token standard: ${info.tokenStandard ?? "ERC-20 (inferred)"}`);
+  if (info.creator) print(`  Creator: ${info.creator}`);
 }
 
 export default defineCommand({

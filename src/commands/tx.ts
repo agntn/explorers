@@ -1,10 +1,10 @@
 /** Transaction operations — history or detail (supports ENS) */
 import { defineCommand } from "citty";
-import consola from "consola";
 import type { ChainKey, Transaction } from "../core/types.js";
 import {
   failCommand,
   parsePositiveInteger,
+  print,
   reportCommandError,
   withSelectedProvider,
 } from "./shared.js";
@@ -28,23 +28,23 @@ async function transactionMode(
 function renderOpReturns(transaction: Transaction): void {
   for (const payload of transaction.opReturn ?? []) {
     const [first = "", ...rest] = (payload.text ?? payload.hex).split("\n");
-    consola.log(`  OP_RETURN: ${first}`);
-    for (const line of rest) consola.log(`    ${line}`);
+    print(`  OP_RETURN: ${first}`);
+    for (const line of rest) print(`    ${line}`);
   }
 }
 
 /* oxlint-disable-next-line typescript/prefer-readonly-parameter-types */
 function renderTransaction(providerName: string, transaction: Transaction): void {
-  consola.log(`[${providerName}] Tx ${transaction.hash}`);
-  consola.log(`  Block: ${transaction.blockNumber}`);
-  consola.log(`  From: ${transaction.from}`);
-  consola.log(`  To: ${transaction.to ?? "contract creation"}`);
-  consola.log(`  Value: ${transaction.valueFormatted}`);
-  consola.log(`  Status: ${transaction.status}`);
-  if (transaction.fee) consola.log(`  Fee: ${transaction.fee} base units`);
-  if (transaction.functionName) consola.log(`  Method: ${transaction.functionName}`);
+  print(`[${providerName}] Tx ${transaction.hash}`);
+  print(`  Block: ${transaction.blockNumber}`);
+  print(`  From: ${transaction.from}`);
+  print(`  To: ${transaction.to ?? "contract creation"}`);
+  print(`  Value: ${transaction.valueFormatted}`);
+  print(`  Status: ${transaction.status}`);
+  if (transaction.fee) print(`  Fee: ${transaction.fee} base units`);
+  if (transaction.functionName) print(`  Method: ${transaction.functionName}`);
   if (transaction.tokenTransfers.length > 0) {
-    consola.log(`  Token transfers: ${transaction.tokenTransfers.length}`);
+    print(`  Token transfers: ${transaction.tokenTransfers.length}`);
   }
   renderOpReturns(transaction);
 }
@@ -69,13 +69,13 @@ async function runHistory(
   const { address } = await resolveInput(target, selected.chain);
   const limit = parsePositiveInteger(limitInput, "Invalid --limit value");
   const transactions = await selected.provider.getTxHistory(address, selected.chain, { limit });
-  consola.log(
+  print(
     `[${selected.name}] ${transactions.length} transactions for ${address} on ${selected.chain}`,
   );
-  consola.log("");
+  print("");
   for (const transaction of transactions) {
     const value = transaction.valueFormatted !== "0" ? ` ${transaction.valueFormatted}` : "";
-    consola.log(
+    print(
       `  ${transaction.hash.slice(0, 18)}…  ${transaction.from.slice(0, 10)}… → ${(transaction.to ?? "?").slice(0, 10)}…${value}  [${transaction.status}]`,
     );
   }
