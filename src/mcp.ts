@@ -4,7 +4,7 @@ import { z } from "zod";
 import { UnsupportedOperationError } from "./core/errors.js";
 import { resolveAddresses, resolveInput } from "./core/input.js";
 import type { Provider } from "./core/provider.js";
-import { create, getDefaultURL, providers } from "./core/registry.js";
+import { listProviders } from "./core/registry.js";
 import { withProvider } from "./core/resolve.js";
 import type { ProviderContext } from "./core/resolve.js";
 import { normalizeChain } from "./core/types.js";
@@ -83,30 +83,11 @@ export function createMcpServer(): McpServer {
   server.registerTool(
     "explorers_providers",
     {
-      description: "List registered block explorer providers and their capabilities",
+      description:
+        "List registered block explorer providers with the chains they serve, their capabilities, and their public endpoints",
       annotations: { readOnlyHint: true },
     },
-    async () =>
-      result(
-        await Promise.all(
-          providers().map(async (name) => {
-            try {
-              const provider = await create(name);
-              return {
-                name,
-                defaultUrl: getDefaultURL(name),
-                capabilities: provider.capabilities,
-              };
-            } catch {
-              return {
-                name,
-                defaultUrl: getDefaultURL(name),
-                requiresConfiguration: true,
-              };
-            }
-          }),
-        ),
-      ),
+    () => result(listProviders()),
   );
 
   server.registerTool(

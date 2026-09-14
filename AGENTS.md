@@ -40,7 +40,7 @@ Unified block explorer provider library. Normalizes balances, tx history, contra
 - `src/core/types.ts` - re-exports `ChainKey` from `@agntn/chains`; owns transaction, balance, token, contract, gas, block, and provider-config types
 - `src/core/provider.ts` — abstract `Provider` base class and optional operation contract
 - `src/core/errors.ts` — ExplorerError hierarchy + normalizeError
-- `src/core/registry.ts` — Provider registry built from `builtins` on first use; `create()` is async and imports one provider (register, create, providers, has)
+- `src/core/registry.ts` — Provider registry built from `builtins` on first use; `create()` is async and imports one provider (register, create, providers, listProviders, has). `listProviders()` describes every provider from metadata and backs `explorers_providers` on MCP, Pi and OMP
 - `src/core/resolve.ts` - Auto-select built-in providers by env vars and chain, with one retry after a rate or plan limit
 - `src/core/client.ts` — HTTP client wrapper (ofetch)
 - `src/core/ens.ts` — ENS resolution (public APIs, no keccak dependency)
