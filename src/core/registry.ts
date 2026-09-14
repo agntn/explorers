@@ -1,15 +1,37 @@
 /** Provider registry for Explorers, built from the built-in list on first use */
 
 import { builtins } from "../providers/index.js";
-import { Provider } from "./provider.js";
-import type { ProviderCapability, ProviderConstructor, ProviderMeta } from "./provider.js";
-import type { ChainKey, ProviderConfig } from "./types.js";
+import type {
+  Provider,
+  ProviderCapability,
+  ProviderConstructor,
+  ProviderMeta,
+} from "./provider.js";
+import type { ChainKey, ProviderCapabilities, ProviderConfig } from "./types.js";
 import { UnknownProviderError } from "./errors.js";
 
 interface RegistryEntry extends ProviderMeta {
   load: () => Promise<ProviderConstructor>;
   providerClass?: ProviderConstructor;
   providerClassPromise?: Promise<ProviderConstructor>;
+}
+
+/** One registered provider as its registry metadata describes it. */
+export interface ProviderListing {
+  /** Registry key accepted by `create()` and the `provider` option. */
+  readonly name: string;
+  /** Chains the provider declares. */
+  readonly chains: readonly ChainKey[];
+  /** Public endpoint advertised for the provider. */
+  readonly defaultUrl?: string;
+  /**
+   * Operations the provider declares, in the shape of the instance getter.
+   *
+   * Declared for the provider as a whole, not per chain: a provider can still refuse one of them on
+   * one of its chains at call time. Absent when an external registration left capability metadata
+   * out.
+   */
+  readonly capabilities?: Readonly<ProviderCapabilities>;
 }
 
 let registry: Map<string, RegistryEntry> | undefined;
@@ -94,6 +116,43 @@ export async function create(name: string, config?: Readonly<ProviderConfig>): P
  */
 export function providers(): string[] {
   return Array.from(entries().keys());
+}
+
+/*
+ * Expand a declared capability list into the boolean map `Provider.capabilities` returns. The
+ * literal keeps the two shapes in step: a flag added to `ProviderCapabilities` fails to compile here.
+ */
+function capabilityFlags(declared: readonly ProviderCapability[]): ProviderCapabilities {
+  const supports = (capability: ProviderCapability) => declared.includes(capability);
+  return {
+    balances: supports("balances"),
+    txHistory: supports("txHistory"),
+    txDetail: supports("txDetail"),
+    contractInfo: supports("contractInfo"),
+    tokenBalances: supports("tokenBalances"),
+    tokenTransfers: supports("tokenTransfers"),
+    gasData: supports("gasData"),
+    blockInfo: supports("blockInfo"),
+  };
+}
+
+/**
+ * Describe every registered provider from registry metadata alone.
+ *
+ * Nothing here imports a provider module, so discovery stays cheap and answers the same on every
+ * host. A provider whose constructor demands credentials is listed like any other; the credential
+ * error waits for the first real read.
+ *
+ * @returns {ProviderListing[]} One record per provider, in registration order.
+ */
+export function listProviders(): ProviderListing[] {
+  return Array.from(entries(), ([name, entry]) => ({
+    name,
+    chains: [...entry.chains],
+    defaultUrl: entry.defaultURL,
+    capabilities:
+      entry.capabilities === undefined ? undefined : capabilityFlags(entry.capabilities),
+  }));
 }
 
 /**

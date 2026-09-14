@@ -45,10 +45,12 @@ export {
   register,
   create,
   providers,
+  listProviders,
   has,
   supportsChain,
   supportsCapability,
   getDefaultURL,
 } from "./core/registry.js";
+export type { ProviderListing } from "./core/registry.js";
 export { PROVIDER_DEFAULT_CHAIN, resolveProvider, withProvider } from "./core/resolve.js";
 export type { ProviderContext } from "./core/resolve.js";

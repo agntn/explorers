@@ -49,6 +49,12 @@ interface TxDetailToolDetails {
 
 type TxDetailToolResult = AgentToolResult<TxDetailToolDetails>;
 
+interface ProvidersToolDetails {
+  providers: ExplorersModule.ProviderListing[];
+}
+
+type ProvidersToolResult = AgentToolResult<ProvidersToolDetails>;
+
 type ExplorersToolResult = AgentToolResult<undefined>;
 
 function textResult(text: string): ExplorersToolResult {
@@ -88,6 +94,20 @@ async function resolveAddress(
   const [address] = await resolveAddresses(input, chain);
   if (address === undefined) throw new TypeError("Address resolution returned no result");
   return address;
+}
+
+/* One line per provider: supported operations, declared chains, and the public endpoint. */
+function describeProvider(listing: Readonly<ExplorersModule.ProviderListing>): string {
+  const operations =
+    listing.capabilities === undefined
+      ? "capabilities not declared"
+      : Object.entries(listing.capabilities)
+          .filter(([, supported]) => supported)
+          .map(([capability]) => capability)
+          .join(", ") || "no supported explorer operations";
+  const chains = listing.chains.join(", ") || "none";
+  const endpoint = listing.defaultUrl === undefined ? "" : `; endpoint: ${listing.defaultUrl}`;
+  return `${listing.name}: ${operations}; chains: ${chains}${endpoint}`;
 }
 
 export default function explorersExtension(pi: ExtensionAPI) {
@@ -561,19 +581,33 @@ export default function explorersExtension(pi: ExtensionAPI) {
   pi.registerTool({
     name: "explorers_providers",
     label: "Explorers Providers",
-    description: "List registered block explorer providers",
-    promptSnippet: "Use to check which block explorer providers are available.",
+    description:
+      "List registered block explorer providers with their chains, capabilities, and endpoints",
+    promptSnippet:
+      "Use to check which block explorer providers are available and what each one can read.",
     promptGuidelines: [
       "Use explorers_providers to list provider keys accepted by the other explorer tools.",
+      "explorers_providers reports each provider's chains, supported operations, and public endpoint from registry metadata, without contacting any explorer.",
     ],
     parameters: Type.Object({}),
     renderCall(_args, _theme) {
       return new Text("🔍 List Explorers providers", 0, 0);
     },
-    async execute(): Promise<ExplorersToolResult> {
+    async execute(): Promise<ProvidersToolResult> {
       const lib = await loadLib();
-      const names = lib.providers();
-      return textResult(`Registered providers (${names.length}):\n  ${names.join("\n  ")}`);
+      const providers = lib.listProviders();
+      const lines = providers.map((listing) => `  ${describeProvider(listing)}`);
+      return {
+        content: [
+          {
+            type: "text",
+            text: sanitizeTerminalText(
+              `Registered providers (${providers.length}):\n${lines.join("\n")}`,
+            ),
+          },
+        ],
+        details: { providers },
+      };
     },
   });
 }

@@ -10,6 +10,7 @@ import explorersExtension, {
   resolveExplorersModuleUrl,
 } from "../../packages/pi/extensions/explorers.js";
 import type { Transaction } from "../../src/core/types.js";
+import { builtins } from "../../src/providers/index.js";
 
 function registerExtensionTools(): Map<string, ToolDefinition> {
   const tools = new Map<string, ToolDefinition>();
@@ -180,19 +181,37 @@ describe("explorers Pi extension", () => {
     );
   });
 
-  it("lists providers without model or network access", async () => {
+  it("lists provider chains, capabilities, and endpoints without network access", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new Error("Unexpected network request");
+      }),
+    );
     const tool = requireTool(registerExtensionTools(), "explorers_providers");
 
-    const result = parseToolResult(
-      await tool.execute("test", {}, undefined, undefined, unusedContext),
-    );
+    const raw = await tool.execute("test", {}, undefined, undefined, unusedContext);
+    const result = parseToolResult(raw);
 
+    expect(result.isError).toBe(false);
     expect(result.content).toEqual([
       {
         type: "text",
-        text: textMatching(/^Registered providers \(\d+\):[\s\S]*\n  arweave\n  dcrdata$/),
+        text: textMatching(/^Registered providers \(\d+\):\n  etherscan: balances, txHistory/),
       },
     ]);
+    const text = result.content[0]?.text ?? "";
+    expect(text).toContain(
+      "\n  mempool: balances, txHistory, txDetail, gasData, blockInfo; chains: bitcoin, litecoin, pepecoin; endpoint: https://mempool.space\n",
+    );
+    expect(text).toContain("\n  aptos: no supported explorer operations; chains: aptos\n");
+    expect(raw).toMatchObject({
+      details: {
+        providers: builtins.map((entry): unknown =>
+          expect.objectContaining({ name: entry.key, chains: entry.chains }),
+        ),
+      },
+    });
   });
 
   it("reports when a balance was fetched and whether its block is known", async () => {

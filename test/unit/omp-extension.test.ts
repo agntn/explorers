@@ -8,6 +8,7 @@ import type { ExtensionAPI, ExtensionContext, ToolDefinition } from "@oh-my-pi/p
 import { afterEach, describe, expect, it, vi } from "vitest";
 import explorersOmpExtension from "../../packages/omp/extensions/explorers.js";
 import type { Transaction } from "../../src/core/types.js";
+import { builtins } from "../../src/providers/index.js";
 
 class TestText {
   constructor(private readonly text: string) {}
@@ -126,7 +127,7 @@ describe("explorers OMP extension", () => {
       );
       writeFileSync(
         join(packageRoot, "dist/index.mjs"),
-        'export function providers() { return ["relative-dist"]; }\n',
+        'export function listProviders() { return [{ name: "relative-dist", chains: ["bitcoin"], capabilities: { balances: true } }]; }\n',
       );
       writeFileSync(
         join(installedPackageDir, "package.json"),
@@ -134,7 +135,7 @@ describe("explorers OMP extension", () => {
       );
       writeFileSync(
         join(installedPackageDir, "index.mjs"),
-        'export function providers() { return ["poisoned-bare-import"]; }\n',
+        'export function listProviders() { return [{ name: "poisoned-bare-import", chains: [], capabilities: {} }]; }\n',
       );
       const probePath = join(root, "probe.ts");
       writeFileSync(
@@ -154,7 +155,9 @@ console.log(result.content[0].text);
 
       const tsx = fileURLToPath(new URL("../../node_modules/.bin/tsx", import.meta.url));
       const output = execFileSync(tsx, [probePath], { cwd: root, encoding: "utf8" });
-      expect(output).toBe("Registered providers (1):\n  relative-dist\n");
+      expect(output).toBe(
+        "Registered providers (1):\n  relative-dist: balances; chains: bitcoin\n",
+      );
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
@@ -463,19 +466,37 @@ console.log(result.content[0].text);
     );
   });
 
-  it("lists providers without model or network access", async () => {
+  it("lists provider chains, capabilities, and endpoints without network access", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new Error("Unexpected network request");
+      }),
+    );
     const tool = requireTool(registerExtensionTools().tools, "explorers_providers");
 
-    const result = parseToolResult(
-      await tool.execute("test", {}, undefined, undefined, unusedContext),
-    );
+    const raw = await tool.execute("test", {}, undefined, undefined, unusedContext);
+    const result = parseToolResult(raw);
 
+    expect(result.isError).toBe(false);
     expect(result.content).toEqual([
       {
         type: "text",
-        text: textMatching(/^Registered providers \(\d+\):[\s\S]*\n  arweave\n  dcrdata$/),
+        text: textMatching(/^Registered providers \(\d+\):\n  etherscan: balances, txHistory/),
       },
     ]);
+    const text = result.content[0]?.text ?? "";
+    expect(text).toContain(
+      "\n  mempool: balances, txHistory, txDetail, gasData, blockInfo; chains: bitcoin, litecoin, pepecoin; endpoint: https://mempool.space\n",
+    );
+    expect(text).toContain("\n  aptos: no supported explorer operations; chains: aptos\n");
+    expect(raw).toMatchObject({
+      details: {
+        providers: builtins.map((entry): unknown =>
+          expect.objectContaining({ name: entry.key, chains: entry.chains }),
+        ),
+      },
+    });
   });
 
   it("keeps complete identifiers in transaction history results", async () => {

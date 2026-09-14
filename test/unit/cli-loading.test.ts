@@ -79,12 +79,29 @@ ${offline}
     expect(result.stderr).not.toContain("Unexpected network request");
   });
 
-  it("loads the registry when listing providers", () => {
-    const result = runCLI(["providers"], offline);
+  it("lists providers from registry metadata without loading a backend", () => {
+    const result = runCLI(
+      ["providers"],
+      `
+import assert from "node:assert/strict";
+import { registerHooks } from "node:module";
+const backends = [];
+registerHooks({ load(url, context, nextLoad) {
+  if (url.includes("/src/providers/") && !url.endsWith("/src/providers/index.ts")) backends.push(url);
+  return nextLoad(url, context);
+}});
+process.once("exit", () => assert.deepEqual(backends, []));
+${offline}
+`,
+    );
     expect(result.error).toBeUndefined();
     expect(result.status, result.stderr).toBe(0);
-    expect(result.stdout).toContain("Registered providers");
-    expect(result.stdout).toContain("mempool: balances, txHistory");
+    expect(result.stdout).toContain("Registered providers (14)");
+    expect(result.stdout).toContain(
+      "mempool: balances, txHistory, txDetail, gasData, blockInfo; chains: bitcoin, litecoin, pepecoin",
+    );
+    expect(result.stdout).toContain("etherscan: balances, txHistory");
+    expect(result.stdout).not.toContain("requires API key");
   });
 
   it.each([

@@ -74,6 +74,14 @@ function notTextContaining(expected: string): unknown {
   return expect.not.stringContaining(expected);
 }
 
+function objectWith(expected: Readonly<Record<string, unknown>>): unknown {
+  return expect.objectContaining(expected);
+}
+
+function arrayWith(expected: readonly unknown[]): unknown {
+  return expect.arrayContaining(expected);
+}
+
 function textMatching(expected: RegExp): unknown {
   return expect.stringMatching(expected);
 }
@@ -236,16 +244,26 @@ describe("Explorers MCP server", () => {
       "explorers_block",
     ]);
 
+    vi.stubEnv("ETHERSCAN_API_KEY", "");
     const response = parseToolResult(
       await client.callTool({ name: "explorers_providers", arguments: {} }),
     );
     expect(response.isError).not.toBe(true);
-    expect(response.content).toEqual([
-      {
-        type: "text",
-        text: textContaining('"name": "blockscout"'),
-      },
-    ]);
+    const catalog: unknown = JSON.parse(response.content[0]?.text ?? "null");
+    expect(catalog).toEqual(
+      builtins.map((entry) => objectWith({ name: entry.key, chains: entry.chains })),
+    );
+    expect(catalog).toContainEqual({
+      name: "etherscan",
+      chains: arrayWith(["ethereum", "bsc"]),
+      defaultUrl: "https://api.etherscan.io/v2/api",
+      capabilities: objectWith({ balances: true, contractInfo: true }),
+    });
+    expect(catalog).toContainEqual({
+      name: "aptos",
+      chains: ["aptos"],
+      capabilities: objectWith({ balances: false, blockInfo: false }),
+    });
   });
 
   it("returns an MCP tool error for an unsupported provider operation", async () => {

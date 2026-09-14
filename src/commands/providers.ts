@@ -8,23 +8,20 @@ export default defineCommand({
     description: "List registered block explorer providers and capabilities",
   },
   async run() {
-    const { create, providers: listProviders } = await import("../core/registry.js");
-    const names = listProviders();
-    consola.info(`Registered providers (${names.length}):`);
+    const { listProviders } = await import("../core/registry.js");
+    const listed = listProviders();
+    consola.info(`Registered providers (${listed.length}):`);
     consola.log("");
 
-    for (const name of names) {
-      try {
-        const provider = await create(name);
-        const caps = provider.capabilities;
-        const capList = Object.entries(caps)
-          .filter(([, v]) => v)
-          .map(([k]) => k)
-          .join(", ");
-        consola.log(`  ${name}: ${capList || "(no supported explorer operations)"}`);
-      } catch {
-        consola.log(`  ${name}: (requires API key — set env var to activate)`);
-      }
+    for (const { name, chains, capabilities } of listed) {
+      const capList =
+        capabilities === undefined
+          ? "(capabilities not declared)"
+          : Object.entries(capabilities)
+              .filter(([, supported]) => supported)
+              .map(([capability]) => capability)
+              .join(", ") || "(no supported explorer operations)";
+      consola.log(`  ${name}: ${capList}; chains: ${chains.join(", ") || "none"}`);
     }
 
     consola.log("");

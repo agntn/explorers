@@ -2,7 +2,13 @@ import { readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { getChain } from "@agntn/chains";
 import { describe, expect, it, vi } from "vitest";
-import { getDefaultURL, providers, register, supportsCapability } from "../../src/core/registry.js";
+import {
+  getDefaultURL,
+  listProviders,
+  providers,
+  register,
+  supportsCapability,
+} from "../../src/core/registry.js";
 import type { ProviderCapability } from "../../src/core/provider.js";
 import { builtins } from "../../src/providers/index.js";
 
@@ -80,6 +86,59 @@ describe("built-in provider registry", () => {
       for (const [capability, supported] of capabilities) {
         expect(supportsCapability(entry.key, capability)).toBe(supported);
       }
+    }
+  });
+
+  it("describes every provider without loading a module", async () => {
+    vi.resetModules();
+    const { builtins: isolatedBuiltins } = await import("../../src/providers/index.js");
+    const { listProviders: isolatedListProviders } = await import("../../src/core/registry.js");
+    const loads = isolatedBuiltins.map((entry) => vi.spyOn(entry, "load"));
+
+    try {
+      const listed = isolatedListProviders();
+
+      expect(listed.map((listing) => listing.name)).toEqual(
+        isolatedBuiltins.map((entry) => entry.key),
+      );
+      for (const load of loads) expect(load).not.toHaveBeenCalled();
+    } finally {
+      for (const load of loads) load.mockRestore();
+    }
+  });
+
+  it("lists the chains, endpoint, and capability flags each loaded class exposes", async () => {
+    const listed = new Map(listProviders().map((listing) => [listing.name, listing]));
+
+    for (const entry of builtins) {
+      const ProviderClass = await entry.load();
+      const provider = new ProviderClass({ apiKey: "configured" });
+
+      expect(listed.get(entry.key)).toEqual({
+        name: entry.key,
+        chains: entry.chains,
+        defaultUrl: entry.defaultURL,
+        capabilities: provider.capabilities,
+      });
+    }
+  });
+
+  it("leaves capabilities undeclared for an external registration without metadata", async () => {
+    const entry = builtins.find((candidate) => candidate.key === "mempool");
+    expect(entry).toBeDefined();
+    if (!entry) throw new Error("Missing mempool provider entry");
+    const ProviderClass = await entry.load();
+
+    try {
+      register(ProviderClass, { chains: entry.chains, defaultURL: entry.defaultURL });
+      expect(listProviders().find((listing) => listing.name === "mempool")).toEqual({
+        name: "mempool",
+        chains: entry.chains,
+        defaultUrl: entry.defaultURL,
+        capabilities: undefined,
+      });
+    } finally {
+      register(ProviderClass, entry);
     }
   });
 

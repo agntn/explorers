@@ -31,6 +31,10 @@ interface TxDetailToolDetails {
   transaction: ExplorersModule.Transaction;
 }
 
+interface ProvidersToolDetails {
+  providers: ExplorersModule.ProviderListing[];
+}
+
 function textResult(text: string) {
   return {
     content: [{ type: "text" as const, text: sanitizeTerminalText(text) }],
@@ -67,6 +71,20 @@ async function resolveAddress(
   const [address] = await resolveAddresses(input, chain);
   if (address === undefined) throw new TypeError("Address resolution returned no result");
   return address;
+}
+
+/* One line per provider: supported operations, declared chains, and the public endpoint. */
+function describeProvider(listing: Readonly<ExplorersModule.ProviderListing>): string {
+  const operations =
+    listing.capabilities === undefined
+      ? "capabilities not declared"
+      : Object.entries(listing.capabilities)
+          .filter(([, supported]) => supported)
+          .map(([capability]) => capability)
+          .join(", ") || "no supported explorer operations";
+  const chains = listing.chains.join(", ") || "none";
+  const endpoint = listing.defaultUrl === undefined ? "" : `; endpoint: ${listing.defaultUrl}`;
+  return `${listing.name}: ${operations}; chains: ${chains}${endpoint}`;
 }
 
 /**
@@ -532,11 +550,11 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
 
   const providersParameters = Type.Object({});
 
-  pi.registerTool({
+  pi.registerTool<typeof providersParameters, ProvidersToolDetails>({
     name: "explorers_providers",
     label: "Explorers Providers",
     description:
-      "List registered block explorer provider keys accepted by the other explorer tools.",
+      "List registered block explorer providers with the chains they serve, the operations they support, and their public endpoints. The provider keys are the values the other explorer tools accept.",
     parameters: providersParameters,
     approval: "read",
     renderCall(_args, _options, _theme) {
@@ -544,8 +562,19 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
     },
     async execute() {
       const lib = await loadLib();
-      const names = lib.providers();
-      return textResult(`Registered providers (${names.length}):\n  ${names.join("\n  ")}`);
+      const providers = lib.listProviders();
+      const lines = providers.map((listing) => `  ${describeProvider(listing)}`);
+      return {
+        content: [
+          {
+            type: "text",
+            text: sanitizeTerminalText(
+              `Registered providers (${providers.length}):\n${lines.join("\n")}`,
+            ),
+          },
+        ],
+        details: { providers },
+      };
     },
   });
 }
