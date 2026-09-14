@@ -207,7 +207,7 @@ export class Dcrdata extends Provider {
   }
 
   /**
-   * Includes the mempool delta. Received and spent totals cover confirmed activity.
+   * Balance and totals stay confirmed. The signed mempool delta goes to `unconfirmed`.
    * @param {string} address - Decred mainnet address.
    * @param {ChainKey} chain - Must be Decred.
    * @returns {Promise<Balance>} Amounts in atoms, with no block snapshot from Insight.
@@ -229,7 +229,7 @@ export class Dcrdata extends Provider {
       .safeParse(raw);
     if (!parsed.success) throw new ExplorerError("Invalid dcrdata balance response", this.name);
     const data = parsed.data;
-    const balance = (BigInt(data.balanceSat) + BigInt(data.unconfirmedBalanceSat)).toString();
+    const balance = String(data.balanceSat);
     return this.snapshotBalance({
       address,
       chain,
@@ -237,6 +237,7 @@ export class Dcrdata extends Provider {
       balanceFormatted: formatWei(balance, 8),
       funded: String(data.totalReceivedSat),
       spent: String(data.totalSentSat),
+      unconfirmed: BigInt(data.unconfirmedBalanceSat).toString(),
       symbol: "DCR",
     });
   }
