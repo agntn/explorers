@@ -503,6 +503,19 @@ describe("mempool provider", () => {
     ]);
   });
 
+  it("refuses a text reading for payloads carrying Unicode line separators", async () => {
+    const lineSeparator = "6a0561e280a862";
+    const paragraphSeparator = "6a0561e280a962";
+    stubTxDetail([
+      { scriptpubkey: lineSeparator, value: 0 },
+      { scriptpubkey: paragraphSeparator, value: 0 },
+    ]);
+
+    const tx = await provider.getTxDetail!("a".repeat(64), "bitcoin");
+
+    expect(tx.opReturn).toEqual([{ hex: "61e280a862" }, { hex: "61e280a962" }]);
+  });
+
   it("hands back hex when a payload hides behind a byte order mark", async () => {
     const bomOnly = "6a03efbbbf";
     const bomThenText = "6a05efbbbf4869";

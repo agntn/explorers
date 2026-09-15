@@ -9,6 +9,8 @@ const ESC = String.fromCodePoint(0x1b);
 const BEL = String.fromCodePoint(0x07);
 /** A C1 control: the single-byte form of CSI, which most terminals obey like ESC [. */
 const CSI = String.fromCodePoint(0x9b);
+/** LINE SEPARATOR, a break the renderers never split on. */
+const LINE_SEPARATOR = String.fromCodePoint(0x2028);
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -52,5 +54,27 @@ describe("tokens command", () => {
     expect(printed).not.toContain(ESC);
     expect(printed).not.toContain(BEL);
     expect(printed).not.toContain(CSI);
+  });
+
+  it("keeps a token symbol that breaks the line inside its own listing line", async () => {
+    const log = vi.spyOn(consola, "log").mockImplementation(() => undefined);
+    vi.spyOn(process, "exit").mockImplementation(() => {
+      throw new Error("exit");
+    });
+    stubTokenBalances(
+      `USDC\n[blockscout] 1 tokens for ${HOLDER}${LINE_SEPARATOR}Value: forged`,
+      "",
+    );
+
+    await tokensCommand.run?.({
+      args: { _: [], address: HOLDER, chain: "eth", provider: "blockscout" },
+    });
+
+    const lines = log.mock.calls.map(([line]) => String(line));
+    expect(lines).toEqual([
+      `[blockscout] 1 tokens for ${HOLDER} on ethereum`,
+      "",
+      `  USDC[blockscout] 1 tokens for ${HOLDER}Value: forged: 1.25  [${USDC.slice(0, 10)}…]`,
+    ]);
   });
 });

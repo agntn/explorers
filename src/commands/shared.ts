@@ -50,12 +50,12 @@ export function reportCommandError(error: unknown): never {
 }
 
 // oxlint-disable-next-line no-control-regex -- Terminal control bytes are precisely what this boundary removes.
-const TERMINAL_CONTROLS = /[\u0000-\u0008\u000B-\u001F\u007F-\u009F]/gu;
+const TERMINAL_CONTROLS = /[\u0000-\u0008\u000A-\u001F\u007F-\u009F\u2028\u2029]/gu;
 
 /**
  * Print one result line. A token symbol, a contract name or a decoded method is text a stranger
- * chose, so the control bytes a terminal would obey are dropped first. Tab and newline stay,
- * because OP_RETURN messages write paragraphs with them.
+ * chose, so the control bytes a terminal would obey are dropped, and every line break with them,
+ * since a field that breaks the line poses as the next result line. Only tab survives.
  *
  * @param {string} line - One line of a result, as the renderer composed it.
  */
