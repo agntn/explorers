@@ -48,5 +48,5 @@ export default defineConfig({
       },
     },
   ],
-  ignorePatterns: ["dist", "coverage"],
+  ignorePatterns: ["dist", "coverage", "docs"],
 });

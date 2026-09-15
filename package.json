@@ -6,7 +6,7 @@
     "omp-extension",
     "pi-package"
   ],
-  "homepage": "https://github.com/agntn/explorers#readme",
+  "homepage": "https://explorers.agntn.dev",
   "bugs": {
     "url": "https://github.com/agntn/explorers/issues"
   },
@@ -45,6 +45,7 @@
   "scripts": {
     "build": "obuild",
     "dev": "obuild --stub",
+    "docs": "pnpm --dir docs dev",
     "fmt": "oxlint . --fix && oxfmt .",
     "lint": "oxlint . && oxfmt --check .",
     "typecheck": "pnpm build && tsc --noEmit",
