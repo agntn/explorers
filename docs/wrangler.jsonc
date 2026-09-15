@@ -1,0 +1,34 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "agntn-explorers",
+  "account_id": "6ef8d3cbe19975e93d994f25228488e7",
+  "compatibility_flags": ["nodejs_compat"],
+  "vars": {
+    "NUXT_SITE_URL": "https://explorers.agntn.dev",
+  },
+  "workers_dev": true,
+  "preview_urls": true,
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "agntn-explorers",
+      "database_id": "df82bae3-7ebc-4dcc-9eb4-0e275be02e48",
+    },
+  ],
+  "kv_namespaces": [
+    {
+      "binding": "CACHE",
+      "id": "92e8370e48424763a6491f4d33b81c5c",
+    },
+  ],
+  "cache": {
+    "enabled": true,
+  },
+  "routes": [{ "pattern": "explorers.agntn.dev", "custom_domain": true }],
+  "observability": {
+    "logs": {
+      "enabled": true,
+      "invocation_logs": true,
+    },
+  },
+}
