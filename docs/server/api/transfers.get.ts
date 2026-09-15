@@ -23,7 +23,15 @@ export default defineEventHandler((event): Promise<TransfersAnswer> => {
       const getTokenTransfers = requireOperation(selected, "tokenTransfers", "getTokenTransfers");
       const [address = input] = await resolveAddresses(input, selected.chain);
       const transfers = await getTokenTransfers(address, selected.chain, { limit, page, token });
-      return { input, address, token: token ?? null, limit, page, items: transfers.slice(0, limit) };
+      return {
+        input,
+        address,
+        token: token ?? null,
+        limit,
+        page,
+        paged: pagesTransfers(selected.name),
+        items: transfers.slice(0, limit),
+      };
     },
   });
 });

@@ -58,6 +58,8 @@ export interface HistoryAnswer extends Answer {
   address: string;
   limit: number;
   page: number;
+  /** Whether the provider that answered honours `page`; the rest hand out their first rows and stop. */
+  paged: boolean;
   items: WireTransaction[];
 }
 
@@ -90,6 +92,7 @@ export interface TransfersAnswer extends Answer {
   token: string | null;
   limit: number;
   page: number;
+  paged: boolean;
   items: TokenTransfer[];
 }
 

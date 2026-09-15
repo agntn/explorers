@@ -29,9 +29,11 @@ useSeo({
 
 useSeoMeta({ robots: "noindex, follow" });
 
-const { loading, error, answer, load } = useAnswer<BlockAnswer>("/api/block");
+const { loading, error, answer, load, reset } = useAnswer<BlockAnswer>("/api/block");
 
+/** A new number means a new block: drop the old card first, or it sits under the new heading while the read runs. */
 function read() {
+  reset();
   if (known.value) void load({ chain: chain.value, number: number.value ?? undefined });
 }
 

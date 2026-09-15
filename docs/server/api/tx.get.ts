@@ -20,7 +20,14 @@ export default defineEventHandler((event): Promise<HistoryAnswer> => {
         limit,
         page,
       });
-      return { input, address, limit, page, items: transactions.slice(0, limit).map(slimTransaction) };
+      return {
+        input,
+        address,
+        limit,
+        page,
+        paged: pagesHistory(selected.name),
+        items: transactions.slice(0, limit).map(slimTransaction),
+      };
     },
   });
 });

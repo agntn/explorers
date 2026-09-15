@@ -9,7 +9,7 @@ import type {
 } from "../../../../utils/wire";
 import { isIdentifier, txPath } from "../../../../utils/entities";
 import { shortHash } from "../../../../utils/format";
-import { chainInfo, chainLabel, providersFor } from "../../../../utils/providers";
+import { chainInfo, chainLabel, providerLabel, providersFor } from "../../../../utils/providers";
 
 definePageMeta({ layout: "default" });
 
@@ -188,7 +188,10 @@ watch([chain, address], read);
               :fetched-at="history.answer.value.fetchedAt"
             />
             <ExplorerTransactionsList :chain="chain" :items="history.answer.value.items" :address="resolved" />
-            <ExplorerPager :page="page" :count="history.answer.value.items.length" :limit="history.answer.value.limit" :loading="history.loading.value" @change="pickPage" />
+            <ExplorerPager v-if="history.answer.value.paged" :page="page" :count="history.answer.value.items.length" :limit="history.answer.value.limit" :loading="history.loading.value" @change="pickPage" />
+            <p v-else class="border-t border-muted px-4 py-3 font-mono text-[11px] text-dimmed">
+              {{ providerLabel(history.answer.value.provider) }} pages by cursor, which the library keeps to itself, so this is the newest {{ history.answer.value.limit }} and there's no page two.
+            </p>
           </template>
         </template>
 
@@ -231,7 +234,10 @@ watch([chain, address], read);
               :fetched-at="transfers.answer.value.fetchedAt"
             />
             <ExplorerTransfersList :chain="chain" :items="transfers.answer.value.items" :address="resolved" />
-            <ExplorerPager :page="page" :count="transfers.answer.value.items.length" :limit="transfers.answer.value.limit" :loading="transfers.loading.value" @change="pickPage" />
+            <ExplorerPager v-if="transfers.answer.value.paged" :page="page" :count="transfers.answer.value.items.length" :limit="transfers.answer.value.limit" :loading="transfers.loading.value" @change="pickPage" />
+            <p v-else class="border-t border-muted px-4 py-3 font-mono text-[11px] text-dimmed">
+              {{ providerLabel(transfers.answer.value.provider) }} pages by cursor, which the library keeps to itself, so this is the newest {{ transfers.answer.value.limit }} and there's no page two.
+            </p>
           </template>
         </template>
 
