@@ -8,12 +8,30 @@ import { listProviders } from "./core/registry.js";
 import { withProvider } from "./core/resolve.js";
 import type { ProviderContext } from "./core/resolve.js";
 import { normalizeChain } from "./core/types.js";
-import type { ProviderCapabilities } from "./core/types.js";
+import type { ContractInfo, ProviderCapabilities, Transaction } from "./core/types.js";
 import { version } from "./version.js";
 
 const providerInput = {
   chain: z.string().trim().min(1).optional().describe("Chain name or alias"),
   provider: z.string().trim().min(1).optional().describe("Explorer provider key"),
+};
+const rawInput = {
+  raw: z
+    .boolean()
+    .optional()
+    .describe(
+      "Include the provider's own transaction record as raw, for fields the normalized shape leaves out, such as every input and output of a Bitcoin transaction. Defaults to false.",
+    ),
+};
+const contractPayloadInput = {
+  abi: z
+    .boolean()
+    .optional()
+    .describe("Include the ABI of a verified contract as a JSON string. Defaults to false."),
+  sourceCode: z
+    .boolean()
+    .optional()
+    .describe("Include the source code of a verified contract. Defaults to false."),
 };
 type ProviderOperation =
   | "getBalance"
@@ -56,6 +74,26 @@ function result(value: unknown): CallToolResult {
 
 function providerResult(provider: string, value: unknown): CallToolResult {
   return result({ provider, data: value });
+}
+
+/* The provider's record dwarfs the normalized fields, so it travels only when asked for. */
+/* oxlint-disable-next-line typescript/prefer-readonly-parameter-types */
+function trimTransaction(transaction: Transaction, keepRaw = false): Transaction {
+  if (keepRaw) return transaction;
+  const { raw: _raw, ...trimmed } = transaction;
+  return trimmed;
+}
+
+/* ABI and source run to tens of kilobytes; a caller after verification or proxy status skips them. */
+function trimContract(
+  info: Readonly<ContractInfo>,
+  requested: Readonly<{ abi?: boolean; sourceCode?: boolean }>,
+): ContractInfo {
+  const { abi, sourceCode, ...trimmed } = info;
+  const contract: ContractInfo = trimmed;
+  if (requested.abi) contract.abi = abi;
+  if (requested.sourceCode) contract.sourceCode = sourceCode;
+  return contract;
 }
 
 async function addressForChain(address: string, chain: Parameters<typeof resolveInput>[1]) {
@@ -137,16 +175,18 @@ export function createMcpServer(): McpServer {
         sort: z.enum(["asc", "desc"]).optional(),
         limit: z.number().int().positive().max(100).optional(),
         page: z.number().int().positive().optional(),
+        ...rawInput,
       },
       annotations: { readOnlyHint: true },
     },
-    async ({ address, chain, provider, ...options }) =>
+    async ({ address, chain, provider, raw, ...options }) =>
       withSelectedProvider(provider, chain, "getTxHistory", async (selected) => {
         const resolvedAddress = await addressForChain(address, selected.chain);
         const getTxHistory = requireOperation(selected.provider, "getTxHistory");
+        const transactions = await getTxHistory(resolvedAddress, selected.chain, options);
         return providerResult(
           selected.name,
-          await getTxHistory(resolvedAddress, selected.chain, options),
+          transactions.map((transaction) => trimTransaction(transaction, raw)),
         );
       }),
   );
@@ -156,13 +196,16 @@ export function createMcpServer(): McpServer {
     {
       description:
         "Get one normalized transaction by hash, with OP_RETURN messages when the provider is mempool",
-      inputSchema: { hash: z.string().min(1), ...providerInput },
+      inputSchema: { hash: z.string().min(1), ...providerInput, ...rawInput },
       annotations: { readOnlyHint: true },
     },
-    async ({ hash, chain, provider }) =>
+    async ({ hash, chain, provider, raw }) =>
       withSelectedProvider(provider, chain, "getTxDetail", async (selected) => {
         const getTxDetail = requireOperation(selected.provider, "getTxDetail");
-        return providerResult(selected.name, await getTxDetail(hash, selected.chain));
+        return providerResult(
+          selected.name,
+          trimTransaction(await getTxDetail(hash, selected.chain), raw),
+        );
       }),
   );
 
@@ -185,17 +228,18 @@ export function createMcpServer(): McpServer {
   server.registerTool(
     "explorers_contract",
     {
-      description: "Get verification, compiler, creator, proxy, ABI, and source metadata",
-      inputSchema: { address: z.string().min(1), ...providerInput },
+      description:
+        "Get verification, compiler, creator, proxy and token metadata for a contract, plus its ABI and source on request",
+      inputSchema: { address: z.string().min(1), ...providerInput, ...contractPayloadInput },
       annotations: { readOnlyHint: true },
     },
-    async ({ address, chain, provider }) =>
+    async ({ address, chain, provider, ...requested }) =>
       withSelectedProvider(provider, chain, "getContractInfo", async (selected) => {
         const getContractInfo = requireOperation(selected.provider, "getContractInfo");
         const resolvedAddress = await addressForChain(address, selected.chain);
         return providerResult(
           selected.name,
-          await getContractInfo(resolvedAddress, selected.chain),
+          trimContract(await getContractInfo(resolvedAddress, selected.chain), requested),
         );
       }),
   );
