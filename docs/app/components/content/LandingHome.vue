@@ -40,7 +40,7 @@ const activeProvider = computed(() => current.value.provider);
       <div
         class="explorers-enter explorers-enter-3 mt-8 flex flex-wrap items-center justify-center gap-2"
       >
-        <UButton to="/guide" color="primary" trailing-icon="i-solar-arrow-right-linear">
+        <UButton to="/guide" color="primary" trailing-icon="i-lucide-arrow-right">
           Get started
         </UButton>
         <UButton
@@ -62,7 +62,7 @@ const activeProvider = computed(() => current.value.provider);
         <span class="text-dimmed">$</span>
         <span>pnpm add @agntn/explorers</span>
         <UIcon
-          :name="copied ? 'i-solar-unread-linear' : 'i-solar-copy-linear'"
+          :name="copied ? 'i-lucide-check' : 'i-lucide-copy'"
           class="size-3.5 text-dimmed"
         />
       </button>
@@ -205,7 +205,7 @@ const activeProvider = computed(() => current.value.provider);
             class="group flex flex-col gap-3 border-t border-muted px-4 py-4 transition-colors duration-500 hover:bg-muted sm:border-l lg:border-l"
           >
             <UIcon
-              name="i-solar-add-circle-linear"
+              name="i-lucide-plus"
               class="size-5 text-muted transition-colors duration-500 group-hover:text-primary"
             />
             <span>
@@ -273,7 +273,7 @@ const activeProvider = computed(() => current.value.provider);
           key for you. Keep your explorer keys in the environment and out of your code.
         </p>
         <div class="mt-8 flex flex-wrap items-center justify-center gap-2">
-          <UButton to="/guide" color="primary" trailing-icon="i-solar-arrow-right-linear">
+          <UButton to="/guide" color="primary" trailing-icon="i-lucide-arrow-right">
             Read the guide
           </UButton>
           <UButton to="/explorer" color="neutral" variant="outline"> Open the explorer </UButton>

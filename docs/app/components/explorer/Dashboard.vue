@@ -59,7 +59,7 @@ const feedless = computed(() => !hasTip(props.chain));
 <template>
   <div class="space-y-4" @mouseenter="paused = true" @mouseleave="paused = false">
     <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
-      <UIcon :name="info?.icon ?? 'i-solar-layers-linear'" class="size-5 text-primary" />
+      <UIcon :name="info?.icon ?? 'i-lucide-layers'" class="size-5 text-primary" />
       <h2 class="text-lg font-medium tracking-tight text-highlighted">{{ chainLabel(chain) }}</h2>
       <span v-if="tip" class="font-mono text-[11px] text-dimmed">
         via {{ tip.source }} · height {{ tip.height }} · updated {{ ago(tip.fetchedAt, now) }}

@@ -16,7 +16,7 @@ const emit = defineEmits<{ change: [page: number] }>();
         aria-label="Previous page"
         @click="emit('change', page - 1)"
       >
-        <UIcon name="i-solar-alt-arrow-left-linear" class="size-3.5" /> prev
+        <UIcon name="i-lucide-chevron-left" class="size-3.5" /> prev
       </button>
       <button
         type="button"
@@ -25,7 +25,7 @@ const emit = defineEmits<{ change: [page: number] }>();
         aria-label="Next page"
         @click="emit('change', page + 1)"
       >
-        next <UIcon name="i-solar-alt-arrow-right-linear" class="size-3.5" />
+        next <UIcon name="i-lucide-chevron-right" class="size-3.5" />
       </button>
     </span>
   </div>

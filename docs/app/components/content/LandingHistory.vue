@@ -27,10 +27,10 @@ const symbol = computed(() => props.sample.balance.symbol);
         <UIcon
           :name="
             transaction.status === 'success'
-              ? 'i-solar-unread-linear'
+              ? 'i-lucide-check'
               : transaction.status === 'failed'
-                ? 'i-solar-close-circle-linear'
-                : 'i-solar-history-linear'
+                ? 'i-lucide-circle-x'
+                : 'i-lucide-archive'
           "
           class="mt-0.5 size-4 shrink-0"
           :class="transaction.status === 'success' ? 'text-primary' : 'text-dimmed'"

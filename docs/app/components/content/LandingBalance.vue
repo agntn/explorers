@@ -42,7 +42,7 @@ const totals = computed(() =>
           aria-label="Previous address"
           @click="emit('step', -1)"
         >
-          <UIcon name="i-solar-alt-arrow-left-linear" class="size-3.5" />
+          <UIcon name="i-lucide-chevron-left" class="size-3.5" />
         </button>
         <button
           type="button"
@@ -50,7 +50,7 @@ const totals = computed(() =>
           aria-label="Next address"
           @click="emit('step', 1)"
         >
-          <UIcon name="i-solar-alt-arrow-right-linear" class="size-3.5" />
+          <UIcon name="i-lucide-chevron-right" class="size-3.5" />
         </button>
       </span>
     </div>

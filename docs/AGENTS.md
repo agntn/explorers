@@ -9,7 +9,7 @@ docs/
 ├── nuxt.config.ts                 # extends: ['docus'], cloudflare_module preset (Workers), prerender list
 ├── app/app.config.ts              # title, github, theme, seo schema
 ├── app/app.css                    # theme tokens (light + .dark), shared `explorers-*` classes
-├── app/components/                # Docus overrides: AppHeaderLogo, AppHeaderCTA (nav), AppFooterLeft, DocsAsideLeftBody; icons are Solar (linear), brands stay simple-icons
+├── app/components/                # Docus overrides: AppHeaderLogo, AppHeaderCTA (nav), AppFooterLeft, DocsAsideLeftBody; icons are Lucide, chain logos the monochrome token set, brands simple-icons
 ├── app/components/content/        # MDC components (`::landing-home`, `::provider-facts`, `::provider-matrix`, `::chain-matrix`), the landing panels, ToolHero, LandingFeature
 ├── app/components/explorer/       # the explorer: Shell, Search, Nav, State, Pager, the Dashboard (StatTiles, LatestBlocks, LatestTransactions) and one card per entity (AddressOverview, TransactionsList, UtxosList, TokensTable, TransfersList, ContractCard, TransactionCard, BlockCard, BlockTransactions, GasBoard, ProvidersBoard)
 ├── app/components/OgImage/        # Docs.takumi and Landing.takumi override the Docus OG templates

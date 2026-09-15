@@ -69,7 +69,7 @@ const { copy: copyAddress, copied } = useClipboard({
             :data-copied="copied"
             @click="copyAddress()"
           >
-            <UIcon :name="copied ? 'i-solar-unread-linear' : 'i-solar-copy-linear'" class="size-3.5" />
+            <UIcon :name="copied ? 'i-lucide-check' : 'i-lucide-copy'" class="size-3.5" />
           </button>
         </dd>
         <dt>blockNumber</dt>
@@ -94,7 +94,7 @@ const { copy: copyAddress, copied } = useClipboard({
             target="_blank"
             rel="noopener nofollow"
             class="inline-flex items-center gap-1 hover:text-primary"
-            >{{ externalHost(answer.chain) }} <UIcon name="i-solar-arrow-right-up-linear" class="size-3.5" /></a
+            >{{ externalHost(answer.chain) }} <UIcon name="i-lucide-arrow-up-right" class="size-3.5" /></a
           >
           <span v-else class="text-dimmed">no canonical explorer link for this chain</span>
         </dd>

@@ -74,7 +74,7 @@ onMounted(() => {
       <ExplorerDashboard :chain="chain" />
 
       <p class="flex items-start gap-2 text-sm leading-6 text-dimmed">
-        <UIcon name="i-solar-info-circle-linear" class="mt-1 size-4 shrink-0 text-primary" />
+        <UIcon name="i-lucide-info" class="mt-1 size-4 shrink-0 text-primary" />
         <span
           >Blocks and transactions on this page come straight from the chain's public explorer API,
           because the library reads one thing at a time and doesn't have a feed yet. Every page you

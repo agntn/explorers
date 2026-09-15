@@ -23,7 +23,7 @@ watch(() => [props.chain, props.number], read);
 <template>
   <div class="explorers-frame overflow-hidden rounded-xl">
     <div class="flex items-center gap-2 border-b border-muted px-4 py-3">
-      <UIcon name="i-solar-bill-list-linear" class="size-4 text-primary" />
+      <UIcon name="i-lucide-list" class="size-4 text-primary" />
       <span class="text-sm font-medium text-highlighted">Transactions in this block</span>
       <span v-if="answer" class="ms-auto font-mono text-[11px] text-dimmed">
         {{ answer.total !== null ? `${answer.items.length} of ${answer.total}` : answer.items.length }} · via {{ answer.source }}
@@ -33,7 +33,7 @@ watch(() => [props.chain, props.number], read);
       This chain's explorer doesn't list a block's transactions through a public endpoint, so there's nothing to show here.
     </p>
     <p v-else-if="loading" class="flex items-center gap-2 px-4 py-4 text-sm text-muted">
-      <UIcon name="i-solar-refresh-linear" class="size-4 animate-spin" /> Reading the block's transactions…
+      <UIcon name="i-lucide-refresh-cw" class="size-4 animate-spin" /> Reading the block's transactions…
     </p>
     <p v-else-if="error" class="px-4 py-4 font-mono text-xs" :style="{ color: 'var(--explorers-del)' }">{{ error }}</p>
     <p v-else-if="answer && !answer.items.length" class="px-4 py-4 text-sm text-muted">An empty block.</p>

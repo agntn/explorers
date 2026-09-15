@@ -96,7 +96,7 @@ const gasPriceText = computed(() => {
       <dt>elsewhere</dt>
       <dd class="font-mono text-[13px]">
         <a v-if="external" :href="external" target="_blank" rel="noopener nofollow" class="inline-flex items-center gap-1 hover:text-primary">
-          {{ externalHost(answer.chain) }} <UIcon name="i-solar-arrow-right-up-linear" class="size-3.5" />
+          {{ externalHost(answer.chain) }} <UIcon name="i-lucide-arrow-up-right" class="size-3.5" />
         </a>
         <span v-else class="text-dimmed">no canonical explorer link for this chain</span>
       </dd>

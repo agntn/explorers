@@ -55,7 +55,7 @@ watch([chain, hash], read);
     </div>
     <div v-else class="space-y-5">
       <p v-if="!served" class="flex items-start gap-2 text-sm text-dimmed">
-        <UIcon name="i-solar-info-circle-linear" class="mt-0.5 size-4 shrink-0 text-primary" />
+        <UIcon name="i-lucide-info" class="mt-0.5 size-4 shrink-0 text-primary" />
         <span>No provider serves single transactions on {{ chainLabel(chain) }}; the read below will say so. The history on an <NuxtLink :to="addressPath(chain, hash)" class="text-primary hover:underline">address page</NuxtLink> still works.</span>
       </p>
       <ExplorerState :loading="loading" :error="error" label="Reading the transaction…" />

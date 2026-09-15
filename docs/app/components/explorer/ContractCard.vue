@@ -10,7 +10,7 @@ defineProps<{ answer: ContractAnswer }>();
 <template>
   <div>
     <div class="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-muted px-4 py-3">
-      <UIcon name="i-solar-code-file-linear" class="size-4 text-primary" />
+      <UIcon name="i-lucide-file-code" class="size-4 text-primary" />
       <span class="text-sm font-medium text-highlighted">{{ answer.contract.name ?? "unnamed contract" }}</span>
       <span class="explorers-state" :class="answer.contract.isVerified ? 'explorers-state-ok' : ''">{{
         answer.contract.isVerified ? "verified" : "unverified"

@@ -85,7 +85,7 @@ function pick(example: (typeof EXAMPLES)[number]) {
         />
       </div>
       <button type="submit" class="explorers-btn explorers-primary-fill">
-        <UIcon name="i-solar-magnifier-linear" class="size-4" />
+        <UIcon name="i-lucide-search" class="size-4" />
         {{ kind === "tx" ? "Open transaction" : kind === "block" ? "Open block" : "Open address" }}
       </button>
     </div>

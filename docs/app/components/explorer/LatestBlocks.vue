@@ -23,7 +23,7 @@ const rows = computed(() =>
 <template>
   <div class="explorers-frame overflow-hidden rounded-xl">
     <div class="flex items-center gap-2 border-b border-muted px-4 py-3">
-      <UIcon name="i-solar-box-minimalistic-linear" class="size-4 text-primary" />
+      <UIcon name="i-lucide-box" class="size-4 text-primary" />
       <span class="text-sm font-medium text-highlighted">Latest blocks</span>
       <span class="ms-auto font-mono text-[11px] text-dimmed">{{ blocks.length }} newest</span>
     </div>

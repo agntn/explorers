@@ -75,7 +75,7 @@ const cards = computed(() =>
         {{ chains.length }} chains with a provider that quotes fees. Cached thirty seconds on the worker.
       </p>
       <button type="button" class="explorers-btn" @click="refresh">
-        <UIcon name="i-solar-refresh-linear" class="size-4" /> Refresh
+        <UIcon name="i-lucide-refresh-cw" class="size-4" /> Refresh
       </button>
     </div>
     <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -88,7 +88,7 @@ const cards = computed(() =>
           </span>
         </div>
         <p v-if="!tile || tile.loading" class="flex items-center gap-2 px-4 py-4 text-sm text-muted">
-          <UIcon name="i-solar-refresh-linear" class="size-4 animate-spin" /> Asking…
+          <UIcon name="i-lucide-refresh-cw" class="size-4 animate-spin" /> Asking…
         </p>
         <p v-else-if="tile.error" class="px-4 py-4 font-mono text-xs" :style="{ color: 'var(--explorers-del)' }">
           {{ tile.error }}

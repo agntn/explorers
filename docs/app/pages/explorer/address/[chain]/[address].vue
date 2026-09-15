@@ -49,11 +49,11 @@ const TABS: ReadonlyArray<{
   /** Whether the tab pages through its list. */
   paged: boolean;
 }> = [
-  { key: "transactions", label: "Transactions", icon: "i-solar-bill-list-linear", capability: "txHistory", paged: true },
-  { key: "utxos", label: "Unspent outputs", icon: "i-solar-wallet-linear", capability: "utxos", paged: false },
-  { key: "tokens", label: "Tokens", icon: "i-solar-database-linear", capability: "tokenBalances", paged: false },
-  { key: "transfers", label: "Token transfers", icon: "i-solar-square-transfer-horizontal-linear", capability: "tokenTransfers", paged: true },
-  { key: "contract", label: "Contract", icon: "i-solar-code-file-linear", capability: "contractInfo", paged: false },
+  { key: "transactions", label: "Transactions", icon: "i-lucide-list", capability: "txHistory", paged: true },
+  { key: "utxos", label: "Unspent outputs", icon: "i-lucide-wallet", capability: "utxos", paged: false },
+  { key: "tokens", label: "Tokens", icon: "i-lucide-database", capability: "tokenBalances", paged: false },
+  { key: "transfers", label: "Token transfers", icon: "i-lucide-arrow-left-right", capability: "tokenTransfers", paged: true },
+  { key: "contract", label: "Contract", icon: "i-lucide-file-code", capability: "contractInfo", paged: false },
 ];
 
 /** Only the tabs some provider can serve on this chain; the others would be a 422 every time. */
@@ -155,7 +155,7 @@ watch([chain, address], read);
       <ExplorerAddressOverview v-if="balance.answer.value" :answer="balance.answer.value" />
 
       <p v-if="chain === 'arweave'" class="flex items-start gap-2 text-sm text-dimmed">
-        <UIcon name="i-solar-info-circle-linear" class="mt-0.5 size-4 shrink-0 text-primary" />
+        <UIcon name="i-lucide-info" class="mt-0.5 size-4 shrink-0 text-primary" />
         <span
           >Arweave addresses and transaction ids share a shape. If this is a transaction id, open it as
           <NuxtLink :to="txPath(chain, address)" class="text-primary hover:underline">a transaction</NuxtLink>.</span

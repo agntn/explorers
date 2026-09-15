@@ -8,7 +8,7 @@ defineProps<{ loading: boolean; error?: string; label: string }>();
     v-if="loading"
     class="explorers-frame flex items-center gap-2 rounded-xl px-5 py-4 text-sm text-muted"
   >
-    <UIcon name="i-solar-refresh-linear" class="size-4 animate-spin" />
+    <UIcon name="i-lucide-refresh-cw" class="size-4 animate-spin" />
     {{ label }}
   </p>
   <pre

@@ -28,7 +28,7 @@ defineProps<{
             :key="check"
             class="flex items-start gap-2.5 text-sm text-muted"
           >
-            <UIcon name="i-solar-unread-linear" class="mt-0.5 size-4 shrink-0 text-primary" />
+            <UIcon name="i-lucide-check" class="mt-0.5 size-4 shrink-0 text-primary" />
             <span>{{ check }}</span>
           </li>
         </ul>
@@ -37,7 +37,7 @@ defineProps<{
           class="mt-7 inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
         >
           {{ link }}
-          <UIcon name="i-solar-arrow-right-linear" class="size-4" />
+          <UIcon name="i-lucide-arrow-right" class="size-4" />
         </NuxtLink>
       </div>
       <div class="min-w-0" :class="reverse ? 'lg:order-1' : ''">

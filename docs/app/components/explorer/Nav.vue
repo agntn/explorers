@@ -2,9 +2,9 @@
 const route = useRoute();
 
 const links = [
-  { label: "Search", to: "/explorer", icon: "i-solar-magnifier-linear", exact: true },
-  { label: "Gas", to: "/explorer/gas", icon: "i-solar-gas-station-linear", exact: false },
-  { label: "Providers", to: "/explorer/providers", icon: "i-solar-server-linear", exact: false },
+  { label: "Search", to: "/explorer", icon: "i-lucide-search", exact: true },
+  { label: "Gas", to: "/explorer/gas", icon: "i-lucide-fuel", exact: false },
+  { label: "Providers", to: "/explorer/providers", icon: "i-lucide-server", exact: false },
 ] as const;
 
 function isActive(link: (typeof links)[number]) {
@@ -25,7 +25,7 @@ function isActive(link: (typeof links)[number]) {
       {{ link.label }}
     </NuxtLink>
     <NuxtLink to="/guide/explorer" class="explorers-explorer-link">
-      <UIcon name="i-solar-book-2-linear" class="size-3.5" />
+      <UIcon name="i-lucide-book-open" class="size-3.5" />
       How it works
     </NuxtLink>
   </nav>

@@ -17,7 +17,7 @@ defineProps<{
 <template>
   <div class="explorers-frame overflow-hidden rounded-xl">
     <div class="flex items-center gap-2 border-b border-muted px-4 py-3">
-      <UIcon name="i-solar-bill-list-linear" class="size-4 text-primary" />
+      <UIcon name="i-lucide-list" class="size-4 text-primary" />
       <span class="text-sm font-medium text-highlighted">{{ pending ? "Mempool" : "Latest transactions" }}</span>
       <span class="ms-auto font-mono text-[11px] text-dimmed">
         {{ pending ? `${transactions.length} newest unconfirmed` : `${transactions.length} newest` }}

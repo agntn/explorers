@@ -56,7 +56,7 @@ const rows = CHAINS.map((chain) => {
             >
               <UIcon
                 v-if="row.covered.has(capability)"
-                name="i-solar-unread-linear"
+                name="i-lucide-check"
                 class="size-4 text-primary"
                 :aria-label="`${CAPABILITY_LABELS[capability]} available`"
               />

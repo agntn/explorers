@@ -35,10 +35,10 @@ const baseFeeText = computed(() => {
       <span class="font-mono text-[11px] text-dimmed">{{ dateTime(block.timestamp) }}</span>
       <span class="ms-auto flex items-center gap-1">
         <NuxtLink v-if="block.number > 0" :to="blockPath(answer.chain, block.number - 1)" class="explorers-copy" aria-label="Previous block">
-          <UIcon name="i-solar-alt-arrow-left-linear" class="size-3.5" /> {{ block.number - 1 }}
+          <UIcon name="i-lucide-chevron-left" class="size-3.5" /> {{ block.number - 1 }}
         </NuxtLink>
         <NuxtLink :to="blockPath(answer.chain, block.number + 1)" class="explorers-copy" aria-label="Next block">
-          {{ block.number + 1 }} <UIcon name="i-solar-alt-arrow-right-linear" class="size-3.5" />
+          {{ block.number + 1 }} <UIcon name="i-lucide-chevron-right" class="size-3.5" />
         </NuxtLink>
       </span>
     </div>
@@ -84,7 +84,7 @@ const baseFeeText = computed(() => {
       <dt>elsewhere</dt>
       <dd class="font-mono text-[13px]">
         <a v-if="external" :href="external" target="_blank" rel="noopener nofollow" class="inline-flex items-center gap-1 hover:text-primary">
-          {{ externalHost(answer.chain) }} <UIcon name="i-solar-arrow-right-up-linear" class="size-3.5" />
+          {{ externalHost(answer.chain) }} <UIcon name="i-lucide-arrow-up-right" class="size-3.5" />
         </a>
         <span v-else class="text-dimmed">no canonical explorer link for this chain</span>
       </dd>

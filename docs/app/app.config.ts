@@ -63,6 +63,12 @@ export default defineAppConfig({
         description: "text-base leading-7 text-muted",
       },
     },
+    /** The table of contents truncates a heading that is a sentence; let it wrap instead. */
+    contentToc: {
+      slots: {
+        linkText: "whitespace-normal",
+      },
+    },
     contentSurround: {
       slots: {
         link: "rounded-xl explorers-frame border-0 bg-default hover:bg-muted",
