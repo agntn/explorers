@@ -141,7 +141,12 @@ class ContractProvider extends DisabledProvider {
   }
 
   override async getContractInfo(address: string): Promise<ContractInfo> {
-    return { address, isVerified: true };
+    return {
+      address,
+      isVerified: true,
+      abi: '[{"type":"fallback"}]',
+      sourceCode: "contract Fixture {}",
+    };
   }
 }
 
@@ -272,6 +277,80 @@ describe("Explorers MCP server", () => {
       const payload: unknown = JSON.parse(result.content[0]?.text ?? "null");
       expect(payload).toMatchObject({ provider: "dcrdata", data });
     }
+  });
+
+  it("sends the provider's transaction record only when raw is requested", async () => {
+    const address = "Dcur2mcGjmENx4DhNqDctW5wJCVyT3Qeqkx";
+    const hash = "4b064b5a6255ed94bb9c4347e370c5ad034db4d0550e5bd6775cbed65015ebe3";
+    const tx = { txid: hash, blockheight: 1000, confirmations: 1, vin: [], vout: [] };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const path = new URL(String(input)).pathname;
+        const body = path.includes("/addrs/") ? { totalItems: 1, from: 0, to: 1, items: [tx] } : tx;
+        return new Response(JSON.stringify(body));
+      }),
+    );
+    const client = await connectTestClient();
+    const readData = async (
+      name: string,
+      args: Readonly<Record<string, unknown>>,
+    ): Promise<unknown> => {
+      const result = parseToolResult(await client.callTool({ name, arguments: args }));
+      expect(result.isError).toBe(false);
+      const payload = JSON.parse(result.content[0]?.text ?? "null") as { data: unknown };
+      return payload.data;
+    };
+
+    const history = await readData("explorers_tx_history", { address, chain: "dcr", limit: 1 });
+    expect(history).toEqual([objectWith({ hash, status: "success" })]);
+    if (!isUnknownArray(history)) throw new TypeError("History is not an array");
+    expect(history[0]).not.toHaveProperty("raw");
+    const detail = await readData("explorers_tx_detail", { hash, chain: "dcr" });
+    expect(detail).toEqual(objectWith({ hash }));
+    expect(detail).not.toHaveProperty("raw");
+
+    expect(
+      await readData("explorers_tx_history", { address, chain: "dcr", limit: 1, raw: true }),
+    ).toEqual([objectWith({ hash, raw: objectWith({ txid: hash }) })]);
+    expect(await readData("explorers_tx_detail", { hash, chain: "dcr", raw: true })).toEqual(
+      objectWith({ hash, raw: objectWith({ txid: hash }) }),
+    );
+  });
+
+  it("sends a contract's ABI and source only when each is requested", async () => {
+    const address = "0x0000000000000000000000000000000000000001";
+    register(ContractProvider, { chains: ["ethereum"] });
+    const client = await connectTestClient();
+    const readContract = async (args: Readonly<Record<string, unknown>>): Promise<unknown> => {
+      const result = parseToolResult(
+        await client.callTool({
+          name: "explorers_contract",
+          arguments: { address, chain: "ethereum", provider: ContractProvider.key, ...args },
+        }),
+      );
+      expect(result.isError).toBe(false);
+      const payload = JSON.parse(result.content[0]?.text ?? "null") as { data: unknown };
+      return payload.data;
+    };
+
+    expect(await readContract({})).toEqual({ address, isVerified: true });
+    expect(await readContract({ abi: true })).toEqual({
+      address,
+      isVerified: true,
+      abi: '[{"type":"fallback"}]',
+    });
+    expect(await readContract({ sourceCode: true })).toEqual({
+      address,
+      isVerified: true,
+      sourceCode: "contract Fixture {}",
+    });
+    expect(await readContract({ abi: true, sourceCode: true })).toEqual({
+      address,
+      isVerified: true,
+      abi: '[{"type":"fallback"}]',
+      sourceCode: "contract Fixture {}",
+    });
   });
 
   it("discovers every explorer tool and executes provider discovery", async () => {

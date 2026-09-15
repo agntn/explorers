@@ -39,6 +39,8 @@ omp install .
 
 OMP loads `packages/omp/extensions/explorers.ts` through the package's `omp.extensions` manifest. It registers ten read-only tools for balances, transaction history and details, unspent outputs, contract metadata, token holdings, token transfers, gas prices, blocks and provider discovery. The existing Pi entrypoint remains under `packages/pi/extensions/` and registers the same ten.
 
+The same ten tools run over MCP: `explorers mcp` serves them on stdio. Results are the normalized objects as JSON, without the parts that are mostly weight. A transaction arrives without the provider's own record unless the call sets `raw: true`, and `explorers_contract` leaves the ABI and source out unless the call sets `abi` or `sourceCode`. Each of those is many times the size of the fields around it and rarely the answer, so it costs context only when asked for.
+
 ## CLI
 
 The short path is usually enough:
