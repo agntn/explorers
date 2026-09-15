@@ -1,3 +1,10 @@
 node_modules/
 dist/
 *.tgz
+
+docs/.data
+docs/.nitro
+docs/.cache
+docs/.wrangler
+docs/.nuxt
+docs/.output

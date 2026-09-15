@@ -1,0 +1,479 @@
+{
+  "version": "0.5.2",
+  "generatedAt": "2026-09-15T15:01:49.340Z",
+  "providers": [
+    {
+      "key": "etherscan",
+      "chains": [
+        "ethereum",
+        "base",
+        "arbitrum",
+        "optimism",
+        "polygon",
+        "bsc",
+        "avalanche",
+        "gnosis",
+        "linea",
+        "berachain"
+      ],
+      "capabilities": [
+        "balances",
+        "txHistory",
+        "txDetail",
+        "contractInfo",
+        "tokenBalances",
+        "tokenTransfers",
+        "gasData",
+        "blockInfo"
+      ],
+      "defaultURL": "https://api.etherscan.io/v2/api",
+      "defaultChain": "ethereum"
+    },
+    {
+      "key": "blockscout",
+      "chains": [
+        "ethereum",
+        "base",
+        "arbitrum",
+        "optimism",
+        "polygon",
+        "gnosis",
+        "linea",
+        "scroll",
+        "zksync",
+        "avalanche"
+      ],
+      "capabilities": [
+        "balances",
+        "txHistory",
+        "txDetail",
+        "contractInfo",
+        "tokenBalances",
+        "tokenTransfers",
+        "gasData",
+        "blockInfo"
+      ],
+      "defaultURL": "https://eth.blockscout.com",
+      "defaultChain": "ethereum"
+    },
+    {
+      "key": "blockchair",
+      "chains": [
+        "bitcoin",
+        "ethereum",
+        "ecash"
+      ],
+      "capabilities": [
+        "balances",
+        "txHistory",
+        "txDetail",
+        "blockInfo"
+      ],
+      "defaultURL": "https://api.blockchair.com",
+      "defaultChain": "ethereum"
+    },
+    {
+      "key": "mempool",
+      "chains": [
+        "bitcoin",
+        "litecoin",
+        "pepecoin"
+      ],
+      "capabilities": [
+        "balances",
+        "txHistory",
+        "txDetail",
+        "utxos",
+        "gasData",
+        "blockInfo"
+      ],
+      "defaultURL": "https://mempool.space",
+      "defaultChain": "bitcoin"
+    },
+    {
+      "key": "blockstream",
+      "chains": [
+        "bitcoin"
+      ],
+      "capabilities": [
+        "balances",
+        "txHistory",
+        "txDetail",
+        "utxos",
+        "blockInfo"
+      ],
+      "defaultURL": "https://blockstream.info",
+      "defaultChain": "bitcoin"
+    },
+    {
+      "key": "solscan",
+      "chains": [
+        "solana"
+      ],
+      "capabilities": [
+        "balances",
+        "txHistory",
+        "txDetail",
+        "blockInfo"
+      ],
+      "defaultURL": "https://pro-api.solscan.io/v2.0",
+      "defaultChain": "solana"
+    },
+    {
+      "key": "helius",
+      "chains": [
+        "solana"
+      ],
+      "capabilities": [
+        "txHistory",
+        "txDetail",
+        "tokenBalances"
+      ],
+      "defaultURL": "https://mainnet.helius-rpc.com",
+      "defaultChain": "solana"
+    },
+    {
+      "key": "ton",
+      "chains": [
+        "ton"
+      ],
+      "capabilities": [
+        "balances",
+        "txHistory"
+      ],
+      "defaultURL": "https://tonapi.io",
+      "defaultChain": "ton"
+    },
+    {
+      "key": "tronscan",
+      "chains": [
+        "tron"
+      ],
+      "capabilities": [
+        "balances",
+        "txHistory",
+        "txDetail",
+        "blockInfo"
+      ],
+      "defaultURL": "https://apilist.tronscanapi.com",
+      "defaultChain": "tron"
+    },
+    {
+      "key": "aptos",
+      "chains": [
+        "aptos"
+      ],
+      "capabilities": [],
+      "defaultURL": null,
+      "defaultChain": "aptos"
+    },
+    {
+      "key": "blockberry",
+      "chains": [
+        "sui"
+      ],
+      "capabilities": [
+        "balances",
+        "txHistory"
+      ],
+      "defaultURL": "https://api.blockberry.one/sui",
+      "defaultChain": "sui"
+    },
+    {
+      "key": "koios",
+      "chains": [
+        "cardano"
+      ],
+      "capabilities": [
+        "balances",
+        "txHistory",
+        "txDetail",
+        "tokenBalances"
+      ],
+      "defaultURL": "https://api.koios.rest/api/v1",
+      "defaultChain": "cardano"
+    },
+    {
+      "key": "arweave",
+      "chains": [
+        "arweave"
+      ],
+      "capabilities": [
+        "balances",
+        "txHistory",
+        "txDetail",
+        "blockInfo"
+      ],
+      "defaultURL": "https://arweave.net",
+      "defaultChain": "arweave"
+    },
+    {
+      "key": "dcrdata",
+      "chains": [
+        "decred"
+      ],
+      "capabilities": [
+        "balances",
+        "txHistory",
+        "txDetail",
+        "blockInfo"
+      ],
+      "defaultURL": "https://explorer.dcrdata.org/insight/api",
+      "defaultChain": "decred"
+    }
+  ],
+  "chains": [
+    {
+      "key": "ethereum",
+      "name": "Ethereum",
+      "symbol": "ETH",
+      "type": "evm",
+      "explorer": "https://etherscan.io",
+      "providers": [
+        "etherscan",
+        "blockscout",
+        "blockchair"
+      ]
+    },
+    {
+      "key": "base",
+      "name": "Base",
+      "symbol": "ETH",
+      "type": "evm",
+      "explorer": "https://basescan.org",
+      "providers": [
+        "etherscan",
+        "blockscout"
+      ]
+    },
+    {
+      "key": "arbitrum",
+      "name": "Arbitrum One",
+      "symbol": "ETH",
+      "type": "evm",
+      "explorer": "https://arbiscan.io",
+      "providers": [
+        "etherscan",
+        "blockscout"
+      ]
+    },
+    {
+      "key": "optimism",
+      "name": "Optimism",
+      "symbol": "ETH",
+      "type": "evm",
+      "explorer": "https://optimistic.etherscan.io",
+      "providers": [
+        "etherscan",
+        "blockscout"
+      ]
+    },
+    {
+      "key": "polygon",
+      "name": "Polygon PoS",
+      "symbol": "POL",
+      "type": "evm",
+      "explorer": "https://polygonscan.com",
+      "providers": [
+        "etherscan",
+        "blockscout"
+      ]
+    },
+    {
+      "key": "bsc",
+      "name": "BNB Chain",
+      "symbol": "BNB",
+      "type": "evm",
+      "explorer": "https://bscscan.com",
+      "providers": [
+        "etherscan"
+      ]
+    },
+    {
+      "key": "avalanche",
+      "name": "Avalanche C-Chain",
+      "symbol": "AVAX",
+      "type": "evm",
+      "explorer": "https://snowtrace.io",
+      "providers": [
+        "etherscan",
+        "blockscout"
+      ]
+    },
+    {
+      "key": "gnosis",
+      "name": "Gnosis Chain",
+      "symbol": "xDAI",
+      "type": "evm",
+      "explorer": "https://gnosisscan.io",
+      "providers": [
+        "etherscan",
+        "blockscout"
+      ]
+    },
+    {
+      "key": "linea",
+      "name": "Linea",
+      "symbol": "ETH",
+      "type": "evm",
+      "explorer": "https://lineascan.build",
+      "providers": [
+        "etherscan",
+        "blockscout"
+      ]
+    },
+    {
+      "key": "berachain",
+      "name": "Berachain",
+      "symbol": "BERA",
+      "type": "evm",
+      "explorer": "https://berascan.com",
+      "providers": [
+        "etherscan"
+      ]
+    },
+    {
+      "key": "scroll",
+      "name": "Scroll",
+      "symbol": "ETH",
+      "type": "evm",
+      "explorer": "https://scrollscan.com",
+      "providers": [
+        "blockscout"
+      ]
+    },
+    {
+      "key": "zksync",
+      "name": "zkSync Era",
+      "symbol": "ETH",
+      "type": "evm",
+      "explorer": "https://explorer.zksync.io",
+      "providers": [
+        "blockscout"
+      ]
+    },
+    {
+      "key": "bitcoin",
+      "name": "Bitcoin",
+      "symbol": "BTC",
+      "type": "utxo",
+      "explorer": "https://blockstream.info",
+      "providers": [
+        "blockchair",
+        "mempool",
+        "blockstream"
+      ]
+    },
+    {
+      "key": "ecash",
+      "name": "eCash",
+      "symbol": "XEC",
+      "type": "utxo",
+      "explorer": "https://explorer.e.cash",
+      "providers": [
+        "blockchair"
+      ]
+    },
+    {
+      "key": "litecoin",
+      "name": "Litecoin",
+      "symbol": "LTC",
+      "type": "utxo",
+      "explorer": "https://litecoinspace.org",
+      "providers": [
+        "mempool"
+      ]
+    },
+    {
+      "key": "pepecoin",
+      "name": "Pepecoin",
+      "symbol": "PEP",
+      "type": "utxo",
+      "explorer": "https://peppool.space",
+      "providers": [
+        "mempool"
+      ]
+    },
+    {
+      "key": "solana",
+      "name": "Solana",
+      "symbol": "SOL",
+      "type": "solana",
+      "explorer": "https://solscan.io",
+      "providers": [
+        "solscan",
+        "helius"
+      ]
+    },
+    {
+      "key": "ton",
+      "name": "TON (The Open Network)",
+      "symbol": "TON",
+      "type": "ton",
+      "explorer": "https://tonscan.org",
+      "providers": [
+        "ton"
+      ]
+    },
+    {
+      "key": "tron",
+      "name": "TRON",
+      "symbol": "TRX",
+      "type": "tron",
+      "explorer": "https://tronscan.org",
+      "providers": [
+        "tronscan"
+      ]
+    },
+    {
+      "key": "aptos",
+      "name": "Aptos",
+      "symbol": "APT",
+      "type": "move",
+      "explorer": "https://explorer.aptoslabs.com",
+      "providers": [
+        "aptos"
+      ]
+    },
+    {
+      "key": "sui",
+      "name": "Sui",
+      "symbol": "SUI",
+      "type": "move",
+      "explorer": "https://suiscan.xyz",
+      "providers": [
+        "blockberry"
+      ]
+    },
+    {
+      "key": "cardano",
+      "name": "Cardano",
+      "symbol": "ADA",
+      "type": "utxo",
+      "explorer": "https://cardanoscan.io",
+      "providers": [
+        "koios"
+      ]
+    },
+    {
+      "key": "arweave",
+      "name": "Arweave",
+      "symbol": "AR",
+      "type": "arweave",
+      "explorer": "https://viewblock.io/arweave",
+      "providers": [
+        "arweave"
+      ]
+    },
+    {
+      "key": "decred",
+      "name": "Decred",
+      "symbol": "DCR",
+      "type": "utxo",
+      "explorer": "https://dcrdata.decred.org",
+      "providers": [
+        "dcrdata"
+      ]
+    }
+  ]
+}
