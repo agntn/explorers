@@ -111,7 +111,7 @@ graph TB
 - **Chain normalization**: `normalizeChain()` delegates to `getChain()` from `@agntn/chains` and returns the canonical `ChainKey`. Aliases and display names both resolve (`ethereum→eth`, `btc→bitcoin`, `arb→arbitrum`). Missing input defaults to `eth`; unknown names and the empty string throw.
 - **Provider auto-selection**: `resolveProvider()` checks env vars, chain support, and an optional requested capability without loading provider modules. `withProvider()` keeps explicit choices strict and retries automatic reads once on another available built-in after `RateLimitError` or `PlanRestrictedError`. Its callback must be safe to run twice.
 - **Error sanitization**: `HTTPError` strips API keys from URLs in error messages. `normalizeError()` wraps unknown errors into typed `ExplorerError` subclasses.
-- **Terminal boundary**: CLI result lines go through `print()` in `commands/shared.ts`, which drops control bytes before a token symbol, contract name or decoded method reaches the terminal. The OMP and Pi extensions apply the same filter in `sanitizeTerminalText()`; MCP output is JSON, where those bytes arrive escaped.
+- **Terminal boundary**: CLI result lines go through `print()` in `commands/shared.ts`, which drops control bytes and line breaks before a token symbol, contract name or decoded method reaches the terminal, so a field cannot pose as the next result line. The OMP and Pi extensions apply the same filter per line in `sanitizeTerminalText()`, and every renderer splits an OP_RETURN message itself and indents its continuation lines. MCP output is JSON, where those bytes arrive escaped.
 
 ## Anti-patterns to avoid
 

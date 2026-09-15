@@ -19,11 +19,27 @@ function loadLib(): Promise<typeof ExplorersModule> {
   return loaded;
 }
 
-// oxlint-disable-next-line no-control-regex -- Terminal control bytes are precisely what this boundary removes.
-const UNSAFE_TERMINAL_CONTROLS = /[\u0000-\u0008\u000B-\u001F\u007F-\u009F]/gu;
+/** Control bytes a terminal would obey, plus every line break: a field must not add a line. */
+/* oxlint-disable-next-line no-control-regex */
+const UNSAFE_TERMINAL_CONTROLS = /[\u0000-\u0008\u000A-\u001F\u007F-\u009F\u2028\u2029]/gu;
 
+/* Keep one line of tool output on one line, with nothing in it a terminal would obey. */
 function sanitizeTerminalText(text: string): string {
   return text.replace(UNSAFE_TERMINAL_CONTROLS, "");
+}
+
+/* Join the lines a renderer composed, each sanitized on its own; a null line is one it left out. */
+function joinLines(lines: readonly (string | null)[]): string {
+  return lines
+    .filter((line) => line !== null)
+    .map(sanitizeTerminalText)
+    .join("\n");
+}
+
+/* One OP_RETURN payload as result lines; its own breaks indent, so none can pose as a field. */
+function describeOpReturn(payload: Readonly<ExplorersModule.OpReturnPayload>): string[] {
+  const [first = "", ...rest] = (payload.text ?? payload.hex).split("\n");
+  return [`OP_RETURN: ${first}`, ...rest.map((line) => `  ${line}`)];
 }
 
 interface TxDetailToolDetails {
@@ -35,9 +51,9 @@ interface ProvidersToolDetails {
   providers: ExplorersModule.ProviderListing[];
 }
 
-function textResult(text: string) {
+function textResult(lines: readonly (string | null)[]) {
   return {
-    content: [{ type: "text" as const, text: sanitizeTerminalText(text) }],
+    content: [{ type: "text" as const, text: joinLines(lines) }],
   };
 }
 
@@ -84,13 +100,13 @@ function describeUtxos(
   address: string,
   chain: ExplorersModule.ChainKey,
   utxos: readonly Readonly<ExplorersModule.Utxo>[],
-): string {
+): string[] {
   const confirmed = utxos.filter((utxo) => utxo.confirmed);
   const total = confirmed.reduce((sum, utxo) => sum + BigInt(utxo.value), 0n);
   const pending = utxos.length - confirmed.length;
   const suffix = pending > 0 ? `, ${pending} pending` : "";
   const header = `[${name}] ${utxos.length} unspent outputs for ${address} on ${chain}, ${total} base units confirmed${suffix}:`;
-  return [header, ...utxos.map(describeUtxo)].join("\n");
+  return [header, ...utxos.map(describeUtxo)];
 }
 
 /* One line per provider: supported operations, declared chains, and the public endpoint. */
@@ -174,7 +190,7 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
                 : `; funded ${balance.funded}, spent ${balance.spent}`;
             return `[${name}] ${balance.chain} balance for ${balance.address}: ${balance.balanceFormatted} ${balance.symbol} (${balance.balance} base units${totals}${unconfirmed}${balanceContext(balance)})`;
           });
-          return textResult(lines.join("\n"));
+          return textResult(lines);
         },
       );
     },
@@ -219,9 +235,7 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
           const lines = txs.map(
             (tx) => `${tx.hash} ${tx.from}→${tx.to ?? "new"} ${tx.valueFormatted} [${tx.status}]`,
           );
-          return textResult(
-            `[${name}] ${txs.length} transactions on ${chain}:\n${lines.join("\n")}`,
-          );
+          return textResult([`[${name}] ${txs.length} transactions on ${chain}:`, ...lines]);
         },
       );
     },
@@ -262,10 +276,10 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
             `Value: ${tx.valueFormatted}`,
             tx.functionName ? `Method: ${tx.functionName}` : null,
             tx.tokenTransfers.length > 0 ? `Token transfers: ${tx.tokenTransfers.length}` : null,
-            ...(tx.opReturn ?? []).map((payload) => `OP_RETURN: ${payload.text ?? payload.hex}`),
-          ].filter(Boolean);
+            ...(tx.opReturn ?? []).flatMap(describeOpReturn),
+          ];
           return {
-            content: [{ type: "text", text: sanitizeTerminalText(parts.join("\n")) }],
+            content: [{ type: "text", text: joinLines(parts) }],
             details: { provider: name, transaction: tx },
           };
         },
@@ -280,7 +294,7 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
         return new Text(
           theme.fg(
             "error",
-            sanitizeTerminalText(content?.text ?? "Transaction details unavailable"),
+            joinLines((content?.text ?? "Transaction details unavailable").split("\n")),
           ),
           0,
           0,
@@ -293,8 +307,9 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
       const opReturnLines = (): string[] => {
         const lines: string[] = [];
         for (const payload of tx.opReturn ?? []) {
-          const message = sanitizeTerminalText(payload.text ?? payload.hex);
-          const [first = "", ...rest] = message.split("\n");
+          const [first = "", ...rest] = (payload.text ?? payload.hex)
+            .split("\n")
+            .map(sanitizeTerminalText);
           lines.push(`${theme.fg("muted", "OP_RETURN")} ${first}`);
           for (const line of rest) lines.push(`  ${line}`);
         }
@@ -405,8 +420,8 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
             info.isProxy ? `Proxy → ${info.implementationAddress}` : null,
             info.isToken ? "Is token: yes" : null,
             info.creator ? `Creator: ${info.creator}` : null,
-          ].filter(Boolean);
-          return textResult(parts.join("\n"));
+          ];
+          return textResult(parts);
         },
       );
     },
@@ -455,9 +470,10 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
             const usd = token.valueUsd ? ` ($${token.valueUsd.toFixed(2)})` : "";
             return `  ${token.symbol}: ${token.balanceFormatted}${usd}  [${token.contract.slice(0, 10)}…]`;
           });
-          return textResult(
-            `[${name}] ${tokens.length} tokens for ${params.address} on ${chain}:\n${lines.join("\n")}`,
-          );
+          return textResult([
+            `[${name}] ${tokens.length} tokens for ${params.address} on ${chain}:`,
+            ...lines,
+          ]);
         },
       );
     },
@@ -510,9 +526,10 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
             (transfer) =>
               `  ${transfer.txHash.slice(0, 18)}… ${transfer.from.slice(0, 10)}…→${transfer.to.slice(0, 10)}… ${transfer.valueFormatted} ${transfer.symbol}`,
           );
-          return textResult(
-            `[${name}] ${transfers.length} token transfers for ${params.address} on ${chain}:\n${lines.join("\n")}`,
-          );
+          return textResult([
+            `[${name}] ${transfers.length} token transfers for ${params.address} on ${chain}:`,
+            ...lines,
+          ]);
         },
       );
     },
@@ -555,8 +572,8 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
             gas.priorityFee ? `  Priority: ${gas.priorityFee} ${gas.unit}` : null,
             gas.fastGasPrice ? `  Fast: ${gas.fastGasPrice} ${gas.unit}` : null,
             gas.baseFee ? `  Base fee: ${gas.baseFee} ${gas.unit}` : null,
-          ].filter(Boolean);
-          return textResult(parts.join("\n"));
+          ];
+          return textResult(parts);
         },
       );
     },
@@ -600,8 +617,8 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
             `Gas used/limit: ${block.gasUsed} / ${block.gasLimit}`,
             `Transactions: ${block.txCount}`,
             block.baseFee ? `Base fee per gas: ${block.baseFee}` : null,
-          ].filter(Boolean);
-          return textResult(parts.join("\n"));
+          ];
+          return textResult(parts);
         },
       );
     },
@@ -627,9 +644,7 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
         content: [
           {
             type: "text",
-            text: sanitizeTerminalText(
-              `Registered providers (${providers.length}):\n${lines.join("\n")}`,
-            ),
+            text: joinLines([`Registered providers (${providers.length}):`, ...lines]),
           },
         ],
         details: { providers },

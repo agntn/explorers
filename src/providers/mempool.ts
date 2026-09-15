@@ -190,8 +190,8 @@ function decoder(): TextDecoder {
   return utf8;
 }
 
-/** Unicode format characters: invisible on screen, which covers the bidi controls as well. */
-const FORMAT_CHARACTER = /\p{Cf}/u;
+/** Format characters, invisible on screen, and the line separators no renderer splits on. */
+const UNPRINTABLE = /[\p{Cf}\p{Zl}\p{Zp}]/u;
 
 /*
  * Decide whether decoded chain data is worth showing as text.
@@ -204,7 +204,7 @@ const FORMAT_CHARACTER = /\p{Cf}/u;
  * payloads arrive as hex.
  */
 function isPrintable(text: string): boolean {
-  if (FORMAT_CHARACTER.test(text)) return false;
+  if (UNPRINTABLE.test(text)) return false;
 
   for (const char of text) {
     const code = char.codePointAt(0) ?? 0;
