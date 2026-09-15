@@ -30,11 +30,16 @@ useSeo({
 
 useSeoMeta({ robots: "noindex, follow" });
 
-const { loading, error, answer, load } = useAnswer<DetailAnswer>("/api/tx-detail");
+const { loading, error, answer, load, reset } = useAnswer<DetailAnswer>("/api/tx-detail");
 
-onMounted(() => {
+function read() {
+  reset();
   if (known.value) void load({ chain: chain.value, hash: hash.value });
-});
+}
+
+onMounted(read);
+/** The search box stays on this page, so a new hash on the same chain has to read again. */
+watch([chain, hash], read);
 </script>
 
 <template>

@@ -54,6 +54,7 @@ export function useLandingExplorer() {
       return;
     }
     const base = samples.value[at]!;
+    /** The one `live` flag is read by the balance and the history panel, so it turns on only when both came back. */
     samples.value[at] = {
       ...base,
       ...(balance.status === "fulfilled" ? { balance: balance.value.balance } : {}),
@@ -61,7 +62,7 @@ export function useLandingExplorer() {
         ? { history: history.value.items, address: history.value.address }
         : {}),
       ...(gas.status === "fulfilled" ? { gas: gas.value.gas } : {}),
-      live: true,
+      live: balance.status === "fulfilled" && history.status === "fulfilled",
     };
   }
 

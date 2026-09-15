@@ -104,6 +104,7 @@ export interface BlockAnswer extends Answer {
 
 export interface ProviderStatus {
   provider: string;
+  /** A read can start on this worker: keyless, key present, or the key is optional. */
   configured: boolean;
   keyless: boolean;
 }

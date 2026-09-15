@@ -113,7 +113,11 @@ const resolved = computed(
   () => balance.answer.value?.balance.address ?? history.answer.value?.address ?? address.value,
 );
 
-onMounted(() => {
+/** Everything starts over for a new address: the answers, the tab and the page the query names. */
+function read() {
+  for (const panel of [balance, history, utxos, tokens, transfers, contract]) panel.reset();
+  tab.value = "transactions";
+  page.value = 1;
   if (!known.value) return;
   const wanted = route.query.tab;
   if (typeof wanted === "string" && tabs.value.some((row) => row.key === wanted)) {
@@ -125,7 +129,11 @@ onMounted(() => {
   }
   void balance.load(base.value);
   void loadTab();
-});
+}
+
+onMounted(read);
+/** The search box stays on this page, so another address on the same chain has to read again. */
+watch([chain, address], read);
 </script>
 
 <template>

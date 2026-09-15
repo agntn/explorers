@@ -10,28 +10,36 @@ export function useAnswer<T>(url: string) {
   const status = ref<number | null>(null);
   const answer = ref<T>();
   let answered: string | undefined;
+  /** Only the newest request may write; an older one that lands later is dropped. */
+  let latest = 0;
 
   async function load(query: Record<string, string | number | undefined>, force = false) {
     const key = JSON.stringify(query);
     if (!force && answer.value !== undefined && answered === key) return;
+    const sequence = ++latest;
     loading.value = true;
     error.value = undefined;
     status.value = null;
     try {
-      answer.value = await $fetch<T>(url, { query, retry: 0 });
+      const value = await $fetch<T>(url, { query, retry: 0 });
+      if (sequence !== latest) return;
+      answer.value = value;
       answered = key;
     } catch (caught) {
+      if (sequence !== latest) return;
       /** A refresh that fails keeps the last answer on screen; a new query that fails shows only the error. */
       if (answered !== key) answer.value = undefined;
       answered = undefined;
       error.value = errorText(caught);
       status.value = errorStatus(caught);
     } finally {
-      loading.value = false;
+      if (sequence === latest) loading.value = false;
     }
   }
 
   function reset() {
+    latest++;
+    loading.value = false;
     answer.value = undefined;
     answered = undefined;
     error.value = undefined;

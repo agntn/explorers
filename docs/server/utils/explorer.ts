@@ -45,10 +45,13 @@ export function readProvider(query: Query): string | undefined {
   return value;
 }
 
+/** `configured` means a read can start here: keyless, key present, or a key the provider treats as optional (Blockchair). */
 function providerStatus(key: string): ProviderStatus {
-  const envVars = providerInfo(key)?.envVars ?? [];
+  const info = providerInfo(key);
+  const envVars = info?.envVars ?? [];
   const keyless = envVars.length === 0;
-  const configured = keyless || envVars.every((name) => Boolean(process.env[name]));
+  const configured =
+    keyless || info?.optionalKey === true || envVars.every((name) => Boolean(process.env[name]));
   return { provider: key, configured, keyless };
 }
 

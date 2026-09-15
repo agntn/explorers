@@ -41,7 +41,7 @@ const symbol = computed(() => props.sample.balance.symbol);
           </p>
           <p class="mt-0.5 truncate font-mono text-[11px] text-dimmed">
             {{ shortHash(transaction.from, 6, 4) }} →
-            {{ transaction.to === null ? "contract creation" : shortHash(transaction.to, 6, 4) }}
+            {{ transaction.to === null ? "contract creation" : transaction.to === "" ? "data upload" : shortHash(transaction.to, 6, 4) }}
             · block {{ transaction.blockNumber }}
             {{ transaction.timestamp ? ` · ${dateOnly(transaction.timestamp)}` : "" }}
             {{ transaction.functionName ? ` · ${transaction.functionName}` : "" }}

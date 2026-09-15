@@ -30,7 +30,7 @@ const rows = computed(() =>
         <p class="font-mono text-xs text-muted">
           the docs worker · @agntn/explorers {{ answer.version }} · {{ configured }} of {{ PROVIDERS.length }} providers can answer
         </p>
-        <p class="font-mono text-[11px] text-dimmed">configured means the worker holds the key; never the key itself</p>
+        <p class="font-mono text-[11px] text-dimmed">configured means a read can start here, with the key or without one where it's optional; never the key itself</p>
       </div>
       <div class="explorers-table-wrap">
         <table class="explorers-table">

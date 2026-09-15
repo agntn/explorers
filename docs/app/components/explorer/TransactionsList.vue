@@ -77,6 +77,7 @@ const rows = computed(() => {
           </td>
           <td class="font-mono text-xs">
             <span v-if="transaction.to === null" class="text-dimmed">contract creation</span>
+            <span v-else-if="transaction.to === ''" class="text-dimmed">data upload</span>
             <span v-else-if="toSelf" class="text-dimmed">this address</span>
             <NuxtLink v-else :to="addressPath(chain, transaction.to)" class="text-muted hover:text-primary" :title="transaction.to">{{ shortHash(transaction.to, 8, 6) }}</NuxtLink>
           </td>
