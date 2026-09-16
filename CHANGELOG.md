@@ -1,5 +1,53 @@
 # Changelog
 
+## v0.5.3
+
+[compare changes](https://github.com/agntn/explorers/compare/v0.5.2...v0.5.3)
+
+### 🚀 Enhancements
+
+- Add Arweave gateway support ([#79](https://github.com/agntn/explorers/pull/79))
+- Support Decred with dcrdata ([#80](https://github.com/agntn/explorers/pull/80))
+- Show pending balance activity ([#82](https://github.com/agntn/explorers/pull/82))
+- Add unspent output lookup ([#85](https://github.com/agntn/explorers/pull/85))
+- **mcp:** Send raw, ABI and source on request ([#89](https://github.com/agntn/explorers/pull/89))
+
+### 🔥 Performance
+
+- **cli:** Avoid loading explorer clients for help ([#81](https://github.com/agntn/explorers/pull/81))
+
+### 🩹 Fixes
+
+- **ton:** Keep unfinished events pending ([#69](https://github.com/agntn/explorers/pull/69))
+- **bitcoin:** Ignore OP_RETURN as recipient ([#70](https://github.com/agntn/explorers/pull/70))
+- **bitcoin:** Choose recipient in address history ([#71](https://github.com/agntn/explorers/pull/71))
+- **blockscout:** Respect baseUrl overrides ([#72](https://github.com/agntn/explorers/pull/72))
+- **input:** Accept JSON address batches ([#74](https://github.com/agntn/explorers/pull/74))
+- Make typecheck work from clean clones ([#75](https://github.com/agntn/explorers/pull/75))
+- Accept ENS names in agent extensions ([#76](https://github.com/agntn/explorers/pull/76))
+- **ton:** Omit failed Jetton transfers ([#77](https://github.com/agntn/explorers/pull/77))
+- **blockchair:** Read the actual block response ([#78](https://github.com/agntn/explorers/pull/78))
+- **mempool:** Keep large Pepecoin transfers exact ([#83](https://github.com/agntn/explorers/pull/83))
+- List providers from registry metadata ([#84](https://github.com/agntn/explorers/pull/84))
+- **dcrdata:** Move pending activity to unconfirmed ([#86](https://github.com/agntn/explorers/pull/86))
+- **cli:** Drop terminal controls from results ([#87](https://github.com/agntn/explorers/pull/87))
+- Keep explorer text on one result line ([#88](https://github.com/agntn/explorers/pull/88))
+
+### 📖 Documentation
+
+- Give the README a voice ([#90](https://github.com/agntn/explorers/pull/90))
+- A block explorer at explorers.agntn.dev ([#91](https://github.com/agntn/explorers/pull/91))
+
+### ✅ Tests
+
+- Replace live explorer calls with fixtures ([4034d1c](https://github.com/agntn/explorers/commit/4034d1c))
+
+### ❤️ Contributors
+
+- Ori ([@oritwoen](https://github.com/oritwoen))
+- Aeitwoen ([@aeitwoen](https://github.com/aeitwoen))
+- Aei ([@aeitwoen](https://github.com/aeitwoen))
+
 ## v0.5.2
 
 [compare changes](https://github.com/agntn/explorers/compare/v0.5.1...v0.5.2)
