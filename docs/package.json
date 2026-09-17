@@ -12,10 +12,12 @@
     "deploy": "pnpm build && wrangler deploy"
   },
   "dependencies": {
-    "@agntn/explorers": "file:..",
+    "@agntn/chains": "0.3.4",
     "better-sqlite3": "12.11.1",
     "docus": "5.13.0",
-    "nuxt": "4.5.2"
+    "jiti": "2.7.0",
+    "nuxt": "4.5.2",
+    "ofetch": "1.5.1"
   },
   "devDependencies": {
     "@iconify-json/lucide": "1.2.128",

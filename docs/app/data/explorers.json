@@ -1,6 +1,6 @@
 {
-  "version": "0.5.2",
-  "generatedAt": "2026-09-15T15:01:49.340Z",
+  "version": "0.5.3",
+  "generatedAt": "2026-09-17T17:45:16.885Z",
   "providers": [
     {
       "key": "etherscan",

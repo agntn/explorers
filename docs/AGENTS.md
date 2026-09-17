@@ -19,7 +19,7 @@ docs/
 ├── app/utils/                     # providers (presentation over the snapshot), entities (classify, paths, external links), wire (errorText over the shared shapes), format, landing-fixtures
 ├── shared/                        # wire.ts (answer shapes, one declaration for app and server), tip-chains.ts (the feed list), identifier.ts (the address predicate)
 ├── app/pages/explorer/            # index (search hub), gas, providers, address/[chain]/[address], tx/[chain]/[hash], block/[chain]/[number]
-├── scripts/snapshot.mjs           # ../dist/index.mjs + @agntn/chains -> app/data/explorers.json
+├── scripts/snapshot.mjs           # ../src + @agntn/chains -> app/data/explorers.json
 ├── scripts/record-fixtures.mjs    # regenerates app/utils/landing-fixtures.ts through dist/
 ├── server/api/                    # balance, tx, tx-detail, utxos, contract, tokens, transfers, gas, block, providers over the library; tip and block-txs over the explorers' list endpoints
 ├── server/utils/                  # explorer.ts (chain and provider parsing, `cachedRead` envelope, key status), query.ts (caps, cache, rate limit, errors), slim.ts (raw dropped, source counted), tip.ts (the live feed, outside the library)
@@ -34,9 +34,8 @@ docs/
 ## Commands
 
 ```bash
-pnpm build            # in the repo root first; the snapshot and the fixtures read dist/
-pnpm install          # from docs/
-pnpm snapshot         # regenerate app/data/explorers.json from ../dist
+pnpm install          # from docs/; the repo root needs neither an install nor a build
+pnpm snapshot         # regenerate app/data/explorers.json from ../src
 pnpm fixtures         # record the landing samples again (network, keyless providers only)
 pnpm dev              # http://localhost:3000
 pnpm build            # runs the snapshot, then Cloudflare Workers output in .output/, content routes prerendered
@@ -48,7 +47,7 @@ Deployment: Nitro preset `cloudflare_module`. Nuxt Content needs a D1 binding na
 
 Explorer keys are Worker secrets, never vars: `wrangler secret put ETHERSCAN_API_KEY`, `SOLSCAN_API_KEY`, `HELIUS_API_KEY`, `TRONSCAN_API_KEY`, `BLOCKBERRY_API_KEY`, optionally `BLOCKCHAIR_API_KEY`. With `nodejs_compat` the runtime exposes them on `process.env`, which is where the library's `resolveProvider()` reads them. A provider without its key shows `configured: false` in `/api/providers` and a read that lands on it answers 503; Blockchair's key is optional, so it stays `configured` without one. Without `ETHERSCAN_API_KEY` every EVM read goes through Blockscout, which is fine for a demo.
 
-The site imports `@agntn/explorers` from `file:..`, and pnpm copies the package at install time instead of linking it. After a library change, `pnpm build` in the root and then `pnpm update @agntn/explorers` in `docs/`, or the worker ships the old copy; `pnpm install` alone says up to date and refreshes nothing.
+`@agntn/explorers` is an alias in `nuxt.config.ts` for `../src/index.ts`. Vite and Nitro bundle the checkout's sources into the worker, so `dist/` and the root `node_modules` are never touched. That is what Workers Builds needs: it installs `docs/` alone, and the earlier `file:..` dependency copied the parent at install time, before anything had built `dist/`, so the deploy failed to resolve the import. `src/index.ts` imports `@agntn/chains` and `ofetch`, so both sit in `docs/package.json`. A new bare import there resolves upwards from `../src`, into a root `node_modules` the deploy never installs, so it needs an entry here too. The CLI, MCP and tool entries stay out of the alias.
 
 Resolution traps, both caused by the repo root being a pnpm workspace:
 
@@ -57,7 +56,7 @@ Resolution traps, both caused by the repo root being a pnpm workspace:
 
 ## The snapshot
 
-- `app/data/explorers.json` is the single source for every provider, chain, capability and endpoint on the site. `scripts/snapshot.mjs` maps `builtins` and `PROVIDER_DEFAULT_CHAIN` from `../dist/index.mjs` and the chain metadata from `@agntn/chains` to plain objects; the build script runs it first, so a stale file cannot ship, but the committed copy is what `pnpm dev` and the diff show. A provider added to the library shows up in the grid, the sidebar, the matrix and the explorer by itself; it needs one entry in `PRESENTATION` in `app/utils/providers.ts` (label, icon, env vars, blurb) and a page in `content/2.providers/`, and the utils throw at import if the entry is missing.
+- `app/data/explorers.json` is the single source for every provider, chain, capability and endpoint on the site. `scripts/snapshot.mjs` maps `builtins` and `PROVIDER_DEFAULT_CHAIN` from `../src` and the chain metadata from `@agntn/chains` to plain objects; the build script runs it first, so a stale file cannot ship, but the committed copy is what `pnpm dev` and the diff show. A provider added to the library shows up in the grid, the sidebar, the matrix and the explorer by itself; it needs one entry in `PRESENTATION` in `app/utils/providers.ts` (label, icon, env vars, blurb) and a page in `content/2.providers/`, and the utils throw at import if the entry is missing.
 - Three things the snapshot does not carry are mirrored by hand, each with a comment naming its source: the environment variables per provider (`ENV_MAP` and `OPTIONAL_CREDENTIAL_PROVIDERS` in `src/core/resolve.ts`) and the native decimals per chain (what each provider passes to `formatWei()`) in `app/utils/providers.ts`, and which providers read `TxHistoryOptions.page` (`PAGED_HISTORY` and `PAGED_TRANSFERS` in `server/utils/explorer.ts`, from `options.page` in `src/providers/`). Change any of them in the library, change them here.
 - `classify` in `app/utils/entities.ts` is a port of `classifyInput` in `src/core/input.ts`, plus digits for a block number. `GasBoard` keeps a `NO_FEES` set for chains a provider advertises but cannot serve (Pepecoin on Mempool), because capabilities are declared by the provider, not by the chain.
 
