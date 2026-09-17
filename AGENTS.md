@@ -124,9 +124,9 @@ graph TB
 
 ## Test coverage gaps
 
-**Covered** (31 test files): provider base/registry, provider resolution, HTTP client, path safety, amount formatting, errors, input classification, chain normalization, CLI argument routing, extension integration, plus all fourteen providers.
+**Covered** (34 test files): provider base/registry, provider resolution, HTTP client, path safety, amount formatting, errors, input classification, chain normalization, CLI argument routing, extension integration, plus all fourteen providers.
 **CLI coverage**: help without backend imports, errors for unknown chains, provider listing, and mocked balance, transaction and token reads. Successful contract, transfer, gas, and block command execution remains untested.
-**Test style**: Focused unit tests for local contracts and mocked explorer-API responses; public no-key providers may additionally use live roundtrips.
+**Test style**: Focused unit tests for local contracts and mocked explorer API responses. Live roundtrips belong in `test/live` and run only through `pnpm test:live`.
 
 ## Dependencies
 
@@ -143,7 +143,8 @@ graph TB
 pnpm build          # obuild → dist/
 pnpm dev            # obuild --stub (watch mode)
 pnpm typecheck      # build, then tsc --noEmit
-pnpm test           # vitest watch
-pnpm test:run       # vitest single run
+pnpm test           # vitest watch (unit, offline)
+pnpm test:run       # vitest single run (unit, offline)
+pnpm test:live      # public explorer roundtrips, not CI
 pnpm release        # test, changelog, tag, push; CI publishes the tag
 ```

@@ -1,8 +1,7 @@
 /**
  * Explorers - Koios (Cardano) provider tests
  *
- * Stubbed responses for the mapping contract, plus a live roundtrip against the keyless public
- * instance.
+ * Stubbed responses for the mapping contract.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NotFoundError, UnsupportedChainError } from "../../src/core/errors.js";
@@ -386,17 +385,4 @@ describe("koios provider", () => {
       "https://example.test/api/v1/address_assets?limit=1000&offset=1000",
     ]);
   });
-});
-
-describe("koios provider, live", () => {
-  /** The public tier is rate limited and rebuilds the UTxO set per call, so it answers slowly. */
-  it("reads an address off the public instance without a key", async () => {
-    const provider = await create("koios");
-    const balance = await provider.getBalance(OTHER, "cardano");
-
-    expect(balance.chain).toBe("cardano");
-    expect(balance.symbol).toBe("ADA");
-    expect(balance.balance).toMatch(/^\d+$/);
-    expect(Number(balance.balanceFormatted)).toBeGreaterThan(0);
-  }, 30_000);
 });
