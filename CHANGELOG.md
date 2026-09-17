@@ -1,5 +1,25 @@
 # Changelog
 
+## v0.5.4
+
+[compare changes](https://github.com/agntn/explorers/compare/v0.5.3...v0.5.4)
+
+### 🩹 Fixes
+
+- **mcp:** Drop zero token balances by default ([#92](https://github.com/agntn/explorers/pull/92))
+- **docs:** Alias the library from src ([#93](https://github.com/agntn/explorers/pull/93))
+- Retry rate-limited reads on the same backend ([#95](https://github.com/agntn/explorers/pull/95))
+- Pass full token ids between tools ([#96](https://github.com/agntn/explorers/pull/96))
+
+### ✅ Tests
+
+- Keep unit tests off the network ([#94](https://github.com/agntn/explorers/pull/94))
+
+### ❤️ Contributors
+
+- Aeitwoen ([@aeitwoen](https://github.com/aeitwoen))
+- Ori ([@oritwoen](https://github.com/oritwoen))
+
 ## v0.5.3
 
 [compare changes](https://github.com/agntn/explorers/compare/v0.5.2...v0.5.3)
