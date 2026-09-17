@@ -468,7 +468,7 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
           });
           const lines = tokens.map((token) => {
             const usd = token.valueUsd ? ` ($${token.valueUsd.toFixed(2)})` : "";
-            return `  ${token.symbol}: ${token.balanceFormatted}${usd}  [${token.contract.slice(0, 10)}…]`;
+            return `  ${token.symbol}: ${token.balanceFormatted}${usd}  [${token.contract}]`;
           });
           return textResult([
             `[${name}] ${tokens.length} tokens for ${params.address} on ${chain}:`,
@@ -524,7 +524,7 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
           });
           const lines = transfers.map(
             (transfer) =>
-              `  ${transfer.txHash.slice(0, 18)}… ${transfer.from.slice(0, 10)}…→${transfer.to.slice(0, 10)}… ${transfer.valueFormatted} ${transfer.symbol}`,
+              `  ${transfer.txHash} ${transfer.from}→${transfer.to} ${transfer.valueFormatted} ${transfer.symbol}`,
           );
           return textResult([
             `[${name}] ${transfers.length} token transfers for ${params.address} on ${chain}:`,
