@@ -160,6 +160,15 @@ function isRateLimitFailure(context: FailureContext): boolean {
   return context.status === 429 || context.lowerMessage.includes("rate limit");
 }
 
+function retryAfterSeconds(error: FetchError | undefined): number | undefined {
+  const header = error?.response?.headers?.get("retry-after");
+  if (header === null || header === undefined) return undefined;
+  const trimmed = header.trim();
+  if (!/^\d+$/.test(trimmed)) return undefined;
+  const parsed = Number.parseInt(trimmed, 10);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
 function authenticationError(context: FailureContext): AuthError {
   const detail = context.url ? `HTTP ${context.status} from ${context.url}` : context.message;
   return new AuthError(context.provider ?? "unknown", detail);
@@ -177,7 +186,9 @@ function transportError(context: FailureContext): HTTPError {
 
 function classifyFailure(context: FailureContext): ExplorerError | undefined {
   if (isNotFoundFailure(context)) return new NotFoundError(context.resource, context.provider);
-  if (isRateLimitFailure(context)) return new RateLimitError(context.provider ?? "unknown");
+  if (isRateLimitFailure(context)) {
+    return new RateLimitError(context.provider ?? "unknown", retryAfterSeconds(context.fetchError));
+  }
   if (isAuthenticationFailure(context)) return authenticationError(context);
   return isTransportFailure(context) ? transportError(context) : undefined;
 }

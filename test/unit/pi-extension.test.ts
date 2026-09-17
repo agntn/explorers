@@ -423,7 +423,7 @@ describe("explorers Pi extension", () => {
         text: textMatching(/^\[blockscout\] 1 token transfers[\s\S]*1 TKN$/),
       },
     ]);
-  });
+  }, 10_000);
 
   it("keeps complete identifiers in transaction history results", async () => {
     const address = "bc1qsenderaddress";

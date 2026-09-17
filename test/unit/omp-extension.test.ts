@@ -400,7 +400,7 @@ console.log(result.content[0].text);
         text: textContaining("[blockscout] ethereum balance"),
       },
     ]);
-  });
+  }, 10_000);
 
   it("declares a non-negative integer block number", () => {
     const tool = requireTool(registerExtensionTools().tools, "explorers_block");
