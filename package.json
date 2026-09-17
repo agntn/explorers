@@ -51,6 +51,7 @@
     "typecheck": "pnpm build && tsc --noEmit",
     "test": "vitest",
     "test:run": "vitest --run",
+    "test:live": "EXPLORERS_LIVE=1 vitest --run",
     "prepack": "pnpm run build",
     "release": "pnpm test:run && changelogen --release --push"
   },

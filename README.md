@@ -192,6 +192,7 @@ pnpm fmt         # oxlint --fix and oxfmt
 pnpm lint
 pnpm typecheck   # builds first, the OMP extension imports dist/
 pnpm test:run
+pnpm test:live    # public explorer roundtrips, not CI
 pnpm build       # obuild, one bundle per provider
 ```
 
