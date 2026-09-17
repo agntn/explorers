@@ -26,6 +26,9 @@ importers:
       ofetch:
         specifier: 1.5.1
         version: 1.5.1
+      zod:
+        specifier: 4.5.4
+        version: 4.5.4
     devDependencies:
       '@iconify-json/lucide':
         specifier: 1.2.128

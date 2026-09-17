@@ -17,7 +17,8 @@
     "docus": "5.13.0",
     "jiti": "2.7.0",
     "nuxt": "4.5.2",
-    "ofetch": "1.5.1"
+    "ofetch": "1.5.1",
+    "zod": "4.5.4"
   },
   "devDependencies": {
     "@iconify-json/lucide": "1.2.128",
