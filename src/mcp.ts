@@ -247,11 +247,16 @@ export function createMcpServer(): McpServer {
   server.registerTool(
     "explorers_tokens",
     {
-      description: "List token holdings for a blockchain address",
+      description:
+        "List token holdings for a blockchain address. Zero balances are dropped unless nonZeroOnly is false.",
       inputSchema: {
         address: z.string().min(1),
         ...providerInput,
-        nonZeroOnly: z.boolean().optional(),
+        nonZeroOnly: z
+          .boolean()
+          .optional()
+          .default(true)
+          .describe("Drop holdings whose balance is zero. Defaults to true."),
       },
       annotations: { readOnlyHint: true },
     },
@@ -261,7 +266,9 @@ export function createMcpServer(): McpServer {
         const getTokenBalances = requireOperation(selected.provider, "getTokenBalances");
         return providerResult(
           selected.name,
-          await getTokenBalances(resolvedAddress, selected.chain, { nonZeroOnly }),
+          await getTokenBalances(resolvedAddress, selected.chain, {
+            nonZeroOnly: nonZeroOnly ?? true,
+          }),
         );
       }),
   );

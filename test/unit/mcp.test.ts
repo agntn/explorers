@@ -5,7 +5,12 @@ import { Provider } from "../../src/core/provider.js";
 import type { ProviderConstructor } from "../../src/core/provider.js";
 import { create, register } from "../../src/core/registry.js";
 import { builtins } from "../../src/providers/index.js";
-import type { ContractInfo } from "../../src/core/types.js";
+import type {
+  ChainKey,
+  ContractInfo,
+  TokenBalance,
+  TokenBalanceOptions,
+} from "../../src/core/types.js";
 import { createMcpServer } from "../../src/mcp.js";
 
 const openConnections: Array<{ close(): Promise<void> }> = [];
@@ -147,6 +152,46 @@ class ContractProvider extends DisabledProvider {
       abi: '[{"type":"fallback"}]',
       sourceCode: "contract Fixture {}",
     };
+  }
+}
+
+const ZERO_HOLDING: TokenBalance = {
+  contract: "0x0000000000000000000000000000000000000002",
+  symbol: "ZERO",
+  decimals: 18,
+  balance: "0",
+  balanceFormatted: "0",
+};
+const LIVE_HOLDING: TokenBalance = {
+  contract: "0x0000000000000000000000000000000000000003",
+  symbol: "LIVE",
+  decimals: 18,
+  balance: "1",
+  balanceFormatted: "0.000000000000000001",
+};
+
+class TokenProvider extends DisabledProvider {
+  override get capabilities() {
+    return {
+      balances: false,
+      txHistory: false,
+      txDetail: false,
+      utxos: false,
+      contractInfo: false,
+      tokenBalances: true,
+      tokenTransfers: false,
+      gasData: false,
+      blockInfo: false,
+    };
+  }
+
+  override async getTokenBalances(
+    _address: string,
+    _chain?: ChainKey,
+    options?: Readonly<TokenBalanceOptions>,
+  ): Promise<TokenBalance[]> {
+    const holdings = [ZERO_HOLDING, LIVE_HOLDING];
+    return options?.nonZeroOnly ? holdings.filter((token) => token.balance !== "0") : holdings;
   }
 }
 
@@ -351,6 +396,27 @@ describe("Explorers MCP server", () => {
       abi: '[{"type":"fallback"}]',
       sourceCode: "contract Fixture {}",
     });
+  });
+
+  it("drops zero token balances unless the MCP call asks to keep them", async () => {
+    const address = "0x0000000000000000000000000000000000000001";
+    register(TokenProvider, { chains: ["ethereum"] });
+    const client = await connectTestClient();
+    const readTokens = async (args: Readonly<Record<string, unknown>>): Promise<unknown> => {
+      const result = parseToolResult(
+        await client.callTool({
+          name: "explorers_tokens",
+          arguments: { address, chain: "ethereum", provider: TokenProvider.key, ...args },
+        }),
+      );
+      expect(result.isError).toBe(false);
+      const payload = JSON.parse(result.content[0]?.text ?? "null") as { data: unknown };
+      return payload.data;
+    };
+
+    expect(await readTokens({})).toEqual([LIVE_HOLDING]);
+    expect(await readTokens({ nonZeroOnly: true })).toEqual([LIVE_HOLDING]);
+    expect(await readTokens({ nonZeroOnly: false })).toEqual([ZERO_HOLDING, LIVE_HOLDING]);
   });
 
   it("discovers every explorer tool and executes provider discovery", async () => {
