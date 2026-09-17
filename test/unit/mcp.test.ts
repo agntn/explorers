@@ -564,7 +564,7 @@ describe("Explorers MCP server", () => {
         text: textMatching(/"provider": "blockscout"[\s\S]*"balance": "1"/),
       },
     ]);
-  });
+  }, 10_000);
 
   it("returns one balance per address for a batch request", async () => {
     vi.stubGlobal(

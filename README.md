@@ -135,7 +135,7 @@ console.log(formatWei(balance.balance), balance.symbol); // 6.712597953701629485
 console.log(history.map((transaction) => transaction.hash));
 ```
 
-That's most of it, really. `create()` loads one provider and nothing else. `withProvider()` picks one for you and retries once when you hit a rate limit. And if you already know you want Mempool, `import { Mempool } from "@agntn/explorers/providers/mempool"` and skip the registry. Amounts come back as strings, `formatWei()` makes them readable again. Errors are one hierarchy, and the API key is scrubbed from the URL before it lands in your logs. The details and the gotchas: [Provider selection](https://explorers.agntn.dev/guide/selection), [Balances](https://explorers.agntn.dev/guide/balances), [Transactions](https://explorers.agntn.dev/guide/transactions), [Errors](https://explorers.agntn.dev/guide/errors).
+That's most of it, really. `create()` loads one provider and nothing else. `withProvider()` picks one for you and, after that backend has already waited out its 429s, retries once on another provider. And if you already know you want Mempool, `import { Mempool } from "@agntn/explorers/providers/mempool"` and skip the registry. Amounts come back as strings, `formatWei()` makes them readable again. Errors are one hierarchy, and the API key is scrubbed from the URL before it lands in your logs. The details and the gotchas: [Provider selection](https://explorers.agntn.dev/guide/selection), [Balances](https://explorers.agntn.dev/guide/balances), [Transactions](https://explorers.agntn.dev/guide/transactions), [Errors](https://explorers.agntn.dev/guide/errors).
 
 ## 🗺️ Providers
 

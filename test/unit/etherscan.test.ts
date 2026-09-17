@@ -14,6 +14,7 @@ function stubJSON(body: unknown) {
 }
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllGlobals();
 });
 
@@ -180,12 +181,15 @@ describe("etherscan provider", () => {
   });
 
   it("preserves API failures instead of returning partial contract data", async () => {
+    vi.useFakeTimers();
     stubJSON({ status: "0", message: "NOTOK", result: "Max rate limit reached" });
     const provider = await create("etherscan", { apiKey: "secret" });
 
-    await expect(provider.getContractInfo(ADDRESS, "ethereum")).rejects.toBeInstanceOf(
+    const pending = expect(provider.getContractInfo(ADDRESS, "ethereum")).rejects.toBeInstanceOf(
       RateLimitError,
     );
+    await vi.runAllTimersAsync();
+    await pending;
   });
 
   it.each([

@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { FetchError } from "ofetch";
 import {
   ExplorerError,
   HTTPError,
@@ -11,6 +12,14 @@ import {
   UnknownProviderError,
   normalizeError,
 } from "../../src/core/errors.js";
+
+function fetchError(status: number, url: string, headers?: Readonly<Record<string, string>>): FetchError {
+  const error = new FetchError(`[GET] "${url}": ${status}`);
+  error.statusCode = status;
+  error.request = url;
+  error.response = { status, headers: new Headers(headers) } as FetchError["response"];
+  return error;
+}
 
 describe("ExplorerError", () => {
   it("base", () => {
@@ -87,5 +96,10 @@ describe("normalizeError", () => {
   it("wraps non-Error", () => {
     const out = normalizeError("oops" as unknown);
     expect(out).toBeInstanceOf(ExplorerError);
+  });
+  it("reads retry-after off a 429 response", () => {
+    const error = normalizeError(fetchError(429, "https://x.test", { "retry-after": "30" }), "mempool");
+    expect(error).toBeInstanceOf(RateLimitError);
+    expect((error as RateLimitError).retryAfter).toBe(30);
   });
 });

@@ -16,6 +16,72 @@ import type {
 import { getJSON, postJSON } from "./client.js";
 import type { ClientRequestOptions } from "./client.js";
 import type { ProviderConfig } from "./types.js";
+import { RateLimitError } from "./errors.js";
+
+const RATE_LIMIT_RETRIES = 2;
+const RATE_LIMIT_BASE_DELAY_MS = 1000;
+const RATE_LIMIT_MAX_DELAY_MS = 30_000;
+
+function rateLimitMessage(value: unknown): string | undefined {
+  if (typeof value === "string") return value;
+  if (value !== null && typeof value === "object" && "message" in value) {
+    const message = value.message;
+    if (typeof message === "string") return message;
+  }
+  return undefined;
+}
+
+function throwIfRateLimited(data: unknown, provider: string): void {
+  if (data === null || typeof data !== "object") return;
+  const record = data as Record<string, unknown>;
+  for (const field of ["message", "result", "error"] as const) {
+    const message = rateLimitMessage(record[field]);
+    if (message !== undefined && /rate limit/i.test(message)) {
+      throw new RateLimitError(provider);
+    }
+  }
+}
+
+function rateLimitDelayMs(retryAfter: number | undefined, attempt: number): number {
+  const fromHeader = retryAfter === undefined ? undefined : retryAfter * 1000;
+  const delay = fromHeader ?? RATE_LIMIT_BASE_DELAY_MS * 2 ** attempt;
+  return Math.min(delay, RATE_LIMIT_MAX_DELAY_MS);
+}
+
+function abortReason(signal?: AbortSignal): Error {
+  if (signal?.reason instanceof Error) return signal.reason;
+  return new DOMException("This operation was aborted", "AbortError");
+}
+
+async function abortableDelay(ms: number, signal?: AbortSignal): Promise<void> {
+  if (signal?.aborted) throw abortReason(signal);
+  if (ms <= 0) return;
+  await new Promise<void>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      signal?.removeEventListener("abort", onAbort);
+      resolve();
+    }, ms);
+    const onAbort = () => {
+      clearTimeout(timer);
+      reject(abortReason(signal));
+    };
+    signal?.addEventListener("abort", onAbort, { once: true });
+  });
+}
+
+async function withRateLimitRetry<T>(
+  operation: () => Promise<T>,
+  signal?: AbortSignal,
+): Promise<T> {
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      return await operation();
+    } catch (error) {
+      if (!(error instanceof RateLimitError) || attempt >= RATE_LIMIT_RETRIES) throw error;
+      await abortableDelay(rateLimitDelayMs(error.retryAfter, attempt), signal);
+    }
+  }
+}
 
 /**
  * Common API for block explorer backends.
@@ -56,27 +122,50 @@ export abstract class Provider {
   /**
    * Execute a provider-attributed GET request using the configured or per-request timeout.
    *
-   * @param {string} url - The `url` value.
+   * Retries HTTP 429 and JSON bodies that mention a rate limit, with backoff, before the error
+   * leaves. The HTTP client itself does not retry.
+   *
+   * @param {string} url - Request URL.
    * @param {Omit<ClientRequestOptions, "provider">} options - Per-request headers, cancellation, and timeout override.
-   * @returns {Promise<T>} The resulting value.
+   * @returns {Promise<T>} Parsed JSON body.
    */
   protected getJSON<T>(url: string, options?: Omit<ClientRequestOptions, "provider">): Promise<T> {
-    return getJSON<T>(url, {
-      ...options,
-      timeout: options?.timeout ?? this.timeout,
-      provider: this.name,
-    });
+    return withRateLimitRetry(async () => {
+      const data = await getJSON<T>(url, {
+        ...options,
+        timeout: options?.timeout ?? this.timeout,
+        provider: this.name,
+      });
+      throwIfRateLimited(data, this.name);
+      return data;
+    }, options?.signal);
   }
 
   /**
    * Execute a provider-attributed JSON POST request using the configured timeout.
    *
-   * @param {string} url - The `url` value.
-   * @param {unknown} body - The `body` value.
-   * @returns {Promise<T>} The resulting value.
+   * Retries HTTP 429 and JSON bodies that mention a rate limit, with backoff, before the error
+   * leaves. Explorer POSTs are reads, so retrying them is safe.
+   *
+   * @param {string} url - Request URL.
+   * @param {unknown} body - JSON request body.
+   * @param {Omit<ClientRequestOptions, "provider">} options - Per-request headers, cancellation, and timeout override.
+   * @returns {Promise<T>} Parsed JSON body.
    */
-  protected postJSON<T>(url: string, body: unknown): Promise<T> {
-    return postJSON<T>(url, body, { timeout: this.timeout, provider: this.name });
+  protected postJSON<T>(
+    url: string,
+    body: unknown,
+    options?: Omit<ClientRequestOptions, "provider">,
+  ): Promise<T> {
+    return withRateLimitRetry(async () => {
+      const data = await postJSON<T>(url, body, {
+        ...options,
+        timeout: options?.timeout ?? this.timeout,
+        provider: this.name,
+      });
+      throwIfRateLimited(data, this.name);
+      return data;
+    }, options?.signal);
   }
 
   /**

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { Provider, create, register } from "../../src/index.js";
+import { HTTPError, Provider, RateLimitError, create, register } from "../../src/index.js";
 import type { ProviderCapabilities, ProviderConfig } from "../../src/index.js";
 
 class Custom extends Provider {
@@ -33,8 +33,12 @@ class Custom extends Provider {
     throw new Error("not used");
   }
 
-  request(url: string): Promise<Record<string, unknown>> {
-    return this.getJSON(url);
+  request(url: string, signal?: AbortSignal): Promise<Record<string, unknown>> {
+    return this.getJSON(url, signal === undefined ? undefined : { signal });
+  }
+
+  post(url: string, body: unknown): Promise<Record<string, unknown>> {
+    return this.postJSON(url, body);
   }
 }
 
@@ -113,5 +117,115 @@ describe("abstract provider registry", () => {
 
     await rejection;
     expect(fetch).toHaveBeenCalledOnce();
+  });
+});
+
+describe("provider rate limit retry", () => {
+  function jsonResponse(body: unknown): Response {
+    return new Response(JSON.stringify(body), {
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  it("retries an HTTP 429 and returns the next answer", async () => {
+    vi.useFakeTimers();
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response("throttled", { status: 429, headers: { "Content-Type": "text/plain" } }),
+      )
+      .mockResolvedValueOnce(jsonResponse({ ok: true }));
+    vi.stubGlobal("fetch", fetch);
+
+    const pending = new Custom({}).request("https://example.test/data");
+    await vi.advanceTimersByTimeAsync(1000);
+
+    await expect(pending).resolves.toEqual({ ok: true });
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("waits Retry-After seconds before retrying", async () => {
+    vi.useFakeTimers();
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response("throttled", {
+          status: 429,
+          headers: { "Content-Type": "text/plain", "Retry-After": "5" },
+        }),
+      )
+      .mockResolvedValueOnce(jsonResponse({ ok: true }));
+    vi.stubGlobal("fetch", fetch);
+
+    const pending = new Custom({}).request("https://example.test/data");
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(fetch).toHaveBeenCalledOnce();
+    await vi.advanceTimersByTimeAsync(4000);
+
+    await expect(pending).resolves.toEqual({ ok: true });
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("retries a JSON rate limit envelope the same way", async () => {
+    vi.useFakeTimers();
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(
+        jsonResponse({ status: "0", message: "NOTOK", result: "Max rate limit reached" }),
+      )
+      .mockResolvedValueOnce(jsonResponse({ ok: true }));
+    vi.stubGlobal("fetch", fetch);
+
+    const pending = new Custom({}).request("https://example.test/data");
+    await vi.advanceTimersByTimeAsync(1000);
+
+    await expect(pending).resolves.toEqual({ ok: true });
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("gives up after two retries on the same backend", async () => {
+    vi.useFakeTimers();
+    const fetch = vi.fn(
+      async () =>
+        new Response("throttled", { status: 429, headers: { "Content-Type": "text/plain" } }),
+    );
+    vi.stubGlobal("fetch", fetch);
+
+    const pending = expect(new Custom({}).request("https://example.test/data")).rejects.toBeInstanceOf(
+      RateLimitError,
+    );
+    await vi.runAllTimersAsync();
+    await pending;
+    expect(fetch).toHaveBeenCalledTimes(3);
+  });
+
+  it("does not retry a server failure", async () => {
+    const fetch = vi.fn(
+      async () =>
+        new Response("upstream failed", { status: 500, headers: { "Content-Type": "text/plain" } }),
+    );
+    vi.stubGlobal("fetch", fetch);
+
+    await expect(new Custom({}).request("https://example.test/data")).rejects.toBeInstanceOf(
+      HTTPError,
+    );
+    expect(fetch).toHaveBeenCalledOnce();
+  });
+
+  it("retries a 429 on POST the same way", async () => {
+    vi.useFakeTimers();
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response("throttled", { status: 429, headers: { "Content-Type": "text/plain" } }),
+      )
+      .mockResolvedValueOnce(jsonResponse({ ok: true }));
+    vi.stubGlobal("fetch", fetch);
+
+    const pending = new Custom({}).post("https://example.test/data", { query: "value" });
+    await vi.advanceTimersByTimeAsync(1000);
+
+    await expect(pending).resolves.toEqual({ ok: true });
+    expect(fetch).toHaveBeenCalledTimes(2);
   });
 });
