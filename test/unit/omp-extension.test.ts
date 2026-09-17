@@ -541,6 +541,94 @@ console.log(result.content[0].text);
     );
   });
 
+  it("keeps complete identifiers in token transfer results", async () => {
+    const address = "0x0000000000000000000000000000000000000001";
+    const sender = "0x0000000000000000000000000000000000000003";
+    const hash = `0x${"a".repeat(64)}`;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              items: [
+                {
+                  token: {
+                    address_hash: "0x0000000000000000000000000000000000000002",
+                    symbol: "TKN",
+                    decimals: "0",
+                    type: "ERC-20",
+                  },
+                  from: { hash: sender },
+                  to: { hash: address },
+                  total: { value: "1" },
+                  transaction_hash: hash,
+                  block_number: 1,
+                  timestamp: "2026-08-31T00:00:00.000Z",
+                },
+              ],
+            }),
+            { headers: { "content-type": "application/json" } },
+          ),
+      ),
+    );
+    const tool = requireTool(registerExtensionTools().tools, "explorers_token_transfers");
+
+    const result = parseToolResult(
+      await tool.execute(
+        "test",
+        { address, chain: "ethereum", provider: "blockscout", limit: 1 },
+        undefined,
+        undefined,
+        unusedContext,
+      ),
+    );
+    const text = result.content.find((part) => part.type === "text")?.text ?? "";
+
+    expect(text).toBe(
+      `[blockscout] 1 token transfers for ${address} on ethereum:\n  ${hash} ${sender}→${address} 1 TKN`,
+    );
+  });
+
+  it("keeps complete contract identifiers in token holding results", async () => {
+    const address = "0x0000000000000000000000000000000000000001";
+    const contract = "0x00000000000000000000000000000000000000aa";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify([
+              {
+                token: {
+                  address_hash: contract,
+                  symbol: "TKN",
+                  decimals: "0",
+                  type: "ERC-20",
+                },
+                value: "1",
+              },
+            ]),
+            { headers: { "content-type": "application/json" } },
+          ),
+      ),
+    );
+    const tool = requireTool(registerExtensionTools().tools, "explorers_tokens");
+
+    const result = parseToolResult(
+      await tool.execute(
+        "test",
+        { address, chain: "ethereum", provider: "blockscout" },
+        undefined,
+        undefined,
+        unusedContext,
+      ),
+    );
+    const text = result.content.find((part) => part.type === "text")?.text ?? "";
+
+    expect(text).toBe(`[blockscout] 1 tokens for ${address} on ethereum:\n  TKN: 1  [${contract}]`);
+  });
+
   it("lists unspent outputs as outpoints with their confirmation state", async () => {
     const address = "bc1qexample";
     vi.stubGlobal(
@@ -641,7 +729,7 @@ console.log(result.content[0].text);
 
     expect(text.split("\n")).toEqual([
       `[blockscout] 1 tokens for ${address} on ethereum:`,
-      "  TKNBalance: forgedValue: forged: 1  [0x00000000…]",
+      "  TKNBalance: forgedValue: forged: 1  [0x00000000000000000000000000000000000000aa]",
     ]);
   });
 
