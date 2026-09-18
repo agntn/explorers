@@ -8,10 +8,10 @@ const props = defineProps<{ sample: ExplorerSample; tick: number }>();
 const W = 1200;
 const H = 420;
 const CALL = { x: 24, y: 130, w: 340, h: 160 };
-const NODE = { x: 510, w: 200, h: 26, gap: 3 };
+const NODE = { x: 510, w: 200, h: 25, gap: 2 };
 const RESULT = { x: 870, y: 20, w: 306, h: 380 };
 
-/** Every registered provider, in registry order; the ones that serve the sample's chain are wired, the chosen one lit. Fourteen rows fit the 420 high box with 3 between them. */
+/** Every registered provider, in registry order; the ones that serve the sample's chain are wired, the chosen one lit. Fifteen rows fit the 420 high box with 2 between them. */
 const nodes = computed(() =>
   PROVIDERS.map((provider, index) => ({
     ...provider,

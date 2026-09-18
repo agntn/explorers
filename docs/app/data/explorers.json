@@ -1,6 +1,6 @@
 {
-  "version": "0.5.3",
-  "generatedAt": "2026-09-17T17:45:16.885Z",
+  "version": "0.5.4",
+  "generatedAt": "2026-09-18T18:24:12.831Z",
   "providers": [
     {
       "key": "etherscan",
@@ -220,6 +220,23 @@
       ],
       "defaultURL": "https://explorer.dcrdata.org/insight/api",
       "defaultChain": "decred"
+    },
+    {
+      "key": "horizon",
+      "chains": [
+        "stellar"
+      ],
+      "capabilities": [
+        "balances",
+        "txHistory",
+        "txDetail",
+        "tokenBalances",
+        "tokenTransfers",
+        "gasData",
+        "blockInfo"
+      ],
+      "defaultURL": "https://horizon.stellar.org",
+      "defaultChain": "stellar"
     }
   ],
   "chains": [
@@ -473,6 +490,16 @@
       "explorer": "https://dcrdata.decred.org",
       "providers": [
         "dcrdata"
+      ]
+    },
+    {
+      "key": "stellar",
+      "name": "Stellar",
+      "symbol": "XLM",
+      "type": "stellar",
+      "explorer": "https://stellar.expert/explorer/public",
+      "providers": [
+        "horizon"
       ]
     }
   ]

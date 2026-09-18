@@ -175,7 +175,7 @@ export interface ContractInfo {
 }
 
 /** Unit used by a provider's fee suggestions. */
-export type GasUnit = "gwei" | "sat/vB" | "litoshi/vB" | "micro-lamports/CU" | "MIST";
+export type GasUnit = "gwei" | "sat/vB" | "litoshi/vB" | "micro-lamports/CU" | "MIST" | "stroops";
 
 /** Gas or fee-market data in provider-native units. */
 export interface GasData {

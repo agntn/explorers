@@ -6,7 +6,7 @@ definePageMeta({ layout: "default" });
 
 const title = "Explorer";
 const description =
-  "A block explorer for 24 chains. Search any address, ENS name, transaction hash or block number. Latest blocks and transactions on fourteen of them, live.";
+  "A block explorer for 25 chains. Search any address, ENS name, transaction hash or block number. Latest blocks and transactions on fourteen of them, live.";
 
 useSeo({
   title,
@@ -18,7 +18,7 @@ useSeo({
 defineOgImage(
   "Docs",
   { headline: "Explorer", title, description },
-  { alt: "Explorer: the latest blocks and transactions on 24 chains, and a search box" },
+  { alt: "Explorer: the latest blocks and transactions on 25 chains, and a search box" },
 );
 
 const route = useRoute();
@@ -51,7 +51,7 @@ onMounted(() => {
     eyebrow="explorer"
     title="Every chain."
     accent="One explorer."
-    description="An address, an ENS name, a transaction hash or a block number, on any of 24 chains. Below it, the chain's tip as its public explorer reports it, refreshed every fifteen seconds."
+    description="An address, an ENS name, a transaction hash or a block number, on any of 25 chains. Below it, the chain's tip as its public explorer reports it, refreshed every fifteen seconds."
     :chain="chain"
     wide
     compact

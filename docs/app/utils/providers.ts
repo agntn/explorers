@@ -152,6 +152,12 @@ const PRESENTATION: Record<string, ProviderPresentation> = {
     envVars: [],
     blurb: "Decred through the Insight API of explorer.dcrdata.org. Atoms, the mempool delta kept apart from the balance, no key.",
   },
+  horizon: {
+    label: "Horizon",
+    icon: "i-lucide-sunrise",
+    envVars: [],
+    blurb: "Stellar through the SDF's public Horizon. Stroops, trustlines as tokens, payments as history, fee stats as gas, no key.",
+  },
 };
 
 export interface ProviderInfo extends ProviderSnapshot, ProviderPresentation {
@@ -207,6 +213,7 @@ const CHAIN_ICONS: Record<string, string> = {
   cardano: "i-token-ada",
   arweave: "i-token-ar",
   decred: "i-token-dcr",
+  stellar: "i-token-xlm",
 };
 
 export interface ChainInfo extends ChainSnapshot {
@@ -220,7 +227,7 @@ export const CHAINS: readonly ChainInfo[] = (snapshot.chains as readonly ChainSn
 /**
  * Decimals of each chain's native unit, as the providers pass them to `formatWei()`: 18 on EVM
  * chains, 8 on the Bitcoin family and Decred, 2 on eCash, 9 on Solana, TON and Sui, 6 on TRON
- * and Cardano, 8 on Aptos, 12 on Arweave. Used to show a fee the library returns in the smallest unit.
+ * and Cardano, 8 on Aptos, 12 on Arweave, 7 on Stellar. Used to show a fee the library returns in the smallest unit.
  */
 const NATIVE_DECIMALS: Record<string, number> = {
   bitcoin: 8,
@@ -235,6 +242,7 @@ const NATIVE_DECIMALS: Record<string, number> = {
   aptos: 8,
   arweave: 12,
   decred: 8,
+  stellar: 7,
 };
 
 export function nativeDecimals(chain: string): number {

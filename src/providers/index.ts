@@ -1,7 +1,7 @@
 /** Built-in providers: registry metadata plus a loader for the implementation */
 
 import type { ProviderCapability, ProviderEntry } from "../core/provider.js";
-import { ARWEAVE_GATEWAY_URL, DCRDATA_INSIGHT_URL } from "../core/endpoints.js";
+import { ARWEAVE_GATEWAY_URL, DCRDATA_INSIGHT_URL, HORIZON_URL } from "../core/endpoints.js";
 
 type BuiltinProviderEntry = ProviderEntry & {
   capabilities: readonly ProviderCapability[];
@@ -150,5 +150,20 @@ export const builtins: readonly ProviderEntry[] = [
     capabilities: ["balances", "txHistory", "txDetail", "blockInfo"],
     defaultURL: DCRDATA_INSIGHT_URL,
     load: () => import("./dcrdata.js").then((m) => m.Dcrdata),
+  },
+  {
+    key: "horizon",
+    chains: ["stellar"],
+    capabilities: [
+      "balances",
+      "txHistory",
+      "txDetail",
+      "tokenBalances",
+      "tokenTransfers",
+      "gasData",
+      "blockInfo",
+    ],
+    defaultURL: HORIZON_URL,
+    load: () => import("./horizon.js").then((m) => m.Horizon),
   },
 ] satisfies readonly BuiltinProviderEntry[];

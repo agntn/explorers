@@ -29,6 +29,7 @@ const PROVIDER_DEFAULT_CHAIN = {
   koios: "cardano",
   arweave: "arweave",
   dcrdata: "decred",
+  horizon: "stellar",
 };
 
 const out = fileURLToPath(new URL("../app/data/explorers.json", import.meta.url));

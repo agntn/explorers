@@ -22,6 +22,7 @@ Unified block explorer provider library. Normalizes balances, tx history, contra
 | koios       | none                    | cardano                                                                          | balances, tx detail/history, tokens                         |
 | arweave     | none                    | arweave                                                                          | balances, tx detail/history, block                          |
 | dcrdata     | none                    | decred                                                                           | balances, tx detail/history, block                          |
+| horizon     | none                    | stellar                                                                          | balances, tx detail/history, transfers, tokens, gas, block  |
 
 ## Conventions
 
@@ -59,7 +60,7 @@ Unified block explorer provider library. Normalizes balances, tx history, contra
 - Etherscan: 5 req/s free tier, needs `ETHERSCAN_API_KEY`
 - Blockscout serves the complete holding array from `/addresses/:address/token-balances`; large wallets can produce multi-megabyte responses, so this read allows 60 seconds unless `ProviderConfig.timeout` overrides it.
 - Blockchair: data format differs between UTXO (bitcoin, ecash) and EVM chains; eCash amounts are satoshis at 2 decimals (100 satoshis = 1 XEC)
-- Solscan, Helius, TONAPI, TRONSCAN, Aptos, and Blockberry are single-chain providers and throw `UnsupportedChainError` for other chains.
+- Solscan, Helius, TONAPI, TRONSCAN, Aptos, Blockberry and Horizon are single-chain providers and throw `UnsupportedChainError` for other chains.
 - Helius Enhanced Transactions v0 exposes no REST balance endpoint, so `getBalance` throws `UnsupportedOperationError`; the key travels as the `api-key` query parameter, which `sanitizeUrl` redacts.
 - Helius `getTokenBalances` calls DAS `searchAssets` on the RPC root, so it answers over JSON-RPC and a failure arrives as `error` inside a 200 response. Pages hold 1000 assets and the walk stops after 20 of them.
 - Arweave uses gateway REST for `/wallet/{address}/balance` and `/block/height/{height}`, and GraphQL for transactions. It merges owner and recipient queries, removes self-transfer duplicates, and caps the history window at `page * limit <= 1000` with `limit` from 1 to 100. `baseUrl` is the gateway root for both APIs. Balance snapshot height/hash stay null because the endpoint does not return them. Block gas fields use `"0"` as the existing non-EVM convention; storage price quotes are not gas data. Contracts and token operations stay unsupported. Amounts use winstons (12 decimals), missing recipients stay empty strings, and bundle fees are not attributed to individual data items. Arweave transaction IDs and addresses share their shape, so CLI detail reads require `-m detail`.
@@ -71,6 +72,7 @@ Unified block explorer provider library. Normalizes balances, tx history, contra
 - Koios `address_info` ships the whole UTxO set of an address, 222 kB for a busy one, so `getBalance` narrows the payload with the PostgREST `select` parameter; the endpoint still builds that set before it answers, and a busy address takes 3 to 9 seconds against the 15-second client timeout
 - Koios keeps the phase-2 validity flag behind the heavier `_scripts` payload, so a Cardano transaction reads as `success` even when a failing script consumed its collateral; `isContractInteraction` comes from the presence of collateral inputs
 - dcrdata uses Insight for Decred balances, transaction history/details and blocks. `baseUrl` is the Insight API root. Amounts use atoms (8 decimals). Balance and funded/spent totals stay confirmed, the signed mempool delta goes to `unconfirmed`, and snapshot fields stay null. The balance is not a spendability check. Chain/address format checks use `@agntn/chains`; checksum validation belongs to the service. History uses `from`/`to` pagination, supports limits 1 to 250 and both sort directions, and rejects unsupported block bounds. Transaction values pair with one addressed output, with full inputs/outputs in `raw`; positive confirmations do not independently prove stake-vote approval. Block responses are arrays and count regular plus stake transactions; miner stays empty and gas fields use "0". Insight's estimatefee is only a relay fee, so gas data remains unsupported.
+- Horizon serves Stellar from the SDF's public instance at horizon.stellar.org, keyless, with one year of history; `baseUrl` is any other Horizon root. Amounts are stroops (7 decimals) and Horizon prints them as decimals, so `toStroops` converts without floats. `getBalance` reads `/accounts/{id}` and keeps snapshot fields null; an account the ledger never funded is a 404, so `NotFoundError`. Issued assets are `CODE:ISSUER` (SEP-11) with 7 decimals; trustlines back `getTokenBalances`, liquidity pool shares stay out. History is `/accounts/{id}/payments?join=transactions`, one row per payment-like operation (payment, path payments, create_account, account_merge, invoke_host_function with its balance changes), failed ones included with `status: "failed"` and no token transfers; rows of one transaction share its hash and only a single-operation transaction carries `fee`. `limit` up to 200, `page` up to 10 by walking cursors, no ledger bounds. `getTokenTransfers` scans up to five pages of 200 payments client-side, `token` filters one `CODE:ISSUER`. `getTxDetail` joins `/transactions/{hash}` with its operations: the first payment-like one is the row, every issued-asset movement lands in `tokenTransfers`, Soroban operations set `isContractInteraction`. Gas is `/fee_stats` in stroops per operation: `baseFee` is the ledger base fee, `safeGasPrice` the mode of `fee_charged` (100 outside surge pricing, the marginal inclusion fee inside it), `fastGasPrice` its p95, which Soroban resource fees dominate; no `proposedGasPrice`, because every percentile between mixes classic and Soroban operations. A ledger is a block with `txCount` counting successful and failed transactions, `baseFee` its base fee, miner empty and gas fields `"0"`. Contracts stay unsupported: Soroban state lives behind RPC, not Horizon. Muxed (`M...`) addresses are rejected by `@agntn/chains`
 
 ## Architecture
 
@@ -90,7 +92,7 @@ graph TB
 
 - **CLI Layer** (`cli.ts`, `commands/*.ts`): citty-based CLI, lazy-loads subcommands via dynamic `import()`. `cli-args.ts` normalizes bare address input to `balance` subcommand.
 - **Core Layer** (`core/*.ts`): Domain types, provider registry (built lazily from the barrel list), HTTP client (ofetch, 15s timeout), ENS resolution (public APIs), input classification, error hierarchy.
-- **Provider Layer** (`providers/*.ts`): 14 providers. Each file defines API types, helper mappers and a concrete `Provider` subclass with a static registry key, exports that class, and ships as its own bundle so `create()` can import it alone.
+- **Provider Layer** (`providers/*.ts`): 15 providers. Each file defines API types, helper mappers and a concrete `Provider` subclass with a static registry key, exports that class, and ships as its own bundle so `create()` can import it alone.
 - **Pi Extension** (`packages/pi/extensions/explorers.ts`): Exposes 10 tools to Pi coding agent, matching the MCP server's tool set. Lazy-loads live `src/` from a checkout and the relative `dist/` module from an installed package, without self-importing the package by name. `packages/omp/extensions/explorers.ts` registers the same ten for OMP.
 
 ### Provider categories
@@ -98,7 +100,7 @@ graph TB
 1. **Multi-chain EVM** (etherscan, blockscout): support 10 EVM chains each
 2. **Bitcoin/Ethereum bridge** (blockchair): dashboard API for Bitcoin, Ethereum and eCash
 3. **Esplora-compatible UTXO** (mempool, blockstream): Mempool serves Bitcoin, Litecoin and Pepecoin; Blockstream serves Bitcoin as an independent backend
-4. **Single-chain non-EVM** (solscan, helius, ton, tronscan, aptos, blockberry, koios, arweave, dcrdata): capabilities mirror only their explorer APIs; Aptos is explicitly unsupported
+4. **Single-chain non-EVM** (solscan, helius, ton, tronscan, aptos, blockberry, koios, arweave, dcrdata, horizon): capabilities mirror only their explorer APIs; Aptos is explicitly unsupported
 
 ## Patterns
 
@@ -124,7 +126,7 @@ graph TB
 
 ## Test coverage gaps
 
-**Covered** (34 test files): provider base/registry, provider resolution, HTTP client, path safety, amount formatting, errors, input classification, chain normalization, CLI argument routing, extension integration, plus all fourteen providers.
+**Covered** (36 test files): provider base/registry, provider resolution, HTTP client, path safety, amount formatting, errors, input classification, chain normalization, CLI argument routing, extension integration, plus all fifteen providers.
 **CLI coverage**: help without backend imports, errors for unknown chains, provider listing, and mocked balance, transaction and token reads. Successful contract, transfer, gas, and block command execution remains untested.
 **Test style**: Focused unit tests for local contracts and mocked explorer API responses. Live roundtrips belong in `test/live` and run only through `pnpm test:live`.
 

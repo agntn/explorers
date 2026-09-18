@@ -3,7 +3,7 @@ definePageMeta({ layout: "default" });
 
 const title = "Providers";
 const description =
-  "Which of the fourteen providers the docs worker holds a key for and what each one serves. Never the key itself, just configured or not.";
+  "Which of the fifteen providers the docs worker holds a key for and what each one serves. Never the key itself, just configured or not.";
 
 useSeo({
   title,
