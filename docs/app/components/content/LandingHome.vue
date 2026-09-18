@@ -255,7 +255,7 @@ const activeProvider = computed(() => current.value.provider);
       with two required reads and seven optional ones. Concrete classes implement the mappers and
       the explorer calls, nothing else leaks upward. A sub path import like
       <code class="font-mono text-[13px] text-highlighted">@agntn/explorers/providers/mempool</code>
-      gives you one backend without the other thirteen in your bundle.
+      gives you one backend without the other fourteen in your bundle.
       <template #visual>
         <LandingRotatingCode :sample="current" />
       </template>

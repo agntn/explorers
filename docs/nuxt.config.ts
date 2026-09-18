@@ -38,7 +38,7 @@ export default defineNuxtConfig({
           {
             title: "Explorer",
             description:
-              "Search an address, an ENS name, a transaction hash or a block number on any of the 23 chains and open its page.",
+              "Search an address, an ENS name, a transaction hash or a block number on any of the 25 chains and open its page.",
             href: "https://explorers.agntn.dev/explorer",
           },
           {
