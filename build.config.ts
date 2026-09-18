@@ -21,6 +21,7 @@ export default defineBuildConfig({
         "./src/providers/koios.ts",
         "./src/providers/arweave.ts",
         "./src/providers/dcrdata.ts",
+        "./src/providers/horizon.ts",
       ],
     },
   ],

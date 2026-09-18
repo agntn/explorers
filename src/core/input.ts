@@ -13,6 +13,7 @@ const HEX_HASH_CHAINS: readonly ChainKey[] = [
   "tron",
   "cardano",
   "decred",
+  "stellar",
 ];
 
 function isChainTransactionHash(input: string, chain?: ChainKey): boolean {

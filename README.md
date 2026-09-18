@@ -5,7 +5,7 @@
 [![license](https://npmx.dev/api/registry/badge/license/@agntn/explorers)](https://npmx.dev/package/@agntn/explorers)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/agntn/explorers)
 
-🔭 Fourteen block explorers, 24 chains, one shape. You ask for a balance, you get a balance. Same object on Ethereum, Bitcoin, Solana, Cardano or Decred, from your terminal, your TypeScript or your agent, and nobody has to know what Insight is.
+🔭 Fifteen block explorers, 25 chains, one shape. You ask for a balance, you get a balance. Same object on Ethereum, Bitcoin, Solana, Cardano or Stellar, from your terminal, your TypeScript or your agent, and nobody has to know what Insight is.
 
 ## Why?
 
@@ -17,8 +17,8 @@ Docs and a live explorer: [explorers.agntn.dev](https://explorers.agntn.dev).
 
 ## ✨ Features
 
-- 🧩 **Fourteen backends, one contract.** Etherscan, Blockscout, Blockchair, Mempool, Blockstream, Solscan, Helius, TONAPI, TRONSCAN, Aptos, Blockberry, Koios, Arweave and dcrdata, and from your side they all look the same.
-- ⛓️ **24 chains.** Ethereum, Base, Arbitrum, Optimism, Polygon, BSC, Avalanche, Gnosis, Linea, Berachain, zkSync, Scroll, Bitcoin, Litecoin, Pepecoin, eCash, Solana, TON, TRON, Aptos, Sui, Cardano, Arweave and Decred.
+- 🧩 **Fifteen backends, one contract.** Etherscan, Blockscout, Blockchair, Mempool, Blockstream, Solscan, Helius, TONAPI, TRONSCAN, Aptos, Blockberry, Koios, Arweave, dcrdata and Horizon, and from your side they all look the same.
+- ⛓️ **25 chains.** Ethereum, Base, Arbitrum, Optimism, Polygon, BSC, Avalanche, Gnosis, Linea, Berachain, zkSync, Scroll, Bitcoin, Litecoin, Pepecoin, eCash, Solana, TON, TRON, Aptos, Sui, Cardano, Arweave, Decred and Stellar.
 - 🔢 **Amounts stay exact.** Strings in the smallest unit. Your 0.1 ETH is `100000000000000000` and it stays that way.
 - 🖥️ **CLI, library, MCP, Pi and OMP.** Whatever you're holding, same commands, same objects.
 - 🏷️ **ENS just works.** `vitalik.eth` wherever an Ethereum address would go, no extra dependency.
@@ -155,6 +155,7 @@ That's most of it, really. `create()` loads one provider and nothing else. `with
 | **koios**       | None                          | cardano                                                                               | balances, tx detail/history, tokens                              |
 | **arweave**     | None                          | arweave                                                                               | balances, tx detail/history, block                               |
 | **dcrdata**     | None                          | decred                                                                                | balances, tx detail/history, block                               |
+| **horizon**     | None                          | stellar                                                                               | balances, tx detail/history, transfers, tokens, gas, block       |
 
 Aptos is in the table so you don't ask why it's not in the table. Aptos Explorer has no documented account or history API, so it's registered, does nothing and throws `UnsupportedOperationError` if you insist. The rest, with their quirks: [Providers](https://explorers.agntn.dev/providers).
 
@@ -182,7 +183,7 @@ Nodes. No RPC, no `eth_call`, no fullnode anything, that's not this package. Als
 
 ## 🧩 Adding a provider
 
-Want a fifteenth? A class extending `Provider`, an entry in `builtins`, a line in `build.config.ts`, and there's a test that notices when you skip one. Walkthrough: [Custom providers](https://explorers.agntn.dev/guide/custom).
+Want a sixteenth? A class extending `Provider`, an entry in `builtins`, a line in `build.config.ts`, and there's a test that notices when you skip one. Walkthrough: [Custom providers](https://explorers.agntn.dev/guide/custom).
 
 ## 🛠️ Development
 

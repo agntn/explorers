@@ -98,7 +98,7 @@ ${offline}
     );
     expect(result.error).toBeUndefined();
     expect(result.status, result.stderr).toBe(0);
-    expect(result.stdout).toContain("Registered providers (14)");
+    expect(result.stdout).toContain("Registered providers (15)");
     expect(result.stdout).toContain(
       "mempool: balances, txHistory, txDetail, utxos, gasData, blockInfo; chains: bitcoin, litecoin, pepecoin",
     );

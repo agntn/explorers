@@ -324,6 +324,53 @@ describe("Explorers MCP server", () => {
     }
   });
 
+  it("reads Stellar balances and trustlines through the MCP transport", async () => {
+    const address = "GAHK7EEG2WWHVKDNT4CEQFZGKF2LGDSW2IVM4S5DP42RBW3K6BTODB4A";
+    const issuer = "GDM4RQUQQUVSKQA7S6EM7XBZP3FCGH4Q7CL6TABQ7B2BEJ5ERARM2M5M";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              id: address,
+              balances: [
+                {
+                  balance: "1234.5000001",
+                  asset_type: "credit_alphanum4",
+                  asset_code: "VELO",
+                  asset_issuer: issuer,
+                },
+                { balance: "12.8193804", asset_type: "native" },
+              ],
+            }),
+          ),
+      ),
+    );
+    const client = await connectTestClient();
+    const balance = parseToolResult(
+      await client.callTool({ name: "explorers_balance", arguments: { address, chain: "xlm" } }),
+    );
+    expect(balance.isError).toBe(false);
+    expect(JSON.parse(balance.content[0]?.text ?? "null")).toMatchObject({
+      provider: "horizon",
+      data: {
+        chain: "stellar",
+        balance: "128193804",
+        balanceFormatted: "12.8193804",
+        symbol: "XLM",
+      },
+    });
+    const tokens = parseToolResult(
+      await client.callTool({ name: "explorers_tokens", arguments: { address, chain: "stellar" } }),
+    );
+    expect(tokens.isError).toBe(false);
+    expect(JSON.parse(tokens.content[0]?.text ?? "null")).toMatchObject({
+      provider: "horizon",
+      data: [{ contract: `VELO:${issuer}`, symbol: "VELO", decimals: 7, balance: "12345000001" }],
+    });
+  });
+
   it("sends the provider's transaction record only when raw is requested", async () => {
     const address = "Dcur2mcGjmENx4DhNqDctW5wJCVyT3Qeqkx";
     const hash = "4b064b5a6255ed94bb9c4347e370c5ad034db4d0550e5bd6775cbed65015ebe3";

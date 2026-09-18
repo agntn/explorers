@@ -28,6 +28,7 @@ const ENV_MAP: Record<string, string[]> = {
   koios: [],
   arweave: [],
   dcrdata: [],
+  horizon: [],
 };
 
 const OPTIONAL_CREDENTIAL_PROVIDERS: readonly string[] = ["blockchair"];
@@ -45,6 +46,7 @@ export const PROVIDER_DEFAULT_CHAIN: Partial<Record<string, ChainKey>> = {
   koios: "cardano",
   arweave: "arweave",
   dcrdata: "decred",
+  horizon: "stellar",
 };
 
 function hasConfiguredCredentials(envKeys: readonly string[]): boolean {

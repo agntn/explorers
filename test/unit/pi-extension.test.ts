@@ -183,6 +183,53 @@ describe("explorers Pi extension", () => {
     expect(result.content[0]?.text).toContain("; unconfirmed delta -1 base units");
   });
 
+  it("reads Stellar stroops and trustlines through automatic provider selection", async () => {
+    const address = "GAHK7EEG2WWHVKDNT4CEQFZGKF2LGDSW2IVM4S5DP42RBW3K6BTODB4A";
+    const issuer = "GDM4RQUQQUVSKQA7S6EM7XBZP3FCGH4Q7CL6TABQ7B2BEJ5ERARM2M5M";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              id: address,
+              balances: [
+                {
+                  balance: "1234.5000001",
+                  asset_type: "credit_alphanum4",
+                  asset_code: "VELO",
+                  asset_issuer: issuer,
+                },
+                { balance: "12.8193804", asset_type: "native" },
+              ],
+            }),
+          ),
+      ),
+    );
+    const balance = requireTool(registerExtensionTools(), "explorers_balance");
+    const result = parseToolResult(
+      await balance.execute("test", { address, chain: "xlm" }, undefined, undefined, unusedContext),
+    );
+    expect(result.isError).toBe(false);
+    expect(result.content[0]?.text).toContain(
+      `[horizon] stellar balance for ${address}: 12.8193804 XLM (128193804 base units;`,
+    );
+    const tokens = requireTool(registerExtensionTools(), "explorers_tokens");
+    const holdings = parseToolResult(
+      await tokens.execute(
+        "test",
+        { address, chain: "stellar" },
+        undefined,
+        undefined,
+        unusedContext,
+      ),
+    );
+    expect(holdings.isError).toBe(false);
+    expect(holdings.content.find((part) => part.type === "text")?.text).toBe(
+      `[horizon] 1 tokens for ${address} on stellar:\n  VELO: 1234.5000001  [VELO:${issuer}]`,
+    );
+  });
+
   it("lists provider chains, capabilities, and endpoints without network access", async () => {
     vi.stubGlobal(
       "fetch",

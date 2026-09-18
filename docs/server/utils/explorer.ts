@@ -67,10 +67,10 @@ export function providerStatuses(): ProviderStatus[] {
  * Providers whose `getTxHistory` reads `TxHistoryOptions.page` (`options.page` in `src/providers/`); the
  * others walk a cursor the library keeps to itself, so a second page from them repeats the first.
  */
-const PAGED_HISTORY = new Set(["etherscan", "koios", "arweave", "dcrdata"]);
+const PAGED_HISTORY = new Set(["etherscan", "koios", "arweave", "dcrdata", "horizon"]);
 
 /** Same for `getTokenTransfers`: Blockscout ignores `page` there too. */
-const PAGED_TRANSFERS = new Set(["etherscan"]);
+const PAGED_TRANSFERS = new Set(["etherscan", "horizon"]);
 
 export function pagesHistory(provider: string): boolean {
   return PAGED_HISTORY.has(provider);
