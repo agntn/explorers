@@ -1,7 +1,7 @@
 /** List fungible token holdings (supports ENS) */
 import { defineCommand } from "citty";
 import consola from "consola";
-import { print, withSelectedProvider } from "./shared.js";
+import { parsePositiveInteger, print, withSelectedProvider } from "./shared.js";
 
 export default defineCommand({
   meta: {
@@ -19,6 +19,12 @@ export default defineCommand({
       alias: "c",
       description: "Chain",
     },
+    limit: {
+      type: "string",
+      alias: "n",
+      description: "Max holdings listed",
+      default: "50",
+    },
     provider: {
       type: "string",
       alias: "p",
@@ -28,6 +34,7 @@ export default defineCommand({
   async run({ args }) {
     try {
       const { resolveInput } = await import("../core/input.js");
+      const limit = parsePositiveInteger(args.limit as string, "Invalid --limit value");
       await withSelectedProvider(
         args.chain as string | undefined,
         args.provider as string | undefined,
@@ -39,8 +46,10 @@ export default defineCommand({
             process.exit(1);
           }
           const { address } = await resolveInput(args.address as string, chain);
-          const tokens = await provider.getTokenBalances(address, chain, { nonZeroOnly: true });
-          print(`[${name}] ${tokens.length} tokens for ${address} on ${chain}`);
+          const holdings = await provider.getTokenBalances(address, chain, { nonZeroOnly: true });
+          const tokens = holdings.slice(0, limit);
+          const listed = tokens.length < holdings.length ? `, ${tokens.length} listed` : "";
+          print(`[${name}] ${holdings.length} tokens for ${address} on ${chain}${listed}`);
           print("");
           for (const token of tokens) {
             const usd = token.valueUsd ? ` ($${token.valueUsd.toFixed(2)})` : "";

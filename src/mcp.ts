@@ -7,7 +7,7 @@ import type { Provider } from "./core/provider.js";
 import { listProviders } from "./core/registry.js";
 import { withProvider } from "./core/resolve.js";
 import type { ProviderContext } from "./core/resolve.js";
-import { normalizeChain } from "./core/types.js";
+import { clampMaxResults, normalizeChain } from "./core/types.js";
 import type { ContractInfo, ProviderCapabilities, Transaction } from "./core/types.js";
 import { version } from "./version.js";
 
@@ -23,6 +23,8 @@ const rawInput = {
       "Include the provider's own transaction record as raw, for fields the normalized shape leaves out, such as every input and output of a Bitcoin transaction. Defaults to false.",
     ),
 };
+/** Holdings one tokens call lists unless asked for more; a busy wallet holds thousands. */
+const TOKEN_HOLDINGS_LIMIT = 50;
 const contractPayloadInput = {
   abi: z
     .boolean()
@@ -248,7 +250,7 @@ export function createMcpServer(): McpServer {
     "explorers_tokens",
     {
       description:
-        "List token holdings for a blockchain address. Zero balances are dropped unless nonZeroOnly is false.",
+        "List token holdings for a blockchain address: the first 50 in the explorer's order unless limit says otherwise; total counts every holding the list was cut from. Zero balances are dropped unless nonZeroOnly is false.",
       inputSchema: {
         address: z.string().min(1),
         ...providerInput,
@@ -257,19 +259,31 @@ export function createMcpServer(): McpServer {
           .optional()
           .default(true)
           .describe("Drop holdings whose balance is zero. Defaults to true."),
+        limit: z
+          .number()
+          .int()
+          .positive()
+          .max(100)
+          .optional()
+          .default(TOKEN_HOLDINGS_LIMIT)
+          .describe(
+            "Holdings to list, at most 100; total still counts every holding. Defaults to 50.",
+          ),
       },
       annotations: { readOnlyHint: true },
     },
-    async ({ address, chain, provider, nonZeroOnly }) =>
+    async ({ address, chain, provider, nonZeroOnly, limit }) =>
       withSelectedProvider(provider, chain, "getTokenBalances", async (selected) => {
         const resolvedAddress = await addressForChain(address, selected.chain);
         const getTokenBalances = requireOperation(selected.provider, "getTokenBalances");
-        return providerResult(
-          selected.name,
-          await getTokenBalances(resolvedAddress, selected.chain, {
-            nonZeroOnly: nonZeroOnly ?? true,
-          }),
-        );
+        const holdings = await getTokenBalances(resolvedAddress, selected.chain, {
+          nonZeroOnly: nonZeroOnly ?? true,
+        });
+        return result({
+          provider: selected.name,
+          total: holdings.length,
+          data: holdings.slice(0, clampMaxResults(limit ?? TOKEN_HOLDINGS_LIMIT)),
+        });
       }),
   );
 

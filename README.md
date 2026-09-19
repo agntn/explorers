@@ -117,7 +117,7 @@ explorers tx 8bae12b5f4c088d940733dcd1455efc6a3a69cf9340e17a981286d3778615684 -c
 | `providers` | Registered providers and their capabilities    | `explorers providers`             |
 | `mcp`       | The MCP server on stdio                        | `explorers mcp`                   |
 
-Every command takes `-c` for the chain and `-p` for the provider. `tx` and `transfers` take `-n`, `transfers` takes `-t` if you only care about one token. Everything else: [CLI guide](https://explorers.agntn.dev/guide/cli).
+Every command takes `-c` for the chain and `-p` for the provider. `tx`, `transfers` and `tokens` take `-n`, `transfers` takes `-t` if you only care about one token. Everything else: [CLI guide](https://explorers.agntn.dev/guide/cli).
 
 ## 🧠 Library
 

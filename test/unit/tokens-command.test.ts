@@ -18,12 +18,15 @@ afterEach(() => {
 });
 
 function stubTokenBalances(symbol: string, name: string) {
-  const body = [
+  stubHoldings([
     {
       token: { address_hash: USDC, symbol, name, decimals: "6", type: "ERC-20" },
       value: "1250000",
     },
-  ];
+  ]);
+}
+
+function stubHoldings(body: readonly Readonly<Record<string, unknown>>[]) {
   vi.stubGlobal(
     "fetch",
     vi.fn(
@@ -37,6 +40,56 @@ function stubTokenBalances(symbol: string, name: string) {
 }
 
 describe("tokens command", () => {
+  it("lists fifty holdings unless --limit says otherwise and counts every one", async () => {
+    const log = vi.spyOn(consola, "log").mockImplementation(() => undefined);
+    const error = vi.spyOn(consola, "error").mockImplementation(() => undefined);
+    vi.spyOn(process, "exit").mockImplementation(() => {
+      throw new Error("exit");
+    });
+    const contractOf = (index: number) => `0x${(index + 16).toString(16).padStart(40, "0")}`;
+    stubHoldings(
+      Array.from({ length: 60 }, (_, index) => ({
+        token: {
+          address_hash: contractOf(index),
+          symbol: `T${index}`,
+          decimals: "0",
+          type: "ERC-20",
+        },
+        value: "1",
+      })),
+    );
+    const run = async (limit?: string) => {
+      log.mockClear();
+      await tokensCommand.run?.({
+        args: {
+          _: [],
+          address: HOLDER,
+          chain: "eth",
+          provider: "blockscout",
+          limit: limit ?? "50",
+        },
+      });
+      return log.mock.calls.map(([line]) => String(line));
+    };
+
+    const listed = await run();
+    expect(listed).toHaveLength(52);
+    expect(listed[0]).toBe(`[blockscout] 60 tokens for ${HOLDER} on ethereum, 50 listed`);
+    expect(listed[2]).toBe(`  T0: 1  [${contractOf(0).slice(0, 10)}…]`);
+    expect(listed[51]).toBe(`  T49: 1  [${contractOf(49).slice(0, 10)}…]`);
+    expect(await run("2")).toEqual([
+      `[blockscout] 60 tokens for ${HOLDER} on ethereum, 2 listed`,
+      "",
+      `  T0: 1  [${contractOf(0).slice(0, 10)}…]`,
+      `  T1: 1  [${contractOf(1).slice(0, 10)}…]`,
+    ]);
+    const all = await run("100");
+    expect(all).toHaveLength(62);
+    expect(all[0]).toBe(`[blockscout] 60 tokens for ${HOLDER} on ethereum`);
+    await expect(run("0")).rejects.toThrow("exit");
+    expect(error).toHaveBeenCalledWith("Invalid --limit value");
+  });
+
   it("drops the terminal controls a token symbol smuggles into the listing", async () => {
     const log = vi.spyOn(consola, "log").mockImplementation(() => undefined);
     vi.spyOn(process, "exit").mockImplementation(() => {
@@ -45,7 +98,7 @@ describe("tokens command", () => {
     stubTokenBalances(`USDC${ESC}]0;pwned${BEL}`, `${CSI}2JUSD Coin`);
 
     await tokensCommand.run?.({
-      args: { _: [], address: HOLDER, chain: "eth", provider: "blockscout" },
+      args: { _: [], address: HOLDER, chain: "eth", provider: "blockscout", limit: "50" },
     });
 
     const lines = log.mock.calls.map(([line]) => String(line));
@@ -67,7 +120,7 @@ describe("tokens command", () => {
     );
 
     await tokensCommand.run?.({
-      args: { _: [], address: HOLDER, chain: "eth", provider: "blockscout" },
+      args: { _: [], address: HOLDER, chain: "eth", provider: "blockscout", limit: "50" },
     });
 
     const lines = log.mock.calls.map(([line]) => String(line));

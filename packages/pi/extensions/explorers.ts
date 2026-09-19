@@ -130,6 +130,11 @@ function describeUtxos(
   return [header, ...utxos.map(describeUtxo)];
 }
 
+/* The header's count is every holding; the suffix appears only when the list stops short of it. */
+function listedCount(listed: number, total: number): string {
+  return listed < total ? `, ${listed} listed` : "";
+}
+
 /* One line per provider: supported operations, declared chains, and the public endpoint. */
 function describeProvider(listing: Readonly<ExplorersModule.ProviderListing>): string {
   const operations =
@@ -457,13 +462,22 @@ export default function explorersExtension(pi: ExtensionAPI) {
     description: "List token holdings for a blockchain address",
     promptSnippet: "Use to read ERC-20 and other token balances, not just the native coin.",
     promptGuidelines: [
-      "Use explorers_tokens with a blockchain address or ENS name and optionally a chain.",
+      "Use explorers_tokens with a blockchain address or ENS name and optionally a chain and limit.",
       "explorers_tokens returns each holding with its contract, symbol, and human-readable balance.",
       "explorers_tokens drops zero balances unless nonZeroOnly is false.",
+      "explorers_tokens lists 50 holdings in the explorer's order unless limit says otherwise; the first line counts every holding.",
     ],
     parameters: Type.Object({
       address: Type.String({ description: "Blockchain address or ENS name" }),
       chain: Type.Optional(Type.String({ description: "Chain" })),
+      limit: Type.Optional(
+        Type.Integer({
+          description: "Maximum number of holdings listed; the first line counts them all",
+          minimum: 1,
+          maximum: 100,
+          default: 50,
+        }),
+      ),
       nonZeroOnly: Type.Optional(
         Type.Boolean({ description: "Drop holdings whose balance is zero", default: true }),
       ),
@@ -486,15 +500,16 @@ export default function explorersExtension(pi: ExtensionAPI) {
             throw new lib.UnsupportedOperationError("getTokenBalances", name);
           }
           const address = await resolveAddress(lib.resolveAddresses, params.address, chain);
-          const tokens = await provider.getTokenBalances(address, chain, {
+          const holdings = await provider.getTokenBalances(address, chain, {
             nonZeroOnly: params.nonZeroOnly ?? true,
           });
+          const tokens = holdings.slice(0, lib.clampMaxResults(params.limit ?? 50));
           const lines = tokens.map((token) => {
             const usd = token.valueUsd ? ` ($${token.valueUsd.toFixed(2)})` : "";
             return `  ${token.symbol}: ${token.balanceFormatted}${usd}  [${token.contract}]`;
           });
           return textResult([
-            `[${name}] ${tokens.length} tokens for ${params.address} on ${chain}:`,
+            `[${name}] ${holdings.length} tokens for ${params.address} on ${chain}${listedCount(tokens.length, holdings.length)}:`,
             ...lines,
           ]);
         },
