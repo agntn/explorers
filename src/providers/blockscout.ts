@@ -69,6 +69,8 @@ interface BlockscoutTx {
   readonly timestamp: string | null;
   readonly from: { readonly hash: string };
   readonly to: { readonly hash: string } | null;
+  /** The deployed contract when `to` is null for a creation; null on every other transaction. */
+  readonly created_contract?: { readonly hash: string } | null;
   readonly value: string;
   readonly gas_used: string | null;
   readonly gas_price: string | null;
@@ -185,6 +187,10 @@ function transactionStatus(status: string | null | undefined): TxStatus {
   return status === null || status === undefined ? "pending" : "failed";
 }
 
+function runsContractCode(types: readonly string[] | undefined): boolean {
+  return types?.some((type) => type === "contract_call" || type === "contract_creation") ?? false;
+}
+
 function mapTx(raw: Readonly<BlockscoutTx>): Transaction {
   const valueWei = BigInt(raw.value).toString();
 
@@ -196,6 +202,7 @@ function mapTx(raw: Readonly<BlockscoutTx>): Transaction {
     timestamp: raw.timestamp ?? undefined,
     from: raw.from.hash,
     to: raw.to?.hash ?? null,
+    createdContract: raw.created_contract?.hash,
     value: valueWei,
     valueFormatted: formatWei(valueWei),
     gasUsed: raw.gas_used ?? undefined,
@@ -204,10 +211,7 @@ function mapTx(raw: Readonly<BlockscoutTx>): Transaction {
     status: transactionStatus(raw.status),
     methodId: undefined,
     functionName: raw.method,
-    isContractInteraction:
-      raw.transaction_types?.some(
-        (type) => type === "contract_call" || type === "contract_creation",
-      ) ?? false,
+    isContractInteraction: runsContractCode(raw.transaction_types),
     tokenTransfers: mapTokenTransfers(raw.token_transfers),
     raw: raw as unknown as Record<string, unknown>,
   };

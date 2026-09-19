@@ -124,7 +124,7 @@ const activeProvider = computed(() => current.value.provider);
       link="Transactions"
       :checks="[
         'hash, from, to, value, fee, status and the token transfers inside, on every chain that has them',
-        'to is null for contract creation, never an empty string pretending to be an address',
+        'to is null without a recipient, createdContract names a deployment, and the one empty string is an Arweave data upload, never an address',
         'OP_RETURN payloads on Bitcoin, Litecoin and Pepecoin come as hex, plus text when the bytes are printable',
       ]"
       reverse

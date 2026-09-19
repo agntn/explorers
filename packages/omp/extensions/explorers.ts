@@ -233,7 +233,7 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
           const address = await resolveAddress(lib.resolveAddresses, params.address, chain);
           const txs = await provider.getTxHistory(address, chain, { limit: params.limit });
           const lines = txs.map(
-            (tx) => `${tx.hash} ${tx.from}→${tx.to ?? "new"} ${tx.valueFormatted} [${tx.status}]`,
+            (tx) => `${tx.hash} ${tx.from}→${tx.to || "?"} ${tx.valueFormatted} [${tx.status}]`,
           );
           return textResult([`[${name}] ${txs.length} transactions on ${chain}:`, ...lines]);
         },
@@ -272,7 +272,8 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
             `Block: ${tx.blockNumber} | Status: ${tx.status}`,
             tx.fee ? `Fee: ${tx.fee} base units` : null,
             `From: ${tx.from}`,
-            `To: ${tx.to ?? "contract creation"}`,
+            tx.to ? `To: ${tx.to}` : null,
+            tx.createdContract ? `Created contract: ${tx.createdContract}` : null,
             `Value: ${tx.valueFormatted}`,
             tx.functionName ? `Method: ${tx.functionName}` : null,
             tx.tokenTransfers.length > 0 ? `Token transfers: ${tx.tokenTransfers.length}` : null,
@@ -320,10 +321,15 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
         if (tx.fee) {
           lines.push(`${theme.fg("muted", "Fee")} ${sanitizeTerminalText(tx.fee)} base units`);
         }
-        lines.push(
-          `${theme.fg("muted", "From")} ${sanitizeTerminalText(tx.from)}`,
-          `${theme.fg("muted", "To")} ${sanitizeTerminalText(tx.to ?? "contract creation")}`,
-        );
+        lines.push(`${theme.fg("muted", "From")} ${sanitizeTerminalText(tx.from)}`);
+        if (tx.to) {
+          lines.push(`${theme.fg("muted", "To")} ${sanitizeTerminalText(tx.to)}`);
+        }
+        if (tx.createdContract) {
+          lines.push(
+            `${theme.fg("muted", "Created contract")} ${sanitizeTerminalText(tx.createdContract)}`,
+          );
+        }
         if (tx.functionName) {
           lines.push(`${theme.fg("muted", "Method")} ${sanitizeTerminalText(tx.functionName)}`);
         }

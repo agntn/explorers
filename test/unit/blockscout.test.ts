@@ -165,32 +165,36 @@ describe("blockscout provider", () => {
           gas_price: "2",
           status: "ok",
           transaction_types: [],
+          created_contract: null,
         },
       ],
       next_page_params: null,
     });
 
-    await expect(provider.getTxHistory(VITALIK, "ethereum", { limit: 3 })).resolves.toMatchObject([
-      {
-        hash: `0x${"1".repeat(64)}`,
-        blockNumber: 123,
-        from: "0x1111111111111111111111111111111111111111",
-        to: VITALIK,
-        value: "1000000000000000000",
-        valueFormatted: "1",
-        status: "success",
-      },
-    ]);
+    const [transaction] = await provider.getTxHistory(VITALIK, "ethereum", { limit: 3 });
+
+    expect(transaction).toMatchObject({
+      hash: `0x${"1".repeat(64)}`,
+      blockNumber: 123,
+      from: "0x1111111111111111111111111111111111111111",
+      to: VITALIK,
+      value: "1000000000000000000",
+      valueFormatted: "1",
+      status: "success",
+    });
+    expect(transaction?.createdContract).toBeUndefined();
   });
 
-  it("marks contract creation as a contract interaction", async () => {
+  it("marks contract creation as a contract interaction and names the contract", async () => {
     const hash = "0xb95343413e459a0f97461812111254163ae53467855c0d73e0f1e7c5b8442fa3";
+    const created = "0xdAC17F958D2ee523a2206206994597C13D831ec7";
     stubJSON({
       hash,
       block_number: 4_719_568,
       timestamp: "2017-12-12T11:17:35.000000Z",
       from: { hash: "0x4F26FfBe5F04ED43630fdC30A87638d53D0b0876" },
       to: null,
+      created_contract: { hash: created, is_contract: true },
       value: "0",
       gas_used: "966549",
       gas_price: "21000000000",
@@ -200,6 +204,7 @@ describe("blockscout provider", () => {
 
     await expect(provider.getTxDetail!(hash, "ethereum")).resolves.toMatchObject({
       to: null,
+      createdContract: created,
       isContractInteraction: true,
     });
   });

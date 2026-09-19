@@ -52,8 +52,10 @@ export interface Transaction {
   timestamp?: string;
   /** Sender */
   from: string;
-  /** Recipient (null for contract creation) */
+  /** Recipient; null when the explorer names none, an empty string for an Arweave data upload */
   to: string | null;
+  /** Address of the contract this transaction deployed, when the explorer reports one */
+  createdContract?: string;
   /** Value in the chain's smallest native unit */
   value: string;
   /** Human-readable value in native token */
