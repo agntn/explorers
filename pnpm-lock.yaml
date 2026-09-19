@@ -28,7 +28,7 @@ importers:
         version: 4.4.3
     devDependencies:
       '@agntn/ox':
-        specifier: ^0.1.0
+        specifier: 0.1.0
         version: 0.1.0(oxfmt@0.63.0)(oxlint-tsgolint@7.0.2001)(oxlint@1.80.0(oxlint-tsgolint@7.0.2001))
       '@earendil-works/pi-coding-agent':
         specifier: latest
@@ -52,13 +52,13 @@ importers:
         specifier: 0.4.36
         version: 0.4.36(chokidar@5.0.0)(dotenv@17.4.2)(giget@3.3.1)(jiti@2.7.0)(typescript@6.0.3)
       oxfmt:
-        specifier: ^0.63.0
+        specifier: 0.63.0
         version: 0.63.0
       oxlint:
-        specifier: ^1.80.0
+        specifier: 1.80.0
         version: 1.80.0(oxlint-tsgolint@7.0.2001)
       oxlint-tsgolint:
-        specifier: ^7.0.2001
+        specifier: 7.0.2001
         version: 7.0.2001
       tsx:
         specifier: 4.22.4
