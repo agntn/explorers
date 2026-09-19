@@ -252,7 +252,7 @@ export default function explorersExtension(pi: ExtensionAPI) {
           const address = await resolveAddress(lib.resolveAddresses, params.address, chain);
           const txs = await provider.getTxHistory(address, chain, { limit: params.limit });
           const lines = txs.map(
-            (tx) => `${tx.hash} ${tx.from}→${tx.to ?? "new"} ${tx.valueFormatted} [${tx.status}]`,
+            (tx) => `${tx.hash} ${tx.from}→${tx.to || "?"} ${tx.valueFormatted} [${tx.status}]`,
           );
           return textResult([`[${name}] ${txs.length} transactions on ${chain}:`, ...lines]);
         },
@@ -293,7 +293,7 @@ export default function explorersExtension(pi: ExtensionAPI) {
             `Block: ${tx.blockNumber} | Status: ${tx.status}`,
             tx.fee ? `Fee: ${tx.fee} base units` : null,
             `From: ${tx.from}`,
-            tx.to === null ? null : `To: ${tx.to}`,
+            tx.to ? `To: ${tx.to}` : null,
             tx.createdContract ? `Created contract: ${tx.createdContract}` : null,
             `Value: ${tx.valueFormatted}`,
             tx.functionName ? `Method: ${tx.functionName}` : null,
@@ -343,7 +343,7 @@ export default function explorersExtension(pi: ExtensionAPI) {
           lines.push(`${theme.fg("muted", "Fee")} ${sanitizeTerminalText(tx.fee)} base units`);
         }
         lines.push(`${theme.fg("muted", "From")} ${sanitizeTerminalText(tx.from)}`);
-        if (tx.to !== null) {
+        if (tx.to) {
           lines.push(`${theme.fg("muted", "To")} ${sanitizeTerminalText(tx.to)}`);
         }
         if (tx.createdContract) {

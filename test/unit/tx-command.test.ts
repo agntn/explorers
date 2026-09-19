@@ -103,6 +103,47 @@ describe("tx command", () => {
     ]);
   });
 
+  it("prints no recipient line for an Arweave data upload either", async () => {
+    const id = "2Bg8S0GcQmbC-FeT5dDKcj0WOK2YmH7Y4mlW-mO8_yE";
+    const owner = "FPjbN_btYKzcf8QASjs30v5C0FPv7XpwKXENBW8dqVw";
+    stubJSON({
+      data: {
+        transaction: {
+          id,
+          owner: { address: owner },
+          recipient: "",
+          quantity: { winston: "0" },
+          fee: { winston: "3242223203" },
+          block: { height: 1_994_692, timestamp: 1_788_612_434 },
+          bundledIn: null,
+          data: { size: "3044", type: null },
+          tags: [],
+        },
+      },
+    });
+    const log = spyOnOutput();
+
+    await txCommand.run?.({
+      args: {
+        _: [],
+        target: id,
+        limit: "10",
+        provider: "arweave",
+        chain: "arweave",
+        mode: "detail",
+      },
+    });
+
+    expect(log.mock.calls.map(([line]) => String(line))).toEqual([
+      `[arweave] Tx ${id}`,
+      "  Block: 1994692",
+      `  From: ${owner}`,
+      "  Value: 0",
+      "  Status: success",
+      "  Fee: 3242223203 base units",
+    ]);
+  });
+
   it("keeps the inferred provider chain while routing an implicit detail operation", async () => {
     useOnlyBlockberryCredentials();
     const error = vi.spyOn(consola, "error").mockImplementation(() => undefined);

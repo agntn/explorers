@@ -789,6 +789,52 @@ describe("explorers Pi extension", () => {
     expect(lines.filter((line) => line.startsWith("To:"))).toEqual([]);
   });
 
+  it("marks a missing recipient in a history line with a placeholder, not a deployment", async () => {
+    const address = "0x95Ba4cF87D6723ad9C0Db21737D862bE80e93911";
+    const hash = `0x${"e".repeat(64)}`;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              items: [
+                {
+                  hash,
+                  block_number: 6_082_465,
+                  timestamp: "2018-08-03T19:28:24.000000Z",
+                  from: { hash: address },
+                  to: null,
+                  created_contract: { hash: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" },
+                  value: "0",
+                  gas_used: "1500000",
+                  gas_price: "5000000000",
+                  status: "ok",
+                  transaction_types: ["contract_creation"],
+                },
+              ],
+              next_page_params: null,
+            }),
+            { headers: { "content-type": "application/json" } },
+          ),
+      ),
+    );
+    const tool = requireTool(registerExtensionTools(), "explorers_tx_history");
+
+    const result = parseToolResult(
+      await tool.execute(
+        "test",
+        { address, chain: "ethereum", provider: "blockscout", limit: 1 },
+        undefined,
+        undefined,
+        unusedContext,
+      ),
+    );
+    const text = result.content.find((part) => part.type === "text")?.text ?? "";
+
+    expect(text).toBe(`[blockscout] 1 transactions on ethereum:\n${hash} ${address}→? 0 [success]`);
+  });
+
   it("describes contract output without promising ABI or source content", () => {
     const tool = requireTool(registerExtensionTools(), "explorers_contract");
 
@@ -904,6 +950,7 @@ describe("explorers Pi extension", () => {
   it.each([
     ["a deployment", { to: null, createdContract: "0xnew" }, ["Created contract 0xnew"]],
     ["an operation without a recipient", { to: null }, []],
+    ["an Arweave data upload", { to: "" }, []],
   ] as const)("renders %s in the TUI with no invented recipient", (_case, fields, tail) => {
     const tool = requireTool(registerExtensionTools(), "explorers_tx_detail");
     const renderResult = tool.renderResult;
