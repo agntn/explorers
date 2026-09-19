@@ -48,7 +48,7 @@ describe("tokens command", () => {
     });
     const contractOf = (index: number) => `0x${(index + 16).toString(16).padStart(40, "0")}`;
     stubHoldings(
-      Array.from({ length: 60 }, (_, index) => ({
+      Array.from({ length: 120 }, (_, index) => ({
         token: {
           address_hash: contractOf(index),
           symbol: `T${index}`,
@@ -74,18 +74,21 @@ describe("tokens command", () => {
 
     const listed = await run();
     expect(listed).toHaveLength(52);
-    expect(listed[0]).toBe(`[blockscout] 60 tokens for ${HOLDER} on ethereum, 50 listed`);
+    expect(listed[0]).toBe(`[blockscout] 120 tokens for ${HOLDER} on ethereum, 50 listed`);
     expect(listed[2]).toBe(`  T0: 1  [${contractOf(0).slice(0, 10)}…]`);
     expect(listed[51]).toBe(`  T49: 1  [${contractOf(49).slice(0, 10)}…]`);
     expect(await run("2")).toEqual([
-      `[blockscout] 60 tokens for ${HOLDER} on ethereum, 2 listed`,
+      `[blockscout] 120 tokens for ${HOLDER} on ethereum, 2 listed`,
       "",
       `  T0: 1  [${contractOf(0).slice(0, 10)}…]`,
       `  T1: 1  [${contractOf(1).slice(0, 10)}…]`,
     ]);
-    const all = await run("100");
-    expect(all).toHaveLength(62);
-    expect(all[0]).toBe(`[blockscout] 60 tokens for ${HOLDER} on ethereum`);
+    for (const limit of ["100", "1000"]) {
+      const hundred = await run(limit);
+      expect(hundred).toHaveLength(102);
+      expect(hundred[0]).toBe(`[blockscout] 120 tokens for ${HOLDER} on ethereum, 100 listed`);
+      expect(hundred[101]).toBe(`  T99: 1  [${contractOf(99).slice(0, 10)}…]`);
+    }
     await expect(run("0")).rejects.toThrow("exit");
     expect(error).toHaveBeenCalledWith("Invalid --limit value");
   });

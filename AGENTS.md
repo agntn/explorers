@@ -53,7 +53,7 @@ Unified block explorer provider library. Normalizes balances, tx history, contra
 
 ## CLI subcommands
 
-`balance`, `tx`, `utxos`, `contract`, `tokens`, `transfers`, `gas`, `block`, `providers` - all support `-c` (chain), `-p` (provider). `tx` accepts `-m history|detail` to resolve ambiguous hash/address formats. `transfers` accepts `-t` to limit results to one token contract. `tokens` lists fifty holdings unless `-n` says otherwise and its first line counts every one. `tx`, `balance`, `tokens` and `transfers` support ENS.
+`balance`, `tx`, `utxos`, `contract`, `tokens`, `transfers`, `gas`, `block`, `providers` - all support `-c` (chain), `-p` (provider). `tx` accepts `-m history|detail` to resolve ambiguous hash/address formats. `transfers` accepts `-t` to limit results to one token contract. `tokens` lists fifty holdings unless `-n` says otherwise, a hundred at most, and its first line counts every one. `tx`, `balance`, `tokens` and `transfers` support ENS.
 
 ## Constraints
 

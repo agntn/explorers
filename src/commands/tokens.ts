@@ -22,7 +22,7 @@ export default defineCommand({
     limit: {
       type: "string",
       alias: "n",
-      description: "Max holdings listed",
+      description: "Max holdings listed, up to 100",
       default: "50",
     },
     provider: {
@@ -33,8 +33,13 @@ export default defineCommand({
   },
   async run({ args }) {
     try {
-      const { resolveInput } = await import("../core/input.js");
-      const limit = parsePositiveInteger(args.limit as string, "Invalid --limit value");
+      const [{ resolveInput }, { clampMaxResults }] = await Promise.all([
+        import("../core/input.js"),
+        import("../core/types.js"),
+      ]);
+      const limit = clampMaxResults(
+        parsePositiveInteger(args.limit as string, "Invalid --limit value"),
+      );
       await withSelectedProvider(
         args.chain as string | undefined,
         args.provider as string | undefined,
