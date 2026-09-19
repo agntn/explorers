@@ -191,9 +191,9 @@ describe("provider rate limit retry", () => {
     );
     vi.stubGlobal("fetch", fetch);
 
-    const pending = expect(new Custom({}).request("https://example.test/data")).rejects.toBeInstanceOf(
-      RateLimitError,
-    );
+    const pending = expect(
+      new Custom({}).request("https://example.test/data"),
+    ).rejects.toBeInstanceOf(RateLimitError);
     await vi.runAllTimersAsync();
     await pending;
     expect(fetch).toHaveBeenCalledTimes(3);

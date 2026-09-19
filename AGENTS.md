@@ -145,8 +145,11 @@ graph TB
 pnpm build          # obuild → dist/
 pnpm dev            # obuild --stub (watch mode)
 pnpm typecheck      # build, then tsc --noEmit
+pnpm lint           # oxlint, then oxfmt --check; CHANGELOG.md stays out of oxfmt
 pnpm test           # vitest watch (unit, offline)
 pnpm test:run       # vitest single run (unit, offline)
 pnpm test:live      # public explorer roundtrips, not CI
 pnpm release        # test, changelog, tag, push; CI publishes the tag
 ```
+
+Every pull request and push to `main` runs lint, typecheck, build and `pnpm test:run` on Node 24 and 26 through `.github/workflows/test.yml`; `autofix.yml` commits what `pnpm fmt` changes back to the pull request branch.
