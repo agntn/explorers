@@ -112,6 +112,7 @@
   "pi": {
     "extensions": [
       "./packages/pi/extensions/*.ts"
-    ]
+    ],
+    "image": "https://explorers.agntn.dev/image.png"
   }
 }
