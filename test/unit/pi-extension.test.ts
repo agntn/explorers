@@ -600,6 +600,68 @@ describe("explorers Pi extension", () => {
     expect(text).toBe(`[blockscout] 1 tokens for ${address} on ethereum:\n  TKN: 1  [${contract}]`);
   });
 
+  it("declares an integer token holdings limit from 1 through 100", () => {
+    const tool = requireTool(registerExtensionTools(), "explorers_tokens");
+
+    expect(Value.Check(tool.parameters, { address: "address", limit: 1 })).toBe(true);
+    expect(Value.Check(tool.parameters, { address: "address", limit: 100 })).toBe(true);
+    expect(Value.Check(tool.parameters, { address: "address", limit: 0 })).toBe(false);
+    expect(Value.Check(tool.parameters, { address: "address", limit: 101 })).toBe(false);
+    expect(Value.Check(tool.parameters, { address: "address", limit: 1.5 })).toBe(false);
+  });
+
+  it("lists fifty holdings unless limit says otherwise and counts every one", async () => {
+    const address = "0x0000000000000000000000000000000000000001";
+    const contractOf = (index: number) => `0x${(index + 16).toString(16).padStart(40, "0")}`;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify(
+              Array.from({ length: 60 }, (_, index) => ({
+                token: {
+                  address_hash: contractOf(index),
+                  symbol: `T${index}`,
+                  decimals: "0",
+                  type: "ERC-20",
+                },
+                value: "1",
+              })),
+            ),
+            { headers: { "content-type": "application/json" } },
+          ),
+      ),
+    );
+    const tool = requireTool(registerExtensionTools(), "explorers_tokens");
+    const readLines = async (params: Readonly<Record<string, unknown>>) => {
+      const result = parseToolResult(
+        await tool.execute(
+          "test",
+          { address, chain: "ethereum", provider: "blockscout", ...params },
+          undefined,
+          undefined,
+          unusedContext,
+        ),
+      );
+      return (result.content.find((part) => part.type === "text")?.text ?? "").split("\n");
+    };
+
+    const listed = await readLines({});
+    expect(listed).toHaveLength(51);
+    expect(listed[0]).toBe(`[blockscout] 60 tokens for ${address} on ethereum, 50 listed:`);
+    expect(listed[1]).toBe(`  T0: 1  [${contractOf(0)}]`);
+    expect(listed[50]).toBe(`  T49: 1  [${contractOf(49)}]`);
+    expect(await readLines({ limit: 2 })).toEqual([
+      `[blockscout] 60 tokens for ${address} on ethereum, 2 listed:`,
+      `  T0: 1  [${contractOf(0)}]`,
+      `  T1: 1  [${contractOf(1)}]`,
+    ]);
+    const all = await readLines({ limit: 100 });
+    expect(all).toHaveLength(61);
+    expect(all[0]).toBe(`[blockscout] 60 tokens for ${address} on ethereum:`);
+  });
+
   it("lists unspent outputs as outpoints with their confirmation state", async () => {
     const address = "bc1qexample";
     vi.stubGlobal(

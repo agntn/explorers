@@ -195,6 +195,21 @@ class TokenProvider extends DisabledProvider {
   }
 }
 
+/** Sixty live holdings, one past the fifty a call lists by default. */
+const MANY_HOLDINGS: TokenBalance[] = Array.from({ length: 60 }, (_, index) => ({
+  contract: `0x${(index + 16).toString(16).padStart(40, "0")}`,
+  symbol: `T${index}`,
+  decimals: 18,
+  balance: "1",
+  balanceFormatted: "0.000000000000000001",
+}));
+
+class BusyTokenProvider extends TokenProvider {
+  override async getTokenBalances(): Promise<TokenBalance[]> {
+    return MANY_HOLDINGS;
+  }
+}
+
 describe("Explorers MCP server", () => {
   it("keeps the unconfirmed balance delta in MCP JSON", async () => {
     vi.stubGlobal(
@@ -464,6 +479,39 @@ describe("Explorers MCP server", () => {
     expect(await readTokens({})).toEqual([LIVE_HOLDING]);
     expect(await readTokens({ nonZeroOnly: true })).toEqual([LIVE_HOLDING]);
     expect(await readTokens({ nonZeroOnly: false })).toEqual([ZERO_HOLDING, LIVE_HOLDING]);
+  });
+
+  it("lists fifty holdings unless limit says otherwise and counts every one", async () => {
+    const address = "0x0000000000000000000000000000000000000001";
+    register(BusyTokenProvider, { chains: ["ethereum"] });
+    const client = await connectTestClient();
+    const readTokens = async (args: Readonly<Record<string, unknown>>) => {
+      const result = parseToolResult(
+        await client.callTool({
+          name: "explorers_tokens",
+          arguments: { address, chain: "ethereum", provider: BusyTokenProvider.key, ...args },
+        }),
+      );
+      if (result.isError) return result.content[0]?.text;
+      return JSON.parse(result.content[0]?.text ?? "null") as {
+        total: number;
+        data: TokenBalance[];
+      };
+    };
+
+    expect(await readTokens({})).toEqual({
+      provider: BusyTokenProvider.key,
+      total: 60,
+      data: MANY_HOLDINGS.slice(0, 50),
+    });
+    expect(await readTokens({ limit: 2 })).toMatchObject({
+      total: 60,
+      data: MANY_HOLDINGS.slice(0, 2),
+    });
+    expect(await readTokens({ limit: 100 })).toMatchObject({ total: 60, data: MANY_HOLDINGS });
+    expect(await readTokens({ limit: 0 })).toMatch(/limit/);
+    expect(await readTokens({ limit: 101 })).toMatch(/limit/);
+    expect(await readTokens({ limit: 1.5 })).toMatch(/limit/);
   });
 
   it("discovers every explorer tool and executes provider discovery", async () => {

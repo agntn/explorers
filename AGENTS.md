@@ -53,7 +53,7 @@ Unified block explorer provider library. Normalizes balances, tx history, contra
 
 ## CLI subcommands
 
-`balance`, `tx`, `utxos`, `contract`, `tokens`, `transfers`, `gas`, `block`, `providers` - all support `-c` (chain), `-p` (provider). `tx` accepts `-m history|detail` to resolve ambiguous hash/address formats. `transfers` accepts `-t` to limit results to one token contract. `tx`, `balance`, `tokens` and `transfers` support ENS.
+`balance`, `tx`, `utxos`, `contract`, `tokens`, `transfers`, `gas`, `block`, `providers` - all support `-c` (chain), `-p` (provider). `tx` accepts `-m history|detail` to resolve ambiguous hash/address formats. `transfers` accepts `-t` to limit results to one token contract. `tokens` lists fifty holdings unless `-n` says otherwise, a hundred at most, and its first line counts every one. `tx`, `balance`, `tokens` and `transfers` support ENS.
 
 ## Constraints
 
@@ -114,7 +114,7 @@ graph TB
 - **Provider auto-selection**: `resolveProvider()` checks env vars, chain support, and an optional requested capability without loading provider modules. `withProvider()` keeps explicit choices strict and retries automatic reads once on another available built-in after `RateLimitError` or `PlanRestrictedError`. 429 waits on that backend happen in `Provider` first. The callback must be safe to run twice.
 - **Error sanitization**: `HTTPError` strips API keys from URLs in error messages. `normalizeError()` wraps unknown errors into typed `ExplorerError` subclasses.
 - **Terminal boundary**: CLI result lines go through `print()` in `commands/shared.ts`, which drops control bytes and line breaks before a token symbol, contract name or decoded method reaches the terminal, so a field cannot pose as the next result line. The OMP and Pi extensions apply the same filter per line in `sanitizeTerminalText()`, and every renderer splits an OP_RETURN message itself and indents its continuation lines. MCP output is JSON, where those bytes arrive escaped.
-- **MCP payload boundary**: `src/mcp.ts` answers with the normalized shape and withholds the heavy optional fields until a call asks: `Transaction.raw` behind `raw: true` on `explorers_tx_history` and `explorers_tx_detail`, `ContractInfo.abi` and `sourceCode` behind `abi` and `sourceCode` on `explorers_contract`. `explorers_tokens` defaults `nonZeroOnly` to true, matching the CLI, Pi and OMP. The library types keep every field; the CLI, Pi and OMP renderers never printed them.
+- **MCP payload boundary**: `src/mcp.ts` answers with the normalized shape and withholds the heavy optional fields until a call asks: `Transaction.raw` behind `raw: true` on `explorers_tx_history` and `explorers_tx_detail`, `ContractInfo.abi` and `sourceCode` behind `abi` and `sourceCode` on `explorers_contract`. `explorers_tokens` defaults `nonZeroOnly` to true, matching the CLI, Pi and OMP, and lists fifty holdings unless `limit` (up to 100) says otherwise, with `total` counting every holding; the CLI, Pi and OMP cut at the same fifty and print the count in their first line, since a wallet that has been airdropped at holds thousands. `getTokenBalances()` itself still returns every holding. The library types keep every field; the CLI, Pi and OMP renderers never printed them.
 
 ## Anti-patterns to avoid
 
