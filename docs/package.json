@@ -12,7 +12,7 @@
     "deploy": "pnpm build && wrangler deploy"
   },
   "dependencies": {
-    "@agntn/chains": "0.3.4",
+    "@agntn/chains": "0.3.5",
     "better-sqlite3": "12.11.1",
     "docus": "5.13.0",
     "jiti": "2.7.0",
