@@ -133,7 +133,7 @@ function operationSchema() {
     account: addressTextSchema().optional(),
     into: addressTextSchema().optional(),
     function: z.string().optional(),
-    asset_balance_changes: z.array(balanceChangeSchema()).optional(),
+    asset_balance_changes: z.array(balanceChangeSchema()).nullish(),
     transaction: transactionSchema().optional(),
   });
 }
@@ -187,7 +187,8 @@ interface HorizonOperation extends AssetHolder {
   readonly account?: string;
   readonly into?: string;
   readonly function?: string;
-  readonly asset_balance_changes?: readonly AssetChange[];
+  /** Absent outside Soroban, `null` for a contract call that moved no asset. */
+  readonly asset_balance_changes?: readonly AssetChange[] | null;
   readonly transaction?: HorizonTransaction;
 }
 

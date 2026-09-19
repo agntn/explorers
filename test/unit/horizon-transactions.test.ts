@@ -421,6 +421,38 @@ describe("horizon transaction detail", () => {
     });
   });
 
+  it("reads a contract call whose balance changes Horizon sends as null", async () => {
+    stubRoutes([
+      [
+        "/operations",
+        page([
+          operation({
+            type: "invoke_host_function",
+            transaction: undefined,
+            asset_type: undefined,
+            from: undefined,
+            to: undefined,
+            amount: undefined,
+            function: "HostFunctionTypeHostFunctionTypeInvokeContract",
+            asset_balance_changes: null,
+          }),
+        ]),
+      ],
+      ["", transaction()],
+    ]);
+    const provider = await create("horizon");
+    expect(await provider.getTxDetail?.(HASH)).toMatchObject({
+      from: SENDER,
+      to: null,
+      value: "0",
+      fee: "100",
+      status: "success",
+      functionName: "invoke_contract",
+      isContractInteraction: true,
+      tokenTransfers: [],
+    });
+  });
+
   it("falls back to the source account when no operation moves value", async () => {
     stubRoutes([
       ["/operations", page([])],
