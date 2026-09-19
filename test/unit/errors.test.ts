@@ -13,7 +13,11 @@ import {
   normalizeError,
 } from "../../src/core/errors.js";
 
-function fetchError(status: number, url: string, headers?: Readonly<Record<string, string>>): FetchError {
+function fetchError(
+  status: number,
+  url: string,
+  headers?: Readonly<Record<string, string>>,
+): FetchError {
   const error = new FetchError(`[GET] "${url}": ${status}`);
   error.statusCode = status;
   error.request = url;
@@ -98,7 +102,10 @@ describe("normalizeError", () => {
     expect(out).toBeInstanceOf(ExplorerError);
   });
   it("reads retry-after off a 429 response", () => {
-    const error = normalizeError(fetchError(429, "https://x.test", { "retry-after": "30" }), "mempool");
+    const error = normalizeError(
+      fetchError(429, "https://x.test", { "retry-after": "30" }),
+      "mempool",
+    );
     expect(error).toBeInstanceOf(RateLimitError);
     expect((error as RateLimitError).retryAfter).toBe(30);
   });
