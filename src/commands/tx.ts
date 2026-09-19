@@ -38,7 +38,8 @@ function renderTransaction(providerName: string, transaction: Transaction): void
   print(`[${providerName}] Tx ${transaction.hash}`);
   print(`  Block: ${transaction.blockNumber}`);
   print(`  From: ${transaction.from}`);
-  print(`  To: ${transaction.to ?? "contract creation"}`);
+  if (transaction.to !== null) print(`  To: ${transaction.to}`);
+  if (transaction.createdContract) print(`  Created contract: ${transaction.createdContract}`);
   print(`  Value: ${transaction.valueFormatted}`);
   print(`  Status: ${transaction.status}`);
   if (transaction.fee) print(`  Fee: ${transaction.fee} base units`);

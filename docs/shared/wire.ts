@@ -13,6 +13,7 @@ export interface WireTransaction {
   timestamp?: string;
   from: string;
   to: string | null;
+  createdContract?: string;
   value: string;
   valueFormatted: string;
   gasUsed?: string;

@@ -46,10 +46,16 @@ const gasPriceText = computed(() => {
       </dd>
       <dt>to</dt>
       <dd class="font-mono text-[13px] break-all">
-        <span v-if="transaction.to === null">null <span class="text-dimmed">· contract creation</span></span>
+        <span v-if="transaction.to === null">null <span class="text-dimmed">· {{ transaction.createdContract ? "a contract creation" : "no recipient" }}</span></span>
         <span v-else-if="transaction.to === ''" class="text-dimmed">empty · a data upload, no recipient</span>
         <NuxtLink v-else :to="addressPath(answer.chain, transaction.to)" class="hover:text-primary">{{ transaction.to }}</NuxtLink>
       </dd>
+      <template v-if="transaction.createdContract">
+        <dt>created contract</dt>
+        <dd class="font-mono text-[13px] break-all">
+          <NuxtLink :to="addressPath(answer.chain, transaction.createdContract)" class="hover:text-primary">{{ transaction.createdContract }}</NuxtLink>
+        </dd>
+      </template>
       <dt>value</dt>
       <dd class="font-mono text-[13px]">
         <span class="text-highlighted">{{ trimDecimals(transaction.valueFormatted, 8) }} {{ symbol }}</span>

@@ -293,7 +293,8 @@ export default function explorersExtension(pi: ExtensionAPI) {
             `Block: ${tx.blockNumber} | Status: ${tx.status}`,
             tx.fee ? `Fee: ${tx.fee} base units` : null,
             `From: ${tx.from}`,
-            `To: ${tx.to ?? "contract creation"}`,
+            tx.to === null ? null : `To: ${tx.to}`,
+            tx.createdContract ? `Created contract: ${tx.createdContract}` : null,
             `Value: ${tx.valueFormatted}`,
             tx.functionName ? `Method: ${tx.functionName}` : null,
             tx.tokenTransfers.length > 0 ? `Token transfers: ${tx.tokenTransfers.length}` : null,
@@ -341,10 +342,15 @@ export default function explorersExtension(pi: ExtensionAPI) {
         if (tx.fee) {
           lines.push(`${theme.fg("muted", "Fee")} ${sanitizeTerminalText(tx.fee)} base units`);
         }
-        lines.push(
-          `${theme.fg("muted", "From")} ${sanitizeTerminalText(tx.from)}`,
-          `${theme.fg("muted", "To")} ${sanitizeTerminalText(tx.to ?? "contract creation")}`,
-        );
+        lines.push(`${theme.fg("muted", "From")} ${sanitizeTerminalText(tx.from)}`);
+        if (tx.to !== null) {
+          lines.push(`${theme.fg("muted", "To")} ${sanitizeTerminalText(tx.to)}`);
+        }
+        if (tx.createdContract) {
+          lines.push(
+            `${theme.fg("muted", "Created contract")} ${sanitizeTerminalText(tx.createdContract)}`,
+          );
+        }
         if (tx.functionName) {
           lines.push(`${theme.fg("muted", "Method")} ${sanitizeTerminalText(tx.functionName)}`);
         }

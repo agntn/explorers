@@ -138,6 +138,7 @@ function mapTx(raw: Readonly<EtherscanTx>): Transaction {
     timestamp: new Date(Number(raw.timeStamp) * 1000).toISOString(),
     from: raw.from,
     to: raw.to || null,
+    createdContract: raw.contractAddress || undefined,
     value: raw.value,
     valueFormatted: formatWei(raw.value),
     gasUsed: raw.gasUsed,
@@ -212,6 +213,12 @@ function rpcStatus(receipt: Readonly<Record<string, string | null>> | null): TxS
   return receipt.status === "0x1" ? "success" : "failed";
 }
 
+function rpcCreatedContract(
+  receipt: Readonly<Record<string, string | null>> | null,
+): string | undefined {
+  return receipt?.contractAddress ?? undefined;
+}
+
 function rpcFee(gasUsed: string | undefined, gasPrice: string | undefined): string | undefined {
   return gasUsed && gasPrice ? multiplyIntegerStrings(gasUsed, gasPrice) : undefined;
 }
@@ -238,6 +245,7 @@ function mapRpcTransaction(
     blockNumber: Number(tx.blockNumber ?? "0x0"),
     from: tx.from ?? "",
     to: tx.to ?? null,
+    createdContract: rpcCreatedContract(receipt),
     value,
     valueFormatted: formatWei(value),
     gasUsed,

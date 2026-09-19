@@ -1,10 +1,18 @@
 <script setup lang="ts">
-import type { ExplorerSample } from "../../utils/landing-fixtures";
+import type { ExplorerSample, SampleTransaction } from "../../utils/landing-fixtures";
 import { dateOnly, shortHash, trimDecimals } from "../../utils/format";
 
 const props = defineProps<{ sample: ExplorerSample }>();
 
 const symbol = computed(() => props.sample.balance.symbol);
+
+/** The recipient, the contract a deployment created, or what the row has instead. */
+function recipient(transaction: SampleTransaction): string {
+  if (transaction.createdContract) return `created ${shortHash(transaction.createdContract, 6, 4)}`;
+  if (transaction.to === null) return "none";
+  if (transaction.to === "") return "data upload";
+  return shortHash(transaction.to, 6, 4);
+}
 </script>
 
 <template>
@@ -41,7 +49,7 @@ const symbol = computed(() => props.sample.balance.symbol);
           </p>
           <p class="mt-0.5 truncate font-mono text-[11px] text-dimmed">
             {{ shortHash(transaction.from, 6, 4) }} →
-            {{ transaction.to === null ? "contract creation" : transaction.to === "" ? "data upload" : shortHash(transaction.to, 6, 4) }}
+            {{ recipient(transaction) }}
             · block {{ transaction.blockNumber }}
             {{ transaction.timestamp ? ` · ${dateOnly(transaction.timestamp)}` : "" }}
             {{ transaction.functionName ? ` · ${transaction.functionName}` : "" }}
