@@ -1,5 +1,33 @@
 # Changelog
 
+## v0.5.5
+
+[compare changes](https://github.com/agntn/explorers/compare/v0.5.4...v0.5.5)
+
+### 🚀 Enhancements
+
+- Serve Stellar through Horizon ([#100](https://github.com/agntn/explorers/pull/100))
+- Cap token holdings at fifty, count them all ([#115](https://github.com/agntn/explorers/pull/115))
+
+### 🩹 Fixes
+
+- **horizon:** Read calls that moved no asset ([#112](https://github.com/agntn/explorers/pull/112))
+
+### 🏡 Chore
+
+- Add `renovate.json` ([e98c321](https://github.com/agntn/explorers/commit/e98c321))
+- Add `pi` image ([a499730](https://github.com/agntn/explorers/commit/a499730))
+
+### 🤖 CI
+
+- Test pull requests and main ([#111](https://github.com/agntn/explorers/pull/111))
+
+### ❤️ Contributors
+
+- Ori ([@oritwoen](https://github.com/oritwoen))
+- Oritwoen ([@oritwoen](https://github.com/oritwoen))
+- Aeitwoen ([@aeitwoen](https://github.com/aeitwoen))
+
 ## v0.5.4
 
 [compare changes](https://github.com/agntn/explorers/compare/v0.5.3...v0.5.4)
