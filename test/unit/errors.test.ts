@@ -10,6 +10,7 @@ import {
   UnsupportedChainError,
   UnsupportedOperationError,
   UnknownProviderError,
+  TransportError,
   normalizeError,
 } from "../../src/core/errors.js";
 
@@ -100,6 +101,23 @@ describe("normalizeError", () => {
   it("wraps non-Error", () => {
     const out = normalizeError("oops" as unknown);
     expect(out).toBeInstanceOf(ExplorerError);
+  });
+  it("names the transport reason when a request got no response", () => {
+    const error = new Error("fetch failed");
+    error.cause = new Error("connect ECONNREFUSED");
+    const url = "https://mempool.space/api/address/x/utxo";
+
+    const out = normalizeError(error, "mempool", url);
+
+    expect(out).toBeInstanceOf(TransportError);
+    expect(out).toMatchObject({ reason: "connect ECONNREFUSED", provider: "mempool" });
+    expect(out.message).toBe(`No response from mempool (connect ECONNREFUSED): ${url}`);
+    expect(JSON.stringify(out)).not.toContain("HTTP 0");
+  });
+  it("classifies a 404 response as not found", () => {
+    expect(normalizeError(fetchError(404, "https://x.test"), "mempool")).toBeInstanceOf(
+      NotFoundError,
+    );
   });
   it("reads retry-after off a 429 response", () => {
     const error = normalizeError(

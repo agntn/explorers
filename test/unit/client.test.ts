@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { HTTPError, NotFoundError } from "../../src/core/errors.js";
+import { ExplorerError, HTTPError, NotFoundError, TransportError } from "../../src/core/errors.js";
 import { getJSON, postJSON } from "../../src/core/client.js";
 
 afterEach(() => {
@@ -76,6 +76,85 @@ describe("HTTP client", () => {
       name: NotFoundError.name,
       provider: "mempool",
     });
+  });
+
+  it.each([
+    [
+      "refused connection",
+      Object.assign(new Error("connect ECONNREFUSED 203.0.113.7:443"), { code: "ECONNREFUSED" }),
+      "ECONNREFUSED",
+      "connect ECONNREFUSED 203.0.113.7:443",
+    ],
+    [
+      "unresolved host",
+      Object.assign(new Error("getaddrinfo ENOTFOUND example.test"), { code: "ENOTFOUND" }),
+      "ENOTFOUND",
+      "getaddrinfo ENOTFOUND example.test",
+    ],
+    [
+      "refusal on every address",
+      Object.assign(
+        new AggregateError(
+          [Object.assign(new Error("connect ECONNREFUSED ::1:443"), { code: "ECONNREFUSED" })],
+          "",
+        ),
+        { code: "ECONNREFUSED" },
+      ),
+      "ECONNREFUSED",
+      "connect ECONNREFUSED ::1:443",
+    ],
+  ])("names the %s behind a request that got no response", async (_label, cause, code, reason) => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new TypeError("fetch failed", { cause });
+      }),
+    );
+
+    const error = await getJSON("https://example.test/api/address/x/utxo?apikey=secret", {
+      provider: "mempool",
+    }).catch((failure: unknown) => failure);
+
+    expect(error).toBeInstanceOf(TransportError);
+    expect(error).toMatchObject({ code, reason, provider: "mempool" });
+    expect((error as Error).message).toBe(
+      `No response from mempool (${reason}): https://example.test/api/address/x/utxo?apikey=REDACTED`,
+    );
+  });
+
+  it("names a timeout behind a request that got no response", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new DOMException("The operation was aborted due to timeout", "TimeoutError");
+      }),
+    );
+
+    const error = await getJSON("https://example.test/data", { provider: "mempool" }).catch(
+      (failure: unknown) => failure,
+    );
+
+    expect(error).toBeInstanceOf(TransportError);
+    expect(error).toMatchObject({
+      code: "TimeoutError",
+      reason: "The operation was aborted due to timeout",
+    });
+  });
+
+  it("keeps the URL but invents no status for a body that is not JSON", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response("<html>", { headers: { "Content-Type": "text/html" } })),
+    );
+
+    const error = await getJSON("https://example.test/data", { provider: "mempool" }).catch(
+      (failure: unknown) => failure,
+    );
+
+    expect(error).toBeInstanceOf(ExplorerError);
+    expect(error).not.toBeInstanceOf(HTTPError);
+    expect((error as Error).message).toContain("https://example.test/data");
+    expect((error as Error).message).not.toContain("HTTP 0");
   });
 
   it.each([

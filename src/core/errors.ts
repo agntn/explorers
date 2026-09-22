@@ -48,6 +48,41 @@ export class HTTPError extends ExplorerError {
   }
 }
 
+/**
+ * Request that ended before any HTTP response arrived: a refused connection, an unresolved host, a
+ * reset socket, a timeout or an abort.
+ */
+export class TransportError extends ExplorerError {
+  /**
+   * Request URL with secret query params redacted. Non-enumerable to keep serialized errors
+   * compact.
+   */
+  public readonly rawUrl?: string;
+
+  /**
+   * @param {string} reason - Message of the innermost cause, such as `connect ECONNREFUSED`.
+   * @param {string} url - Request URL, when known.
+   * @param {string} code - System error code or DOMException name, such as `ENOTFOUND` or
+   *   `TimeoutError`.
+   * @param {string} provider - Provider that sent the request.
+   */
+  constructor(
+    public readonly reason: string,
+    url?: string,
+    public readonly code?: string,
+    provider?: string,
+  ) {
+    const source = provider === undefined ? "" : ` from ${provider}`;
+    super(`No response${source} (${reason})${url === undefined ? "" : `: ${url}`}`, provider);
+    this.reason = sanitizeUrl(reason);
+    if (url !== undefined) {
+      this.rawUrl = sanitizeUrl(url);
+      Object.defineProperty(this, "rawUrl", { enumerable: false });
+    }
+    this.name = "TransportError";
+  }
+}
+
 /** Provider credentials were missing or rejected. */
 export class AuthError extends ExplorerError {
   constructor(provider: string, detail?: string) {
@@ -143,7 +178,13 @@ function getFetchErrorBody(error: FetchError): string | undefined {
   }
 }
 
+interface TransportCause {
+  readonly code?: string;
+  readonly reason: string;
+}
+
 interface FailureContext {
+  readonly cause: TransportCause;
   readonly fetchError?: FetchError;
   readonly lowerMessage: string;
   readonly message: string;
@@ -161,11 +202,21 @@ function isAuthenticationFailure(context: FailureContext): boolean {
   );
 }
 
+/* A request that never got a response has no status and, from ofetch, no response object. */
 function isTransportFailure(context: FailureContext): boolean {
-  if (context.status > 0 || context.url !== undefined) return true;
-  return ["econnrefused", "etimedout", "timeouterror"].some((fragment) =>
-    context.lowerMessage.includes(fragment),
-  );
+  if (context.status > 0) return false;
+  if (context.fetchError) return context.fetchError.response === undefined;
+  if (context.cause.code !== undefined) return true;
+  const text = `${context.lowerMessage} ${context.cause.reason.toLowerCase()}`;
+  return [
+    "fetch failed",
+    "econnrefused",
+    "econnreset",
+    "enotfound",
+    "eai_again",
+    "etimedout",
+    "timeouterror",
+  ].some((fragment) => text.includes(fragment));
 }
 
 function isNotFoundFailure(context: FailureContext): boolean {
@@ -186,11 +237,14 @@ function retryAfterSeconds(error: FetchError | undefined): number | undefined {
 }
 
 function authenticationError(context: FailureContext): AuthError {
-  const detail = context.url ? `HTTP ${context.status} from ${context.url}` : context.message;
+  const detail =
+    context.url && context.status > 0
+      ? `HTTP ${context.status} from ${context.url}`
+      : context.message;
   return new AuthError(context.provider ?? "unknown", detail);
 }
 
-function transportError(context: FailureContext): HTTPError {
+function httpError(context: FailureContext): HTTPError {
   const body = context.fetchError ? getFetchErrorBody(context.fetchError) : undefined;
   return new HTTPError(
     context.status,
@@ -201,16 +255,50 @@ function transportError(context: FailureContext): HTTPError {
 }
 
 function classifyFailure(context: FailureContext): ExplorerError | undefined {
+  if (isTransportFailure(context)) {
+    return new TransportError(
+      context.cause.reason,
+      context.url,
+      context.cause.code,
+      context.provider,
+    );
+  }
   if (isNotFoundFailure(context)) return new NotFoundError(context.resource, context.provider);
   if (isRateLimitFailure(context)) {
     return new RateLimitError(context.provider ?? "unknown", retryAfterSeconds(context.fetchError));
   }
   if (isAuthenticationFailure(context)) return authenticationError(context);
-  return isTransportFailure(context) ? transportError(context) : undefined;
+  return context.status > 0 ? httpError(context) : undefined;
 }
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+function errorCode(error: Readonly<Error>): string | undefined {
+  const code: unknown = (error as { code?: unknown }).code;
+  if (typeof code === "string") return code;
+  return error.name === "TimeoutError" || error.name === "AbortError" ? error.name : undefined;
+}
+
+/**
+ * Follow `cause` links, and the first entry of an `AggregateError`, down to the error that names
+ * the reason. The deepest message with text and the deepest code win; the ofetch wrapper only
+ * repeats the URL, so its own message is used only when nothing deeper has one.
+ *
+ * @param {unknown} error - The failure thrown by the request.
+ * @returns {TransportCause} Reason and code to report.
+ */
+function transportCause(error: unknown): TransportCause {
+  let reason = errorMessage(error);
+  let code: string | undefined;
+  let current: unknown = error;
+  for (let depth = 0; current instanceof Error && depth < 8; depth += 1) {
+    if (current.message !== "" && !(current instanceof FetchError)) reason = current.message;
+    code = errorCode(current) ?? code;
+    current = current.cause ?? (current instanceof AggregateError ? current.errors[0] : undefined);
+  }
+  return { code, reason };
 }
 
 function errorStatus(error: FetchError | undefined, message: string): number {
@@ -222,7 +310,8 @@ function errorStatus(error: FetchError | undefined, message: string): number {
  * Turn an unknown provider or transport failure into the Explorers error hierarchy.
  *
  * Existing `ExplorerError` instances pass through unchanged. Structured HTTP failures retain their
- * status, response body, and redacted request URL.
+ * status, response body, and redacted request URL. A request that got no response becomes a
+ * `TransportError` carrying the reason and code of its innermost cause.
  *
  * @param {unknown} error - The `error` value.
  * @param {string} provider - The `provider` value.
@@ -243,6 +332,7 @@ export function normalizeError(
   const fetchUrl = fetchError ? getFetchErrorUrl(fetchError) : undefined;
   const url = requestUrl ?? fetchUrl;
   const context: FailureContext = {
+    cause: transportCause(error),
     fetchError,
     lowerMessage,
     message,
@@ -252,5 +342,7 @@ export function normalizeError(
     url,
   };
 
-  return classifyFailure(context) ?? new ExplorerError(message, provider);
+  const known = classifyFailure(context);
+  if (known) return known;
+  return new ExplorerError(url === undefined ? message : `${message}: ${url}`, provider);
 }
