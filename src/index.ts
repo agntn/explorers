@@ -30,6 +30,7 @@ export { clampMaxResults, formatWei, hexToWei, normalizeChain } from "./core/typ
 export {
   ExplorerError,
   HTTPError,
+  TransportError,
   AuthError,
   RateLimitError,
   PlanRestrictedError,

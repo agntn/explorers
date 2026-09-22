@@ -34,14 +34,14 @@ Unified block explorer provider library. Normalizes balances, tx history, contra
 - Bitcoin, Litecoin and Pepecoin transactions from `mempool` carry their OP_RETURN pushes in `Transaction.opReturn`; each payload keeps its raw `hex` and gets a `text` reading only when the bytes are printable UTF-8
 - `mempool` and `blockstream` list unspent outputs through Esplora `/api/address/:address/utxo`. A `Utxo` row keeps `txid`, `vout`, `value` as a base-unit string and the funding block, `null` while the output waits in the mempool. Providers without such an endpoint keep `utxos: false` and no `getUtxos` method
 - CLI default subcommand: `balance` (for address-like input) or `providers` (no input)
-- Error hierarchy: `ExplorerError` → `HTTPError`, `AuthError`, `RateLimitError`, `PlanRestrictedError`, `NotFoundError`, `UnsupportedChainError`, `UnsupportedOperationError`, `UnknownProviderError`, `AddressChainMismatchError`
+- Error hierarchy: `ExplorerError` → `HTTPError`, `TransportError`, `AuthError`, `RateLimitError`, `PlanRestrictedError`, `NotFoundError`, `UnsupportedChainError`, `UnsupportedOperationError`, `UnknownProviderError`, `AddressChainMismatchError`
 - HTTP client uses `ofetch` with a 15s default timeout and preserves out-of-range JSON integers as strings
 
 ## Key files
 
 - `src/core/types.ts` - re-exports `ChainKey` from `@agntn/chains`; owns transaction, balance, token, contract, gas, block, and provider-config types
 - `src/core/provider.ts` - abstract `Provider` base class and optional operation contract. `getJSON`/`postJSON` retry HTTP 429 and JSON that mentions a rate limit on the same backend with backoff
-- `src/core/errors.ts` - ExplorerError hierarchy + normalizeError. HTTP 429 copies `Retry-After` onto `RateLimitError.retryAfter`
+- `src/core/errors.ts` - ExplorerError hierarchy + normalizeError. HTTP 429 copies `Retry-After` onto `RateLimitError.retryAfter`. A request with no response becomes `TransportError` with the reason and code of its innermost cause, never an `HTTPError` with status 0
 - `src/core/registry.ts` - Provider registry built from `builtins` on first use; `create()` is async and imports one provider (register, create, providers, listProviders, has). `listProviders()` describes every provider from metadata and backs the `providers` command and `explorers_providers` on MCP, Pi and OMP
 - `src/core/resolve.ts` - Auto-select built-in providers by env vars and chain, with one fallback after a rate or plan limit that survived retries on that backend
 - `src/core/client.ts` — HTTP client wrapper (ofetch)
