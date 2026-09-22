@@ -416,7 +416,8 @@ console.log(result.content[0].text);
     const tool = requireTool(registerExtensionTools().tools, "explorers_balance");
 
     expect(tool.description).toContain("configured API keys");
-    expect(tool.description).toContain("falls back to Blockscout on Ethereum");
+    expect(tool.description).toContain("falls back to Blockscout");
+    expect(tool.description).toContain("EVM addresses read Ethereum");
     expect(tool.description).not.toContain("Defaults to Ethereum mainnet");
   });
 

@@ -63,6 +63,7 @@ export default defineCommand({
             );
           }
         },
+        args.address as string,
       );
     } catch (error) {
       consola.error(`Error: ${error instanceof Error ? error.message : String(error)}`);

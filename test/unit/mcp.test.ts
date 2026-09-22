@@ -719,6 +719,55 @@ describe("Explorers MCP server", () => {
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
+  it("reads a Bitcoin address on Bitcoin when no chain is given", async () => {
+    const fetchSpy = vi.fn(async (_input: string | URL | Request) =>
+      Response.json({
+        chain_stats: { funded_txo_sum: 5000, spent_txo_sum: 0 },
+        mempool_stats: { funded_txo_sum: 0, spent_txo_sum: 0 },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchSpy);
+    const client = await connectTestClient();
+
+    const result = parseToolResult(
+      await client.callTool({
+        name: "explorers_balance",
+        arguments: { address: "1AndrewYangForPresident2o2ozm6Pzd" },
+      }),
+    );
+    expect(result.isError).toBe(false);
+    expect(JSON.parse(result.content[0]?.text ?? "")).toMatchObject({
+      provider: "mempool",
+      data: { chain: "bitcoin", balance: "5000" },
+    });
+    expect(String(fetchSpy.mock.calls[0]?.[0])).toContain("mempool.space");
+  });
+
+  it("rejects an address from another chain family before any provider call", async () => {
+    const fetchSpy = vi.fn(async () => {
+      throw new Error("network must not be reached");
+    });
+    vi.stubGlobal("fetch", fetchSpy);
+    const client = await connectTestClient();
+
+    const response = parseToolResult(
+      await client.callTool({
+        name: "explorers_balance",
+        arguments: { address: "1AndrewYangForPresident2o2ozm6Pzd", chain: "ethereum" },
+      }),
+    );
+    expect(response.isError).toBe(true);
+    expect(response.content).toEqual([
+      {
+        type: "text",
+        text: textContaining(
+          "Address 1AndrewYangForPresident2o2ozm6Pzd is not valid on ethereum; its format matches bitcoin",
+        ),
+      },
+    ]);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
   it("rejects an empty address list", async () => {
     const client = await connectTestClient();
 
@@ -735,17 +784,26 @@ describe("Explorers MCP server", () => {
     {
       tool: "explorers_balance",
       operation: "getBalance",
-      arguments: { address: "0x1", provider: DisabledProvider.key },
+      arguments: {
+        address: "0x0000000000000000000000000000000000000001",
+        provider: DisabledProvider.key,
+      },
     },
     {
       tool: "explorers_tx_history",
       operation: "getTxHistory",
-      arguments: { address: "0x1", provider: DisabledProvider.key },
+      arguments: {
+        address: "0x0000000000000000000000000000000000000001",
+        provider: DisabledProvider.key,
+      },
     },
     {
       tool: "explorers_utxos",
       operation: "getUtxos",
-      arguments: { address: "0x1", provider: DisabledProvider.key },
+      arguments: {
+        address: "0x0000000000000000000000000000000000000001",
+        provider: DisabledProvider.key,
+      },
     },
   ])("honors the disabled capability for $tool", async ({ tool, operation, arguments: args }) => {
     register(DisabledProvider, { chains: ["ethereum"] });

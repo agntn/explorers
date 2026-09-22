@@ -67,10 +67,17 @@ async function withSelected<T>(
   capability: ExplorersModule.ProviderCapability,
   /* oxlint-disable-next-line typescript/prefer-readonly-parameter-types */
   run: (selected: SelectedProvider) => Promise<T>,
+  input?: string | readonly string[],
 ): Promise<T> {
   const lib = await loadLib();
   const chain = requestedChain === undefined ? undefined : lib.normalizeChain(requestedChain);
-  return lib.withProvider(preferred, chain, (selected) => run({ ...selected, lib }), capability);
+  return lib.withProvider(
+    preferred,
+    chain,
+    (selected) => run({ ...selected, lib }),
+    capability,
+    input,
+  );
 }
 
 function balanceContext(balance: Readonly<ExplorersModule.Balance>): string {
@@ -163,7 +170,7 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
     name: "explorers_balance",
     label: "Explorers Balance",
     description:
-      "Get native-token balances for one or more blockchain addresses. Provider selection follows configured API keys and otherwise falls back to Blockscout on Ethereum; each result includes raw and human-readable amounts, read time, and available block position.",
+      "Get native-token balances for one or more blockchain addresses. Without a chain, an address whose format fits only one chain, such as Bitcoin or Solana, selects that chain, and EVM addresses read Ethereum. Provider selection follows configured API keys and otherwise falls back to Blockscout; each result includes raw and human-readable amounts, read time, and available block position.",
     parameters: balanceParameters,
     approval: "read",
     renderCall(args, _options, _theme) {
@@ -197,6 +204,7 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
           });
           return textResult(lines);
         },
+        params.address,
       );
     },
   });
@@ -242,6 +250,7 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
           );
           return textResult([`[${name}] ${txs.length} transactions on ${chain}:`, ...lines]);
         },
+        params.address,
       );
     },
   });
@@ -386,6 +395,7 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
           const utxos = await provider.getUtxos(address, chain);
           return textResult(describeUtxos(name, address, chain, utxos));
         },
+        params.address,
       );
     },
   });
@@ -428,6 +438,7 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
           ];
           return textResult(parts);
         },
+        params.address,
       );
     },
   });
@@ -489,6 +500,7 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
             ...lines,
           ]);
         },
+        params.address,
       );
     },
   });
@@ -545,6 +557,7 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
             ...lines,
           ]);
         },
+        params.address,
       );
     },
   });

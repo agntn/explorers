@@ -78,6 +78,7 @@ export default defineCommand({
           });
           renderTransfers(selected.name, address, selected.chain, transfers);
         },
+        args.address as string,
       );
     } catch (error) {
       reportCommandError(error);

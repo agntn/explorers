@@ -51,6 +51,7 @@ export default defineCommand({
           const info = await getContractInfo(address, selected.chain);
           renderContract(selected.name, info);
         },
+        args.address as string,
       );
     } catch (error) {
       reportCommandError(error);

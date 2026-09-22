@@ -102,6 +102,22 @@ export class UnsupportedOperationError extends ExplorerError {
   }
 }
 
+/** Address format belongs to a different chain family than the one requested, so no request was sent. */
+export class AddressChainMismatchError extends ExplorerError {
+  constructor(
+    public readonly address: string,
+    public readonly chain: string,
+    public readonly matches: readonly string[],
+  ) {
+    const listed =
+      matches.length > 3
+        ? `${matches.slice(0, 3).join(", ")} and ${matches.length - 3} more`
+        : matches.join(", ");
+    super(`Address ${address} is not valid on ${chain}; its format matches ${listed}`);
+    this.name = "AddressChainMismatchError";
+  }
+}
+
 /** Registry does not contain the requested provider name. */
 export class UnknownProviderError extends ExplorerError {
   constructor(provider: string) {

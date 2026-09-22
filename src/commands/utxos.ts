@@ -61,6 +61,7 @@ export default defineCommand({
           const utxos = await getUtxos(address, selected.chain);
           renderUtxos(selected.name, address, selected.chain, utxos);
         },
+        args.address as string,
       );
     } catch (error) {
       reportCommandError(error);

@@ -88,10 +88,17 @@ async function withSelected<T>(
   capability: ExplorersModule.ProviderCapability,
   /* oxlint-disable-next-line typescript/prefer-readonly-parameter-types */
   run: (selected: SelectedProvider) => Promise<T>,
+  input?: string | readonly string[],
 ): Promise<T> {
   const lib = await loadLib();
   const chain = requestedChain === undefined ? undefined : lib.normalizeChain(requestedChain);
-  return lib.withProvider(preferred, chain, (selected) => run({ ...selected, lib }), capability);
+  return lib.withProvider(
+    preferred,
+    chain,
+    (selected) => run({ ...selected, lib }),
+    capability,
+    input,
+  );
 }
 
 function balanceContext(balance: Readonly<ExplorersModule.Balance>): string {
@@ -157,7 +164,7 @@ export default function explorersExtension(pi: ExtensionAPI) {
     promptSnippet: "Use to check ETH, BTC, or other native-token balances across chains.",
     promptGuidelines: [
       "Use explorers_balance with a blockchain address, or a list of addresses to batch, and optionally a chain.",
-      "explorers_balance defaults to Ethereum mainnet when neither provider nor chain is explicit.",
+      "explorers_balance infers the chain from an address whose format fits only one chain, such as Bitcoin or Solana; EVM addresses and ENS names default to Ethereum mainnet when neither provider nor chain is explicit.",
       "explorers_balance returns raw and human-readable balances with the read time and available block position.",
     ],
     parameters: Type.Object({
@@ -214,6 +221,7 @@ export default function explorersExtension(pi: ExtensionAPI) {
           });
           return textResult(lines);
         },
+        params.address,
       );
     },
   });
@@ -261,6 +269,7 @@ export default function explorersExtension(pi: ExtensionAPI) {
           );
           return textResult([`[${name}] ${txs.length} transactions on ${chain}:`, ...lines]);
         },
+        params.address,
       );
     },
   });
@@ -409,6 +418,7 @@ export default function explorersExtension(pi: ExtensionAPI) {
           const utxos = await provider.getUtxos(address, chain);
           return textResult(describeUtxos(name, address, chain, utxos));
         },
+        params.address,
       );
     },
   });
@@ -452,6 +462,7 @@ export default function explorersExtension(pi: ExtensionAPI) {
           ];
           return textResult(parts);
         },
+        params.address,
       );
     },
   });
@@ -513,6 +524,7 @@ export default function explorersExtension(pi: ExtensionAPI) {
             ...lines,
           ]);
         },
+        params.address,
       );
     },
   });
@@ -572,6 +584,7 @@ export default function explorersExtension(pi: ExtensionAPI) {
             ...lines,
           ]);
         },
+        params.address,
       );
     },
   });
