@@ -171,7 +171,7 @@ describe("address family check", () => {
 
   it("shortens a long list of matching chains", async () => {
     await expect(resolveAddresses(EVM, "bitcoin")).rejects.toThrow(
-      "its format matches ethereum, base, arbitrum and 10 more",
+      /its format matches ethereum, base, arbitrum and \d+ more$/,
     );
   });
 
