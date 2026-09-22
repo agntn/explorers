@@ -35,11 +35,11 @@ export default defineCommand({
       ]);
       const chainInput = args.chain as string | undefined;
       const requestedChain = chainInput === undefined ? undefined : normalizeChain(chainInput);
+      const inputs = args._.length > 0 ? args._ : [args.address as string];
       await withProvider(
         args.provider as string | undefined,
         requestedChain,
         async ({ chain, name, provider }) => {
-          const inputs = args._.length > 0 ? args._ : [args.address as string];
           const addresses = await resolveAddresses(inputs, chain);
           const balances = await Promise.all(
             addresses.map((address) => provider.getBalance(address, chain)),
@@ -63,6 +63,7 @@ export default defineCommand({
           }
         },
         "balances",
+        inputs,
       );
     } catch (error) {
       consola.error(`Error: ${error instanceof Error ? error.message : String(error)}`);

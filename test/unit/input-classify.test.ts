@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { classifyInput, resolveAddresses } from "../../src/core/input.js";
+import { AddressChainMismatchError } from "../../src/core/errors.js";
+import { classifyInput, inferChain, resolveAddresses } from "../../src/core/input.js";
 import { normalizeChain } from "../../src/core/types.js";
 
 describe("classifyInput", () => {
@@ -131,5 +132,60 @@ describe("resolveAddresses", () => {
   it("trims whitespace around each address", async () => {
     const addr = "0x" + "a".repeat(40);
     await expect(resolveAddresses([`  ${addr}  `])).resolves.toEqual([addr]);
+  });
+});
+
+const BITCOIN = "1AndrewYangForPresident2o2ozm6Pzd";
+const EVM = "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045";
+
+describe("inferChain", () => {
+  it("names the chain of an address whose format fits only one", () => {
+    expect(inferChain(BITCOIN)).toBe("bitcoin");
+    expect(inferChain("bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq")).toBe("bitcoin");
+    expect(inferChain("TNPeeaaFB7K9cmo4uQpcU32zGK8G1NYqeL")).toBe("tron");
+  });
+
+  it("leaves EVM addresses, ENS names, hashes and unknown input unresolved", () => {
+    expect(inferChain(EVM)).toBeUndefined();
+    expect(inferChain("vitalik.eth")).toBeUndefined();
+    expect(inferChain("0x" + "a".repeat(64))).toBeUndefined();
+    expect(inferChain("not-an-address")).toBeUndefined();
+    expect(inferChain(undefined)).toBeUndefined();
+  });
+
+  it("resolves a list only when every entry names the same chain", () => {
+    expect(inferChain([BITCOIN, "3J98t1WpEZ73CNmQviecrnyiWrnqRhWNLy"])).toBe("bitcoin");
+    expect(inferChain(JSON.stringify([BITCOIN, BITCOIN]))).toBe("bitcoin");
+    expect(inferChain([BITCOIN, EVM])).toBeUndefined();
+  });
+});
+
+describe("address family check", () => {
+  it("rejects an address whose format belongs to another chain family", async () => {
+    const rejection = resolveAddresses(BITCOIN, normalizeChain("ethereum"));
+    await expect(rejection).rejects.toBeInstanceOf(AddressChainMismatchError);
+    await expect(rejection).rejects.toThrow(
+      `Address ${BITCOIN} is not valid on ethereum; its format matches bitcoin`,
+    );
+  });
+
+  it("shortens a long list of matching chains", async () => {
+    await expect(resolveAddresses(EVM, "bitcoin")).rejects.toThrow(
+      /its format matches ethereum, base, arbitrum and \d+ more$/,
+    );
+  });
+
+  it("passes formats the validators do not recognize on to the provider", async () => {
+    const rawTon = "0:83dfd552e63729b472fcbcc8c45ebcc6691702558b68ec7527e1ba403a0f31a8";
+    await expect(resolveAddresses(rawTon, "ton")).resolves.toEqual([rawTon]);
+    await expect(resolveAddresses("not-an-address", "ethereum")).resolves.toEqual([
+      "not-an-address",
+    ]);
+  });
+
+  it("passes formats shared within a chain family", async () => {
+    const p2sh = "3J98t1WpEZ73CNmQviecrnyiWrnqRhWNLy";
+    await expect(resolveAddresses(p2sh, "litecoin")).resolves.toEqual([p2sh]);
+    await expect(resolveAddresses(BITCOIN, "ecash")).resolves.toEqual([BITCOIN]);
   });
 });

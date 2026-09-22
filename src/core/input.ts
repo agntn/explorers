@@ -1,5 +1,7 @@
 /** Address/input resolution — ENS names, raw addresses, tx hashes. */
-import { NotFoundError } from "./errors.js";
+import { getChain, identify } from "@agntn/chains";
+import type { Chain } from "@agntn/chains";
+import { AddressChainMismatchError, NotFoundError } from "./errors.js";
 import type { ChainKey } from "./types.js";
 import { isEnsName, isAddress, resolveEns } from "./ens.js";
 
@@ -40,10 +42,62 @@ export function classifyInput(input: string, chain?: ChainKey): InputType {
   return "address";
 }
 
+/* oxlint-disable-next-line typescript/prefer-readonly-parameter-types */
+function accepts(chain: Chain, address: string): boolean {
+  try {
+    chain.assertAddress(address);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/* An address the requested chain rejects travels on to the provider unless its format names another
+ * chain family. Chains share formats within a family, such as Bitcoin P2SH on Litecoin or legacy
+ * base58 on eCash, and explorers accept forms the validators do not know, such as raw TON or hex
+ * TRON, so only a cross-family match is proof that the request cannot succeed. */
+function assertChainFamily(address: string, chain: ChainKey): void {
+  const expected = getChain(chain);
+  if (!expected.validatesAddress || accepts(expected, address)) return;
+  const { matches } = identify(address);
+  if (matches.length === 0 || matches.some((match) => match.type === expected.type)) return;
+  throw new AddressChainMismatchError(
+    address,
+    chain,
+    matches.map((match) => match.key),
+  );
+}
+
+function chainOf(input: string): ChainKey | undefined {
+  const trimmed = input.trim();
+  if (classifyInput(trimmed) !== "address") return undefined;
+  const { matches } = identify(trimmed);
+  return matches.length === 1 ? matches[0]?.key : undefined;
+}
+
+/**
+ * Name the chain an address belongs to when its format admits exactly one. EVM addresses match
+ * every EVM chain and stay unresolved, as do ENS names, transaction hashes and unknown formats.
+ * A list resolves only when every entry names the same chain.
+ *
+ * @throws {TypeError} When a serialized tool list falls outside its input contract.
+ *
+ * @param {string | readonly string[] | undefined} input - One address or an address list.
+ * @returns {ChainKey | undefined} The only chain the input fits, if there is one.
+ */
+export function inferChain(input: string | readonly string[] | undefined): ChainKey | undefined {
+  if (input === undefined) return undefined;
+  const list = typeof input === "string" ? (parseSerializedAddressList(input) ?? [input]) : input;
+  const chains = new Set(list.map(chainOf));
+  const [chain] = chains;
+  return chains.size === 1 ? chain : undefined;
+}
+
 /**
  * Classify an input and resolve ENS names. Addresses and transaction hashes pass through unchanged.
  *
  * @throws {NotFoundError} When an ENS name cannot be resolved.
+ * @throws {AddressChainMismatchError} When the address format belongs to another chain family.
  *
  * @param {string} input - The `input` value.
  * @param {ChainKey} chain - The `chain` value.
@@ -61,6 +115,7 @@ export async function resolveInput(
   }
 
   if (type === "address") {
+    if (chain !== undefined) assertChainFamily(trimmed, chain);
     return { address: trimmed, type };
   }
 
@@ -101,6 +156,7 @@ function parseSerializedAddressList(input: string): readonly string[] | undefine
  * Resolve one address or an address list, including lists serialized by a tool host.
  *
  * @throws {NotFoundError} When any ENS name cannot be resolved.
+ * @throws {AddressChainMismatchError} When an address format belongs to another chain family.
  * @throws {TypeError} When a serialized tool list falls outside its input contract.
  *
  * @param {string | readonly string[]} input - The `input` value.

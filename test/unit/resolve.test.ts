@@ -156,6 +156,32 @@ describe("withProvider", () => {
     ).resolves.toEqual({ chain: "ethereum", name: "blockscout" });
   });
 
+  it("starts on the chain an unambiguous address belongs to", async () => {
+    useNoProviderCredentials();
+
+    await expect(
+      withProvider(
+        undefined,
+        undefined,
+        async ({ chain, name }) => ({ chain, name }),
+        "balances",
+        "1AndrewYangForPresident2o2ozm6Pzd",
+      ),
+    ).resolves.toEqual({ chain: "bitcoin", name: "mempool" });
+  });
+
+  it("keeps Ethereum for an EVM address and an explicit chain over the address", async () => {
+    useNoProviderCredentials();
+    const run = async ({ chain }: Readonly<{ chain: string }>) => chain;
+
+    await expect(
+      withProvider(undefined, undefined, run, "balances", "0x" + "1".repeat(40)),
+    ).resolves.toBe("ethereum");
+    await expect(
+      withProvider(undefined, "litecoin", run, "balances", "3J98t1WpEZ73CNmQviecrnyiWrnqRhWNLy"),
+    ).resolves.toBe("litecoin");
+  });
+
   it("keeps an explicit provider's default chain", async () => {
     useNoProviderCredentials();
     vi.stubEnv("HELIUS_API_KEY", "configured");

@@ -14,13 +14,14 @@ export async function withSelectedProvider<T>(
   capability: ProviderCapability,
   /* oxlint-disable-next-line typescript/prefer-readonly-parameter-types */
   run: (selected: SelectedProvider) => Promise<T>,
+  input?: string,
 ): Promise<T> {
   const [{ withProvider }, { normalizeChain }] = await Promise.all([
     import("../core/resolve.js"),
     import("../core/types.js"),
   ]);
   const requestedChain = chainInput === undefined ? undefined : normalizeChain(chainInput);
-  return withProvider(providerInput, requestedChain, run, capability);
+  return withProvider(providerInput, requestedChain, run, capability, input);
 }
 
 export function failCommand(message: string): never {

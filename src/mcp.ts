@@ -63,9 +63,10 @@ function withSelectedProvider<T>(
   operation: ProviderOperation,
   /* oxlint-disable-next-line typescript/prefer-readonly-parameter-types */
   run: (selected: ProviderContext) => Promise<T>,
+  input?: string,
 ): Promise<T> {
   const requestedChain = chainName === undefined ? undefined : normalizeChain(chainName);
-  return withProvider(providerName, requestedChain, run, OPERATION_CAPABILITIES[operation]);
+  return withProvider(providerName, requestedChain, run, OPERATION_CAPABILITIES[operation], input);
 }
 
 function result(value: unknown): CallToolResult {
@@ -161,6 +162,7 @@ export function createMcpServer(): McpServer {
           );
         },
         "balances",
+        address,
       );
     },
   );
@@ -182,15 +184,21 @@ export function createMcpServer(): McpServer {
       annotations: { readOnlyHint: true },
     },
     async ({ address, chain, provider, raw, ...options }) =>
-      withSelectedProvider(provider, chain, "getTxHistory", async (selected) => {
-        const resolvedAddress = await addressForChain(address, selected.chain);
-        const getTxHistory = requireOperation(selected.provider, "getTxHistory");
-        const transactions = await getTxHistory(resolvedAddress, selected.chain, options);
-        return providerResult(
-          selected.name,
-          transactions.map((transaction) => trimTransaction(transaction, raw)),
-        );
-      }),
+      withSelectedProvider(
+        provider,
+        chain,
+        "getTxHistory",
+        async (selected) => {
+          const resolvedAddress = await addressForChain(address, selected.chain);
+          const getTxHistory = requireOperation(selected.provider, "getTxHistory");
+          const transactions = await getTxHistory(resolvedAddress, selected.chain, options);
+          return providerResult(
+            selected.name,
+            transactions.map((transaction) => trimTransaction(transaction, raw)),
+          );
+        },
+        address,
+      ),
   );
 
   server.registerTool(
@@ -220,11 +228,17 @@ export function createMcpServer(): McpServer {
       annotations: { readOnlyHint: true },
     },
     async ({ address, chain, provider }) =>
-      withSelectedProvider(provider, chain, "getUtxos", async (selected) => {
-        const resolvedAddress = await addressForChain(address, selected.chain);
-        const getUtxos = requireOperation(selected.provider, "getUtxos");
-        return providerResult(selected.name, await getUtxos(resolvedAddress, selected.chain));
-      }),
+      withSelectedProvider(
+        provider,
+        chain,
+        "getUtxos",
+        async (selected) => {
+          const resolvedAddress = await addressForChain(address, selected.chain);
+          const getUtxos = requireOperation(selected.provider, "getUtxos");
+          return providerResult(selected.name, await getUtxos(resolvedAddress, selected.chain));
+        },
+        address,
+      ),
   );
 
   server.registerTool(
@@ -236,14 +250,20 @@ export function createMcpServer(): McpServer {
       annotations: { readOnlyHint: true },
     },
     async ({ address, chain, provider, ...requested }) =>
-      withSelectedProvider(provider, chain, "getContractInfo", async (selected) => {
-        const getContractInfo = requireOperation(selected.provider, "getContractInfo");
-        const resolvedAddress = await addressForChain(address, selected.chain);
-        return providerResult(
-          selected.name,
-          trimContract(await getContractInfo(resolvedAddress, selected.chain), requested),
-        );
-      }),
+      withSelectedProvider(
+        provider,
+        chain,
+        "getContractInfo",
+        async (selected) => {
+          const getContractInfo = requireOperation(selected.provider, "getContractInfo");
+          const resolvedAddress = await addressForChain(address, selected.chain);
+          return providerResult(
+            selected.name,
+            trimContract(await getContractInfo(resolvedAddress, selected.chain), requested),
+          );
+        },
+        address,
+      ),
   );
 
   server.registerTool(
@@ -273,18 +293,24 @@ export function createMcpServer(): McpServer {
       annotations: { readOnlyHint: true },
     },
     async ({ address, chain, provider, nonZeroOnly, limit }) =>
-      withSelectedProvider(provider, chain, "getTokenBalances", async (selected) => {
-        const resolvedAddress = await addressForChain(address, selected.chain);
-        const getTokenBalances = requireOperation(selected.provider, "getTokenBalances");
-        const holdings = await getTokenBalances(resolvedAddress, selected.chain, {
-          nonZeroOnly: nonZeroOnly ?? true,
-        });
-        return result({
-          provider: selected.name,
-          total: holdings.length,
-          data: holdings.slice(0, clampMaxResults(limit ?? TOKEN_HOLDINGS_LIMIT)),
-        });
-      }),
+      withSelectedProvider(
+        provider,
+        chain,
+        "getTokenBalances",
+        async (selected) => {
+          const resolvedAddress = await addressForChain(address, selected.chain);
+          const getTokenBalances = requireOperation(selected.provider, "getTokenBalances");
+          const holdings = await getTokenBalances(resolvedAddress, selected.chain, {
+            nonZeroOnly: nonZeroOnly ?? true,
+          });
+          return result({
+            provider: selected.name,
+            total: holdings.length,
+            data: holdings.slice(0, clampMaxResults(limit ?? TOKEN_HOLDINGS_LIMIT)),
+          });
+        },
+        address,
+      ),
   );
 
   server.registerTool(
@@ -310,14 +336,20 @@ export function createMcpServer(): McpServer {
       annotations: { readOnlyHint: true },
     },
     async ({ address, chain, provider, ...options }) =>
-      withSelectedProvider(provider, chain, "getTokenTransfers", async (selected) => {
-        const resolvedAddress = await addressForChain(address, selected.chain);
-        const getTokenTransfers = requireOperation(selected.provider, "getTokenTransfers");
-        return providerResult(
-          selected.name,
-          await getTokenTransfers(resolvedAddress, selected.chain, options),
-        );
-      }),
+      withSelectedProvider(
+        provider,
+        chain,
+        "getTokenTransfers",
+        async (selected) => {
+          const resolvedAddress = await addressForChain(address, selected.chain);
+          const getTokenTransfers = requireOperation(selected.provider, "getTokenTransfers");
+          return providerResult(
+            selected.name,
+            await getTokenTransfers(resolvedAddress, selected.chain, options),
+          );
+        },
+        address,
+      ),
   );
 
   server.registerTool(

@@ -37,10 +37,11 @@ export {
   UnsupportedChainError,
   UnsupportedOperationError,
   UnknownProviderError,
+  AddressChainMismatchError,
   normalizeError,
 } from "./core/errors.js";
 export { isEnsName, isAddress, resolveEns } from "./core/ens.js";
-export { resolveAddresses } from "./core/input.js";
+export { inferChain, resolveAddresses } from "./core/input.js";
 export { getJSON, buildQuery } from "./core/client.js";
 export {
   register,

@@ -9,6 +9,7 @@ import {
   UnsupportedChainError,
   UnsupportedOperationError,
 } from "./errors.js";
+import { inferChain } from "./input.js";
 import type { Provider, ProviderCapability } from "./provider.js";
 import { normalizeChain } from "./types.js";
 import type { ChainKey } from "./types.js";
@@ -178,16 +179,26 @@ async function runFallback<T>(
   }
 }
 
+function startingChain(
+  preferred: string | undefined,
+  chain: ChainKey | undefined,
+  input: string | readonly string[] | undefined,
+): ChainKey | undefined {
+  return chain ?? inferChain(input) ?? (preferred === undefined ? normalizeChain() : undefined);
+}
+
 /**
  * Run one read with provider selection and one automatic retry after a transient or plan limit.
  *
- * When neither provider nor chain is explicit, selection starts on Ethereum. An explicit provider
- * without a chain keeps that provider's default chain. The callback must be safe to run twice.
+ * An explicit chain wins. Without one, an address whose format fits one chain selects that chain,
+ * even over an explicit provider's default. Only when the address fits no single chain does
+ * selection start on Ethereum, or on the explicit provider's default chain. The callback must be safe to run twice.
  *
  * @param {string | undefined} preferred - The `preferred` value.
  * @param {ChainKey | undefined} chain - The `chain` value.
  * @param {(context: Readonly<ProviderContext>) => Promise<T>} run - The `run` value.
  * @param {ProviderCapability} capability - Operation required from an automatic selection.
+ * @param {string | readonly string[]} input - Address or addresses the read is about.
  * @returns {Promise<T>} The resulting value.
  */
 export async function withProvider<T>(
@@ -196,8 +207,9 @@ export async function withProvider<T>(
   /* oxlint-disable-next-line typescript/prefer-readonly-parameter-types */
   run: (context: ProviderContext) => Promise<T>,
   capability?: ProviderCapability,
+  input?: string | readonly string[],
 ): Promise<T> {
-  const requestedChain = chain ?? (preferred === undefined ? normalizeChain() : undefined);
+  const requestedChain = startingChain(preferred, chain, input);
   const primaryName = resolveProvider(preferred, requestedChain, capability);
   const effectiveChain = requestedChain ?? normalizeChain(PROVIDER_DEFAULT_CHAIN[primaryName]);
   const fallbackName = rankProviders(effectiveChain, "fallback", capability).find(

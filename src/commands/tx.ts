@@ -116,16 +116,19 @@ export default defineCommand({
   },
   async run({ args }) {
     try {
-      const [{ PROVIDER_DEFAULT_CHAIN, resolveProvider }, { normalizeChain }] = await Promise.all([
-        import("../core/resolve.js"),
-        import("../core/types.js"),
-      ]);
+      const [{ PROVIDER_DEFAULT_CHAIN, resolveProvider }, { normalizeChain }, { inferChain }] =
+        await Promise.all([
+          import("../core/resolve.js"),
+          import("../core/types.js"),
+          import("../core/input.js"),
+        ]);
       const chainInput = args.chain as string | undefined;
       const providerInput = args.provider as string | undefined;
-      const requestedChain = chainInput === undefined ? undefined : normalizeChain(chainInput);
+      const target = (args.target as string).trim();
+      const requestedChain =
+        chainInput === undefined ? inferChain(target) : normalizeChain(chainInput);
       const initialName = resolveProvider(providerInput, requestedChain);
       const initialChain = requestedChain ?? normalizeChain(PROVIDER_DEFAULT_CHAIN[initialName]);
-      const target = (args.target as string).trim();
       const mode = await transactionMode(args.mode as string | undefined, target, initialChain);
       await withSelectedProvider(
         initialChain,
