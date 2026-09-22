@@ -190,9 +190,9 @@ function startingChain(
 /**
  * Run one read with provider selection and one automatic retry after a transient or plan limit.
  *
- * Without an explicit chain, an address whose format fits one chain selects that chain. Otherwise
- * selection starts on Ethereum when no provider is explicit, and an explicit provider keeps its
- * default chain. The callback must be safe to run twice.
+ * An explicit chain wins. Without one, an address whose format fits one chain selects that chain,
+ * even over an explicit provider's default. Only when the address fits no single chain does
+ * selection start on Ethereum, or on the explicit provider's default chain. The callback must be safe to run twice.
  *
  * @param {string | undefined} preferred - The `preferred` value.
  * @param {ChainKey | undefined} chain - The `chain` value.

@@ -170,7 +170,7 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
     name: "explorers_balance",
     label: "Explorers Balance",
     description:
-      "Get native-token balances for one or more blockchain addresses. Without a chain, an address whose format fits only one chain, such as Bitcoin or Solana, selects that chain, and EVM addresses read Ethereum. Provider selection follows configured API keys and otherwise falls back to Blockscout; each result includes raw and human-readable amounts, read time, and available block position.",
+      "Get native-token balances for one or more blockchain addresses. Without a chain, an address whose format fits only one chain, such as Bitcoin or Solana, selects that chain; other addresses read Ethereum unless a provider is named, which keeps its own default chain. Provider selection follows configured API keys and otherwise falls back to Blockscout; each result includes raw and human-readable amounts, read time, and available block position.",
     parameters: balanceParameters,
     approval: "read",
     renderCall(args, _options, _theme) {
