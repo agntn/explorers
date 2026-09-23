@@ -56,6 +56,54 @@ function hasConfiguredCredentials(envKeys: readonly string[]): boolean {
   return envKeys.length > 0 && envKeys.every((key) => process.env[key]);
 }
 
+/* A plan that refused a read refuses it again on the next call, so automatic selection remembers
+   the refusal for an hour and asks another provider first. The entry holds the credentials it was
+   earned with: another key may carry another plan. */
+const PLAN_LIMIT_TTL_MS = 60 * 60 * 1000;
+
+interface PlanLimit {
+  readonly credentials: string;
+  readonly until: number;
+}
+
+let planLimits: Map<string, PlanLimit> | undefined;
+
+function planLimitKey(name: string, chain: ChainKey, capability?: ProviderCapability): string {
+  return `${name}\0${chain}\0${capability ?? ""}`;
+}
+
+function credentialsOf(name: string): string {
+  return (ENV_MAP[name] ?? []).map((key) => process.env[key] ?? "").join("\0");
+}
+
+function rememberPlanLimit(
+  name: string,
+  chain: ChainKey,
+  capability: ProviderCapability,
+  credentials: string,
+): void {
+  planLimits ??= new Map();
+  planLimits.set(planLimitKey(name, chain, capability), {
+    credentials,
+    until: Date.now() + PLAN_LIMIT_TTL_MS,
+  });
+}
+
+function isPlanLimited(name: string, chain?: ChainKey, capability?: ProviderCapability): boolean {
+  if (chain === undefined || planLimits === undefined) return false;
+  const key = planLimitKey(name, chain, capability);
+  const limit = planLimits.get(key);
+  if (limit === undefined) return false;
+  if (limit.until > Date.now() && limit.credentials === credentialsOf(name)) return true;
+  planLimits.delete(key);
+  return false;
+}
+
+/** Forget every plan refusal automatic selection has seen in this process. */
+export function forgetPlanLimits(): void {
+  planLimits = undefined;
+}
+
 function appendRankedProvider(
   ranked: readonly string[],
   name: string,
@@ -104,7 +152,12 @@ function rankProviders(
   if (mode === "primary" && chain !== undefined) {
     ranked = appendCandidates(ranked, providers(), chain, capability);
   }
-  return [...ranked];
+  // A refused provider stays last rather than leaving: when nobody else serves the read, its
+  // refusal is still the most useful answer.
+  const limited = ranked.filter((name) => isPlanLimited(name, chain, capability));
+  if (limited.length === 0) return [...ranked];
+  if (mode === "fallback") return ranked.filter((name) => !limited.includes(name));
+  return [...ranked.filter((name) => !limited.includes(name)), ...limited];
 }
 
 /**
@@ -204,6 +257,10 @@ function startingChain(
  * or plan limit, no response at all, or a 5xx. When the retry fails too, its error carries the
  * first provider's failure as `cause`.
  *
+ * A plan limit on a read that names its capability also sticks for an hour: later automatic reads
+ * of that operation on the same chain try that provider last, until its credentials change. An
+ * explicit provider is always asked.
+ *
  * An explicit chain wins. Without one, an address whose format fits one chain selects that chain,
  * even over an explicit provider's default. Only when the address fits no single chain does
  * selection start on Ethereum, or on the explicit provider's default chain. The callback must be safe to run twice.
@@ -229,8 +286,25 @@ export async function withProvider<T>(
   const fallbackName = rankProviders(effectiveChain, "fallback", capability).find(
     (name) => name !== primaryName,
   );
-  const execute = async (name: string) =>
-    run({ chain: effectiveChain, name, provider: await create(name) });
+  const execute = async (name: string) => {
+    const provider = await create(name);
+    // The constructor has just read the key, so a refusal from this read belongs to that key.
+    const credentials = credentialsOf(name);
+    try {
+      return await run({ chain: effectiveChain, name, provider });
+    } catch (error) {
+      // Without a capability the refusal names no operation, and remembering it would bench the
+      // provider for reads its plan does cover.
+      if (
+        preferred === undefined &&
+        capability !== undefined &&
+        error instanceof PlanRestrictedError
+      ) {
+        rememberPlanLimit(name, effectiveChain, capability, credentials);
+      }
+      throw error;
+    }
+  };
 
   try {
     return await execute(primaryName);

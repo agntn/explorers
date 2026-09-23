@@ -9,10 +9,12 @@ import {
   UnknownProviderError,
   UnsupportedOperationError,
 } from "../../src/core/errors.js";
-import { resolveProvider, withProvider } from "../../src/core/resolve.js";
+import { forgetPlanLimits, resolveProvider, withProvider } from "../../src/core/resolve.js";
 
 afterEach(() => {
   vi.unstubAllEnvs();
+  vi.useRealTimers();
+  forgetPlanLimits();
 });
 
 function useNoProviderCredentials() {
@@ -393,5 +395,167 @@ describe("withProvider", () => {
       }),
     ).rejects.toBeInstanceOf(RateLimitError);
     expect(tried).toEqual(["etherscan", "blockscout"]);
+  });
+});
+
+describe("plan limits", () => {
+  function readBalance(
+    chain: "base" | "bsc" | "ethereum",
+    /* oxlint-disable-next-line typescript/prefer-readonly-parameter-types */
+    tried: string[],
+    failing: readonly string[],
+  ) {
+    return withProvider(
+      undefined,
+      chain,
+      async ({ name }) => {
+        tried.push(name);
+        if (name === "etherscan") throw new PlanRestrictedError(name);
+        if (failing.includes(name)) throw new HTTPError(503, "https://x", undefined, name);
+        return name;
+      },
+      "balances",
+    );
+  }
+
+  it("asks the refused provider last on the next automatic read", async () => {
+    useOnlyEtherscanCredentials();
+    const tried: string[] = [];
+
+    await readBalance("base", tried, []);
+    await readBalance("base", tried, []);
+
+    expect(tried).toEqual(["etherscan", "blockscout", "blockscout"]);
+  });
+
+  it("remembers a refusal per chain and operation", async () => {
+    useOnlyEtherscanCredentials();
+    await readBalance("base", [], []);
+    const tried: string[] = [];
+
+    await readBalance("ethereum", tried, []);
+    await withProvider(
+      undefined,
+      "base",
+      async ({ name }) => {
+        tried.push(name);
+        return name;
+      },
+      "tokenBalances",
+    );
+
+    expect(tried).toEqual(["etherscan", "blockscout", "etherscan"]);
+  });
+
+  it("does not fall back to a provider that refused the read before", async () => {
+    useOnlyEtherscanCredentials();
+    await readBalance("base", [], []);
+    const tried: string[] = [];
+
+    await expect(readBalance("base", tried, ["blockscout"])).rejects.toBeInstanceOf(HTTPError);
+    expect(tried).toEqual(["blockscout"]);
+  });
+
+  it("still asks the refused provider when nobody else serves the chain", async () => {
+    useOnlyEtherscanCredentials();
+    const tried: string[] = [];
+
+    await expect(readBalance("bsc", tried, [])).rejects.toBeInstanceOf(PlanRestrictedError);
+    await expect(readBalance("bsc", tried, [])).rejects.toBeInstanceOf(PlanRestrictedError);
+    expect(tried).toEqual(["etherscan", "etherscan"]);
+  });
+
+  it("keeps asking a provider the caller names", async () => {
+    useOnlyEtherscanCredentials();
+    await readBalance("base", [], []);
+    const tried: string[] = [];
+
+    await withProvider("etherscan", "base", async ({ name }) => {
+      tried.push(name);
+      return name;
+    });
+
+    expect(tried).toEqual(["etherscan"]);
+  });
+
+  it("does not remember a refusal from a provider the caller names", async () => {
+    useOnlyEtherscanCredentials();
+    await expect(
+      withProvider(
+        "etherscan",
+        "base",
+        async ({ name }) => {
+          throw new PlanRestrictedError(name);
+        },
+        "balances",
+      ),
+    ).rejects.toBeInstanceOf(PlanRestrictedError);
+    const tried: string[] = [];
+
+    await readBalance("base", tried, []);
+
+    expect(tried).toEqual(["etherscan", "blockscout"]);
+  });
+
+  it("does not remember a refusal from a read without a capability", async () => {
+    useOnlyEtherscanCredentials();
+    const tried: string[] = [];
+    const readAny = () =>
+      withProvider(undefined, "base", async ({ name }) => {
+        tried.push(name);
+        if (name === "etherscan") throw new PlanRestrictedError(name);
+        return name;
+      });
+
+    await readAny();
+    await readAny();
+
+    expect(tried).toEqual(["etherscan", "blockscout", "etherscan", "blockscout"]);
+  });
+
+  it("keeps the refusal with the key that earned it", async () => {
+    useOnlyEtherscanCredentials();
+    await withProvider(
+      undefined,
+      "base",
+      async ({ name }) => {
+        if (name === "etherscan") {
+          vi.stubEnv("ETHERSCAN_API_KEY", "upgraded");
+          throw new PlanRestrictedError(name);
+        }
+        return name;
+      },
+      "balances",
+    );
+    const tried: string[] = [];
+
+    await readBalance("base", tried, []);
+
+    expect(tried).toEqual(["etherscan", "blockscout"]);
+  });
+
+  it("forgets the refusal when the key changes", async () => {
+    useOnlyEtherscanCredentials();
+    await readBalance("base", [], []);
+    vi.stubEnv("ETHERSCAN_API_KEY", "upgraded");
+    const tried: string[] = [];
+
+    await readBalance("base", tried, []);
+
+    expect(tried).toEqual(["etherscan", "blockscout"]);
+  });
+
+  it("forgets the refusal after an hour", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    useOnlyEtherscanCredentials();
+    await readBalance("base", [], []);
+    const tried: string[] = [];
+
+    vi.advanceTimersByTime(59 * 60 * 1000);
+    await readBalance("base", tried, []);
+    vi.advanceTimersByTime(2 * 60 * 1000);
+    await readBalance("base", tried, []);
+
+    expect(tried).toEqual(["blockscout", "etherscan", "blockscout"]);
   });
 });
