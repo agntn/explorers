@@ -287,10 +287,11 @@ export async function withProvider<T>(
     (name) => name !== primaryName,
   );
   const execute = async (name: string) => {
-    // The provider reads its key when it is created, so the refusal belongs to that key.
+    const provider = await create(name);
+    // The constructor has just read the key, so a refusal from this read belongs to that key.
     const credentials = credentialsOf(name);
     try {
-      return await run({ chain: effectiveChain, name, provider: await create(name) });
+      return await run({ chain: effectiveChain, name, provider });
     } catch (error) {
       // Without a capability the refusal names no operation, and remembering it would bench the
       // provider for reads its plan does cover.
