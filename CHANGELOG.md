@@ -1,5 +1,26 @@
 # Changelog
 
+## v0.5.6
+
+[compare changes](https://github.com/agntn/explorers/compare/v0.5.5...v0.5.6)
+
+### 🔥 Performance
+
+- Remember a plan limit between reads ([#134](https://github.com/agntn/explorers/pull/134))
+
+### 🩹 Fixes
+
+- Read the chain off an address that names one ([#126](https://github.com/agntn/explorers/pull/126))
+- Stop reporting no response as HTTP 0 ([#127](https://github.com/agntn/explorers/pull/127))
+- Fall back when a provider never answers ([#131](https://github.com/agntn/explorers/pull/131))
+- Treat Blockchair's 430 as a rate limit ([#133](https://github.com/agntn/explorers/pull/133))
+- Print a recipient only when there is one ([#114](https://github.com/agntn/explorers/pull/114))
+
+### ❤️ Contributors
+
+- Ori ([@oritwoen](https://github.com/oritwoen))
+- Aeitwoen ([@aeitwoen](https://github.com/aeitwoen))
+
 ## v0.5.5
 
 [compare changes](https://github.com/agntn/explorers/compare/v0.5.4...v0.5.5)
