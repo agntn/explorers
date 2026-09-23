@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { NotFoundError, UnsupportedChainError } from "../../src/core/errors.js";
+import { NotFoundError, RateLimitError, UnsupportedChainError } from "../../src/core/errors.js";
 import { create } from "../../src/core/registry.js";
+import { withProvider } from "../../src/core/resolve.js";
 import { Blockchair } from "../../src/providers/blockchair.js";
 
 const BTC_ADDRESS = "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh";
@@ -16,9 +17,26 @@ function stubJSON(body: unknown) {
   return fetch;
 }
 
+const BLOCKED =
+  "Your IP address is temporary blacklisted due to exceeding usage of API resources. Please apply for an API key by contacting us at info@blockchair.com";
+
+function stubStatus(status: number, error?: string) {
+  const body = { data: null, context: { code: status, ...(error === undefined ? {} : { error }) } };
+  const fetch = vi.fn<typeof globalThis.fetch>(
+    async () =>
+      new Response(JSON.stringify(body), {
+        status,
+        headers: { "Content-Type": "application/json" },
+      }),
+  );
+  vi.stubGlobal("fetch", fetch);
+  return fetch;
+}
+
 afterEach(() => {
   vi.useRealTimers();
   vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
 });
 
 describe("blockchair provider", () => {
@@ -250,5 +268,70 @@ describe("blockchair provider", () => {
       UnsupportedChainError,
     );
     expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("reads a keyless IP block as a rate limit that names the key", async () => {
+    vi.stubEnv("BLOCKCHAIR_API_KEY", "");
+    const fetch = stubStatus(430, BLOCKED);
+    const provider = await create("blockchair");
+
+    const error = await provider.getBalance(BTC_ADDRESS, "bitcoin").catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(RateLimitError);
+    expect(error).toMatchObject({ provider: "blockchair" });
+    expect((error as Error).message).toBe(
+      `Rate limited by blockchair: ${BLOCKED}; set BLOCKCHAIR_API_KEY to lift the block`,
+    );
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([402, 434, 435, 436, 437])("reads HTTP %i as a Blockchair limit", async (status) => {
+    stubStatus(status, "Limit exceeded");
+    const provider = new Blockchair({ apiKey: "configured" });
+
+    const error = await provider.getTxDetail("ab".repeat(32), "bitcoin").catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(RateLimitError);
+    expect((error as Error).message).toBe("Rate limited by blockchair: Limit exceeded");
+  });
+
+  it("names the status when a limit arrives without a reason", async () => {
+    stubStatus(430);
+    const provider = new Blockchair({ apiKey: "configured" });
+
+    await expect(provider.getBlockInfo(1, "bitcoin")).rejects.toThrow(
+      "Rate limited by blockchair: HTTP 430",
+    );
+  });
+
+  it("moves an automatic read to the next provider when Blockchair is over its limit", async () => {
+    vi.stubEnv("BLOCKCHAIR_API_KEY", "configured");
+    const fetch = vi.fn<typeof globalThis.fetch>(async (input) => {
+      if (String(input).startsWith("https://api.blockchair.com/")) {
+        return new Response(
+          JSON.stringify({ data: null, context: { code: 402, error: "Limit" } }),
+          {
+            status: 402,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      }
+      return new Response(
+        JSON.stringify({
+          address: BTC_ADDRESS,
+          chain_stats: { funded_txo_sum: 5, spent_txo_sum: 0, tx_count: 1 },
+          mempool_stats: { funded_txo_sum: 0, spent_txo_sum: 0, tx_count: 0 },
+        }),
+        { headers: { "Content-Type": "application/json" } },
+      );
+    });
+    vi.stubGlobal("fetch", fetch);
+
+    const read = await withProvider(undefined, "bitcoin", async ({ name, provider }) => ({
+      name,
+      balance: (await provider.getBalance(BTC_ADDRESS, "bitcoin")).balance,
+    }));
+
+    expect(read).toEqual({ name: "mempool", balance: "5" });
   });
 });
