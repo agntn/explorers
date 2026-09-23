@@ -147,7 +147,7 @@ const activeProvider = computed(() => current.value.provider);
       link="How a provider is picked"
       :checks="[
         'resolveProvider() ranks configured keys, then keyless providers, then anything else that serves the chain',
-        'withProvider() retries once on the next candidate after a RateLimitError or a PlanRestrictedError',
+        'withProvider() retries once on the next candidate after a rate or plan limit, no answer or a 5xx',
         'An explicit --provider stays strict: a wrong chain is an UnsupportedChainError, not a silent switch',
       ]"
     >

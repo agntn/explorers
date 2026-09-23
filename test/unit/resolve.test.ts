@@ -1,9 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   AuthError,
+  HTTPError,
   NotFoundError,
   PlanRestrictedError,
   RateLimitError,
+  TransportError,
   UnknownProviderError,
   UnsupportedOperationError,
 } from "../../src/core/errors.js";
@@ -229,6 +231,87 @@ describe("withProvider", () => {
 
     expect(tried).toEqual(["etherscan", "blockscout"]);
     expect(selected).toEqual({ chain: "ethereum", name: "blockscout" });
+  });
+
+  it.each([
+    ["no response", new TransportError("connect ETIMEDOUT", undefined, "ETIMEDOUT", "mempool")],
+    ["a 5xx", new HTTPError(503, "https://mempool.space/api/address/x", undefined, "mempool")],
+  ])("falls back when the primary gives %s", async (_label, primaryError) => {
+    useNoProviderCredentials();
+    const tried: string[] = [];
+
+    const name = await withProvider(undefined, "bitcoin", async ({ name }) => {
+      tried.push(name);
+      if (name === "mempool") throw primaryError;
+      return name;
+    });
+
+    expect(tried).toEqual(["mempool", "blockstream"]);
+    expect(name).toBe("blockstream");
+  });
+
+  it("does not fall back after a 4xx other than a rate limit", async () => {
+    useNoProviderCredentials();
+    const tried: string[] = [];
+
+    await expect(
+      withProvider(undefined, "bitcoin", async ({ name }) => {
+        tried.push(name);
+        throw new HTTPError(400, "https://mempool.space/api/address/x", undefined, name);
+      }),
+    ).rejects.toBeInstanceOf(HTTPError);
+    expect(tried).toEqual(["mempool"]);
+  });
+
+  it("does not replace an explicitly selected provider that never answers", async () => {
+    const tried: string[] = [];
+
+    await expect(
+      withProvider("mempool", "bitcoin", async ({ name }) => {
+        tried.push(name);
+        throw new TransportError("connect ETIMEDOUT", undefined, "ETIMEDOUT", name);
+      }),
+    ).rejects.toBeInstanceOf(TransportError);
+    expect(tried).toEqual(["mempool"]);
+  });
+
+  it("does not fall back after the caller aborts the read", async () => {
+    useNoProviderCredentials();
+    const tried: string[] = [];
+
+    await expect(
+      withProvider(undefined, "bitcoin", async ({ name }) => {
+        tried.push(name);
+        throw new TransportError("This operation was aborted", undefined, "AbortError", name);
+      }),
+    ).rejects.toBeInstanceOf(TransportError);
+    expect(tried).toEqual(["mempool"]);
+  });
+
+  it("keeps the primary failure as the cause when the fallback fails too", async () => {
+    useNoProviderCredentials();
+    const primaryError = new TransportError("connect ETIMEDOUT", undefined, "ETIMEDOUT", "mempool");
+    const fallbackError = new HTTPError(502, "https://blockstream.info/api/x", undefined, "x");
+
+    const rejection = withProvider(undefined, "bitcoin", async ({ name }) => {
+      throw name === "mempool" ? primaryError : fallbackError;
+    });
+
+    await expect(rejection).rejects.toBe(fallbackError);
+    expect(fallbackError.cause).toBe(primaryError);
+  });
+
+  it("retries Bitcoin on keyless Blockstream before keyless Blockchair", async () => {
+    useNoProviderCredentials();
+    const tried: string[] = [];
+
+    await withProvider(undefined, "bitcoin", async ({ name }) => {
+      tried.push(name);
+      if (name === "mempool") throw new RateLimitError(name);
+      return name;
+    });
+
+    expect(tried).toEqual(["mempool", "blockstream"]);
   });
 
   it("uses a provider with optional credentials after the keyless default", async () => {

@@ -3,8 +3,10 @@
 import { create, providers, has, supportsCapability, supportsChain } from "./registry.js";
 import {
   AuthError,
+  HTTPError,
   PlanRestrictedError,
   RateLimitError,
+  TransportError,
   UnknownProviderError,
   UnsupportedChainError,
   UnsupportedOperationError,
@@ -54,16 +56,6 @@ function hasConfiguredCredentials(envKeys: readonly string[]): boolean {
   return envKeys.length > 0 && envKeys.every((key) => process.env[key]);
 }
 
-function isKeylessCandidate(
-  name: string,
-  envKeys: readonly string[],
-  mode: "primary" | "fallback",
-): boolean {
-  return (
-    envKeys.length === 0 || (mode === "fallback" && OPTIONAL_CREDENTIAL_PROVIDERS.includes(name))
-  );
-}
-
 function appendRankedProvider(
   ranked: readonly string[],
   name: string,
@@ -83,10 +75,12 @@ function configuredProviderNames(): string[] {
     .map(([name]) => name);
 }
 
+/* A provider that merely tolerates a missing key throttles hard without one, so it ranks last. */
 function keylessProviderNames(mode: "primary" | "fallback"): string[] {
-  return Object.entries(ENV_MAP)
-    .filter(([name, envKeys]) => isKeylessCandidate(name, envKeys, mode))
+  const keyless = Object.entries(ENV_MAP)
+    .filter(([, envKeys]) => envKeys.length === 0)
     .map(([name]) => name);
+  return mode === "fallback" ? [...keyless, ...OPTIONAL_CREDENTIAL_PROVIDERS] : keyless;
 }
 
 function appendCandidates(
@@ -166,6 +160,17 @@ function preservesPrimaryError(error: unknown): boolean {
   );
 }
 
+/* Failures another backend may not share: limits, no response, or a server error. A caller's
+   abort is a decision, not an outage, so it never moves the read. */
+function isTransientFailure(error: unknown): boolean {
+  return (
+    error instanceof RateLimitError ||
+    error instanceof PlanRestrictedError ||
+    (error instanceof TransportError && error.code !== "AbortError") ||
+    (error instanceof HTTPError && error.statusCode >= 500)
+  );
+}
+
 async function runFallback<T>(
   execute: (name: string) => Promise<T>,
   fallbackName: string,
@@ -175,6 +180,13 @@ async function runFallback<T>(
     return await execute(fallbackName);
   } catch (fallbackError) {
     if (preservesPrimaryError(fallbackError)) throw primaryError;
+    if (
+      fallbackError instanceof Error &&
+      fallbackError !== primaryError &&
+      fallbackError.cause === undefined
+    ) {
+      fallbackError.cause = primaryError;
+    }
     throw fallbackError;
   }
 }
@@ -188,7 +200,9 @@ function startingChain(
 }
 
 /**
- * Run one read with provider selection and one automatic retry after a transient or plan limit.
+ * Run one read with provider selection and one automatic retry on another provider after a rate
+ * or plan limit, no response at all, or a 5xx. When the retry fails too, its error carries the
+ * first provider's failure as `cause`.
  *
  * An explicit chain wins. Without one, an address whose format fits one chain selects that chain,
  * even over an explicit provider's default. Only when the address fits no single chain does
@@ -221,11 +235,7 @@ export async function withProvider<T>(
   try {
     return await execute(primaryName);
   } catch (error) {
-    if (
-      preferred !== undefined ||
-      fallbackName === undefined ||
-      !(error instanceof RateLimitError || error instanceof PlanRestrictedError)
-    ) {
+    if (preferred !== undefined || fallbackName === undefined || !isTransientFailure(error)) {
       throw error;
     }
 
