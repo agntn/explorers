@@ -259,6 +259,55 @@ describe("etherscan provider", () => {
     expect(transaction.isContractInteraction).toBe(expected);
   });
 
+  it("names the contract a deployment created, from the list row and from the receipt", async () => {
+    const created = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48";
+    const row = {
+      blockNumber: "6082465",
+      timeStamp: "1533324504",
+      from: ADDRESS,
+      value: "0",
+      gas: "2000000",
+      gasUsed: "1500000",
+      gasPrice: "5000000000",
+      isError: "0",
+      txreceipt_status: "1",
+      input: "0x6080",
+      confirmations: "1",
+    };
+    stubJSON({
+      status: "1",
+      message: "OK",
+      result: [
+        { ...row, hash: "0xdeploy", to: "", contractAddress: created },
+        { ...row, hash: "0xcall", to: created, contractAddress: "" },
+      ],
+    });
+    const provider = await create("etherscan", { apiKey: "secret" });
+
+    const [deployment, call] = await provider.getTxHistory(ADDRESS, "ethereum");
+
+    expect(deployment).toMatchObject({ hash: "0xdeploy", to: null, createdContract: created });
+    expect(call).toMatchObject({ hash: "0xcall", to: created });
+    expect(call?.createdContract).toBeUndefined();
+
+    const fetch = vi.fn(async (request: string | URL | Request) => {
+      const action = new URL(String(request)).searchParams.get("action");
+      const result =
+        action === "eth_getTransactionByHash"
+          ? { hash: "0xdeploy", blockNumber: "0x5cd0a1", from: ADDRESS, to: null, value: "0x0" }
+          : { status: "0x1", gasUsed: "0x16e360", contractAddress: created };
+      return new Response(JSON.stringify({ jsonrpc: "2.0", id: 1, result }), {
+        headers: { "Content-Type": "application/json" },
+      });
+    });
+    vi.stubGlobal("fetch", fetch);
+
+    await expect(provider.getTxDetail!("0xdeploy", "ethereum")).resolves.toMatchObject({
+      to: null,
+      createdContract: created,
+    });
+  });
+
   it("rejects networks that the unified endpoint does not serve", async () => {
     await expect(create("etherscan", { apiKey: "secret", defaultChain: "fantom" })).rejects.toThrow(
       UnsupportedChainError,
