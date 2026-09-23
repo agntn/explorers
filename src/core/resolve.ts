@@ -76,10 +76,15 @@ function credentialsOf(name: string): string {
   return (ENV_MAP[name] ?? []).map((key) => process.env[key] ?? "").join("\0");
 }
 
-function rememberPlanLimit(name: string, chain: ChainKey, capability?: ProviderCapability): void {
+function rememberPlanLimit(
+  name: string,
+  chain: ChainKey,
+  capability: ProviderCapability,
+  credentials: string,
+): void {
   planLimits ??= new Map();
   planLimits.set(planLimitKey(name, chain, capability), {
-    credentials: credentialsOf(name),
+    credentials,
     until: Date.now() + PLAN_LIMIT_TTL_MS,
   });
 }
@@ -252,8 +257,9 @@ function startingChain(
  * or plan limit, no response at all, or a 5xx. When the retry fails too, its error carries the
  * first provider's failure as `cause`.
  *
- * A plan limit also sticks for an hour: later automatic reads of the same operation on the same
- * chain try that provider last, until its credentials change. An explicit provider is always asked.
+ * A plan limit on a read that names its capability also sticks for an hour: later automatic reads
+ * of that operation on the same chain try that provider last, until its credentials change. An
+ * explicit provider is always asked.
  *
  * An explicit chain wins. Without one, an address whose format fits one chain selects that chain,
  * even over an explicit provider's default. Only when the address fits no single chain does
@@ -281,11 +287,19 @@ export async function withProvider<T>(
     (name) => name !== primaryName,
   );
   const execute = async (name: string) => {
+    // The provider reads its key when it is created, so the refusal belongs to that key.
+    const credentials = credentialsOf(name);
     try {
       return await run({ chain: effectiveChain, name, provider: await create(name) });
     } catch (error) {
-      if (preferred === undefined && error instanceof PlanRestrictedError) {
-        rememberPlanLimit(name, effectiveChain, capability);
+      // Without a capability the refusal names no operation, and remembering it would bench the
+      // provider for reads its plan does cover.
+      if (
+        preferred === undefined &&
+        capability !== undefined &&
+        error instanceof PlanRestrictedError
+      ) {
+        rememberPlanLimit(name, effectiveChain, capability, credentials);
       }
       throw error;
     }

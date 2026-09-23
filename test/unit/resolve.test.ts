@@ -497,6 +497,43 @@ describe("plan limits", () => {
     expect(tried).toEqual(["etherscan", "blockscout"]);
   });
 
+  it("does not remember a refusal from a read without a capability", async () => {
+    useOnlyEtherscanCredentials();
+    const tried: string[] = [];
+    const readAny = () =>
+      withProvider(undefined, "base", async ({ name }) => {
+        tried.push(name);
+        if (name === "etherscan") throw new PlanRestrictedError(name);
+        return name;
+      });
+
+    await readAny();
+    await readAny();
+
+    expect(tried).toEqual(["etherscan", "blockscout", "etherscan", "blockscout"]);
+  });
+
+  it("keeps the refusal with the key that earned it", async () => {
+    useOnlyEtherscanCredentials();
+    await withProvider(
+      undefined,
+      "base",
+      async ({ name }) => {
+        if (name === "etherscan") {
+          vi.stubEnv("ETHERSCAN_API_KEY", "upgraded");
+          throw new PlanRestrictedError(name);
+        }
+        return name;
+      },
+      "balances",
+    );
+    const tried: string[] = [];
+
+    await readBalance("base", tried, []);
+
+    expect(tried).toEqual(["etherscan", "blockscout"]);
+  });
+
   it("forgets the refusal when the key changes", async () => {
     useOnlyEtherscanCredentials();
     await readBalance("base", [], []);
