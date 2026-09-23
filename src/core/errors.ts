@@ -93,12 +93,18 @@ export class AuthError extends ExplorerError {
 
 /** Provider refused a request because its rate limit was reached. */
 export class RateLimitError extends ExplorerError {
+  /**
+   * @param {string} provider - Provider that refused the request.
+   * @param {number} retryAfter - Seconds the provider asked to wait, from `Retry-After`.
+   * @param {string} detail - The provider's own reason, such as an IP block.
+   */
   constructor(
     provider: string,
     public readonly retryAfter?: number,
+    detail?: string,
   ) {
     super(
-      `Rate limited by ${provider}${retryAfter ? ` (retry after ${retryAfter}s)` : ""}`,
+      `Rate limited by ${provider}${retryAfter ? ` (retry after ${retryAfter}s)` : ""}${detail ? `: ${detail}` : ""}`,
       provider,
     );
     this.name = "RateLimitError";

@@ -60,6 +60,7 @@ Unified block explorer provider library. Normalizes balances, tx history, contra
 - Etherscan: 5 req/s free tier, needs `ETHERSCAN_API_KEY`
 - Blockscout serves the complete holding array from `/addresses/:address/token-balances`; large wallets can produce multi-megabyte responses, so this read allows 60 seconds unless `ProviderConfig.timeout` overrides it.
 - Blockchair: data format differs between UTXO (bitcoin, ecash) and EVM chains; eCash amounts are satoshis at 2 decimals (100 satoshis = 1 XEC)
+- Blockchair answers a spent limit with 402 or 435 to 437 and a blocked IP with 430 or 434. `read()` in the provider turns those into `RateLimitError` with `context.error` in the message, outside `Provider` retries, since a block does not clear in seconds; a keyless block also names `BLOCKCHAIR_API_KEY`
 - Solscan, Helius, TONAPI, TRONSCAN, Aptos, Blockberry and Horizon are single-chain providers and throw `UnsupportedChainError` for other chains.
 - Helius Enhanced Transactions v0 exposes no REST balance endpoint, so `getBalance` throws `UnsupportedOperationError`; the key travels as the `api-key` query parameter, which `sanitizeUrl` redacts.
 - Helius `getTokenBalances` calls DAS `searchAssets` on the RPC root, so it answers over JSON-RPC and a failure arrives as `error` inside a 200 response. Pages hold 1000 assets and the walk stops after 20 of them.

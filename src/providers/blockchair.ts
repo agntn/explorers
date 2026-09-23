@@ -16,7 +16,7 @@ import type {
   BlockInfo,
 } from "../core/types.js";
 import { Provider } from "../core/provider.js";
-import { NotFoundError, UnsupportedChainError } from "../core/errors.js";
+import { HTTPError, NotFoundError, RateLimitError, UnsupportedChainError } from "../core/errors.js";
 import { buildQuery, normalizeBaseUrl } from "../core/client.js";
 import { create as createChain } from "@agntn/chains";
 import { formatWei, clampMaxResults } from "../core/types.js";
@@ -35,6 +35,11 @@ const UTXO_DECIMALS: Partial<Record<ChainKey, number>> = {
 };
 
 const DEFAULT_BASE = "https://api.blockchair.com";
+
+/* Blockchair's own statuses for an exceeded request limit (402, 435-437) and a blocked IP (430,
+   434). Its docs say both clear on their own after a while, and a key lifts an IP block. */
+const LIMIT_STATUSES: readonly number[] = [402, 430, 434, 435, 436, 437];
+const BLOCK_STATUSES: readonly number[] = [430, 434];
 
 interface BlockchairResponse<T> {
   readonly data: T;
@@ -177,6 +182,18 @@ function mapTransactionData(
   };
 }
 
+/* The reason Blockchair gives in `context.error`, when the body carries one. */
+function limitReason(body: string | undefined): string | undefined {
+  if (body === undefined) return undefined;
+  try {
+    const parsed = JSON.parse(body) as { context?: { error?: unknown } } | null;
+    const reason = parsed?.context?.error;
+    return typeof reason === "string" && reason !== "" ? reason : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export class Blockchair extends Provider {
   static readonly key = "blockchair";
 
@@ -204,6 +221,22 @@ export class Blockchair extends Provider {
     };
   }
 
+  /* A limit or block comes back as a status outside HTTP, so it would otherwise leave as a bare
+     HTTPError that no fallback picks up and that hides Blockchair's reason. */
+  private async read<T>(url: string): Promise<T> {
+    try {
+      return await this.getJSON<T>(url);
+    } catch (error) {
+      if (!(error instanceof HTTPError) || !LIMIT_STATUSES.includes(error.statusCode)) throw error;
+      const reason = limitReason(error.body) ?? `HTTP ${error.statusCode}`;
+      const hint =
+        !this.apiKey && BLOCK_STATUSES.includes(error.statusCode)
+          ? "; set BLOCKCHAIR_API_KEY to lift the block"
+          : "";
+      throw new RateLimitError(Blockchair.key, undefined, `${reason}${hint}`);
+    }
+  }
+
   private buildUrl(
     chain: ChainKey,
     path: string,
@@ -222,7 +255,7 @@ export class Blockchair extends Provider {
     const c = chain ?? this.defaultChain;
     assertSafePathSegment(address, "address");
     const url = this.buildUrl(c, `/dashboards/address/${encodeURIComponent(address)}`);
-    const res = await this.getJSON<BlockchairResponse<Record<string, BlockchairAddressData>>>(url);
+    const res = await this.read<BlockchairResponse<Record<string, BlockchairAddressData>>>(url);
 
     const key = Object.keys(res.data)[0];
     if (!key) throw new NotFoundError(`Address ${address}`, "blockchair");
@@ -261,7 +294,7 @@ export class Blockchair extends Provider {
     const url = this.buildUrl(c, `/dashboards/address/${encodeURIComponent(address)}`, {
       limit,
     });
-    const res = await this.getJSON<BlockchairResponse<Record<string, BlockchairAddressData>>>(url);
+    const res = await this.read<BlockchairResponse<Record<string, BlockchairAddressData>>>(url);
 
     const transactions = firstRecord(res.data)?.transactions;
     if (!transactions?.length) return [];
@@ -275,7 +308,7 @@ export class Blockchair extends Provider {
     const c = chain ?? this.defaultChain;
     assertSafePathSegment(hash, "tx hash");
     const url = this.buildUrl(c, `/dashboards/transaction/${encodeURIComponent(hash)}`);
-    const res = await this.getJSON<BlockchairResponse<Record<string, BlockchairTxData>>>(url);
+    const res = await this.read<BlockchairResponse<Record<string, BlockchairTxData>>>(url);
 
     const entry = firstRecord(res.data);
     if (!entry) throw new NotFoundError(`Transaction ${hash}`, "blockchair");
@@ -286,7 +319,7 @@ export class Blockchair extends Provider {
     const c = chain ?? this.defaultChain;
     assertSafePathSegment(String(blockNumber), "block number");
     const url = this.buildUrl(c, `/dashboards/blocks/${encodeURIComponent(String(blockNumber))}`);
-    const res = await this.getJSON<BlockchairResponse<Record<string, BlockchairBlockData>>>(url);
+    const res = await this.read<BlockchairResponse<Record<string, BlockchairBlockData>>>(url);
 
     const block = res.data[blockNumber]?.block;
     if (!block) throw new NotFoundError(`Block ${blockNumber}`, "blockchair");
