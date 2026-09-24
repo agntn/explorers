@@ -1,6 +1,6 @@
 /** ENS helper tests with stubbed resolver responses. */
 import { afterEach, beforeEach, describe, it, expect, vi } from "vitest";
-import { isEnsName, isAddress, resolveEns } from "../../src/core/ens.js";
+import { isEnsName, isAddress, resolveEns } from "../../src/core/ens.ts";
 
 beforeEach(() => {
   vi.stubGlobal(

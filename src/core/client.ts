@@ -1,8 +1,8 @@
 /** HTTP client wrapper for Explorers providers */
 
 import { ofetch } from "ofetch";
-import { normalizeError } from "./errors.js";
-import { version } from "../version.js";
+import { normalizeError } from "./errors.ts";
+import { version } from "../version.ts";
 
 let userAgent: string | undefined;
 

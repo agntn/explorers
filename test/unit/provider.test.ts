@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { HTTPError, Provider, RateLimitError, create, register } from "../../src/index.js";
-import type { ProviderCapabilities, ProviderConfig } from "../../src/index.js";
+import { HTTPError, Provider, RateLimitError, create, register } from "../../src/index.ts";
+import type { ProviderCapabilities, ProviderConfig } from "../../src/index.ts";
 
 class Custom extends Provider {
   static readonly key = "abstract-provider-test";

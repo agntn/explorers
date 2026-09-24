@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { RateLimitError, UnsupportedChainError } from "../../src/core/errors.js";
-import { create } from "../../src/core/registry.js";
+import { RateLimitError, UnsupportedChainError } from "../../src/core/errors.ts";
+import { create } from "../../src/core/registry.ts";
 
 const ADDRESS = "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045";
 

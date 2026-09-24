@@ -1,4 +1,4 @@
-export { version } from "./version.js";
+export { version } from "./version.ts";
 export type {
   ChainKey,
   TxStatus,
@@ -17,16 +17,16 @@ export type {
   TokenBalanceOptions,
   TokenTransferOptions,
   ProviderConfig,
-} from "./core/types.js";
-export { Provider } from "./core/provider.js";
+} from "./core/types.ts";
+export { Provider } from "./core/provider.ts";
 export type {
   ProviderCapability,
   ProviderConstructor,
   ProviderEntry,
   ProviderMeta,
-} from "./core/provider.js";
-export { builtins } from "./providers/index.js";
-export { clampMaxResults, formatWei, hexToWei, normalizeChain } from "./core/types.js";
+} from "./core/provider.ts";
+export { builtins } from "./providers/index.ts";
+export { clampMaxResults, formatWei, hexToWei, normalizeChain } from "./core/types.ts";
 export {
   ExplorerError,
   HTTPError,
@@ -40,10 +40,10 @@ export {
   UnknownProviderError,
   AddressChainMismatchError,
   normalizeError,
-} from "./core/errors.js";
-export { isEnsName, isAddress, resolveEns } from "./core/ens.js";
-export { inferChain, resolveAddresses } from "./core/input.js";
-export { getJSON, buildQuery } from "./core/client.js";
+} from "./core/errors.ts";
+export { isEnsName, isAddress, resolveEns } from "./core/ens.ts";
+export { inferChain, resolveAddresses } from "./core/input.ts";
+export { getJSON, buildQuery } from "./core/client.ts";
 export {
   register,
   create,
@@ -53,7 +53,7 @@ export {
   supportsChain,
   supportsCapability,
   getDefaultURL,
-} from "./core/registry.js";
-export type { ProviderListing } from "./core/registry.js";
-export { PROVIDER_DEFAULT_CHAIN, resolveProvider, withProvider } from "./core/resolve.js";
-export type { ProviderContext } from "./core/resolve.js";
+} from "./core/registry.ts";
+export type { ProviderListing } from "./core/registry.ts";
+export { PROVIDER_DEFAULT_CHAIN, resolveProvider, withProvider } from "./core/resolve.ts";
+export type { ProviderContext } from "./core/resolve.ts";

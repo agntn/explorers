@@ -4,8 +4,8 @@ import {
   ExplorerError,
   NotFoundError,
   UnsupportedOperationError,
-} from "../../src/core/errors.js";
-import { create } from "../../src/core/registry.js";
+} from "../../src/core/errors.ts";
+import { create } from "../../src/core/registry.ts";
 
 const ADDRESS = "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM";
 const SIGNATURE =

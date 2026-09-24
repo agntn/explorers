@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ExplorerError, HTTPError, NotFoundError, TransportError } from "../../src/core/errors.js";
-import { getJSON, postJSON } from "../../src/core/client.js";
+import { ExplorerError, HTTPError, NotFoundError, TransportError } from "../../src/core/errors.ts";
+import { getJSON, postJSON } from "../../src/core/client.ts";
 
 afterEach(() => {
   vi.unstubAllGlobals();

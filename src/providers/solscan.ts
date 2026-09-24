@@ -13,12 +13,12 @@ import type {
   Transaction,
   TxHistoryOptions,
   TxStatus,
-} from "../core/types.js";
-import { Provider } from "../core/provider.js";
-import { normalizeBaseUrl, buildQuery } from "../core/client.js";
-import { AuthError, ExplorerError, UnsupportedChainError } from "../core/errors.js";
-import { assertSafePathSegment } from "../core/path-safety.js";
-import { clampMaxResults, formatWei, toTimestamp } from "../core/types.js";
+} from "../core/types.ts";
+import { Provider } from "../core/provider.ts";
+import { normalizeBaseUrl, buildQuery } from "../core/client.ts";
+import { AuthError, ExplorerError, UnsupportedChainError } from "../core/errors.ts";
+import { assertSafePathSegment } from "../core/path-safety.ts";
+import { clampMaxResults, formatWei, toTimestamp } from "../core/types.ts";
 
 const DEFAULT_BASE = "https://pro-api.solscan.io/v2.0";
 const TRANSACTION_PAGE_SIZE = 40;

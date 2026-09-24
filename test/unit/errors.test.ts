@@ -12,7 +12,7 @@ import {
   UnknownProviderError,
   TransportError,
   normalizeError,
-} from "../../src/core/errors.js";
+} from "../../src/core/errors.ts";
 
 function fetchError(
   status: number,

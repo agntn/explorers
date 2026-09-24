@@ -21,19 +21,19 @@ import type {
   TokenTransfer,
   OpReturnPayload,
   Utxo,
-} from "../core/types.js";
-import { Provider } from "../core/provider.js";
-import { normalizeBaseUrl } from "../core/client.js";
-import { NotFoundError, UnsupportedChainError, UnsupportedOperationError } from "../core/errors.js";
+} from "../core/types.ts";
+import { Provider } from "../core/provider.ts";
+import { normalizeBaseUrl } from "../core/client.ts";
+import { NotFoundError, UnsupportedChainError, UnsupportedOperationError } from "../core/errors.ts";
 import { create as createChain } from "@agntn/chains";
-import { formatWei } from "../core/types.js";
-import { assertSafePathSegment } from "../core/path-safety.js";
+import { formatWei } from "../core/types.ts";
+import { assertSafePathSegment } from "../core/path-safety.ts";
 import {
   getEsploraAddressHistory,
   getEsploraUtxos,
   selectEsploraRecipientOutput,
-} from "../core/esplora.js";
-import type { EsploraUnspentOutput } from "../core/esplora.js";
+} from "../core/esplora.ts";
+import type { EsploraUnspentOutput } from "../core/esplora.ts";
 
 const DEFAULT_BASE = "https://mempool.space";
 

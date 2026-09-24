@@ -1,6 +1,6 @@
 /** Auto-select providers by environment, chain, and operation capability. */
 
-import { create, providers, has, supportsCapability, supportsChain } from "./registry.js";
+import { create, providers, has, supportsCapability, supportsChain } from "./registry.ts";
 import {
   AuthError,
   HTTPError,
@@ -10,11 +10,11 @@ import {
   UnknownProviderError,
   UnsupportedChainError,
   UnsupportedOperationError,
-} from "./errors.js";
-import { inferChain } from "./input.js";
-import type { Provider, ProviderCapability } from "./provider.js";
-import { normalizeChain } from "./types.js";
-import type { ChainKey } from "./types.js";
+} from "./errors.ts";
+import { inferChain } from "./input.ts";
+import type { Provider, ProviderCapability } from "./provider.ts";
+import { normalizeChain } from "./types.ts";
+import type { ChainKey } from "./types.ts";
 
 const ENV_MAP: Record<string, string[]> = {
   etherscan: ["ETHERSCAN_API_KEY"],

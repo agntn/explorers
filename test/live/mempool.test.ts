@@ -1,7 +1,7 @@
 /** Live mempool.space, litecoinspace.org and peppool.space roundtrips. Run with `pnpm test:live`. */
 import { beforeAll, describe, expect, it } from "vitest";
-import type { Provider } from "../../src/core/provider.js";
-import { create } from "../../src/core/registry.js";
+import type { Provider } from "../../src/core/provider.ts";
+import { create } from "../../src/core/registry.ts";
 
 const KNOWN_BTC = "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh";
 const KNOWN_LTC = "LfdYLbP9F9CpmCX6atZnHZb8KkS8T6x4DK";

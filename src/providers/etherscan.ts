@@ -22,9 +22,9 @@ import type {
   GasData,
   BlockInfo,
   TxStatus,
-} from "../core/types.js";
-import { Provider } from "../core/provider.js";
-import { buildQuery, normalizeBaseUrl } from "../core/client.js";
+} from "../core/types.ts";
+import { Provider } from "../core/provider.ts";
+import { buildQuery, normalizeBaseUrl } from "../core/client.ts";
 import {
   AuthError,
   ExplorerError,
@@ -32,9 +32,9 @@ import {
   PlanRestrictedError,
   RateLimitError,
   UnsupportedChainError,
-} from "../core/errors.js";
+} from "../core/errors.ts";
 import { create as createChain } from "@agntn/chains";
-import { clampMaxResults, formatWei, multiplyIntegerStrings } from "../core/types.js";
+import { clampMaxResults, formatWei, multiplyIntegerStrings } from "../core/types.ts";
 
 const DEFAULT_BASE = "https://api.etherscan.io/v2/api";
 const SUPPORTED_CHAINS = new Set<ChainKey>([

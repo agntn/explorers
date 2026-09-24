@@ -1,9 +1,9 @@
 /** Address/input resolution — ENS names, raw addresses, tx hashes. */
 import { getChain, identify } from "@agntn/chains";
 import type { Chain } from "@agntn/chains";
-import { AddressChainMismatchError, NotFoundError } from "./errors.js";
-import type { ChainKey } from "./types.js";
-import { isEnsName, isAddress, resolveEns } from "./ens.js";
+import { AddressChainMismatchError, NotFoundError } from "./errors.ts";
+import type { ChainKey } from "./types.ts";
+import { isEnsName, isAddress, resolveEns } from "./ens.ts";
 
 export type InputType = "address" | "txhash" | "ens";
 

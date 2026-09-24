@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { create } from "../../src/core/registry.js";
-import { ExplorerError, UnsupportedChainError } from "../../src/core/errors.js";
+import { create } from "../../src/core/registry.ts";
+import { ExplorerError, UnsupportedChainError } from "../../src/core/errors.ts";
 
 const ADDRESS = "GAHK7EEG2WWHVKDNT4CEQFZGKF2LGDSW2IVM4S5DP42RBW3K6BTODB4A";
 const SENDER = "GC7YFQUTYWEZI6CE4JSOFCM6GRPXHLZOQPKFDGYO6BFTKYQ4KWU7KQI7";

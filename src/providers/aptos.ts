@@ -11,9 +11,9 @@ import type {
   ProviderCapabilities,
   Transaction,
   TxHistoryOptions,
-} from "../core/types.js";
-import { Provider } from "../core/provider.js";
-import { UnsupportedChainError, UnsupportedOperationError } from "../core/errors.js";
+} from "../core/types.ts";
+import { Provider } from "../core/provider.ts";
+import { UnsupportedChainError, UnsupportedOperationError } from "../core/errors.ts";
 
 export class Aptos extends Provider {
   static readonly key = "aptos";

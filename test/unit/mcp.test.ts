@@ -1,17 +1,17 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { Provider } from "../../src/core/provider.js";
-import type { ProviderConstructor } from "../../src/core/provider.js";
-import { create, register } from "../../src/core/registry.js";
-import { builtins } from "../../src/providers/index.js";
+import { Provider } from "../../src/core/provider.ts";
+import type { ProviderConstructor } from "../../src/core/provider.ts";
+import { create, register } from "../../src/core/registry.ts";
+import { builtins } from "../../src/providers/index.ts";
 import type {
   ChainKey,
   ContractInfo,
   TokenBalance,
   TokenBalanceOptions,
-} from "../../src/core/types.js";
-import { createMcpServer } from "../../src/mcp.js";
+} from "../../src/core/types.ts";
+import { createMcpServer } from "../../src/mcp.ts";
 
 const openConnections: Array<{ close(): Promise<void> }> = [];
 

@@ -10,11 +10,11 @@
 
 import { getChain } from "@agntn/chains";
 import { z } from "zod";
-import { Provider } from "../core/provider.js";
-import { buildQuery, normalizeBaseUrl } from "../core/client.js";
-import { HORIZON_URL } from "../core/endpoints.js";
-import { ExplorerError, UnsupportedChainError } from "../core/errors.js";
-import { clampMaxResults, formatWei } from "../core/types.js";
+import { Provider } from "../core/provider.ts";
+import { buildQuery, normalizeBaseUrl } from "../core/client.ts";
+import { HORIZON_URL } from "../core/endpoints.ts";
+import { ExplorerError, UnsupportedChainError } from "../core/errors.ts";
+import { clampMaxResults, formatWei } from "../core/types.ts";
 import type {
   Balance,
   BlockInfo,
@@ -28,7 +28,7 @@ import type {
   TokenTransferOptions,
   Transaction,
   TxHistoryOptions,
-} from "../core/types.js";
+} from "../core/types.ts";
 
 /** Stellar amounts carry seven decimals; the smallest unit is the stroop. */
 const STROOP_DECIMALS = 7;

@@ -1,6 +1,6 @@
 /** TON provider tests with stubbed tonapi.io responses. */
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { create } from "../../src/core/registry.js";
+import { create } from "../../src/core/registry.ts";
 
 // A known TON address with balance
 const KNOWN_TON = "EQD__________________________________________0voM";

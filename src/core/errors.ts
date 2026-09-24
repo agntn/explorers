@@ -9,11 +9,11 @@ import { FetchError } from "ofetch";
  * boundary instead of at each construction site.
  */
 export class ExplorerError extends Error {
-  constructor(
-    message: string,
-    public readonly provider?: string,
-  ) {
+  public readonly provider?: string | undefined;
+
+  constructor(message: string, provider?: string) {
     super(sanitizeUrl(message));
+    this.provider = provider;
     this.name = "ExplorerError";
   }
 }
@@ -25,6 +25,8 @@ function sanitizeUrl(url: string): string {
 
 /** HTTP failure with a redacted request URL in its message and a redacted response body. */
 export class HTTPError extends ExplorerError {
+  public readonly statusCode: number;
+
   /**
    * Request URL with secret query params redacted. Non-enumerable to keep serialized errors
    * compact.
@@ -34,13 +36,9 @@ export class HTTPError extends ExplorerError {
   /** Response body, redacted in case the server echoes the request URL. */
   public readonly body?: string;
 
-  constructor(
-    public readonly statusCode: number,
-    url: string,
-    body?: string,
-    provider?: string,
-  ) {
+  constructor(statusCode: number, url: string, body?: string, provider?: string) {
     super(`HTTP ${statusCode} from ${url}`, provider);
+    this.statusCode = statusCode;
     if (body !== undefined) this.body = sanitizeUrl(body);
     this.rawUrl = sanitizeUrl(url);
     Object.defineProperty(this, "rawUrl", { enumerable: false });
@@ -53,6 +51,9 @@ export class HTTPError extends ExplorerError {
  * reset socket, a timeout or an abort.
  */
 export class TransportError extends ExplorerError {
+  public readonly reason: string;
+  public readonly code?: string | undefined;
+
   /**
    * Request URL with secret query params redacted. Non-enumerable to keep serialized errors
    * compact.
@@ -66,14 +67,10 @@ export class TransportError extends ExplorerError {
    *   `TimeoutError`.
    * @param {string} provider - Provider that sent the request.
    */
-  constructor(
-    public readonly reason: string,
-    url?: string,
-    public readonly code?: string,
-    provider?: string,
-  ) {
+  constructor(reason: string, url?: string, code?: string, provider?: string) {
     const source = provider === undefined ? "" : ` from ${provider}`;
     super(`No response${source} (${reason})${url === undefined ? "" : `: ${url}`}`, provider);
+    this.code = code;
     this.reason = sanitizeUrl(reason);
     if (url !== undefined) {
       this.rawUrl = sanitizeUrl(url);
@@ -93,20 +90,19 @@ export class AuthError extends ExplorerError {
 
 /** Provider refused a request because its rate limit was reached. */
 export class RateLimitError extends ExplorerError {
+  public readonly retryAfter?: number | undefined;
+
   /**
    * @param {string} provider - Provider that refused the request.
    * @param {number} retryAfter - Seconds the provider asked to wait, from `Retry-After`.
    * @param {string} detail - The provider's own reason, such as an IP block.
    */
-  constructor(
-    provider: string,
-    public readonly retryAfter?: number,
-    detail?: string,
-  ) {
+  constructor(provider: string, retryAfter?: number, detail?: string) {
     super(
       `Rate limited by ${provider}${retryAfter ? ` (retry after ${retryAfter}s)` : ""}${detail ? `: ${detail}` : ""}`,
       provider,
     );
+    this.retryAfter = retryAfter;
     this.name = "RateLimitError";
   }
 }
@@ -145,16 +141,19 @@ export class UnsupportedOperationError extends ExplorerError {
 
 /** Address format belongs to a different chain family than the one requested, so no request was sent. */
 export class AddressChainMismatchError extends ExplorerError {
-  constructor(
-    public readonly address: string,
-    public readonly chain: string,
-    public readonly matches: readonly string[],
-  ) {
+  public readonly address: string;
+  public readonly chain: string;
+  public readonly matches: readonly string[];
+
+  constructor(address: string, chain: string, matches: readonly string[]) {
     const listed =
       matches.length > 3
         ? `${matches.slice(0, 3).join(", ")} and ${matches.length - 3} more`
         : matches.join(", ");
     super(`Address ${address} is not valid on ${chain}; its format matches ${listed}`);
+    this.address = address;
+    this.chain = chain;
+    this.matches = matches;
     this.name = "AddressChainMismatchError";
   }
 }

@@ -14,13 +14,13 @@ import type {
   TxHistoryOptions,
   TxStatus,
   BlockInfo,
-} from "../core/types.js";
-import { Provider } from "../core/provider.js";
-import { HTTPError, NotFoundError, RateLimitError, UnsupportedChainError } from "../core/errors.js";
-import { buildQuery, normalizeBaseUrl } from "../core/client.js";
+} from "../core/types.ts";
+import { Provider } from "../core/provider.ts";
+import { HTTPError, NotFoundError, RateLimitError, UnsupportedChainError } from "../core/errors.ts";
+import { buildQuery, normalizeBaseUrl } from "../core/client.ts";
 import { create as createChain } from "@agntn/chains";
-import { formatWei, clampMaxResults } from "../core/types.js";
-import { assertSafePathSegment } from "../core/path-safety.js";
+import { formatWei, clampMaxResults } from "../core/types.ts";
+import { assertSafePathSegment } from "../core/path-safety.ts";
 
 const CHAIN_NAMES: Partial<Record<ChainKey, string>> = {
   bitcoin: "bitcoin",

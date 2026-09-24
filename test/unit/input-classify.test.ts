@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { AddressChainMismatchError } from "../../src/core/errors.js";
-import { classifyInput, inferChain, resolveAddresses } from "../../src/core/input.js";
-import { normalizeChain } from "../../src/core/types.js";
+import { AddressChainMismatchError } from "../../src/core/errors.ts";
+import { classifyInput, inferChain, resolveAddresses } from "../../src/core/input.ts";
+import { normalizeChain } from "../../src/core/types.ts";
 
 describe("classifyInput", () => {
   it("classifies 0x + 64 hex as txhash", () => {

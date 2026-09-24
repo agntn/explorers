@@ -1,6 +1,6 @@
 import consola from "consola";
-import type { Provider, ProviderCapability } from "../core/provider.js";
-import type { ChainKey } from "../core/types.js";
+import type { Provider, ProviderCapability } from "../core/provider.ts";
+import type { ChainKey } from "../core/types.ts";
 
 export interface SelectedProvider {
   readonly chain: ChainKey;
@@ -17,8 +17,8 @@ export async function withSelectedProvider<T>(
   input?: string,
 ): Promise<T> {
   const [{ withProvider }, { normalizeChain }] = await Promise.all([
-    import("../core/resolve.js"),
-    import("../core/types.js"),
+    import("../core/resolve.ts"),
+    import("../core/types.ts"),
   ]);
   const requestedChain = chainInput === undefined ? undefined : normalizeChain(chainInput);
   return withProvider(providerInput, requestedChain, run, capability, input);

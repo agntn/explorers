@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { assertSafePathSegment } from "../../src/core/path-safety.js";
+import { assertSafePathSegment } from "../../src/core/path-safety.ts";
 
 describe("assertSafePathSegment", () => {
   it("accepts plain address-like strings", () => {

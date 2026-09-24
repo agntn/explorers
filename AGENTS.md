@@ -50,7 +50,7 @@ Unified block explorer provider library. Normalizes balances, tx history, contra
 - `src/core/input.ts` — User input classification (address/txhash/ens)
 - `src/providers/*.ts` — One file per provider, each exporting its class, listed in `builtins` and built as its own bundle entry
 - `src/commands/*.ts` - CLI subcommands (balance, tx, utxos, contract, tokens, transfers, gas, block, providers)
-- `src/cli.ts` — Citty CLI entry point
+- `src/cli.ts` - Citty CLI entry point. Inside a checkout, the built `dist/cli.mjs` loads the `mcp` command from `src/`, like the Pi and OMP extensions, so a local MCP server needs only a restart after a change. The npm package ships no `src/` and runs the bundle, and so does a copy under `node_modules`, where Node does not strip types. `EXPLORERS_DIST=1` forces the bundle. A change to `src/cli.ts` itself still needs `pnpm build`
 
 ## CLI subcommands
 
@@ -111,7 +111,7 @@ graph TB
 - **Measuring that claim**: `pnpm build` prints `Side effects` per bundle, but with `sideEffects` declared the number is circular, since the bundler believes the field. For a real reading, drop the field, rebuild, and compare: everything except `dist/cli.mjs` then comes back under 1 kB, and `INSPECT_BUILD=1 pnpm build` shows the remainder is the bundler runtime plus bare `ofetch` and `@agntn/chains` imports, not our code.
 - **String-only values**: All wei/satoshi/native amounts are strings (`Balance.balance`, `TokenBalance.balance`). The HTTP boundary preserves unsafe JSON integers as strings; `formatWei()` converts amounts for display.
 - **Optional methods**: `getTxDetail`, `getUtxos`, `getContractInfo`, `getTokenBalances`, `getTokenTransfers`, `getGasData`, and `getBlockInfo` are optional on `Provider`. Always check both the `capabilities` getter and method presence before calling.
-- **Dynamic CLI imports**: Each subcommand is lazily loaded via `() => import('./commands/X.js').then(m => m.default)`. Citty loads command declarations for help, so runtime core imports belong inside `run()` or execution helpers.
+- **Dynamic CLI imports**: Each subcommand is lazily loaded via `() => import('./commands/X.ts').then(m => m.default)`. Citty loads command declarations for help, so runtime core imports belong inside `run()` or execution helpers.
 - **Chain normalization**: `normalizeChain()` delegates to `getChain()` from `@agntn/chains` and returns the canonical `ChainKey`. Aliases and display names both resolve (`ethereum→eth`, `btc→bitcoin`, `arb→arbitrum`). Missing input defaults to `eth`; unknown names and the empty string throw.
 - **Chain from the address**: without an explicit chain, `withProvider()` takes the chain `inferChain()` reads off the address when `identify()` from `@agntn/chains` finds exactly one; EVM addresses, ENS names and unknown formats keep the defaults. `resolveInput()` throws `AddressChainMismatchError` before any request only when the requested chain rejects the address and every chain that accepts it belongs to another family: shared formats such as Bitcoin P2SH on Litecoin and forms the validators miss, such as raw TON or hex TRON, still reach the provider
 - **Provider auto-selection**: `resolveProvider()` checks env vars, chain support, and an optional requested capability without loading provider modules. `withProvider()` keeps explicit choices strict and retries automatic reads once on another available built-in after `RateLimitError`, `PlanRestrictedError`, a `TransportError` that is not the caller's abort, or a 5xx `HTTPError`; when that retry fails too, its error keeps the first one as `cause`. A `PlanRestrictedError` on an automatic read with a capability puts that provider last for the same chain and capability for an hour, keyed to its credentials, and out of the fallback slot; it still answers when nobody else serves the read. Keyless Blockchair ranks behind every provider that needs no key, so Bitcoin retries on Blockstream. 429 waits on that backend happen in `Provider` first. The callback must be safe to run twice.
@@ -129,7 +129,7 @@ graph TB
 
 ## Test coverage gaps
 
-**Covered** (36 test files): provider base/registry, provider resolution, HTTP client, path safety, amount formatting, errors, input classification, chain normalization, CLI argument routing, extension integration, plus all fifteen providers.
+**Covered** (37 test files): provider base/registry, provider resolution, HTTP client, path safety, amount formatting, errors, input classification, chain normalization, CLI argument routing, extension integration, the built bin's `mcp` source switch, plus all fifteen providers. `test/unit/cli-bin.test.ts` runs `dist/cli.mjs`, so it needs `pnpm build` first, as CI does.
 **CLI coverage**: help without backend imports, errors for unknown chains, provider listing, and mocked balance, transaction and token reads. Successful contract, transfer, gas, and block command execution remains untested.
 **Test style**: Focused unit tests for local contracts and mocked explorer API responses. Live roundtrips belong in `test/live` and run only through `pnpm test:live`.
 

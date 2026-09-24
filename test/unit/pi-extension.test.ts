@@ -8,9 +8,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { Value } from "typebox/value";
 import explorersExtension, {
   resolveExplorersModuleUrl,
-} from "../../packages/pi/extensions/explorers.js";
-import type { Transaction } from "../../src/core/types.js";
-import { builtins } from "../../src/providers/index.js";
+} from "../../packages/pi/extensions/explorers.ts";
+import type { Transaction } from "../../src/core/types.ts";
+import { builtins } from "../../src/providers/index.ts";
 
 function registerExtensionTools(): Map<string, ToolDefinition> {
   const tools = new Map<string, ToolDefinition>();

@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { NotFoundError, RateLimitError, UnsupportedChainError } from "../../src/core/errors.js";
-import { create } from "../../src/core/registry.js";
-import { withProvider } from "../../src/core/resolve.js";
-import { Blockchair } from "../../src/providers/blockchair.js";
+import { NotFoundError, RateLimitError, UnsupportedChainError } from "../../src/core/errors.ts";
+import { create } from "../../src/core/registry.ts";
+import { withProvider } from "../../src/core/resolve.ts";
+import { Blockchair } from "../../src/providers/blockchair.ts";
 
 const BTC_ADDRESS = "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh";
 const ETH_ADDRESS = "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045";

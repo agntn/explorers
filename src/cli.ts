@@ -1,7 +1,40 @@
 /** Explorers CLI — unified block explorer commands */
+import { existsSync } from "node:fs";
+import { sep } from "node:path";
+import { fileURLToPath } from "node:url";
 import { defineCommand, runMain } from "citty";
-import { normalizeMainArgs } from "./cli-args.js";
-import { version } from "./version.js";
+import { normalizeMainArgs } from "./cli-args.ts";
+import type McpCommand from "./commands/mcp.ts";
+import { version } from "./version.ts";
+
+/* The same file from `src/cli.ts` and `dist/cli.mjs`; the npm package ships only `dist`. */
+const sourceMcpCommand = new URL("../src/commands/mcp.ts", import.meta.url);
+
+/* Narrow the namespace a runtime URL import returns, which TypeScript types as `any`. */
+function isMcpModule(value: unknown): value is { default: typeof McpCommand } {
+  return typeof value === "object" && value !== null && "default" in value;
+}
+
+/**
+ * Load the MCP command. The built bin inside a checkout runs the live source, as the Pi and OMP
+ * extensions do, so a local server takes a change on restart instead of `pnpm build`. Node refuses
+ * to strip types under `node_modules`, so a copy there keeps the bundle, and so does the npm
+ * package, which ships no `src`. `EXPLORERS_DIST=1` keeps it everywhere.
+ *
+ * @returns {Promise<typeof McpCommand>} The citty command that starts the stdio server.
+ */
+async function loadMcpCommand(): Promise<typeof McpCommand> {
+  const sourcePath = fileURLToPath(sourceMcpCommand);
+  const fromSource =
+    !import.meta.url.endsWith(".ts") &&
+    process.env.EXPLORERS_DIST !== "1" &&
+    !sourcePath.includes(`${sep}node_modules${sep}`) &&
+    existsSync(sourcePath);
+  if (!fromSource) return (await import("./commands/mcp.ts")).default;
+  const module: unknown = await import(sourceMcpCommand.href);
+  if (!isMcpModule(module)) throw new TypeError(`${sourcePath} has no default command`);
+  return module.default;
+}
 
 const main = defineCommand({
   meta: {
@@ -10,16 +43,16 @@ const main = defineCommand({
     description: "Unified multi-chain block explorer CLI",
   },
   subCommands: {
-    balance: () => import("./commands/balance.js").then((m) => m.default),
-    tx: () => import("./commands/tx.js").then((m) => m.default),
-    utxos: () => import("./commands/utxos.js").then((m) => m.default),
-    contract: () => import("./commands/contract.js").then((m) => m.default),
-    tokens: () => import("./commands/tokens.js").then((m) => m.default),
-    transfers: () => import("./commands/transfers.js").then((m) => m.default),
-    gas: () => import("./commands/gas.js").then((m) => m.default),
-    block: () => import("./commands/block.js").then((m) => m.default),
-    providers: () => import("./commands/providers.js").then((m) => m.default),
-    mcp: () => import("./commands/mcp.js").then((m) => m.default),
+    balance: () => import("./commands/balance.ts").then((m) => m.default),
+    tx: () => import("./commands/tx.ts").then((m) => m.default),
+    utxos: () => import("./commands/utxos.ts").then((m) => m.default),
+    contract: () => import("./commands/contract.ts").then((m) => m.default),
+    tokens: () => import("./commands/tokens.ts").then((m) => m.default),
+    transfers: () => import("./commands/transfers.ts").then((m) => m.default),
+    gas: () => import("./commands/gas.ts").then((m) => m.default),
+    block: () => import("./commands/block.ts").then((m) => m.default),
+    providers: () => import("./commands/providers.ts").then((m) => m.default),
+    mcp: loadMcpCommand,
   },
 });
 

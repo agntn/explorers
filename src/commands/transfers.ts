@@ -1,13 +1,13 @@
 /** List fungible-token transfers (supports ENS) */
 import { defineCommand } from "citty";
-import type { TokenTransfer } from "../core/types.js";
+import type { TokenTransfer } from "../core/types.ts";
 import {
   failCommand,
   parsePositiveInteger,
   print,
   reportCommandError,
   withSelectedProvider,
-} from "./shared.js";
+} from "./shared.ts";
 
 function renderTransfers(
   providerName: string,
@@ -60,7 +60,7 @@ export default defineCommand({
   },
   async run({ args }) {
     try {
-      const { resolveInput } = await import("../core/input.js");
+      const { resolveInput } = await import("../core/input.ts");
       await withSelectedProvider(
         args.chain as string | undefined,
         args.provider as string | undefined,

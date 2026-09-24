@@ -8,17 +8,17 @@
  */
 
 import { create as createChain } from "@agntn/chains";
-import { NotFoundError, UnsupportedChainError } from "../core/errors.js";
-import { assertSafePathSegment } from "../core/path-safety.js";
-import { Provider } from "../core/provider.js";
-import { normalizeBaseUrl } from "../core/client.js";
-import { formatWei } from "../core/types.js";
+import { NotFoundError, UnsupportedChainError } from "../core/errors.ts";
+import { assertSafePathSegment } from "../core/path-safety.ts";
+import { Provider } from "../core/provider.ts";
+import { normalizeBaseUrl } from "../core/client.ts";
+import { formatWei } from "../core/types.ts";
 import {
   getEsploraAddressHistory,
   getEsploraUtxos,
   selectEsploraRecipientOutput,
-} from "../core/esplora.js";
-import type { EsploraUnspentOutput } from "../core/esplora.js";
+} from "../core/esplora.ts";
+import type { EsploraUnspentOutput } from "../core/esplora.ts";
 import type {
   Balance,
   BlockInfo,
@@ -30,7 +30,7 @@ import type {
   TxHistoryOptions,
   TxStatus,
   Utxo,
-} from "../core/types.js";
+} from "../core/types.ts";
 
 const DEFAULT_BASE = "https://blockstream.info";
 

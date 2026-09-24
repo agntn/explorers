@@ -4,8 +4,8 @@
  * Stubbed responses for the mapping contract.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { NotFoundError, UnsupportedChainError } from "../../src/core/errors.js";
-import { create } from "../../src/core/registry.js";
+import { NotFoundError, UnsupportedChainError } from "../../src/core/errors.ts";
+import { create } from "../../src/core/registry.ts";
 
 const ADDRESS =
   "addr1q93k6rgprz5fxwkpvl2vgjq4pwejth400f8aldz2m3lj7khrnd05p259l0qjrf396am6wahv5895ey35y62fexta3q5q3cc3k8";

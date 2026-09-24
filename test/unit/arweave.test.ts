@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { Arweave } from "../../src/providers/arweave.js";
-import { create, supportsCapability } from "../../src/core/registry.js";
-import { withProvider } from "../../src/core/resolve.js";
-import { ExplorerError, NotFoundError, UnsupportedChainError } from "../../src/core/errors.js";
+import { Arweave } from "../../src/providers/arweave.ts";
+import { create, supportsCapability } from "../../src/core/registry.ts";
+import { withProvider } from "../../src/core/resolve.ts";
+import { ExplorerError, NotFoundError, UnsupportedChainError } from "../../src/core/errors.ts";
 
 const ADDRESS = "FPjbN_btYKzcf8QASjs30v5C0FPv7XpwKXENBW8dqVw";
 const HASH = "2Bg8S0GcQmbC-FeT5dDKcj0WOK2YmH7Y4mlW-mO8_yE";

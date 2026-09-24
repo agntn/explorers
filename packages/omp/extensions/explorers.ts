@@ -2,7 +2,7 @@
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import type { ExtensionAPI } from "@oh-my-pi/pi-coding-agent";
-import type * as ExplorersModule from "../../../src/index.js";
+import type * as ExplorersModule from "../../../src/index.ts";
 
 const sourceModulePath = fileURLToPath(new URL("../../../src/index.ts", import.meta.url));
 let explorersModulePromise: Promise<typeof ExplorersModule> | undefined;
@@ -12,8 +12,7 @@ function loadLib(): Promise<typeof ExplorersModule> {
   if (explorersModulePromise) return explorersModulePromise;
 
   const loaded: Promise<typeof ExplorersModule> = existsSync(sourceModulePath)
-    ? // @ts-expect-error — OMP runs TypeScript extension sources directly in development
-      import("../../../src/index.ts")
+    ? import("../../../src/index.ts")
     : (import("../../../dist/index.mjs") as unknown as Promise<typeof ExplorersModule>);
   explorersModulePromise = loaded;
   return loaded;

@@ -1,6 +1,6 @@
 /** Mempool provider tests with stubbed responses for Bitcoin, Litecoin and Pepecoin. */
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { create } from "../../src/core/registry.js";
+import { create } from "../../src/core/registry.ts";
 
 // A known Bitcoin address with history
 const KNOWN_BTC = "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh";

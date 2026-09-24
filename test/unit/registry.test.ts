@@ -8,9 +8,9 @@ import {
   providers,
   register,
   supportsCapability,
-} from "../../src/core/registry.js";
-import type { ProviderCapability } from "../../src/core/provider.js";
-import { builtins } from "../../src/providers/index.js";
+} from "../../src/core/registry.ts";
+import type { ProviderCapability } from "../../src/core/provider.ts";
+import { builtins } from "../../src/providers/index.ts";
 
 const providerDir = fileURLToPath(new URL("../../src/providers/", import.meta.url));
 const buildConfig = readFileSync(
@@ -29,8 +29,8 @@ describe("built-in provider registry", () => {
 
   it("shares an in-flight provider load across concurrent creates", async () => {
     vi.resetModules();
-    const { builtins: isolatedBuiltins } = await import("../../src/providers/index.js");
-    const { create: isolatedCreate } = await import("../../src/core/registry.js");
+    const { builtins: isolatedBuiltins } = await import("../../src/providers/index.ts");
+    const { create: isolatedCreate } = await import("../../src/core/registry.ts");
     const entry = isolatedBuiltins.find((candidate) => candidate.key === "mempool");
     expect(entry).toBeDefined();
     if (!entry) throw new Error("Missing mempool provider entry");
@@ -91,8 +91,8 @@ describe("built-in provider registry", () => {
 
   it("describes every provider without loading a module", async () => {
     vi.resetModules();
-    const { builtins: isolatedBuiltins } = await import("../../src/providers/index.js");
-    const { listProviders: isolatedListProviders } = await import("../../src/core/registry.js");
+    const { builtins: isolatedBuiltins } = await import("../../src/providers/index.ts");
+    const { listProviders: isolatedListProviders } = await import("../../src/core/registry.ts");
     const loads = isolatedBuiltins.map((entry) => vi.spyOn(entry, "load"));
 
     try {

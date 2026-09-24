@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { AuthError } from "../../src/core/errors.js";
-import { create } from "../../src/core/registry.js";
+import { AuthError } from "../../src/core/errors.ts";
+import { create } from "../../src/core/registry.ts";
 
 const ADDRESS = "0x61953ea72709eed72f4441dd944eec49a11b4acabfc8e04015e89c63be81b6ab";
 

@@ -1,13 +1,13 @@
 /** Get block info by number */
 import { defineCommand } from "citty";
-import type { BlockInfo } from "../core/types.js";
+import type { BlockInfo } from "../core/types.ts";
 import {
   failCommand,
   parseNonNegativeInteger,
   print,
   reportCommandError,
   withSelectedProvider,
-} from "./shared.js";
+} from "./shared.ts";
 
 function renderBlock(providerName: string, block: Readonly<BlockInfo>): void {
   print(`[${providerName}] Block #${block.number}`);

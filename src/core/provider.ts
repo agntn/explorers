@@ -12,11 +12,11 @@ import type {
   Transaction,
   TxHistoryOptions,
   Utxo,
-} from "./types.js";
-import { getJSON, postJSON } from "./client.js";
-import type { ClientRequestOptions } from "./client.js";
-import type { ProviderConfig } from "./types.js";
-import { RateLimitError } from "./errors.js";
+} from "./types.ts";
+import { getJSON, postJSON } from "./client.ts";
+import type { ClientRequestOptions } from "./client.ts";
+import type { ProviderConfig } from "./types.ts";
+import { RateLimitError } from "./errors.ts";
 
 const RATE_LIMIT_RETRIES = 2;
 const RATE_LIMIT_BASE_DELAY_MS = 1000;

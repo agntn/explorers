@@ -1,7 +1,7 @@
 /** List fungible token holdings (supports ENS) */
 import { defineCommand } from "citty";
 import consola from "consola";
-import { parsePositiveInteger, print, withSelectedProvider } from "./shared.js";
+import { parsePositiveInteger, print, withSelectedProvider } from "./shared.ts";
 
 export default defineCommand({
   meta: {
@@ -34,8 +34,8 @@ export default defineCommand({
   async run({ args }) {
     try {
       const [{ resolveInput }, { clampMaxResults }] = await Promise.all([
-        import("../core/input.js"),
-        import("../core/types.js"),
+        import("../core/input.ts"),
+        import("../core/types.ts"),
       ]);
       const limit = clampMaxResults(
         parsePositiveInteger(args.limit as string, "Invalid --limit value"),

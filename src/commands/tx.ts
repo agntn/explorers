@@ -1,14 +1,14 @@
 /** Transaction operations — history or detail (supports ENS) */
 import { defineCommand } from "citty";
-import type { ChainKey, Transaction } from "../core/types.js";
+import type { ChainKey, Transaction } from "../core/types.ts";
 import {
   failCommand,
   parsePositiveInteger,
   print,
   reportCommandError,
   withSelectedProvider,
-} from "./shared.js";
-import type { SelectedProvider } from "./shared.js";
+} from "./shared.ts";
+import type { SelectedProvider } from "./shared.ts";
 
 type TransactionMode = "detail" | "history";
 
@@ -20,7 +20,7 @@ async function transactionMode(
   if (requested !== undefined && requested !== "history" && requested !== "detail") {
     failCommand('Invalid --mode value (expected "history" or "detail")');
   }
-  const { classifyInput } = await import("../core/input.js");
+  const { classifyInput } = await import("../core/input.ts");
   return requested ?? (classifyInput(target, chain) === "txhash" ? "detail" : "history");
 }
 
@@ -66,7 +66,7 @@ async function runHistory(
   target: string,
   limitInput: string,
 ): Promise<void> {
-  const { resolveInput } = await import("../core/input.js");
+  const { resolveInput } = await import("../core/input.ts");
   const { address } = await resolveInput(target, selected.chain);
   const limit = parsePositiveInteger(limitInput, "Invalid --limit value");
   const transactions = await selected.provider.getTxHistory(address, selected.chain, { limit });
@@ -119,9 +119,9 @@ export default defineCommand({
     try {
       const [{ PROVIDER_DEFAULT_CHAIN, resolveProvider }, { normalizeChain }, { inferChain }] =
         await Promise.all([
-          import("../core/resolve.js"),
-          import("../core/types.js"),
-          import("../core/input.js"),
+          import("../core/resolve.ts"),
+          import("../core/types.ts"),
+          import("../core/input.ts"),
         ]);
       const chainInput = args.chain as string | undefined;
       const providerInput = args.provider as string | undefined;

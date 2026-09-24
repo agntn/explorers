@@ -8,7 +8,7 @@ export default defineCommand({
     description: "List registered block explorer providers and capabilities",
   },
   async run() {
-    const { listProviders } = await import("../core/registry.js");
+    const { listProviders } = await import("../core/registry.ts");
     const listed = listProviders();
     consola.info(`Registered providers (${listed.length}):`);
     consola.log("");

@@ -1,4 +1,4 @@
-import { ExplorerError } from "./errors.js";
+import { ExplorerError } from "./errors.ts";
 
 function decodePathSegment(value: string, label: string): string {
   let decoded: string;
