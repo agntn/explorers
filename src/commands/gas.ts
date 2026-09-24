@@ -1,7 +1,7 @@
 /** Get current gas prices */
 import { defineCommand } from "citty";
-import type { GasData } from "../core/types.js";
-import { failCommand, print, reportCommandError, withSelectedProvider } from "./shared.js";
+import type { GasData } from "../core/types.ts";
+import { failCommand, print, reportCommandError, withSelectedProvider } from "./shared.ts";
 
 function renderGas(providerName: string, gas: Readonly<GasData>): void {
   print(`[${providerName}] Gas prices on ${gas.chain}`);

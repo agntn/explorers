@@ -23,13 +23,13 @@ import type {
   BlockInfo,
   TxStatus,
   TokenTransfer,
-} from "../core/types.js";
-import { Provider } from "../core/provider.js";
-import { buildQuery, normalizeBaseUrl } from "../core/client.js";
-import { NotFoundError, UnsupportedChainError } from "../core/errors.js";
-import { assertSafePathSegment } from "../core/path-safety.js";
+} from "../core/types.ts";
+import { Provider } from "../core/provider.ts";
+import { buildQuery, normalizeBaseUrl } from "../core/client.ts";
+import { NotFoundError, UnsupportedChainError } from "../core/errors.ts";
+import { assertSafePathSegment } from "../core/path-safety.ts";
 import { create as createChain } from "@agntn/chains";
-import { clampMaxResults, formatWei, multiplyIntegerStrings } from "../core/types.js";
+import { clampMaxResults, formatWei, multiplyIntegerStrings } from "../core/types.ts";
 
 const DEFAULT_BASE = "https://eth.blockscout.com";
 const TOKEN_BALANCE_DEFAULT_TIMEOUT = 60_000;

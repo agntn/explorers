@@ -1,7 +1,7 @@
 /** Get contract info (supports ENS) */
 import { defineCommand } from "citty";
-import type { ContractInfo } from "../core/types.js";
-import { failCommand, print, reportCommandError, withSelectedProvider } from "./shared.js";
+import type { ContractInfo } from "../core/types.ts";
+import { failCommand, print, reportCommandError, withSelectedProvider } from "./shared.ts";
 
 function renderContract(providerName: string, info: Readonly<ContractInfo>): void {
   print(`[${providerName}] Contract ${info.address}`);
@@ -37,7 +37,7 @@ export default defineCommand({
   },
   async run({ args }) {
     try {
-      const { resolveInput } = await import("../core/input.js");
+      const { resolveInput } = await import("../core/input.ts");
       await withSelectedProvider(
         args.chain as string | undefined,
         args.provider as string | undefined,

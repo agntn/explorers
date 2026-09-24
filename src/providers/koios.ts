@@ -16,12 +16,12 @@ import type {
   TokenBalanceOptions,
   Transaction,
   TxHistoryOptions,
-} from "../core/types.js";
-import { Provider } from "../core/provider.js";
-import { buildQuery, normalizeBaseUrl } from "../core/client.js";
-import { NotFoundError, UnsupportedChainError } from "../core/errors.js";
+} from "../core/types.ts";
+import { Provider } from "../core/provider.ts";
+import { buildQuery, normalizeBaseUrl } from "../core/client.ts";
+import { NotFoundError, UnsupportedChainError } from "../core/errors.ts";
 import { create as createChain } from "@agntn/chains";
-import { clampMaxResults, formatWei, toTimestamp } from "../core/types.js";
+import { clampMaxResults, formatWei, toTimestamp } from "../core/types.ts";
 
 const DEFAULT_BASE = "https://api.koios.rest/api/v1";
 

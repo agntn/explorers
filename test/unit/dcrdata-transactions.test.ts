@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { Dcrdata } from "../../src/providers/dcrdata.js";
-import { classifyInput } from "../../src/core/input.js";
-import { ExplorerError } from "../../src/core/errors.js";
+import { Dcrdata } from "../../src/providers/dcrdata.ts";
+import { classifyInput } from "../../src/core/input.ts";
+import { ExplorerError } from "../../src/core/errors.ts";
 
 const ADDRESS = "Dcur2mcGjmENx4DhNqDctW5wJCVyT3Qeqkx";
 const RECIPIENT = "DsX4TNPju7XRezwqYqnUEy81gB2pw96gngf";

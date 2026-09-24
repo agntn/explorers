@@ -1,7 +1,7 @@
 /** Built-in providers: registry metadata plus a loader for the implementation */
 
-import type { ProviderCapability, ProviderEntry } from "../core/provider.js";
-import { ARWEAVE_GATEWAY_URL, DCRDATA_INSIGHT_URL, HORIZON_URL } from "../core/endpoints.js";
+import type { ProviderCapability, ProviderEntry } from "../core/provider.ts";
+import { ARWEAVE_GATEWAY_URL, DCRDATA_INSIGHT_URL, HORIZON_URL } from "../core/endpoints.ts";
 
 type BuiltinProviderEntry = ProviderEntry & {
   capabilities: readonly ProviderCapability[];
@@ -39,7 +39,7 @@ export const builtins: readonly ProviderEntry[] = [
       "blockInfo",
     ],
     defaultURL: "https://api.etherscan.io/v2/api",
-    load: () => import("./etherscan.js").then((m) => m.Etherscan),
+    load: () => import("./etherscan.ts").then((m) => m.Etherscan),
   },
   {
     key: "blockscout",
@@ -66,90 +66,90 @@ export const builtins: readonly ProviderEntry[] = [
       "blockInfo",
     ],
     defaultURL: "https://eth.blockscout.com",
-    load: () => import("./blockscout.js").then((m) => m.Blockscout),
+    load: () => import("./blockscout.ts").then((m) => m.Blockscout),
   },
   {
     key: "blockchair",
     chains: ["bitcoin", "ethereum", "ecash"],
     capabilities: ["balances", "txHistory", "txDetail", "blockInfo"],
     defaultURL: "https://api.blockchair.com",
-    load: () => import("./blockchair.js").then((m) => m.Blockchair),
+    load: () => import("./blockchair.ts").then((m) => m.Blockchair),
   },
   {
     key: "mempool",
     chains: ["bitcoin", "litecoin", "pepecoin"],
     capabilities: ["balances", "txHistory", "txDetail", "utxos", "gasData", "blockInfo"],
     defaultURL: "https://mempool.space",
-    load: () => import("./mempool.js").then((m) => m.Mempool),
+    load: () => import("./mempool.ts").then((m) => m.Mempool),
   },
   {
     key: "blockstream",
     chains: ["bitcoin"],
     capabilities: ["balances", "txHistory", "txDetail", "utxos", "blockInfo"],
     defaultURL: "https://blockstream.info",
-    load: () => import("./blockstream.js").then((m) => m.Blockstream),
+    load: () => import("./blockstream.ts").then((m) => m.Blockstream),
   },
   {
     key: "solscan",
     chains: ["solana"],
     capabilities: ["balances", "txHistory", "txDetail", "blockInfo"],
     defaultURL: "https://pro-api.solscan.io/v2.0",
-    load: () => import("./solscan.js").then((m) => m.Solscan),
+    load: () => import("./solscan.ts").then((m) => m.Solscan),
   },
   {
     key: "helius",
     chains: ["solana"],
     capabilities: ["txHistory", "txDetail", "tokenBalances"],
     defaultURL: "https://mainnet.helius-rpc.com",
-    load: () => import("./helius.js").then((m) => m.Helius),
+    load: () => import("./helius.ts").then((m) => m.Helius),
   },
   {
     key: "ton",
     chains: ["ton"],
     capabilities: ["balances", "txHistory"],
     defaultURL: "https://tonapi.io",
-    load: () => import("./ton.js").then((m) => m.Ton),
+    load: () => import("./ton.ts").then((m) => m.Ton),
   },
   {
     key: "tronscan",
     chains: ["tron"],
     capabilities: ["balances", "txHistory", "txDetail", "blockInfo"],
     defaultURL: "https://apilist.tronscanapi.com",
-    load: () => import("./tronscan.js").then((m) => m.Tronscan),
+    load: () => import("./tronscan.ts").then((m) => m.Tronscan),
   },
   {
     key: "aptos",
     chains: ["aptos"],
     capabilities: [],
-    load: () => import("./aptos.js").then((m) => m.Aptos),
+    load: () => import("./aptos.ts").then((m) => m.Aptos),
   },
   {
     key: "blockberry",
     chains: ["sui"],
     capabilities: ["balances", "txHistory"],
     defaultURL: "https://api.blockberry.one/sui",
-    load: () => import("./blockberry.js").then((m) => m.Blockberry),
+    load: () => import("./blockberry.ts").then((m) => m.Blockberry),
   },
   {
     key: "koios",
     chains: ["cardano"],
     capabilities: ["balances", "txHistory", "txDetail", "tokenBalances"],
     defaultURL: "https://api.koios.rest/api/v1",
-    load: () => import("./koios.js").then((m) => m.Koios),
+    load: () => import("./koios.ts").then((m) => m.Koios),
   },
   {
     key: "arweave",
     chains: ["arweave"],
     capabilities: ["balances", "txHistory", "txDetail", "blockInfo"],
     defaultURL: ARWEAVE_GATEWAY_URL,
-    load: () => import("./arweave.js").then((m) => m.Arweave),
+    load: () => import("./arweave.ts").then((m) => m.Arweave),
   },
   {
     key: "dcrdata",
     chains: ["decred"],
     capabilities: ["balances", "txHistory", "txDetail", "blockInfo"],
     defaultURL: DCRDATA_INSIGHT_URL,
-    load: () => import("./dcrdata.js").then((m) => m.Dcrdata),
+    load: () => import("./dcrdata.ts").then((m) => m.Dcrdata),
   },
   {
     key: "horizon",
@@ -164,6 +164,6 @@ export const builtins: readonly ProviderEntry[] = [
       "blockInfo",
     ],
     defaultURL: HORIZON_URL,
-    load: () => import("./horizon.js").then((m) => m.Horizon),
+    load: () => import("./horizon.ts").then((m) => m.Horizon),
   },
 ] satisfies readonly BuiltinProviderEntry[];

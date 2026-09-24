@@ -12,12 +12,12 @@ import type {
   Transaction,
   TxHistoryOptions,
   TxStatus,
-} from "../core/types.js";
-import { Provider } from "../core/provider.js";
-import { normalizeBaseUrl, buildQuery } from "../core/client.js";
-import { AuthError, UnsupportedChainError } from "../core/errors.js";
-import { assertSafePathSegment } from "../core/path-safety.js";
-import { clampMaxResults, formatWei } from "../core/types.js";
+} from "../core/types.ts";
+import { Provider } from "../core/provider.ts";
+import { normalizeBaseUrl, buildQuery } from "../core/client.ts";
+import { AuthError, UnsupportedChainError } from "../core/errors.ts";
+import { assertSafePathSegment } from "../core/path-safety.ts";
+import { clampMaxResults, formatWei } from "../core/types.ts";
 
 const DEFAULT_BASE = "https://api.blockberry.one/sui";
 const SUI_COIN_TYPE = "0x2::sui::SUI";

@@ -2,7 +2,7 @@
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import type { AgentToolResult, ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import type * as ExplorersModule from "../../../src/index.js";
+import type * as ExplorersModule from "../../../src/index.ts";
 import { Text } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
 

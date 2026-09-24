@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { formatWei } from "../../src/core/types.js";
+import { formatWei } from "../../src/core/types.ts";
 
 describe("formatWei", () => {
   it("formats integer amounts without floating-point rounding", () => {

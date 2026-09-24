@@ -1,15 +1,15 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
-import { UnsupportedOperationError } from "./core/errors.js";
-import { resolveAddresses, resolveInput } from "./core/input.js";
-import type { Provider } from "./core/provider.js";
-import { listProviders } from "./core/registry.js";
-import { withProvider } from "./core/resolve.js";
-import type { ProviderContext } from "./core/resolve.js";
-import { clampMaxResults, normalizeChain } from "./core/types.js";
-import type { ContractInfo, ProviderCapabilities, Transaction } from "./core/types.js";
-import { version } from "./version.js";
+import { UnsupportedOperationError } from "./core/errors.ts";
+import { resolveAddresses, resolveInput } from "./core/input.ts";
+import type { Provider } from "./core/provider.ts";
+import { listProviders } from "./core/registry.ts";
+import { withProvider } from "./core/resolve.ts";
+import type { ProviderContext } from "./core/resolve.ts";
+import { clampMaxResults, normalizeChain } from "./core/types.ts";
+import type { ContractInfo, ProviderCapabilities, Transaction } from "./core/types.ts";
+import { version } from "./version.ts";
 
 const providerInput = {
   chain: z.string().trim().min(1).optional().describe("Chain name or alias"),

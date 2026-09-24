@@ -1,9 +1,9 @@
 import { z } from "zod";
-import { Provider } from "../core/provider.js";
-import { ARWEAVE_GATEWAY_URL } from "../core/endpoints.js";
-import { normalizeBaseUrl } from "../core/client.js";
-import { ExplorerError, NotFoundError, UnsupportedChainError } from "../core/errors.js";
-import { formatWei, toTimestamp } from "../core/types.js";
+import { Provider } from "../core/provider.ts";
+import { ARWEAVE_GATEWAY_URL } from "../core/endpoints.ts";
+import { normalizeBaseUrl } from "../core/client.ts";
+import { ExplorerError, NotFoundError, UnsupportedChainError } from "../core/errors.ts";
+import { formatWei, toTimestamp } from "../core/types.ts";
 import type {
   Balance,
   BlockInfo,
@@ -12,7 +12,7 @@ import type {
   ProviderConfig,
   Transaction,
   TxHistoryOptions,
-} from "../core/types.js";
+} from "../core/types.ts";
 
 const TX_FIELDS = `id owner { address } recipient quantity { winston } fee { winston }
   block { height timestamp } bundledIn { id } data { size type } tags { name value }`;

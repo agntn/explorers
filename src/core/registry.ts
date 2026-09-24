@@ -1,14 +1,14 @@
 /** Provider registry for Explorers, built from the built-in list on first use */
 
-import { builtins } from "../providers/index.js";
+import { builtins } from "../providers/index.ts";
 import type {
   Provider,
   ProviderCapability,
   ProviderConstructor,
   ProviderMeta,
-} from "./provider.js";
-import type { ChainKey, ProviderCapabilities, ProviderConfig } from "./types.js";
-import { UnknownProviderError } from "./errors.js";
+} from "./provider.ts";
+import type { ChainKey, ProviderCapabilities, ProviderConfig } from "./types.ts";
+import { UnknownProviderError } from "./errors.ts";
 
 interface RegistryEntry extends ProviderMeta {
   load: () => Promise<ProviderConstructor>;

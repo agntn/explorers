@@ -8,8 +8,8 @@ import {
   TransportError,
   UnknownProviderError,
   UnsupportedOperationError,
-} from "../../src/core/errors.js";
-import { forgetPlanLimits, resolveProvider, withProvider } from "../../src/core/resolve.js";
+} from "../../src/core/errors.ts";
+import { forgetPlanLimits, resolveProvider, withProvider } from "../../src/core/resolve.ts";
 
 afterEach(() => {
   vi.unstubAllEnvs();

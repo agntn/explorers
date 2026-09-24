@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { create } from "../../src/core/registry.js";
+import { create } from "../../src/core/registry.ts";
 
 const ADDRESS = "PqqJgKpAcMqoBaiy3aNHuR4SSLPdTz194q";
 const RECIPIENT = "PftB3JYp6r3PPkiLPoPoT6vdS77NR4mhyb";

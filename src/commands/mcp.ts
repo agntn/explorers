@@ -11,7 +11,7 @@ export default defineCommand({
     // server actually starts instead of loading for every `--help`.
     const [{ StdioServerTransport }, { createMcpServer }] = await Promise.all([
       import("@modelcontextprotocol/sdk/server/stdio.js"),
-      import("../mcp.js"),
+      import("../mcp.ts"),
     ]);
     const server = createMcpServer();
     await server.connect(new StdioServerTransport());

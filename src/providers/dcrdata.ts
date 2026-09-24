@@ -1,10 +1,10 @@
 import { getChain } from "@agntn/chains";
 import { z } from "zod";
-import { Provider } from "../core/provider.js";
-import { normalizeBaseUrl } from "../core/client.js";
-import { DCRDATA_INSIGHT_URL } from "../core/endpoints.js";
-import { ExplorerError, UnsupportedChainError } from "../core/errors.js";
-import { formatWei } from "../core/types.js";
+import { Provider } from "../core/provider.ts";
+import { normalizeBaseUrl } from "../core/client.ts";
+import { DCRDATA_INSIGHT_URL } from "../core/endpoints.ts";
+import { ExplorerError, UnsupportedChainError } from "../core/errors.ts";
+import { formatWei } from "../core/types.ts";
 import type {
   Balance,
   BlockInfo,
@@ -13,7 +13,7 @@ import type {
   ProviderConfig,
   Transaction,
   TxHistoryOptions,
-} from "../core/types.js";
+} from "../core/types.ts";
 
 function assertChain(chain: ChainKey): void {
   if (chain !== "decred") throw new UnsupportedChainError(chain, Dcrdata.key);

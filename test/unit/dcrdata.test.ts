@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { create, getDefaultURL, supportsCapability } from "../../src/core/registry.js";
-import { normalizeChain } from "../../src/core/types.js";
-import { withProvider } from "../../src/core/resolve.js";
-import { ExplorerError, HTTPError, UnsupportedChainError } from "../../src/core/errors.js";
+import { create, getDefaultURL, supportsCapability } from "../../src/core/registry.ts";
+import { normalizeChain } from "../../src/core/types.ts";
+import { withProvider } from "../../src/core/resolve.ts";
+import { ExplorerError, HTTPError, UnsupportedChainError } from "../../src/core/errors.ts";
 
 const ADDRESS = "Dcur2mcGjmENx4DhNqDctW5wJCVyT3Qeqkx";
 

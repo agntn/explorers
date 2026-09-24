@@ -15,7 +15,7 @@ src/
 
 ## Conventions
 
-- **Import paths**: Always use `.js` extension (`from './types.js'`) — ESM with Bundler resolution
+- **Import paths**: Relative imports end in `.ts` (`from './types.ts'`), so `node src/cli.ts` runs under plain Node type stripping. For the same reason there is no `enum`, `namespace` or parameter property; `erasableSyntaxOnly` and `NodeNext` resolution in `tsconfig.json` enforce both
 - **Provider registration**: Each concrete class is exported and owns a unique static `key`. Its chains, capabilities, and public endpoint live in the `builtins` entry in `providers/index.ts` next to a `load` that imports the module, and the registry builds its map from that list on first use.
 - **Side-effect-free modules**: no top-level calls. Derived state is built on demand (`entries()` in the registry, `decoder()` in mempool), and anything the registry needs about a provider lives in its `builtins` entry rather than in a computed class field.
 - **Command pattern**: Each command exports a `defineCommand()` result as default export

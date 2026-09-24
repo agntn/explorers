@@ -1,6 +1,6 @@
-import { assertSafePathSegment } from "./path-safety.js";
-import { clampMaxResults, formatWei, toTimestamp } from "./types.js";
-import type { Utxo } from "./types.js";
+import { assertSafePathSegment } from "./path-safety.ts";
+import { clampMaxResults, formatWei, toTimestamp } from "./types.ts";
+import type { Utxo } from "./types.ts";
 
 const CHAIN_PAGE_SIZE = 25;
 

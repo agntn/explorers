@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { normalizeMainArgs } from "../../src/cli-args.js";
+import { normalizeMainArgs } from "../../src/cli-args.ts";
 
 describe("normalizeMainArgs", () => {
   it("lists providers when no arguments are supplied", () => {

@@ -3,7 +3,7 @@ import {
   getEsploraAddressHistory,
   getEsploraUtxos,
   selectEsploraRecipientOutput,
-} from "../../src/core/esplora.js";
+} from "../../src/core/esplora.ts";
 
 const ADDRESS = "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa";
 

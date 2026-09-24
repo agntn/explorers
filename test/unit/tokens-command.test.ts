@@ -1,6 +1,6 @@
 import consola from "consola";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import tokensCommand from "../../src/commands/tokens.js";
+import tokensCommand from "../../src/commands/tokens.ts";
 
 const HOLDER = "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045";
 const USDC = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";

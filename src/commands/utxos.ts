@@ -1,7 +1,7 @@
 /** List the unspent outputs an address still controls */
 import { defineCommand } from "citty";
-import type { Utxo } from "../core/types.js";
-import { failCommand, print, reportCommandError, withSelectedProvider } from "./shared.js";
+import type { Utxo } from "../core/types.ts";
+import { failCommand, print, reportCommandError, withSelectedProvider } from "./shared.ts";
 
 function renderUtxos(
   providerName: string,
@@ -47,7 +47,7 @@ export default defineCommand({
   },
   async run({ args }) {
     try {
-      const { resolveInput } = await import("../core/input.js");
+      const { resolveInput } = await import("../core/input.ts");
       await withSelectedProvider(
         args.chain as string | undefined,
         args.provider as string | undefined,

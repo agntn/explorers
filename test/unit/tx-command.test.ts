@@ -1,6 +1,6 @@
 import consola from "consola";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import txCommand from "../../src/commands/tx.js";
+import txCommand from "../../src/commands/tx.ts";
 
 afterEach(() => {
   vi.restoreAllMocks();

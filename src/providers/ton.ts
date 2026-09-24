@@ -15,13 +15,13 @@ import type {
   TxHistoryOptions,
   TokenTransfer,
   TxStatus,
-} from "../core/types.js";
-import { Provider } from "../core/provider.js";
-import { normalizeBaseUrl } from "../core/client.js";
-import { UnsupportedChainError } from "../core/errors.js";
-import { clampMaxResults, formatWei } from "../core/types.js";
+} from "../core/types.ts";
+import { Provider } from "../core/provider.ts";
+import { normalizeBaseUrl } from "../core/client.ts";
+import { UnsupportedChainError } from "../core/errors.ts";
+import { clampMaxResults, formatWei } from "../core/types.ts";
 
-import { assertSafePathSegment } from "../core/path-safety.js";
+import { assertSafePathSegment } from "../core/path-safety.ts";
 const DEFAULT_BASE = "https://tonapi.io";
 
 interface TonAccount {

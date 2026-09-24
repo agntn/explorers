@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { UnsupportedChainError, UnsupportedOperationError } from "../../src/core/errors.js";
-import { create } from "../../src/core/registry.js";
+import { UnsupportedChainError, UnsupportedOperationError } from "../../src/core/errors.ts";
+import { create } from "../../src/core/registry.ts";
 
 describe("aptos provider", () => {
   let provider: Awaited<ReturnType<typeof create>>;
