@@ -10,5 +10,4 @@ allowBuilds:
   vue-demi: true
 
 minimumReleaseAgeExclude:
-  - '@agntn/chains@0.3.3'
   - '@agntn/chains@0.3.10'
