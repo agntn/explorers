@@ -4,11 +4,13 @@ import type { Chain } from "@agntn/chains";
 import { AddressChainMismatchError, NotFoundError } from "./errors.ts";
 import type { ChainKey } from "./types.ts";
 import { isEnsName, isAddress, resolveEns } from "./ens.ts";
+import { providers, supportsChain } from "./registry.ts";
 
 export type InputType = "address" | "txhash" | "ens";
 
 const HEX_HASH_CHAINS: readonly ChainKey[] = [
   "bitcoin",
+  "bitcoincash",
   "litecoin",
   "pepecoin",
   "ecash",
@@ -68,22 +70,30 @@ function assertChainFamily(address: string, chain: ChainKey): void {
   );
 }
 
+function served(chain: ChainKey): boolean {
+  return providers().some((name) => supportsChain(name, chain));
+}
+
+/* Chains share formats across forks: a legacy Bitcoin address is a valid Bitcoin SV one too. When
+ * a provider serves only one of the chains a format fits, that is the chain the read can reach. */
 function chainOf(input: string): ChainKey | undefined {
   const trimmed = input.trim();
   if (classifyInput(trimmed) !== "address") return undefined;
   const { matches } = identify(trimmed);
-  return matches.length === 1 ? matches[0]?.key : undefined;
+  const candidates = matches.length > 1 ? matches.filter((match) => served(match.key)) : matches;
+  return candidates.length === 1 ? candidates[0]?.key : undefined;
 }
 
 /**
- * Name the chain an address belongs to when its format admits exactly one. EVM addresses match
- * every EVM chain and stay unresolved, as do ENS names, transaction hashes and unknown formats.
- * A list resolves only when every entry names the same chain.
+ * Name the chain an address belongs to when its format admits exactly one, or when a provider
+ * serves only one of the chains it admits, as with a legacy Bitcoin address that Bitcoin SV shares.
+ * EVM addresses match every EVM chain and stay unresolved, as do ENS names, transaction hashes and
+ * unknown formats. A list resolves only when every entry names the same chain.
  *
  * @throws {TypeError} When a serialized tool list falls outside its input contract.
  *
  * @param {string | readonly string[] | undefined} input - One address or an address list.
- * @returns {ChainKey | undefined} The only chain the input fits, if there is one.
+ * @returns {ChainKey | undefined} The one chain the input names, if there is one.
  */
 export function inferChain(input: string | readonly string[] | undefined): ChainKey | undefined {
   if (input === undefined) return undefined;

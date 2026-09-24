@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { identify } from "@agntn/chains";
 import { AddressChainMismatchError } from "../../src/core/errors.ts";
 import { classifyInput, inferChain, resolveAddresses } from "../../src/core/input.ts";
 import { normalizeChain } from "../../src/core/types.ts";
@@ -40,6 +41,7 @@ describe("classifyInput", () => {
   it("uses unambiguous chain-specific transaction hash shapes", () => {
     expect(classifyInput("a".repeat(64), "bitcoin")).toBe("txhash");
     expect(classifyInput("a".repeat(64), "ecash")).toBe("txhash");
+    expect(classifyInput("a".repeat(64), "bitcoincash")).toBe("txhash");
     expect(classifyInput("a".repeat(64), "pepecoin")).toBe("txhash");
     expect(classifyInput("2".repeat(64), "solana")).toBe("txhash");
     expect(classifyInput("2".repeat(44), "sui")).toBe("txhash");
@@ -143,6 +145,14 @@ describe("inferChain", () => {
     expect(inferChain(BITCOIN)).toBe("bitcoin");
     expect(inferChain("bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq")).toBe("bitcoin");
     expect(inferChain("TNPeeaaFB7K9cmo4uQpcU32zGK8G1NYqeL")).toBe("tron");
+    expect(inferChain("bitcoincash:qz3yjg59ypg6jqpwhaxgvjj44jm4hdx0w5wsxw2qez")).toBe(
+      "bitcoincash",
+    );
+  });
+
+  it("names the one chain a provider serves when forks share the format", () => {
+    expect(identify(BITCOIN).matches.map((match) => match.key)).toEqual(["bitcoin", "bitcoinsv"]);
+    expect(inferChain(BITCOIN)).toBe("bitcoin");
   });
 
   it("leaves EVM addresses, ENS names, hashes and unknown input unresolved", () => {

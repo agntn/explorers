@@ -118,6 +118,7 @@ describe("resolveProvider", () => {
 
     expect(resolveProvider(undefined, "solana")).toBe("solscan");
     expect(resolveProvider(undefined, "ecash")).toBe("blockchair");
+    expect(resolveProvider(undefined, "bitcoincash")).toBe("blockchair");
     expect(resolveProvider(undefined, "pepecoin")).toBe("mempool");
   });
 
@@ -172,6 +173,15 @@ describe("withProvider", () => {
         "1AndrewYangForPresident2o2ozm6Pzd",
       ),
     ).resolves.toEqual({ chain: "bitcoin", name: "mempool" });
+    await expect(
+      withProvider(
+        undefined,
+        undefined,
+        async ({ chain, name }) => ({ chain, name }),
+        "balances",
+        "bitcoincash:qz3yjg59ypg6jqpwhaxgvjj44jm4hdx0w5wsxw2qez",
+      ),
+    ).resolves.toEqual({ chain: "bitcoincash", name: "blockchair" });
   });
 
   it("keeps Ethereum for an EVM address and an explicit chain over the address", async () => {

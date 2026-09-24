@@ -1,6 +1,6 @@
 {
-  "version": "0.5.4",
-  "generatedAt": "2026-09-18T18:24:12.831Z",
+  "version": "0.5.6",
+  "generatedAt": "2026-09-24T22:51:42.625Z",
   "providers": [
     {
       "key": "etherscan",
@@ -60,6 +60,7 @@
       "key": "blockchair",
       "chains": [
         "bitcoin",
+        "bitcoincash",
         "ethereum",
         "ecash"
       ],
@@ -379,6 +380,16 @@
         "blockchair",
         "mempool",
         "blockstream"
+      ]
+    },
+    {
+      "key": "bitcoincash",
+      "name": "Bitcoin Cash",
+      "symbol": "BCH",
+      "type": "utxo",
+      "explorer": "https://blockchair.com/bitcoin-cash",
+      "providers": [
+        "blockchair"
       ]
     },
     {

@@ -7,6 +7,9 @@ import { Blockchair } from "../../src/providers/blockchair.ts";
 const BTC_ADDRESS = "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh";
 const ETH_ADDRESS = "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045";
 const XEC_ADDRESS = "ecash:prfhcnyqnl5cgrnmlfmms675w93ld7mvvqd0y8lz07";
+/* RetiredCoder's mini-puzzle prize for puzzle 130. At height 970065 Haskoin Store counts 14
+   transactions and 2.5900718 BCH received, all of it spent since. */
+const BCH_ADDRESS = "bitcoincash:qz3yjg59ypg6jqpwhaxgvjj44jm4hdx0w5wsxw2qez";
 
 function stubJSON(body: unknown) {
   const fetch = vi.fn<typeof globalThis.fetch>(
@@ -88,6 +91,40 @@ describe("blockchair provider", () => {
       spent: "100000000",
     });
     expect(String(fetch.mock.calls[0]?.[0])).toContain("/ecash/dashboards/address/");
+  });
+
+  it("reads a Bitcoin Cash balance by CashAddr", async () => {
+    const fetch = stubJSON({
+      data: {
+        [BCH_ADDRESS]: {
+          address: {
+            type: "pubkeyhash",
+            balance: 0,
+            received: 259007180,
+            spent: 259007180,
+            transaction_count: 14,
+          },
+        },
+      },
+      context: { code: 200, state: 970065 },
+    });
+    const provider = await create("blockchair");
+
+    const balance = await provider.getBalance(BCH_ADDRESS, "bitcoincash");
+
+    expect(balance).toMatchObject({
+      address: BCH_ADDRESS,
+      chain: "bitcoincash",
+      balance: "0",
+      balanceFormatted: "0",
+      symbol: "BCH",
+      funded: "259007180",
+      spent: "259007180",
+      blockNumber: 970065,
+    });
+    expect(String(fetch.mock.calls[0]?.[0])).toBe(
+      `https://api.blockchair.com/bitcoin-cash/dashboards/address/${encodeURIComponent(BCH_ADDRESS)}`,
+    );
   });
 
   it("does not label account balances as UTXO funding", async () => {
@@ -174,35 +211,36 @@ describe("blockchair provider", () => {
     });
   });
 
-  it.each(["bitcoin", "ecash"] as const)(
-    "reads the genesis block on %s by height",
-    async (chain) => {
-      const hash = "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f";
-      const fetch = stubJSON({
-        data: {
-          "0": {
-            block: { id: 0, hash, time: "2009-01-03 18:15:05", transaction_count: 1 },
-            transactions: [],
-          },
+  it.each([
+    ["bitcoin", "bitcoin"],
+    ["bitcoincash", "bitcoin-cash"],
+    ["ecash", "ecash"],
+  ] as const)("reads the genesis block on %s by height", async (chain, slug) => {
+    const hash = "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f";
+    const fetch = stubJSON({
+      data: {
+        "0": {
+          block: { id: 0, hash, time: "2009-01-03 18:15:05", transaction_count: 1 },
+          transactions: [],
         },
-        context: { code: 200 },
-      });
-      const provider = new Blockchair({});
+      },
+      context: { code: 200 },
+    });
+    const provider = new Blockchair({});
 
-      expect(await provider.getBlockInfo(0, chain)).toEqual({
-        number: 0,
-        hash,
-        parentHash: "",
-        timestamp: "2009-01-03T18:15:05.000Z",
-        miner: "",
-        gasUsed: "0",
-        gasLimit: "0",
-        txCount: 1,
-        baseFee: undefined,
-      });
-      expect(String(fetch.mock.calls[0]?.[0])).toContain(`/${chain}/dashboards/blocks/0`);
-    },
-  );
+    expect(await provider.getBlockInfo(0, chain)).toEqual({
+      number: 0,
+      hash,
+      parentHash: "",
+      timestamp: "2009-01-03T18:15:05.000Z",
+      miner: "",
+      gasUsed: "0",
+      gasLimit: "0",
+      txCount: 1,
+      baseFee: undefined,
+    });
+    expect(String(fetch.mock.calls[0]?.[0])).toContain(`/${slug}/dashboards/blocks/0`);
+  });
 
   it("maps Ethereum block fields without counting the paginated transaction list", async () => {
     const hash = "0xda214d1b1d458e7ae0e626b69a52a59d19762c51a53ff64813c4d31256282fdf";

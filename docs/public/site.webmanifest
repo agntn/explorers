@@ -1,7 +1,7 @@
 {
   "name": "@agntn/explorers",
   "short_name": "explorers",
-  "description": "Fifteen block explorer APIs behind one TypeScript contract: balances, transactions, tokens, contracts, gas and blocks on 25 chains",
+  "description": "Fifteen block explorer APIs behind one TypeScript contract: balances, transactions, tokens, contracts, gas and blocks on 26 chains",
   "start_url": "/",
   "display": "browser",
   "background_color": "#0b0d10",

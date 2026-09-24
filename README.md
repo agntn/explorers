@@ -5,7 +5,7 @@
 [![license](https://npmx.dev/api/registry/badge/license/@agntn/explorers)](https://npmx.dev/package/@agntn/explorers)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/agntn/explorers)
 
-🔭 Fifteen block explorers, 25 chains, one shape. You ask for a balance, you get a balance. Same object on Ethereum, Bitcoin, Solana, Cardano or Stellar, from your terminal, your TypeScript or your agent, and nobody has to know what Insight is.
+🔭 Fifteen block explorers, 26 chains, one shape. You ask for a balance, you get a balance. Same object on Ethereum, Bitcoin, Solana, Cardano or Stellar, from your terminal, your TypeScript or your agent, and nobody has to know what Insight is.
 
 ## Why?
 
@@ -18,7 +18,7 @@ Docs and a live explorer: [explorers.agntn.dev](https://explorers.agntn.dev).
 ## ✨ Features
 
 - 🧩 **Fifteen backends, one contract.** Etherscan, Blockscout, Blockchair, Mempool, Blockstream, Solscan, Helius, TONAPI, TRONSCAN, Aptos, Blockberry, Koios, Arweave, dcrdata and Horizon, and from your side they all look the same.
-- ⛓️ **25 chains.** Ethereum, Base, Arbitrum, Optimism, Polygon, BSC, Avalanche, Gnosis, Linea, Berachain, zkSync, Scroll, Bitcoin, Litecoin, Pepecoin, eCash, Solana, TON, TRON, Aptos, Sui, Cardano, Arweave, Decred and Stellar.
+- ⛓️ **26 chains.** Ethereum, Base, Arbitrum, Optimism, Polygon, BSC, Avalanche, Gnosis, Linea, Berachain, zkSync, Scroll, Bitcoin, Bitcoin Cash, Litecoin, Pepecoin, eCash, Solana, TON, TRON, Aptos, Sui, Cardano, Arweave, Decred and Stellar.
 - 🔢 **Amounts stay exact.** Strings in the smallest unit. Your 0.1 ETH is `100000000000000000` and it stays that way.
 - 🖥️ **CLI, library, MCP, Pi and OMP.** Whatever you're holding, same commands, same objects.
 - 🏷️ **ENS just works.** `vitalik.eth` wherever an Ethereum address would go, no extra dependency.
@@ -143,7 +143,7 @@ That's most of it, really. `create()` loads one provider and nothing else. `with
 | --------------- | ----------------------------- | ------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
 | **etherscan**   | `ETHERSCAN_API_KEY`           | ethereum, base, arbitrum, optimism, polygon, bsc, avalanche, gnosis, linea, berachain | balances, tx, transfers, contract, tokens, gas, block            |
 | **blockscout**  | None                          | ethereum, base, arbitrum, optimism, polygon, gnosis, linea, scroll, zksync, avalanche | balances, tx, transfers, contract, tokens, gas, block            |
-| **blockchair**  | Optional `BLOCKCHAIR_API_KEY` | bitcoin, ethereum, ecash                                                              | balances, tx, block                                              |
+| **blockchair**  | Optional `BLOCKCHAIR_API_KEY` | bitcoin, bitcoincash, ethereum, ecash                                                 | balances, tx, block                                              |
 | **mempool**     | None                          | bitcoin, litecoin, pepecoin                                                           | balances, tx, utxos, gas and block, the last two not on Pepecoin |
 | **blockstream** | None                          | bitcoin                                                                               | balances, tx detail/history, utxos, block                        |
 | **solscan**     | `SOLSCAN_API_KEY`             | solana                                                                                | balances, tx detail/history, block                               |
