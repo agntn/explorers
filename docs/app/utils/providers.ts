@@ -84,7 +84,7 @@ const PRESENTATION: Record<string, ProviderPresentation> = {
     icon: "i-lucide-database",
     envVars: ["BLOCKCHAIR_API_KEY"],
     optionalKey: true,
-    blurb: "One dashboard API for Bitcoin, Ethereum and eCash. Works without a key, ranks higher with one.",
+    blurb: "One dashboard API for Bitcoin, Bitcoin Cash, Ethereum and eCash. Works without a key, ranks higher with one.",
   },
   mempool: {
     label: "Mempool",
@@ -202,6 +202,7 @@ const CHAIN_ICONS: Record<string, string> = {
   scroll: "i-token-scroll",
   zksync: "i-token-zksync",
   bitcoin: "i-token-btc",
+  bitcoincash: "i-token-bch",
   litecoin: "i-token-ltc",
   pepecoin: "i-lucide-leaf",
   ecash: "i-token-xec",
@@ -231,6 +232,7 @@ export const CHAINS: readonly ChainInfo[] = (snapshot.chains as readonly ChainSn
  */
 const NATIVE_DECIMALS: Record<string, number> = {
   bitcoin: 8,
+  bitcoincash: 8,
   litecoin: 8,
   pepecoin: 8,
   ecash: 2,

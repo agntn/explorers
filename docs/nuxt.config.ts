@@ -29,7 +29,7 @@ export default defineNuxtConfig({
     domain: "https://explorers.agntn.dev",
     title: "@agntn/explorers",
     description:
-      "Fifteen block explorer APIs behind one TypeScript contract: balances, transactions, token transfers, contracts, tokens, gas and blocks on 25 chains. Library, CLI and agent tools.",
+      "Fifteen block explorer APIs behind one TypeScript contract: balances, transactions, token transfers, contracts, tokens, gas and blocks on 26 chains. Library, CLI and agent tools.",
     sections: [
       {
         title: "Tools",
@@ -38,7 +38,7 @@ export default defineNuxtConfig({
           {
             title: "Explorer",
             description:
-              "Search an address, an ENS name, a transaction hash or a block number on any of the 25 chains and open its page.",
+              "Search an address, an ENS name, a transaction hash or a block number on any of the 26 chains and open its page.",
             href: "https://explorers.agntn.dev/explorer",
           },
           {
@@ -113,6 +113,7 @@ export default defineNuxtConfig({
         "token:ar",
         "token:arbitrum-one",
         "token:avax",
+        "token:bch",
         "token:base",
         "token:berachain",
         "token:bnb",

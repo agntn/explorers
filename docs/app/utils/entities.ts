@@ -7,7 +7,7 @@ export { isIdentifier };
 export type EntityKind = "address" | "tx" | "block";
 
 /** Chains whose transaction hashes are plain hex, as `HEX_HASH_CHAINS` lists them in the library. */
-const HEX_HASH_CHAINS = new Set(["bitcoin", "litecoin", "pepecoin", "ecash", "tron", "cardano", "decred", "stellar"]);
+const HEX_HASH_CHAINS = new Set(["bitcoin", "bitcoincash", "litecoin", "pepecoin", "ecash", "tron", "cardano", "decred", "stellar"]);
 
 /**
  * Mirrors `classifyInput` in `src/core/input.ts`, plus a block number for input that's all digits.
@@ -57,6 +57,7 @@ const EVM: ExternalPattern = { address: "/address/{id}", tx: "/tx/{id}", block: 
 /** Paths on the canonical explorer from `@agntn/chains` for the chains that aren't EVM; a missing entry means no link rather than a guess. */
 const EXTERNAL: Record<string, ExternalPattern> = {
   bitcoin: { address: "/address/{id}", tx: "/tx/{id}", block: "/block-height/{id}" },
+  bitcoincash: { address: "/address/{id}", tx: "/transaction/{id}", block: "/block/{id}" },
   litecoin: { address: "/address/{id}", tx: "/tx/{id}", block: "/block/{id}" },
   pepecoin: { address: "/address/{id}", tx: "/tx/{id}", block: "/block/{id}" },
   ecash: { address: "/address/{id}", tx: "/tx/{id}" },

@@ -33,7 +33,7 @@ const activeProvider = computed(() => current.value.provider);
       >
         Etherscan, Blockscout, Mempool, Solscan, Koios, dcrdata and nine more behind one
         TypeScript contract. Balances, transactions, unspent outputs, tokens, contracts, gas and
-        blocks on 25 chains, amounts as exact strings, and a provider picked for you from the keys
+        blocks on 26 chains, amounts as exact strings, and a provider picked for you from the keys
         you have. Library, CLI, MCP server, Pi and OMP, all reading through the same code, so
         nobody has to remember what Insight is.
       </p>
