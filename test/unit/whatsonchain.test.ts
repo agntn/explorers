@@ -192,6 +192,24 @@ describe("whatsonchain provider", () => {
     expect(tx?.value).toBe("10000");
   });
 
+  it("reads a block reward with the empty txid WhatsOnChain gives its coinbase input", async () => {
+    const reward = {
+      ...child,
+      vin: [{ coinbase: "0340c50e2f53413130302f", txid: "", vout: 0, sequence: 4_294_967_295 }],
+      vout: [payTo(SENDER, 3.13888557, 0)],
+    };
+    const fetch = stubApi(() => reward);
+    const provider = await create("whatsonchain");
+
+    await expect(provider.getTxDetail?.(CHILD)).resolves.toMatchObject({
+      from: "",
+      to: SENDER,
+      value: "313888557",
+      fee: "0",
+    });
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
   it("answers a missing transaction with NotFoundError", async () => {
     stubApi(() => jsonResponse(null, 404));
     const provider = await create("whatsonchain");
@@ -247,6 +265,24 @@ describe("whatsonchain provider", () => {
       "?limit=2&order=desc",
       "?limit=2&order=desc&token=next",
     ]);
+  });
+
+  it("reverses a page, so transactions of one block keep the requested order too", async () => {
+    stubApi((url, body) => {
+      if (url.pathname.endsWith("/txs")) return bulk([CHILD, PARENT])(body);
+      // The live endpoint answers `order=asc` with the exact reverse of `order=desc`.
+      const rows = [
+        { tx_hash: PARENT, height: 926_389 },
+        { tx_hash: CHILD, height: 926_389 },
+      ];
+      return { result: url.searchParams.get("order") === "asc" ? rows : [...rows].reverse() };
+    });
+    const provider = await create("whatsonchain");
+
+    const newest = await provider.getTxHistory(RECIPIENT, "bitcoinsv", { sort: "desc" });
+    const oldest = await provider.getTxHistory(RECIPIENT, "bitcoinsv", { sort: "asc" });
+    expect(newest.map((tx) => tx.hash)).toEqual([PARENT, CHILD]);
+    expect(oldest.map((tx) => tx.hash)).toEqual([CHILD, PARENT]);
   });
 
   it("returns an empty page past the end of the history", async () => {

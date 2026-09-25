@@ -438,10 +438,9 @@ export class WhatsOnChain extends Provider {
       token = parsed.data.nextPageToken || undefined;
     }
 
-    // A page holds the requested end of the history but lists it the other way round.
-    const ordered = rows.toSorted((a, b) =>
-      order === "asc" ? a.height - b.height : b.height - a.height,
-    );
+    // A page holds the requested end of the history but lists it the other way round, transactions
+    // of one block included, so it is reversed rather than sorted by height.
+    const ordered = rows.toReversed();
     const txs = await this.transactions(ordered.map((row) => row.tx_hash));
     const byHash = new Map(txs.map((tx) => [tx.txid, tx]));
     const parents = await this.parents(txs);
