@@ -1,5 +1,45 @@
 # Changelog
 
+## v0.5.7
+
+[compare changes](https://github.com/agntn/explorers/compare/v0.5.6...v0.5.7)
+
+### 🚀 Enhancements
+
+- **mcp:** Pick up src changes on restart ([#137](https://github.com/agntn/explorers/pull/137))
+- Read Bitcoin Cash through Blockchair ([#138](https://github.com/agntn/explorers/pull/138))
+- **providers:** Add `whatsonchain` ([#144](https://github.com/agntn/explorers/pull/144))
+- **providers:** Add `blockbook` ([#146](https://github.com/agntn/explorers/pull/146))
+- **blockchair:** Support Zcash ([#148](https://github.com/agntn/explorers/pull/148))
+- **blockchair:** Cover Litecoin ([#149](https://github.com/agntn/explorers/pull/149))
+
+### 🩹 Fixes
+
+- **cli:** Exit quietly when stdout closes ([#141](https://github.com/agntn/explorers/pull/141))
+- **cli:** Start the bin with a node shebang ([#142](https://github.com/agntn/explorers/pull/142))
+- **tx:** Drop the empty From line ([#152](https://github.com/agntn/explorers/pull/152))
+
+### 💅 Refactors
+
+- **landing:** Fit flow rows to the count ([#155](https://github.com/agntn/explorers/pull/155))
+
+### 📖 Documentation
+
+- **guide:** List Horizon, fix block gas fields ([#153](https://github.com/agntn/explorers/pull/153))
+
+### 📦 Build
+
+- Move the toolchain to Vite+ ([#143](https://github.com/agntn/explorers/pull/143))
+
+### ✅ Tests
+
+- **cli-bin:** Name a stale dist before running it ([#156](https://github.com/agntn/explorers/pull/156))
+
+### ❤️ Contributors
+
+- Aeitwoen ([@aeitwoen](https://github.com/aeitwoen))
+- Ori ([@oritwoen](https://github.com/oritwoen))
+
 ## v0.5.6
 
 [compare changes](https://github.com/agntn/explorers/compare/v0.5.5...v0.5.6)
