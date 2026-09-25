@@ -158,6 +158,13 @@ const PRESENTATION: Record<string, ProviderPresentation> = {
     envVars: [],
     blurb: "Stellar through the SDF's public Horizon. Stroops, trustlines as tokens, payments as history, fee stats as gas, no key.",
   },
+  whatsonchain: {
+    label: "WhatsOnChain",
+    icon: "i-lucide-eye",
+    envVars: ["WHATSONCHAIN_API_KEY"],
+    optionalKey: true,
+    blurb: "Bitcoin SV through WhatsOnChain. Satoshis, unspent outputs, fees priced from the parent transactions. Three requests a second without a key.",
+  },
 };
 
 export interface ProviderInfo extends ProviderSnapshot, ProviderPresentation {
@@ -203,6 +210,7 @@ const CHAIN_ICONS: Record<string, string> = {
   zksync: "i-token-zksync",
   bitcoin: "i-token-btc",
   bitcoincash: "i-token-bch",
+  bitcoinsv: "i-token-bsv",
   litecoin: "i-token-ltc",
   pepecoin: "i-lucide-leaf",
   ecash: "i-token-xec",
@@ -233,6 +241,7 @@ export const CHAINS: readonly ChainInfo[] = (snapshot.chains as readonly ChainSn
 const NATIVE_DECIMALS: Record<string, number> = {
   bitcoin: 8,
   bitcoincash: 8,
+  bitcoinsv: 8,
   litecoin: 8,
   pepecoin: 8,
   ecash: 2,

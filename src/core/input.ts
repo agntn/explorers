@@ -11,6 +11,7 @@ export type InputType = "address" | "txhash" | "ens";
 const HEX_HASH_CHAINS: readonly ChainKey[] = [
   "bitcoin",
   "bitcoincash",
+  "bitcoinsv",
   "litecoin",
   "pepecoin",
   "ecash",
@@ -74,31 +75,48 @@ function served(chain: ChainKey): boolean {
   return providers().some((name) => supportsChain(name, chain));
 }
 
-/* Chains share formats across forks: a legacy Bitcoin address is a valid Bitcoin SV one too. When
- * a provider serves only one of the chains a format fits, that is the chain the read can reach. */
-function chainOf(input: string): ChainKey | undefined {
+/* Forks that kept the address format of the chain they split from. An address both accept reads
+ * as the original chain, where far more of them live, unless the caller names the fork. */
+const FORK_OF: Partial<Record<ChainKey, ChainKey>> = { bitcoinsv: "bitcoin" };
+
+/* Chains share formats across forks: a legacy Bitcoin address is a valid Bitcoin SV one too. The
+ * chains a named provider serves come first, then the chains any provider serves, and a fork gives
+ * way to the chain it took the format from. */
+function chainOf(input: string, provider?: string): ChainKey | undefined {
   const trimmed = input.trim();
   if (classifyInput(trimmed) !== "address") return undefined;
-  const { matches } = identify(trimmed);
-  const candidates = matches.length > 1 ? matches.filter((match) => served(match.key)) : matches;
-  return candidates.length === 1 ? candidates[0]?.key : undefined;
+  const keys = identify(trimmed).matches.map((match) => match.key);
+  if (keys.length < 2) return keys[0];
+  const byProvider =
+    provider === undefined ? [] : keys.filter((key) => supportsChain(provider, key));
+  const candidates = byProvider.length > 0 ? byProvider : keys.filter(served);
+  const originals = candidates.filter((key) => {
+    const original = FORK_OF[key];
+    return original === undefined || !candidates.includes(original);
+  });
+  return originals.length === 1 ? originals[0] : undefined;
 }
 
 /**
  * Name the chain an address belongs to when its format admits exactly one, or when a provider
- * serves only one of the chains it admits, as with a legacy Bitcoin address that Bitcoin SV shares.
- * EVM addresses match every EVM chain and stay unresolved, as do ENS names, transaction hashes and
- * unknown formats. A list resolves only when every entry names the same chain.
+ * serves only one of the chains it admits. A legacy Bitcoin address fits Bitcoin SV as well and
+ * reads as Bitcoin, unless `provider` serves Bitcoin SV alone. EVM addresses match every EVM chain
+ * and stay unresolved, as do ENS names, transaction hashes and unknown formats. A list resolves only
+ * when every entry names the same chain.
  *
  * @throws {TypeError} When a serialized tool list falls outside its input contract.
  *
  * @param {string | readonly string[] | undefined} input - One address or an address list.
+ * @param {string} [provider] - Provider the read is pinned to, whose chains win a shared format.
  * @returns {ChainKey | undefined} The one chain the input names, if there is one.
  */
-export function inferChain(input: string | readonly string[] | undefined): ChainKey | undefined {
+export function inferChain(
+  input: string | readonly string[] | undefined,
+  provider?: string,
+): ChainKey | undefined {
   if (input === undefined) return undefined;
   const list = typeof input === "string" ? (parseSerializedAddressList(input) ?? [input]) : input;
-  const chains = new Set(list.map(chainOf));
+  const chains = new Set(list.map((entry) => chainOf(entry, provider)));
   const [chain] = chains;
   return chains.size === 1 ? chain : undefined;
 }

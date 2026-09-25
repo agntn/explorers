@@ -339,6 +339,35 @@ describe("Explorers MCP server", () => {
     }
   });
 
+  it("reads Bitcoin SV through WhatsOnChain when the chain names it", async () => {
+    const address = "1FeexV6bAHb8ybZjqQMjJrcCrHGW9sb6uF";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) =>
+        Response.json(
+          String(input).endsWith("/unconfirmed/balance")
+            ? { address, unconfirmed: -1537, error: "" }
+            : { address, confirmed: 7995818934401, error: "" },
+        ),
+      ),
+    );
+    const client = await connectTestClient();
+    const balance = parseToolResult(
+      await client.callTool({ name: "explorers_balance", arguments: { address, chain: "bsv" } }),
+    );
+    expect(balance.isError).toBe(false);
+    expect(JSON.parse(balance.content[0]?.text ?? "null")).toMatchObject({
+      provider: "whatsonchain",
+      data: {
+        chain: "bitcoinsv",
+        balance: "7995818934401",
+        balanceFormatted: "79958.18934401",
+        unconfirmed: "-1537",
+        symbol: "BSV",
+      },
+    });
+  });
+
   it("reads Stellar balances and trustlines through the MCP transport", async () => {
     const address = "GAHK7EEG2WWHVKDNT4CEQFZGKF2LGDSW2IVM4S5DP42RBW3K6BTODB4A";
     const issuer = "GDM4RQUQQUVSKQA7S6EM7XBZP3FCGH4Q7CL6TABQ7B2BEJ5ERARM2M5M";

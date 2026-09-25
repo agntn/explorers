@@ -89,6 +89,7 @@ export default defineConfig({
       "providers/arweave": "src/providers/arweave.ts",
       "providers/dcrdata": "src/providers/dcrdata.ts",
       "providers/horizon": "src/providers/horizon.ts",
+      "providers/whatsonchain": "src/providers/whatsonchain.ts",
     },
     dts: true,
     format: "esm",

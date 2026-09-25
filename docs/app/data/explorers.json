@@ -1,6 +1,6 @@
 {
   "version": "0.5.6",
-  "generatedAt": "2026-09-24T22:51:42.625Z",
+  "generatedAt": "2026-09-25T08:50:17.959Z",
   "providers": [
     {
       "key": "etherscan",
@@ -238,6 +238,21 @@
       ],
       "defaultURL": "https://horizon.stellar.org",
       "defaultChain": "stellar"
+    },
+    {
+      "key": "whatsonchain",
+      "chains": [
+        "bitcoinsv"
+      ],
+      "capabilities": [
+        "balances",
+        "txHistory",
+        "txDetail",
+        "utxos",
+        "blockInfo"
+      ],
+      "defaultURL": "https://api.whatsonchain.com/v1/bsv/main",
+      "defaultChain": "bitcoinsv"
     }
   ],
   "chains": [
@@ -511,6 +526,16 @@
       "explorer": "https://stellar.expert/explorer/public",
       "providers": [
         "horizon"
+      ]
+    },
+    {
+      "key": "bitcoinsv",
+      "name": "Bitcoin SV",
+      "symbol": "BSV",
+      "type": "utxo",
+      "explorer": "https://whatsonchain.com",
+      "providers": [
+        "whatsonchain"
       ]
     }
   ]

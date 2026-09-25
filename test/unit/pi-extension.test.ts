@@ -183,6 +183,34 @@ describe("explorers Pi extension", () => {
     expect(result.content[0]?.text).toContain("; unconfirmed delta -1 base units");
   });
 
+  it("reads a legacy address as Bitcoin SV when the call names WhatsOnChain", async () => {
+    const address = "1FeexV6bAHb8ybZjqQMjJrcCrHGW9sb6uF";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) =>
+        Response.json(
+          String(input).endsWith("/unconfirmed/balance")
+            ? { address, unconfirmed: 0, error: "" }
+            : { address, confirmed: 7995818934401, error: "" },
+        ),
+      ),
+    );
+    const balance = requireTool(registerExtensionTools(), "explorers_balance");
+    const result = parseToolResult(
+      await balance.execute(
+        "test",
+        { address, provider: "whatsonchain" },
+        undefined,
+        undefined,
+        unusedContext,
+      ),
+    );
+    expect(result.isError).toBe(false);
+    expect(result.content[0]?.text).toContain(
+      `[whatsonchain] bitcoinsv balance for ${address}: 79958.18934401 BSV (7995818934401 base units`,
+    );
+  });
+
   it("reads Stellar stroops and trustlines through automatic provider selection", async () => {
     const address = "GAHK7EEG2WWHVKDNT4CEQFZGKF2LGDSW2IVM4S5DP42RBW3K6BTODB4A";
     const issuer = "GDM4RQUQQUVSKQA7S6EM7XBZP3FCGH4Q7CL6TABQ7B2BEJ5ERARM2M5M";
