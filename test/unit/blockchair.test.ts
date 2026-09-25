@@ -12,6 +12,9 @@ const XEC_ADDRESS = "ecash:prfhcnyqnl5cgrnmlfmms675w93ld7mvvqd0y8lz07";
 const BCH_ADDRESS = "bitcoincash:qz3yjg59ypg6jqpwhaxgvjj44jm4hdx0w5wsxw2qez";
 /* A busy transparent Zcash address. Blockchair read it at height 3495566 on 2026-09-25. */
 const ZEC_ADDRESS = "t1YQV51DKzKP63xJcynXuRfryMjfmgTJ7Jc";
+/* The 2-of-2 multisig that sent 197 650 LTC in block 3183898 on 2026-09-25, trimmed from
+   Blockchair's transaction dashboard for 8a0670f5...a114b. */
+const LTC_ADDRESS = "ltc1q7tm3qxw59zatfzw4993l6h30sp2jwa7dhem62z8v4tw0ty7vl2rsmf963x";
 
 function stubJSON(body: unknown) {
   const fetch = vi.fn<typeof globalThis.fetch>(
@@ -247,6 +250,55 @@ describe("blockchair provider", () => {
     });
   });
 
+  it("reads a Litecoin transaction in litoshis", async () => {
+    const hash = "8a0670f5f0b5506d04777e8d84f6b598abcc144993231f9094beed11e37a114b";
+    const fetch = stubJSON({
+      data: {
+        [hash]: {
+          transaction: {
+            block_id: 3183898,
+            hash,
+            time: "2026-09-25 03:08:17",
+            is_coinbase: false,
+            input_count: 2,
+            output_count: 2,
+            input_total: 19765422931560,
+            output_total: 19765422928880,
+            fee: 2680,
+          },
+          inputs: [{ index: 1, value: 8692484157928, recipient: LTC_ADDRESS }],
+          outputs: [
+            {
+              index: 0,
+              value: 19765000000000,
+              recipient: "ltc1qcfxz37cdmd235t0375f2ausfcltuw3q2mxutsmnu9p4px9w0t6fq7l95pa",
+            },
+            { index: 1, value: 422928880, recipient: LTC_ADDRESS },
+          ],
+        },
+      },
+      context: { code: 200, state: 3184044 },
+    });
+    const provider = await create("blockchair");
+
+    const transaction = await provider.getTxDetail(hash, "litecoin");
+
+    expect(transaction).toMatchObject({
+      hash,
+      blockNumber: 3183898,
+      timestamp: "2026-09-25T03:08:17.000Z",
+      to: null,
+      value: "19765422928880",
+      valueFormatted: "197654.2292888",
+      fee: "2680",
+      status: "success",
+      isContractInteraction: false,
+    });
+    expect(String(fetch.mock.calls[0]?.[0])).toBe(
+      `https://api.blockchair.com/litecoin/dashboards/transaction/${hash}`,
+    );
+  });
+
   it("maps Ethereum transaction fields without multiplying wei", async () => {
     stubJSON({
       data: {
@@ -289,6 +341,7 @@ describe("blockchair provider", () => {
   it.each([
     ["bitcoin", "bitcoin"],
     ["bitcoincash", "bitcoin-cash"],
+    ["litecoin", "litecoin"],
     ["ecash", "ecash"],
     ["zcash", "zcash"],
   ] as const)("reads the genesis block on %s by height", async (chain, slug) => {

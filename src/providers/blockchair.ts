@@ -1,8 +1,8 @@
 /**
  * Blockchair provider — multi-chain block explorer
  *
- * Supports Bitcoin, Bitcoin Cash, Ethereum, eCash and Zcash. Free tier: limited requests, dashboard
- * queries. Auth: optional BLOCKCHAIR_API_KEY for higher limits.
+ * Supports Bitcoin, Bitcoin Cash, Litecoin, Ethereum, eCash and Zcash. Free tier: limited requests,
+ * dashboard queries. Auth: optional BLOCKCHAIR_API_KEY for higher limits.
  */
 
 import type {
@@ -25,6 +25,7 @@ import { assertSafePathSegment } from "../core/path-safety.ts";
 const CHAIN_NAMES: Partial<Record<ChainKey, string>> = {
   bitcoin: "bitcoin",
   bitcoincash: "bitcoin-cash",
+  litecoin: "litecoin",
   ethereum: "ethereum",
   ecash: "ecash",
   zcash: "zcash",
@@ -34,6 +35,7 @@ const CHAIN_NAMES: Partial<Record<ChainKey, string>> = {
 const UTXO_DECIMALS: Partial<Record<ChainKey, number>> = {
   bitcoin: 8,
   bitcoincash: 8,
+  litecoin: 8,
   ecash: 2,
   zcash: 8,
 };
