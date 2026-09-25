@@ -120,6 +120,7 @@ describe("resolveProvider", () => {
     expect(resolveProvider(undefined, "solana")).toBe("solscan");
     expect(resolveProvider(undefined, "ecash")).toBe("blockchair");
     expect(resolveProvider(undefined, "bitcoincash")).toBe("blockchair");
+    expect(resolveProvider(undefined, "zcash")).toBe("blockchair");
     expect(resolveProvider(undefined, "pepecoin")).toBe("mempool");
   });
 
@@ -183,6 +184,15 @@ describe("withProvider", () => {
         "bitcoincash:qz3yjg59ypg6jqpwhaxgvjj44jm4hdx0w5wsxw2qez",
       ),
     ).resolves.toEqual({ chain: "bitcoincash", name: "blockchair" });
+    await expect(
+      withProvider(
+        undefined,
+        undefined,
+        async ({ chain, name }) => ({ chain, name }),
+        "balances",
+        "t1YQV51DKzKP63xJcynXuRfryMjfmgTJ7Jc",
+      ),
+    ).resolves.toEqual({ chain: "zcash", name: "blockchair" });
   });
 
   it("reads a legacy address as Bitcoin SV only when the chain or the provider says so", async () => {

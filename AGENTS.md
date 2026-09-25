@@ -10,7 +10,7 @@ Unified block explorer provider library. Normalizes balances, tx history, contra
 | ------------ | ----------------------- | -------------------------------------------------------------------------------- | ----------------------------------------------------------- |
 | etherscan    | API key (free: 5 req/s) | eth, base, arbitrum, optimism, polygon, bsc, avalanche, gnosis, linea, bera      | Full: balances, tx, transfers, contract, tokens, gas, block |
 | blockscout   | none                    | eth, base, arbitrum, optimism, polygon, gnosis, linea, scroll, zksync, avalanche | Full: balances, tx, transfers, contract, tokens, gas, block |
-| blockchair   | optional key            | bitcoin, bitcoincash, eth, ecash                                                 | balances, tx, block                                         |
+| blockchair   | optional key            | bitcoin, bitcoincash, eth, ecash, zcash                                          | balances, tx, block                                         |
 | mempool      | none                    | bitcoin, litecoin, pepecoin                                                      | balances, tx, utxos; gas and block on Bitcoin and Litecoin  |
 | blockstream  | none                    | bitcoin                                                                          | balances, tx detail/history, utxos, block                   |
 | solscan      | `SOLSCAN_API_KEY`       | solana                                                                           | balances, tx detail/history, block                          |
@@ -62,7 +62,7 @@ Unified block explorer provider library. Normalizes balances, tx history, contra
 
 - Etherscan: 5 req/s free tier, needs `ETHERSCAN_API_KEY`
 - Blockscout serves the complete holding array from `/addresses/:address/token-balances`; large wallets can produce multi-megabyte responses, so this read allows 60 seconds unless `ProviderConfig.timeout` overrides it.
-- Blockchair: data format differs between UTXO (bitcoin, bitcoincash, ecash) and EVM chains; eCash amounts are satoshis at 2 decimals (100 satoshis = 1 XEC). Bitcoin Cash lives under the `bitcoin-cash` slug, and its address dashboard takes CashAddr with or without the `bitcoincash:` prefix as well as the legacy form
+- Blockchair: data format differs between UTXO (bitcoin, bitcoincash, ecash, zcash) and EVM chains; eCash amounts are satoshis at 2 decimals (100 satoshis = 1 XEC). Bitcoin Cash lives under the `bitcoin-cash` slug, and its address dashboard takes CashAddr with or without the `bitcoincash:` prefix as well as the legacy form. Zcash amounts are zatoshis (8 decimals) of the transparent side only: a fully shielded transaction reads as value and fee `"0"`
 - Blockchair answers a spent limit with 402 or 435 to 437 and a blocked IP with 430 or 434. `read()` in the provider turns those into `RateLimitError` with `context.error` in the message, outside `Provider` retries, since a block does not clear in seconds; a keyless block also names `BLOCKCHAIR_API_KEY`
 - Solscan, Helius, TONAPI, TRONSCAN, Aptos, Blockberry, Horizon, WhatsOnChain and Blockbook are single-chain providers and throw `UnsupportedChainError` for other chains.
 - Helius Enhanced Transactions v0 exposes no REST balance endpoint, so `getBalance` throws `UnsupportedOperationError`; the key travels as the `api-key` query parameter, which `sanitizeUrl` redacts.
@@ -104,7 +104,7 @@ graph TB
 ### Provider categories
 
 1. **Multi-chain EVM** (etherscan, blockscout): support 10 EVM chains each
-2. **Bitcoin/Ethereum bridge** (blockchair): dashboard API for Bitcoin, Bitcoin Cash, Ethereum and eCash
+2. **Bitcoin/Ethereum bridge** (blockchair): dashboard API for Bitcoin, Bitcoin Cash, Ethereum, eCash and Zcash
 3. **Esplora-compatible UTXO** (mempool, blockstream): Mempool serves Bitcoin, Litecoin and Pepecoin; Blockstream serves Bitcoin as an independent backend
 4. **Bitcoin SV** (whatsonchain): WhatsOnChain REST, the only Bitcoin SV backend
 5. **Bitcoin Gold** (blockbook): Blockbook REST at btgexplorer.com, the only Bitcoin Gold backend

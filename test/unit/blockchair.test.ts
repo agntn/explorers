@@ -10,6 +10,8 @@ const XEC_ADDRESS = "ecash:prfhcnyqnl5cgrnmlfmms675w93ld7mvvqd0y8lz07";
 /* RetiredCoder's mini-puzzle prize for puzzle 130. At height 970065 Haskoin Store counts 14
    transactions and 2.5900718 BCH received, all of it spent since. */
 const BCH_ADDRESS = "bitcoincash:qz3yjg59ypg6jqpwhaxgvjj44jm4hdx0w5wsxw2qez";
+/* A busy transparent Zcash address. Blockchair read it at height 3495566 on 2026-09-25. */
+const ZEC_ADDRESS = "t1YQV51DKzKP63xJcynXuRfryMjfmgTJ7Jc";
 
 function stubJSON(body: unknown) {
   const fetch = vi.fn<typeof globalThis.fetch>(
@@ -127,6 +129,40 @@ describe("blockchair provider", () => {
     );
   });
 
+  it("reads a transparent Zcash balance in zatoshis", async () => {
+    const fetch = stubJSON({
+      data: {
+        [ZEC_ADDRESS]: {
+          address: {
+            type: "pubkeyhash",
+            balance: 331532453371,
+            received: 850160060998916,
+            spent: 849828528545545,
+            transaction_count: 293389,
+          },
+        },
+      },
+      context: { code: 200, state: 3495566 },
+    });
+    const provider = await create("blockchair");
+
+    const balance = await provider.getBalance(ZEC_ADDRESS, "zcash");
+
+    expect(balance).toMatchObject({
+      address: ZEC_ADDRESS,
+      chain: "zcash",
+      balance: "331532453371",
+      balanceFormatted: "3315.32453371",
+      symbol: "ZEC",
+      funded: "850160060998916",
+      spent: "849828528545545",
+      blockNumber: 3495566,
+    });
+    expect(String(fetch.mock.calls[0]?.[0])).toBe(
+      `https://api.blockchair.com/zcash/dashboards/address/${ZEC_ADDRESS}`,
+    );
+  });
+
   it("does not label account balances as UTXO funding", async () => {
     stubJSON({
       data: {
@@ -167,6 +203,45 @@ describe("blockchair provider", () => {
       value: "5000",
       valueFormatted: "50",
       fee: "219",
+      status: "success",
+      isContractInteraction: false,
+    });
+  });
+
+  it("maps a transparent Zcash transfer through the UTXO shape", async () => {
+    const hash = "a112ffff7397e129fb64d3f3d522c4440d4558c46b454971d8444bd0c8db6d86";
+    stubJSON({
+      data: {
+        [hash]: {
+          transaction: {
+            block_id: 3495500,
+            hash,
+            time: "2026-09-25 08:03:01",
+            is_coinbase: false,
+            input_total: 7029990000,
+            output_total: 7029980000,
+            fee: 10000,
+            shielded_value_delta: 0,
+          },
+          inputs: [],
+          outputs: [],
+        },
+      },
+      context: { code: 200 },
+    });
+    const provider = await create("blockchair");
+
+    const transaction = await provider.getTxDetail(hash, "zcash");
+
+    expect(transaction).toMatchObject({
+      hash,
+      blockNumber: 3495500,
+      timestamp: "2026-09-25T08:03:01.000Z",
+      from: "",
+      to: null,
+      value: "7029980000",
+      valueFormatted: "70.2998",
+      fee: "10000",
       status: "success",
       isContractInteraction: false,
     });
@@ -215,6 +290,7 @@ describe("blockchair provider", () => {
     ["bitcoin", "bitcoin"],
     ["bitcoincash", "bitcoin-cash"],
     ["ecash", "ecash"],
+    ["zcash", "zcash"],
   ] as const)("reads the genesis block on %s by height", async (chain, slug) => {
     const hash = "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f";
     const fetch = stubJSON({

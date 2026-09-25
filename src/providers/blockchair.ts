@@ -1,8 +1,8 @@
 /**
  * Blockchair provider — multi-chain block explorer
  *
- * Supports Bitcoin, Bitcoin Cash, Ethereum and eCash. Free tier: limited requests, dashboard queries. Auth:
- * optional BLOCKCHAIR_API_KEY for higher limits.
+ * Supports Bitcoin, Bitcoin Cash, Ethereum, eCash and Zcash. Free tier: limited requests, dashboard
+ * queries. Auth: optional BLOCKCHAIR_API_KEY for higher limits.
  */
 
 import type {
@@ -27,6 +27,7 @@ const CHAIN_NAMES: Partial<Record<ChainKey, string>> = {
   bitcoincash: "bitcoin-cash",
   ethereum: "ethereum",
   ecash: "ecash",
+  zcash: "zcash",
 };
 
 /** Blockchair's UTXO-shaped chains and their base-unit decimals. */
@@ -34,6 +35,7 @@ const UTXO_DECIMALS: Partial<Record<ChainKey, number>> = {
   bitcoin: 8,
   bitcoincash: 8,
   ecash: 2,
+  zcash: 8,
 };
 
 const DEFAULT_BASE = "https://api.blockchair.com";
