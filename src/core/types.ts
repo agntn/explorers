@@ -50,7 +50,7 @@ export interface Transaction {
   blockNumber: number;
   /** Timestamp (ISO) */
   timestamp?: string;
-  /** Sender */
+  /** Sender; an empty string when the explorer names none */
   from: string;
   /** Recipient; null when the explorer names none, an empty string for an Arweave data upload */
   to: string | null;

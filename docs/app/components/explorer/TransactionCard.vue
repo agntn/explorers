@@ -42,7 +42,8 @@ const gasPriceText = computed(() => {
       </dd>
       <dt>from</dt>
       <dd class="font-mono text-[13px] break-all">
-        <NuxtLink :to="addressPath(answer.chain, transaction.from)" class="hover:text-primary">{{ transaction.from }}</NuxtLink>
+        <span v-if="transaction.from === ''" class="text-dimmed">empty · the explorer names no sender</span>
+        <NuxtLink v-else :to="addressPath(answer.chain, transaction.from)" class="hover:text-primary">{{ transaction.from }}</NuxtLink>
       </dd>
       <dt>to</dt>
       <dd class="font-mono text-[13px] break-all">
