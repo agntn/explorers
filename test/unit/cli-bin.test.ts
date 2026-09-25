@@ -1,6 +1,15 @@
 /// <reference types="node" />
 import { execFile } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync } from "node:fs";
+import {
+  chmodSync,
+  cpSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -89,6 +98,34 @@ describe("explorers mcp from the built bin", () => {
 
       expect(loaded).toContain(pathToFileURL(join(copy, "dist/cli.mjs")).href);
       expect(loaded.filter((url) => url.endsWith(".ts"))).toEqual([]);
+    } finally {
+      rmSync(copy, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("explorers as an installed executable", () => {
+  it("starts through its shebang, the way npm and npx run a linked bin", async () => {
+    const copy = copyPackage(tmpdir(), []);
+    try {
+      symlinkSync(resolve(root, "node_modules"), join(copy, "node_modules"));
+      const path = join(copy, "dist/cli.mjs");
+      chmodSync(path, 0o755);
+      /* PATH holds node alone: without a shebang the file runs through sh, and `import` must not resolve. */
+      const onlyNode = join(copy, "path");
+      mkdirSync(onlyNode);
+      symlinkSync(process.execPath, join(onlyNode, "node"));
+      const { version } = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8")) as {
+        version: string;
+      };
+
+      const { stdout } = await execFileAsync(path, ["--version"], {
+        encoding: "utf8",
+        env: { PATH: onlyNode },
+        timeout: 20_000,
+      });
+
+      expect(stdout.trim()).toBe(version);
     } finally {
       rmSync(copy, { recursive: true, force: true });
     }

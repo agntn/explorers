@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 /** Explorers CLI — unified block explorer commands */
 import { existsSync } from "node:fs";
 import { sep } from "node:path";
