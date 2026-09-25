@@ -1,15 +1,19 @@
 /**
  * Prints what each built entry runs on import: a bare `import "<entry>"` bundled with every module
  * treated as side-effectful, so the `sideEffects` field in package.json cannot hide anything.
- * Run `pnpm build` first. Every entry except `dist/cli.mjs` should print 0.
+ * External packages load either way, so their bare imports stay out of the count.
+ * Run `pnpm build` first, or pass another build directory. Every entry except `dist/cli.mjs` should
+ * print 0.
  */
 import { mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { build } from "vite";
 
-const dist = fileURLToPath(new URL("../dist/", import.meta.url));
+const dist = process.argv[2]
+  ? resolve(process.argv[2])
+  : fileURLToPath(new URL("../dist/", import.meta.url));
 const entries = [
   "index.mjs",
   "cli.mjs",
@@ -17,6 +21,7 @@ const entries = [
     .filter((file) => file.endsWith(".mjs"))
     .map((file) => `providers/${file}`),
 ];
+const bareImport = /^import "[^./][^"]*";\n?/gmu;
 const scratch = mkdtempSync(join(tmpdir(), "explorers-side-effects-"));
 
 try {
@@ -47,7 +52,10 @@ try {
     const bytes = (Array.isArray(result) ? result : [result])
       .flatMap((output) => ("output" in output ? output.output : []))
       .reduce(
-        (sum, chunk) => (chunk.type === "chunk" ? sum + Buffer.byteLength(chunk.code) : sum),
+        (sum, chunk) =>
+          chunk.type === "chunk"
+            ? sum + Buffer.byteLength(chunk.code.replaceAll(bareImport, ""))
+            : sum,
         0,
       );
     console.log(`${String(bytes).padStart(8)} B  dist/${entry}`);
