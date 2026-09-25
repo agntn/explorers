@@ -50,7 +50,7 @@ Unified block explorer provider library. Normalizes balances, tx history, contra
 - `src/core/input.ts` — User input classification (address/txhash/ens)
 - `src/providers/*.ts` — One file per provider, each exporting its class, listed in `builtins` and built as its own bundle entry
 - `src/commands/*.ts` - CLI subcommands (balance, tx, utxos, contract, tokens, transfers, gas, block, providers)
-- `src/cli.ts` - Citty CLI entry point. Inside a checkout, the built `dist/cli.mjs` loads the `mcp` command from `src/`, like the Pi and OMP extensions, so a local MCP server needs only a restart after a change. The npm package ships no `src/` and runs the bundle, and so does a copy under `node_modules`, where Node does not strip types. `EXPLORERS_DIST=1` forces the bundle. A change to `src/cli.ts` itself still needs `pnpm build`
+- `src/cli.ts` - Citty CLI entry point. Inside a checkout, the built `dist/cli.mjs` loads the `mcp` command from `src/`, like the Pi and OMP extensions, so a local MCP server needs only a restart after a change. The npm package ships no `src/` and runs the bundle, and so does a copy under `node_modules`, where Node does not strip types. `EXPLORERS_DIST=1` forces the bundle. A closed stdout or stderr (`| head -1`) ends the process through an `EPIPE` listener and keeps the exit code. A change to `src/cli.ts` itself still needs `pnpm build`
 
 ## CLI subcommands
 
