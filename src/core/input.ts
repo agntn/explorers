@@ -16,6 +16,7 @@ const HEX_HASH_CHAINS: readonly ChainKey[] = [
   "litecoin",
   "pepecoin",
   "ecash",
+  "zcash",
   "tron",
   "cardano",
   "decred",

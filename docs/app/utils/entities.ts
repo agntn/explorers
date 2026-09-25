@@ -7,7 +7,7 @@ export { isIdentifier };
 export type EntityKind = "address" | "tx" | "block";
 
 /** Chains whose transaction hashes are plain hex, as `HEX_HASH_CHAINS` lists them in the library. */
-const HEX_HASH_CHAINS = new Set(["bitcoin", "bitcoincash", "bitcoinsv", "bitcoingold", "litecoin", "pepecoin", "ecash", "tron", "cardano", "decred", "stellar"]);
+const HEX_HASH_CHAINS = new Set(["bitcoin", "bitcoincash", "bitcoinsv", "bitcoingold", "litecoin", "pepecoin", "ecash", "zcash", "tron", "cardano", "decred", "stellar"]);
 
 /**
  * Mirrors `classifyInput` in `src/core/input.ts`, plus a block number for input that's all digits.
@@ -63,6 +63,7 @@ const EXTERNAL: Record<string, ExternalPattern> = {
   litecoin: { address: "/address/{id}", tx: "/tx/{id}", block: "/block/{id}" },
   pepecoin: { address: "/address/{id}", tx: "/tx/{id}", block: "/block/{id}" },
   ecash: { address: "/address/{id}", tx: "/tx/{id}" },
+  zcash: { address: "/address/{id}", tx: "/transaction/{id}", block: "/block/{id}" },
   solana: { address: "/account/{id}", tx: "/tx/{id}", block: "/block/{id}" },
   ton: { address: "/address/{id}", tx: "/tx/{id}" },
   tron: { address: "/#/address/{id}", tx: "/#/transaction/{id}", block: "/#/block/{id}" },

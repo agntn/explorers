@@ -44,6 +44,7 @@ describe("classifyInput", () => {
     expect(classifyInput("a".repeat(64), "bitcoincash")).toBe("txhash");
     expect(classifyInput("a".repeat(64), "bitcoinsv")).toBe("txhash");
     expect(classifyInput("a".repeat(64), "bitcoingold")).toBe("txhash");
+    expect(classifyInput("a".repeat(64), "zcash")).toBe("txhash");
     expect(classifyInput("a".repeat(64), "pepecoin")).toBe("txhash");
     expect(classifyInput("2".repeat(64), "solana")).toBe("txhash");
     expect(classifyInput("2".repeat(44), "sui")).toBe("txhash");
@@ -148,6 +149,7 @@ describe("inferChain", () => {
     expect(inferChain("bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq")).toBe("bitcoin");
     expect(inferChain("TNPeeaaFB7K9cmo4uQpcU32zGK8G1NYqeL")).toBe("tron");
     expect(inferChain("GNiT8AiCaMYPYW9uSgmq2qUsVjNgh1kdty")).toBe("bitcoingold");
+    expect(inferChain("t1YQV51DKzKP63xJcynXuRfryMjfmgTJ7Jc")).toBe("zcash");
     expect(inferChain("bitcoincash:qz3yjg59ypg6jqpwhaxgvjj44jm4hdx0w5wsxw2qez")).toBe(
       "bitcoincash",
     );
