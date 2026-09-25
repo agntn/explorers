@@ -8,14 +8,22 @@ const props = defineProps<{ sample: ExplorerSample; tick: number }>();
 const W = 1200;
 const H = 420;
 const CALL = { x: 24, y: 130, w: 340, h: 160 };
-const NODE = { x: 510, w: 200, h: 23, gap: 1 };
 const RESULT = { x: 870, y: 20, w: 306, h: 380 };
 
-/** Every registered provider, in registry order; the ones that serve the sample's chain are wired, the chosen one lit. Seventeen rows fit the 420 high box with 1 between them and 6 above the first. */
+/** One row per provider, 1 apart, sized to fill the box less 6 at each edge; the stack is centred in what rounding leaves over. */
+const EDGE = 6;
+const GAP = 1;
+const ROW_H = Math.floor((H - 2 * EDGE - (PROVIDERS.length - 1) * GAP) / PROVIDERS.length);
+const TOP = Math.floor((H - PROVIDERS.length * (ROW_H + GAP) + GAP) / 2);
+const NODE = { x: 510, w: 200, h: ROW_H };
+/** Baseline that centres the 13px provider label in a row. */
+const TEXT_Y = Math.round(ROW_H / 2 + 4.5);
+
+/** Every registered provider, in registry order; the ones that serve the sample's chain are wired, the chosen one lit. */
 const nodes = computed(() =>
   PROVIDERS.map((provider, index) => ({
     ...provider,
-    y: 6 + index * (NODE.h + NODE.gap),
+    y: TOP + index * (NODE.h + GAP),
     serves: provider.chains.includes(props.sample.chain),
     active: provider.key === props.sample.provider,
   })),
@@ -125,12 +133,12 @@ const inputFontSize = computed(() =>
       :opacity="node.serves ? 1 : 0.45"
     >
       <rect :x="NODE.x" :y="node.y" :width="NODE.w" :height="NODE.h" rx="6" />
-      <text :x="NODE.x + 12" :y="node.y + 16" class="explorers-flow-small">
+      <text :x="NODE.x + 12" :y="node.y + TEXT_Y" class="explorers-flow-small">
         {{ providerLabel(node.key) }}
       </text>
       <text
         :x="NODE.x + NODE.w - 12"
-        :y="node.y + 16"
+        :y="node.y + TEXT_Y"
         text-anchor="end"
         class="explorers-flow-label"
       >
