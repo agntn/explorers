@@ -24,6 +24,7 @@ function useNoProviderCredentials() {
   vi.stubEnv("HELIUS_API_KEY", "");
   vi.stubEnv("TRONSCAN_API_KEY", "");
   vi.stubEnv("BLOCKBERRY_API_KEY", "");
+  vi.stubEnv("WHATSONCHAIN_API_KEY", "");
 }
 
 function useOnlyEtherscanCredentials() {
@@ -182,6 +183,27 @@ describe("withProvider", () => {
         "bitcoincash:qz3yjg59ypg6jqpwhaxgvjj44jm4hdx0w5wsxw2qez",
       ),
     ).resolves.toEqual({ chain: "bitcoincash", name: "blockchair" });
+  });
+
+  it("reads a legacy address as Bitcoin SV only when the chain or the provider says so", async () => {
+    useNoProviderCredentials();
+    const run = async ({ chain, name }: Readonly<{ chain: string; name: string }>) => ({
+      chain,
+      name,
+    });
+    const address = "1AndrewYangForPresident2o2ozm6Pzd";
+
+    await expect(withProvider(undefined, "bitcoinsv", run, "balances", address)).resolves.toEqual({
+      chain: "bitcoinsv",
+      name: "whatsonchain",
+    });
+    await expect(
+      withProvider("whatsonchain", undefined, run, "balances", address),
+    ).resolves.toEqual({ chain: "bitcoinsv", name: "whatsonchain" });
+    await expect(withProvider("mempool", undefined, run, "balances", address)).resolves.toEqual({
+      chain: "bitcoin",
+      name: "mempool",
+    });
   });
 
   it("keeps Ethereum for an EVM address and an explicit chain over the address", async () => {

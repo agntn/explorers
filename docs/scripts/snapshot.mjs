@@ -30,6 +30,7 @@ const PROVIDER_DEFAULT_CHAIN = {
   arweave: "arweave",
   dcrdata: "decred",
   horizon: "stellar",
+  whatsonchain: "bitcoinsv",
 };
 
 const out = fileURLToPath(new URL("../app/data/explorers.json", import.meta.url));

@@ -32,9 +32,10 @@ const ENV_MAP: Record<string, string[]> = {
   arweave: [],
   dcrdata: [],
   horizon: [],
+  whatsonchain: ["WHATSONCHAIN_API_KEY"],
 };
 
-const OPTIONAL_CREDENTIAL_PROVIDERS: readonly string[] = ["blockchair"];
+const OPTIONAL_CREDENTIAL_PROVIDERS: readonly string[] = ["blockchair", "whatsonchain"];
 
 /** Provider-specific default chains */
 export const PROVIDER_DEFAULT_CHAIN: Partial<Record<string, ChainKey>> = {
@@ -50,6 +51,7 @@ export const PROVIDER_DEFAULT_CHAIN: Partial<Record<string, ChainKey>> = {
   arweave: "arweave",
   dcrdata: "decred",
   horizon: "stellar",
+  whatsonchain: "bitcoinsv",
 };
 
 function hasConfiguredCredentials(envKeys: readonly string[]): boolean {
@@ -249,7 +251,11 @@ function startingChain(
   chain: ChainKey | undefined,
   input: string | readonly string[] | undefined,
 ): ChainKey | undefined {
-  return chain ?? inferChain(input) ?? (preferred === undefined ? normalizeChain() : undefined);
+  return (
+    chain ??
+    inferChain(input, preferred) ??
+    (preferred === undefined ? normalizeChain() : undefined)
+  );
 }
 
 /**

@@ -166,4 +166,11 @@ export const builtins: readonly ProviderEntry[] = [
     defaultURL: HORIZON_URL,
     load: () => import("./horizon.ts").then((m) => m.Horizon),
   },
+  {
+    key: "whatsonchain",
+    chains: ["bitcoinsv"],
+    capabilities: ["balances", "txHistory", "txDetail", "utxos", "blockInfo"],
+    defaultURL: "https://api.whatsonchain.com/v1/bsv/main",
+    load: () => import("./whatsonchain.ts").then((m) => m.WhatsOnChain),
+  },
 ] satisfies readonly BuiltinProviderEntry[];

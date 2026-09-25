@@ -15,6 +15,7 @@ function useOnlyBlockberryCredentials(): void {
   vi.stubEnv("HELIUS_API_KEY", "");
   vi.stubEnv("TRONSCAN_API_KEY", "");
   vi.stubEnv("BLOCKBERRY_API_KEY", "configured");
+  vi.stubEnv("WHATSONCHAIN_API_KEY", "");
 }
 
 function stubJSON(body: unknown): void {

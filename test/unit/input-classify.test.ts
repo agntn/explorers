@@ -42,6 +42,7 @@ describe("classifyInput", () => {
     expect(classifyInput("a".repeat(64), "bitcoin")).toBe("txhash");
     expect(classifyInput("a".repeat(64), "ecash")).toBe("txhash");
     expect(classifyInput("a".repeat(64), "bitcoincash")).toBe("txhash");
+    expect(classifyInput("a".repeat(64), "bitcoinsv")).toBe("txhash");
     expect(classifyInput("a".repeat(64), "pepecoin")).toBe("txhash");
     expect(classifyInput("2".repeat(64), "solana")).toBe("txhash");
     expect(classifyInput("2".repeat(44), "sui")).toBe("txhash");
@@ -153,6 +154,13 @@ describe("inferChain", () => {
   it("names the one chain a provider serves when forks share the format", () => {
     expect(identify(BITCOIN).matches.map((match) => match.key)).toEqual(["bitcoin", "bitcoinsv"]);
     expect(inferChain(BITCOIN)).toBe("bitcoin");
+  });
+
+  it("gives a shared format to the chains a named provider serves", () => {
+    expect(inferChain(BITCOIN, "whatsonchain")).toBe("bitcoinsv");
+    expect(inferChain(BITCOIN, "blockstream")).toBe("bitcoin");
+    // Etherscan serves neither, so the address keeps the chain it reads as without a provider.
+    expect(inferChain(BITCOIN, "etherscan")).toBe("bitcoin");
   });
 
   it("leaves EVM addresses, ENS names, hashes and unknown input unresolved", () => {

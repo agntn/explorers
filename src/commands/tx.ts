@@ -127,7 +127,7 @@ export default defineCommand({
       const providerInput = args.provider as string | undefined;
       const target = (args.target as string).trim();
       const requestedChain =
-        chainInput === undefined ? inferChain(target) : normalizeChain(chainInput);
+        chainInput === undefined ? inferChain(target, providerInput) : normalizeChain(chainInput);
       const initialName = resolveProvider(providerInput, requestedChain);
       const initialChain = requestedChain ?? normalizeChain(PROVIDER_DEFAULT_CHAIN[initialName]);
       const mode = await transactionMode(args.mode as string | undefined, target, initialChain);
