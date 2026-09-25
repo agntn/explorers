@@ -1,5 +1,6 @@
 /// <reference types="node" />
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
+import { once } from "node:events";
 import { describe, expect, it } from "vitest";
 
 function runCLI(args: readonly string[], prelude = "") {
@@ -141,5 +142,23 @@ globalThis.fetch = async (input) => {
     expect(result.error).toBeUndefined();
     expect(result.status, result.stderr).toBe(0);
     expect(result.stdout).toContain(expected);
+  });
+
+  it("ends quietly when the reader of stdout goes away", async () => {
+    const child = spawn(process.execPath, ["--import", "tsx", "src/cli.ts", "providers"], {
+      cwd: new URL("../../", import.meta.url),
+      env: { ...process.env, CONSOLA_LEVEL: "3" },
+      stdio: ["ignore", "pipe", "pipe"],
+      timeout: 10_000,
+    });
+    // Closing the read end before the child writes makes its first write fail with EPIPE, as
+    // after `| head -1`.
+    child.stdout.destroy();
+    let stderr = "";
+    child.stderr.setEncoding("utf8").on("data", (chunk: string) => (stderr += chunk));
+    await once(child, "close");
+
+    expect(stderr).toBe("");
+    expect(child.exitCode).toBe(0);
   });
 });
