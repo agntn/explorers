@@ -129,7 +129,7 @@ graph TB
 
 ## Test coverage gaps
 
-**Covered** (37 test files): provider base/registry, provider resolution, HTTP client, path safety, amount formatting, errors, input classification, chain normalization, CLI argument routing, extension integration, the built bin's `mcp` source switch, plus all fifteen providers. `test/unit/cli-bin.test.ts` runs `dist/cli.mjs`, so it needs `pnpm build` first, as CI does.
+**Covered** (37 test files): provider base/registry, provider resolution, HTTP client, path safety, amount formatting, errors, input classification, chain normalization, CLI argument routing, extension integration, the built bin's `mcp` source switch and its start through the shebang, plus all fifteen providers. `test/unit/cli-bin.test.ts` runs `dist/cli.mjs`, so it needs `pnpm build` first, as CI does.
 **CLI coverage**: help without backend imports, errors for unknown chains, provider listing, and mocked balance, transaction and token reads. Successful contract, transfer, gas, and block command execution remains untested.
 **Test style**: Focused unit tests for local contracts and mocked explorer API responses. Live roundtrips belong in `test/live` and run only through `pnpm test:live`.
 
