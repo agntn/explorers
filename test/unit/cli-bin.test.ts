@@ -4,10 +4,12 @@ import {
   chmodSync,
   cpSync,
   existsSync,
+  globSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
   rmSync,
+  statSync,
   symlinkSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -54,6 +56,24 @@ async function runMcp(
   return (JSON.parse(report) as unknown[]).map(String);
 }
 
+/* The first build input changed after `dist/cli.mjs` was written, if any. */
+function newerThanBuild(): string | undefined {
+  const built = statSync(bin).mtimeMs;
+  const inputs = [
+    ...globSync("src/**/*.ts", { cwd: root }),
+    "package.json",
+    "pnpm-lock.yaml",
+    "vite.config.ts",
+  ];
+  return inputs.find((input) => statSync(resolve(root, input)).mtimeMs > built);
+}
+
+beforeAll(() => {
+  if (!existsSync(bin)) throw new Error("dist/cli.mjs is missing, run pnpm build first");
+  const input = newerThanBuild();
+  if (input !== undefined) throw new Error(`dist/cli.mjs is older than ${input}, run pnpm build`);
+});
+
 /* Copy the built package with the given entries next to `dist`, resolving dependencies from the checkout. */
 function copyPackage(parent: string, entries: readonly string[]): string {
   mkdirSync(parent, { recursive: true });
@@ -65,10 +85,6 @@ function copyPackage(parent: string, entries: readonly string[]): string {
 }
 
 describe("explorers mcp from the built bin", () => {
-  beforeAll(() => {
-    if (!existsSync(bin)) throw new Error("dist/cli.mjs is missing, run pnpm build first");
-  });
-
   it("serves the live source inside a checkout and the bundle under EXPLORERS_DIST=1", async () => {
     const source = pathToFileURL(join(root, "src/")).href;
     const live = await runMcp(bin);
