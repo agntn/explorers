@@ -43,15 +43,15 @@
     "access": "public"
   },
   "scripts": {
-    "build": "obuild",
-    "dev": "obuild --stub",
+    "build": "vp pack",
+    "dev": "vp pack --watch",
     "docs": "pnpm --dir docs dev",
-    "fmt": "oxlint . --fix && oxfmt .",
-    "lint": "oxlint . && oxfmt --check .",
+    "fmt": "vp lint --fix && vp fmt",
+    "lint": "vp lint && vp fmt --check",
     "typecheck": "pnpm build && tsc --noEmit",
-    "test": "vitest",
-    "test:run": "vitest --run",
-    "test:live": "EXPLORERS_LIVE=1 vitest --run",
+    "test": "vp test watch",
+    "test:run": "vp test run",
+    "test:live": "EXPLORERS_LIVE=1 vp test run",
     "prepack": "pnpm run build",
     "release": "pnpm test:run && changelogen --release --push"
   },
@@ -71,14 +71,11 @@
     "@oh-my-pi/pi-coding-agent": "17.2.12",
     "@types/node": "latest",
     "changelogen": "0.6.2",
-    "obuild": "0.4.40",
-    "oxfmt": "0.63.0",
-    "oxlint": "1.80.0",
-    "oxlint-tsgolint": "7.0.2002",
     "tsx": "4.22.5",
     "typebox": "1.3.34",
     "typescript": "6.0.3",
-    "vitest": "4.1.11"
+    "vite": "catalog:",
+    "vite-plus": "catalog:"
   },
   "peerDependencies": {
     "@earendil-works/pi-coding-agent": "*",

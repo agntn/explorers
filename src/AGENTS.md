@@ -30,7 +30,7 @@ src/
 
 ## Anti-patterns
 
-- Adding a new provider without matching chains and capabilities in `builtins` or an input in `build.config.ts`
+- Adding a new provider without matching chains and capabilities in `builtins` or a `pack.entry` in `vite.config.ts`
 - Computing a static class field or module constant with a call at load time instead of a lazy helper
 - Calling optional methods without checking both `capabilities` and method presence
 - Using `process.exit()` in library code (only in commands)

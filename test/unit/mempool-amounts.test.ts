@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import { create } from "../../src/core/registry.ts";
 
 const ADDRESS = "PqqJgKpAcMqoBaiy3aNHuR4SSLPdTz194q";

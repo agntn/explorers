@@ -1,7 +1,7 @@
-import { readdirSync, readFileSync } from "node:fs";
+import { readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { getChain } from "@agntn/chains";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vite-plus/test";
 import {
   getDefaultURL,
   listProviders,
@@ -11,12 +11,11 @@ import {
 } from "../../src/core/registry.ts";
 import type { ProviderCapability } from "../../src/core/provider.ts";
 import { builtins } from "../../src/providers/index.ts";
+import config from "../../vite.config.ts";
 
 const providerDir = fileURLToPath(new URL("../../src/providers/", import.meta.url));
-const buildConfig = readFileSync(
-  fileURLToPath(new URL("../../build.config.ts", import.meta.url)),
-  "utf8",
-);
+const packEntries: unknown =
+  config.pack && !Array.isArray(config.pack) ? config.pack.entry : undefined;
 
 const modules = readdirSync(providerDir).filter(
   (file) => file.endsWith(".ts") && file !== "index.ts",
@@ -158,7 +157,8 @@ describe("built-in provider registry", () => {
 
   it("builds every provider module as its own bundle entry", () => {
     for (const file of modules) {
-      expect(buildConfig).toContain(`./src/providers/${file}`);
+      const name = file.slice(0, -".ts".length);
+      expect(packEntries).toHaveProperty([`providers/${name}`], `src/providers/${file}`);
     }
   });
 });

@@ -1,5 +1,5 @@
 import consola from "consola";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import tokensCommand from "../../src/commands/tokens.ts";
 
 const HOLDER = "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045";

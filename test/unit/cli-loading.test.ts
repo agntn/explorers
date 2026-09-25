@@ -1,7 +1,7 @@
 /// <reference types="node" />
 import { spawn, spawnSync } from "node:child_process";
 import { once } from "node:events";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 function runCLI(args: readonly string[], prelude = "") {
   return spawnSync(

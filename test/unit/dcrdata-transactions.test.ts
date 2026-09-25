@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import { Dcrdata } from "../../src/providers/dcrdata.ts";
 import { classifyInput } from "../../src/core/input.ts";
 import { ExplorerError } from "../../src/core/errors.ts";

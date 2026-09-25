@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import { Arweave } from "../../src/providers/arweave.ts";
 import { create, supportsCapability } from "../../src/core/registry.ts";
 import { withProvider } from "../../src/core/resolve.ts";

@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import * as TypeBox from "@oh-my-pi/omptype/typebox";
 import type { ExtensionAPI, ExtensionContext, ToolDefinition } from "@oh-my-pi/pi-coding-agent";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import explorersOmpExtension from "../../packages/omp/extensions/explorers.ts";
 import type { Transaction } from "../../src/core/types.ts";
 import { builtins } from "../../src/providers/index.ts";

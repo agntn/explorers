@@ -183,18 +183,18 @@ Nodes. No RPC, no `eth_call`, no fullnode anything, that's not this package. Als
 
 ## 🧩 Adding a provider
 
-Want a sixteenth? A class extending `Provider`, an entry in `builtins`, a line in `build.config.ts`, and there's a test that notices when you skip one. Walkthrough: [Custom providers](https://explorers.agntn.dev/guide/custom).
+Want a sixteenth? A class extending `Provider`, an entry in `builtins`, a line in `vite.config.ts`, and there's a test that notices when you skip one. Walkthrough: [Custom providers](https://explorers.agntn.dev/guide/custom).
 
 ## 🛠️ Development
 
 ```bash
 pnpm install
-pnpm fmt         # oxlint --fix and oxfmt
+pnpm fmt         # vp lint --fix and vp fmt
 pnpm lint
 pnpm typecheck   # builds first, the OMP extension imports dist/
 pnpm test:run
 pnpm test:live    # public explorer roundtrips, not CI
-pnpm build       # obuild, one bundle per provider
+pnpm build       # vp pack, one bundle per provider
 ```
 
 ## 📄 License

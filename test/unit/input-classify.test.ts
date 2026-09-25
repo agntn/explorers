@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "vite-plus/test";
 import { identify } from "@agntn/chains";
 import { AddressChainMismatchError } from "../../src/core/errors.ts";
 import { classifyInput, inferChain, resolveAddresses } from "../../src/core/input.ts";

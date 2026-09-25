@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import { RateLimitError, UnsupportedChainError } from "../../src/core/errors.ts";
 import { create } from "../../src/core/registry.ts";
 

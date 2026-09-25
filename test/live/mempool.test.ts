@@ -1,5 +1,5 @@
 /** Live mempool.space, litecoinspace.org and peppool.space roundtrips. Run with `pnpm test:live`. */
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vite-plus/test";
 import type { Provider } from "../../src/core/provider.ts";
 import { create } from "../../src/core/registry.ts";
 

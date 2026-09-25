@@ -1,5 +1,5 @@
 /** Mempool provider tests with stubbed responses for Bitcoin, Litecoin and Pepecoin. */
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { create } from "../../src/core/registry.ts";
 
 // A known Bitcoin address with history

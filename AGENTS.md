@@ -108,7 +108,7 @@ graph TB
 
 - **Lazy registration**: `providers/index.ts` exports `builtins` with metadata and a `load` per provider, and `core/registry.ts` builds its map the first time anything asks the registry. `create(name)` awaits `load()` once and caches the class; every metadata question stays synchronous. `register(providerClass, meta)` covers provider classes living outside the package.
 - **Nothing runs on import**: library modules evaluate to declarations only. Derived values wait for their first use, such as `entries()` in the registry, `decoder()` in mempool and `agent()` in the HTTP client. `dist/cli.mjs` is the one bundle that runs on load, because it starts the CLI, and `sideEffects` in `package.json` says so.
-- **Measuring that claim**: `pnpm build` prints `Side effects` per bundle, but with `sideEffects` declared the number is circular, since the bundler believes the field. For a real reading, drop the field, rebuild, and compare: everything except `dist/cli.mjs` then comes back under 1 kB, and `INSPECT_BUILD=1 pnpm build` shows the remainder is the bundler runtime plus bare `ofetch` and `@agntn/chains` imports, not our code.
+- **Measuring that claim**: after `pnpm build`, `node scripts/side-effects.ts` bundles a bare import of every entry with each module treated as side-effectful, so the `sideEffects` field cannot hide anything, and prints what survives tree shaking, bare imports of external packages left out. Every entry except `dist/cli.mjs` prints 0 B.
 - **String-only values**: All wei/satoshi/native amounts are strings (`Balance.balance`, `TokenBalance.balance`). The HTTP boundary preserves unsafe JSON integers as strings; `formatWei()` converts amounts for display.
 - **Optional methods**: `getTxDetail`, `getUtxos`, `getContractInfo`, `getTokenBalances`, `getTokenTransfers`, `getGasData`, and `getBlockInfo` are optional on `Provider`. Always check both the `capabilities` getter and method presence before calling.
 - **Dynamic CLI imports**: Each subcommand is lazily loaded via `() => import('./commands/X.ts').then(m => m.default)`. Citty loads command declarations for help, so runtime core imports belong inside `run()` or execution helpers.
@@ -122,7 +122,7 @@ graph TB
 ## Anti-patterns to avoid
 
 - Writing a provider file without adding its chains and capabilities to `builtins` — the class never reaches capability-aware routing, and `test/unit/registry.test.ts` fails
-- A top-level call in a module the library entry can reach (`new Set()`, `Object.keys()`, a decoder, a prebuilt map) — it pins that module into every consumer bundle, which `pnpm build` reports as growing `Side effects`
+- A top-level call in a module the library entry can reach (`new Set()`, `Object.keys()`, a decoder, a prebuilt map) - it pins that module into every consumer bundle, which `node scripts/side-effects.ts` reports as bytes above 0
 - Calling an optional provider method without checking `capabilities` and method presence — unsupported operations stay absent at runtime
 - Assuming EVM address formats work on non-EVM chains (Solana base58, TON base64, TRON base58/hex)
 - Hardcoding chain names — always use `normalizeChain()` for user input
@@ -139,18 +139,17 @@ graph TB
 - `citty`: CLI framework
 - `consola`: Logging
 - `ofetch`: HTTP client
-- `obuild`: Build tool (bundle mode)
-- `vitest`: Testing
+- `vite-plus`: lint, format, tests and packing from one `vite.config.ts`; `vp pack` (tsdown) builds the bundle and `vp test` runs Vitest 5. Test files import from `vite-plus/test`
 
 ## Build & Scripts
 
 ```bash
-pnpm build          # obuild → dist/
-pnpm dev            # obuild --stub (watch mode)
+pnpm build          # vp pack → dist/
+pnpm dev            # vp pack --watch
 pnpm typecheck      # build, then tsc --noEmit
-pnpm lint           # oxlint, then oxfmt --check; CHANGELOG.md stays out of oxfmt
-pnpm test           # vitest watch (unit, offline)
-pnpm test:run       # vitest single run (unit, offline)
+pnpm lint           # vp lint, then vp fmt --check; CHANGELOG.md stays out of the formatter
+pnpm test           # vp test watch (unit, offline)
+pnpm test:run       # vp test run (unit, offline)
 pnpm test:live      # public explorer roundtrips, not CI
 pnpm release        # test, changelog, tag, push; CI publishes the tag
 ```
