@@ -206,6 +206,18 @@ describe("withProvider", () => {
     });
   });
 
+  it("reads a Bitcoin Gold address through Blockbook without a chain", async () => {
+    useNoProviderCredentials();
+    const run = async ({ chain, name }: Readonly<{ chain: string; name: string }>) => ({
+      chain,
+      name,
+    });
+
+    await expect(
+      withProvider(undefined, undefined, run, "utxos", "GNiT8AiCaMYPYW9uSgmq2qUsVjNgh1kdty"),
+    ).resolves.toEqual({ chain: "bitcoingold", name: "blockbook" });
+  });
+
   it("keeps Ethereum for an EVM address and an explicit chain over the address", async () => {
     useNoProviderCredentials();
     const run = async ({ chain }: Readonly<{ chain: string }>) => chain;

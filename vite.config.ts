@@ -90,6 +90,7 @@ export default defineConfig({
       "providers/dcrdata": "src/providers/dcrdata.ts",
       "providers/horizon": "src/providers/horizon.ts",
       "providers/whatsonchain": "src/providers/whatsonchain.ts",
+      "providers/blockbook": "src/providers/blockbook.ts",
     },
     dts: true,
     format: "esm",

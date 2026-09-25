@@ -1,6 +1,6 @@
 {
   "version": "0.5.6",
-  "generatedAt": "2026-09-25T08:50:17.959Z",
+  "generatedAt": "2026-09-25T09:18:05.048Z",
   "providers": [
     {
       "key": "etherscan",
@@ -253,6 +253,21 @@
       ],
       "defaultURL": "https://api.whatsonchain.com/v1/bsv/main",
       "defaultChain": "bitcoinsv"
+    },
+    {
+      "key": "blockbook",
+      "chains": [
+        "bitcoingold"
+      ],
+      "capabilities": [
+        "balances",
+        "txHistory",
+        "txDetail",
+        "utxos",
+        "blockInfo"
+      ],
+      "defaultURL": "https://btgexplorer.com",
+      "defaultChain": "bitcoingold"
     }
   ],
   "chains": [
@@ -536,6 +551,16 @@
       "explorer": "https://whatsonchain.com",
       "providers": [
         "whatsonchain"
+      ]
+    },
+    {
+      "key": "bitcoingold",
+      "name": "Bitcoin Gold",
+      "symbol": "BTG",
+      "type": "utxo",
+      "explorer": "https://btgexplorer.com",
+      "providers": [
+        "blockbook"
       ]
     }
   ]

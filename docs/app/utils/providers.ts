@@ -165,6 +165,12 @@ const PRESENTATION: Record<string, ProviderPresentation> = {
     optionalKey: true,
     blurb: "Bitcoin SV through WhatsOnChain. Satoshis, unspent outputs, fees priced from the parent transactions. Three requests a second without a key.",
   },
+  blockbook: {
+    label: "Blockbook",
+    icon: "i-lucide-book-marked",
+    envVars: [],
+    blurb: "Bitcoin Gold through the Blockbook API of btgexplorer.com. Satoshis, unspent outputs, fees and senders straight from each transaction, no key.",
+  },
 };
 
 export interface ProviderInfo extends ProviderSnapshot, ProviderPresentation {
@@ -211,6 +217,7 @@ const CHAIN_ICONS: Record<string, string> = {
   bitcoin: "i-token-btc",
   bitcoincash: "i-token-bch",
   bitcoinsv: "i-token-bsv",
+  bitcoingold: "i-token-btg",
   litecoin: "i-token-ltc",
   pepecoin: "i-lucide-leaf",
   ecash: "i-token-xec",
@@ -242,6 +249,7 @@ const NATIVE_DECIMALS: Record<string, number> = {
   bitcoin: 8,
   bitcoincash: 8,
   bitcoinsv: 8,
+  bitcoingold: 8,
   litecoin: 8,
   pepecoin: 8,
   ecash: 2,

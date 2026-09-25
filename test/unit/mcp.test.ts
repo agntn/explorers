@@ -368,6 +368,38 @@ describe("Explorers MCP server", () => {
     });
   });
 
+  it("reads Bitcoin Gold through Blockbook when the chain names it", async () => {
+    const address = "GNiT8AiCaMYPYW9uSgmq2qUsVjNgh1kdty";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json({
+          address,
+          balance: "53367161",
+          totalReceived: "26621747133",
+          totalSent: "26568379972",
+          unconfirmedBalance: "0",
+          unconfirmedTxs: 0,
+          txs: 2852,
+        }),
+      ),
+    );
+    const client = await connectTestClient();
+    const balance = parseToolResult(
+      await client.callTool({ name: "explorers_balance", arguments: { address, chain: "btg" } }),
+    );
+    expect(balance.isError).toBe(false);
+    expect(JSON.parse(balance.content[0]?.text ?? "null")).toMatchObject({
+      provider: "blockbook",
+      data: {
+        chain: "bitcoingold",
+        balance: "53367161",
+        balanceFormatted: "0.53367161",
+        symbol: "BTG",
+      },
+    });
+  });
+
   it("reads Stellar balances and trustlines through the MCP transport", async () => {
     const address = "GAHK7EEG2WWHVKDNT4CEQFZGKF2LGDSW2IVM4S5DP42RBW3K6BTODB4A";
     const issuer = "GDM4RQUQQUVSKQA7S6EM7XBZP3FCGH4Q7CL6TABQ7B2BEJ5ERARM2M5M";
