@@ -145,6 +145,73 @@ describe("tx command", () => {
     ]);
   });
 
+  it("prints no sender line for a transaction the explorer names no sender for", async () => {
+    vi.stubEnv("BLOCKCHAIR_API_KEY", "");
+    const hash = "8a1b50c0ad19c68cbbf3ac2cdaeb0a1a3c4ba8e0b3226e27ec9d9d17fe3e9e9e";
+    stubJSON({
+      data: {
+        [hash]: {
+          transaction: {
+            block_id: 3_183_898,
+            hash,
+            time: "2026-09-25 03:08:17",
+            output_total: 19_765_422_928_880,
+            fee: 2680,
+          },
+          inputs: [],
+          outputs: [],
+        },
+      },
+      context: { code: 200 },
+    });
+    const log = spyOnOutput();
+
+    await txCommand.run?.({
+      args: { _: [], target: hash, limit: "10", provider: "blockchair", chain: "litecoin" },
+    });
+
+    expect(log.mock.calls.map(([line]) => String(line))).toEqual([
+      `[blockchair] Tx ${hash}`,
+      "  Block: 3183898",
+      "  Value: 197654.2292888",
+      "  Status: success",
+      "  Fee: 2680 base units",
+    ]);
+  });
+
+  it("marks a missing sender in a history line with a placeholder", async () => {
+    useOnlyBlockberryCredentials();
+    const address = "0x61953ea72709eed72f4441dd944eec49a11b4acabfc8e04015e89c63be81b6ab";
+    stubJSON({
+      content: [
+        {
+          activityType: ["MOVE_CALL"],
+          activityWith: [],
+          timestamp: 1_700_000_000_000,
+          digest: "7xVY1uEZnDcqD5tJ3mQj",
+          txStatus: "SUCCESS",
+          gasFee: "123",
+        },
+      ],
+    });
+    const log = spyOnOutput();
+
+    await txCommand.run?.({
+      args: {
+        _: [],
+        target: address,
+        limit: "1",
+        provider: "blockberry",
+        chain: "sui",
+        mode: "history",
+      },
+    });
+
+    expect(log.mock.calls.map(([line]) => String(line)).at(-1)).toBe(
+      "  7xVY1uEZnDcqD5tJ3m…  ?… → ?…  [success]",
+    );
+  });
+
   it("keeps the inferred provider chain while routing an implicit detail operation", async () => {
     useOnlyBlockberryCredentials();
     const error = vi.spyOn(consola, "error").mockImplementation(() => undefined);

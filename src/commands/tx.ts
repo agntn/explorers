@@ -37,7 +37,7 @@ function renderOpReturns(transaction: Transaction): void {
 function renderTransaction(providerName: string, transaction: Transaction): void {
   print(`[${providerName}] Tx ${transaction.hash}`);
   print(`  Block: ${transaction.blockNumber}`);
-  print(`  From: ${transaction.from}`);
+  if (transaction.from) print(`  From: ${transaction.from}`);
   if (transaction.to) print(`  To: ${transaction.to}`);
   if (transaction.createdContract) print(`  Created contract: ${transaction.createdContract}`);
   print(`  Value: ${transaction.valueFormatted}`);
@@ -77,7 +77,7 @@ async function runHistory(
   for (const transaction of transactions) {
     const value = transaction.valueFormatted !== "0" ? ` ${transaction.valueFormatted}` : "";
     print(
-      `  ${transaction.hash.slice(0, 18)}…  ${transaction.from.slice(0, 10)}… → ${(transaction.to || "?").slice(0, 10)}…${value}  [${transaction.status}]`,
+      `  ${transaction.hash.slice(0, 18)}…  ${(transaction.from || "?").slice(0, 10)}… → ${(transaction.to || "?").slice(0, 10)}…${value}  [${transaction.status}]`,
     );
   }
 }

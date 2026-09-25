@@ -41,6 +41,17 @@ function describeOpReturn(payload: Readonly<ExplorersModule.OpReturnPayload>): s
   return [`OP_RETURN: ${first}`, ...rest.map((line) => `  ${line}`)];
 }
 
+/* The sender, recipient and deployed contract lines, each only when the explorer names it. */
+function describeParties(
+  tx: Readonly<Pick<ExplorersModule.Transaction, "createdContract" | "from" | "to">>,
+): string[] {
+  return [
+    tx.from ? `From: ${tx.from}` : null,
+    tx.to ? `To: ${tx.to}` : null,
+    tx.createdContract ? `Created contract: ${tx.createdContract}` : null,
+  ].filter((line) => line !== null);
+}
+
 interface TxDetailToolDetails {
   provider: string;
   transaction: ExplorersModule.Transaction;
@@ -245,7 +256,8 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
           const address = await resolveAddress(lib.resolveAddresses, params.address, chain);
           const txs = await provider.getTxHistory(address, chain, { limit: params.limit });
           const lines = txs.map(
-            (tx) => `${tx.hash} ${tx.from}→${tx.to || "?"} ${tx.valueFormatted} [${tx.status}]`,
+            (tx) =>
+              `${tx.hash} ${tx.from || "?"}→${tx.to || "?"} ${tx.valueFormatted} [${tx.status}]`,
           );
           return textResult([`[${name}] ${txs.length} transactions on ${chain}:`, ...lines]);
         },
@@ -284,9 +296,7 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
             `[${name}] Tx ${tx.hash}`,
             `Block: ${tx.blockNumber} | Status: ${tx.status}`,
             tx.fee ? `Fee: ${tx.fee} base units` : null,
-            `From: ${tx.from}`,
-            tx.to ? `To: ${tx.to}` : null,
-            tx.createdContract ? `Created contract: ${tx.createdContract}` : null,
+            ...describeParties(tx),
             `Value: ${tx.valueFormatted}`,
             tx.functionName ? `Method: ${tx.functionName}` : null,
             tx.tokenTransfers.length > 0 ? `Token transfers: ${tx.tokenTransfers.length}` : null,
@@ -334,7 +344,9 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
         if (tx.fee) {
           lines.push(`${theme.fg("muted", "Fee")} ${sanitizeTerminalText(tx.fee)} base units`);
         }
-        lines.push(`${theme.fg("muted", "From")} ${sanitizeTerminalText(tx.from)}`);
+        if (tx.from) {
+          lines.push(`${theme.fg("muted", "From")} ${sanitizeTerminalText(tx.from)}`);
+        }
         if (tx.to) {
           lines.push(`${theme.fg("muted", "To")} ${sanitizeTerminalText(tx.to)}`);
         }

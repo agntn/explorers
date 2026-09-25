@@ -925,6 +925,90 @@ describe("explorers Pi extension", () => {
     expect(text).toBe(`[blockscout] 1 transactions on ethereum:\n${hash} ${address}→? 0 [success]`);
   });
 
+  it("tells the model nothing about a sender the explorer does not name", async () => {
+    vi.stubEnv("BLOCKCHAIR_API_KEY", "");
+    const hash = "8a1b50c0ad19c68cbbf3ac2cdaeb0a1a3c4ba8e0b3226e27ec9d9d17fe3e9e9e";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              data: {
+                [hash]: {
+                  transaction: {
+                    block_id: 3_183_898,
+                    hash,
+                    time: "2026-09-25 03:08:17",
+                    output_total: 19_765_422_928_880,
+                    fee: 2680,
+                  },
+                  inputs: [],
+                  outputs: [],
+                },
+              },
+              context: { code: 200 },
+            }),
+            { headers: { "content-type": "application/json" } },
+          ),
+      ),
+    );
+    const tool = requireTool(registerExtensionTools(), "explorers_tx_detail");
+
+    const result = parseToolResult(
+      await tool.execute(
+        "test",
+        { hash, chain: "litecoin", provider: "blockchair" },
+        undefined,
+        undefined,
+        unusedContext,
+      ),
+    );
+    const lines = (result.content.find((part) => part.type === "text")?.text ?? "").split("\n");
+
+    expect(lines.filter((line) => line.startsWith("From:"))).toEqual([]);
+  });
+
+  it("marks a missing sender in a history line with a placeholder", async () => {
+    vi.stubEnv("BLOCKBERRY_API_KEY", "configured");
+    const address = "0x61953ea72709eed72f4441dd944eec49a11b4acabfc8e04015e89c63be81b6ab";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              content: [
+                {
+                  activityType: ["MOVE_CALL"],
+                  activityWith: [],
+                  timestamp: 1_700_000_000_000,
+                  digest: "7xVY1uEZnDcqD5tJ3mQj",
+                  txStatus: "SUCCESS",
+                  gasFee: "123",
+                },
+              ],
+            }),
+            { headers: { "content-type": "application/json" } },
+          ),
+      ),
+    );
+    const tool = requireTool(registerExtensionTools(), "explorers_tx_history");
+
+    const result = parseToolResult(
+      await tool.execute(
+        "test",
+        { address, chain: "sui", provider: "blockberry", limit: 1 },
+        undefined,
+        undefined,
+        unusedContext,
+      ),
+    );
+    const text = result.content.find((part) => part.type === "text")?.text ?? "";
+
+    expect(text).toBe("[blockberry] 1 transactions on sui:\n7xVY1uEZnDcqD5tJ3mQj ?→? 0 [success]");
+  });
+
   it("describes contract output without promising ABI or source content", () => {
     const tool = requireTool(registerExtensionTools(), "explorers_contract");
 
@@ -1038,10 +1122,15 @@ describe("explorers Pi extension", () => {
   });
 
   it.each([
-    ["a deployment", { to: null, createdContract: "0xnew" }, ["Created contract 0xnew"]],
-    ["an operation without a recipient", { to: null }, []],
-    ["an Arweave data upload", { to: "" }, []],
-  ] as const)("renders %s in the TUI with no invented recipient", (_case, fields, tail) => {
+    [
+      "a deployment",
+      { to: null, createdContract: "0xnew" },
+      ["From 0xfrom", "Created contract 0xnew"],
+    ],
+    ["an operation without a recipient", { to: null }, ["From 0xfrom"]],
+    ["an Arweave data upload", { to: "" }, ["From 0xfrom"]],
+    ["a read without a sender", { from: "", to: null }, []],
+  ] as const)("renders %s in the TUI with no invented party", (_case, fields, tail) => {
     const tool = requireTool(registerExtensionTools(), "explorers_tx_detail");
     const renderResult = tool.renderResult;
     if (!renderResult) throw new Error("explorers_tx_detail has no result renderer");
@@ -1079,7 +1168,6 @@ describe("explorers Pi extension", () => {
       "[blockscout] 0xabc",
       "Block 123  Status success",
       "Value 0",
-      "From 0xfrom",
       ...tail,
     ]);
   });
