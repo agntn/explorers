@@ -5,7 +5,7 @@
 [![license](https://npmx.dev/api/registry/badge/license/@agntn/explorers)](https://npmx.dev/package/@agntn/explorers)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/agntn/explorers)
 
-🔭 Sixteen block explorers, 27 chains, one shape. You ask for a balance, you get a balance. Same object on Ethereum, Bitcoin, Solana, Cardano or Stellar, from your terminal, your TypeScript or your agent, and nobody has to know what Insight is.
+🔭 Seventeen block explorers, 28 chains, one shape. You ask for a balance, you get a balance. Same object on Ethereum, Bitcoin, Solana, Cardano or Stellar, from your terminal, your TypeScript or your agent, and nobody has to know what Insight is.
 
 ## Why?
 
@@ -17,8 +17,8 @@ Docs and a live explorer: [explorers.agntn.dev](https://explorers.agntn.dev).
 
 ## ✨ Features
 
-- 🧩 **Sixteen backends, one contract.** Etherscan, Blockscout, Blockchair, Mempool, Blockstream, Solscan, Helius, TONAPI, TRONSCAN, Aptos, Blockberry, Koios, Arweave, dcrdata, Horizon and WhatsOnChain, and from your side they all look the same.
-- ⛓️ **27 chains.** Ethereum, Base, Arbitrum, Optimism, Polygon, BSC, Avalanche, Gnosis, Linea, Berachain, zkSync, Scroll, Bitcoin, Bitcoin Cash, Bitcoin SV, Litecoin, Pepecoin, eCash, Solana, TON, TRON, Aptos, Sui, Cardano, Arweave, Decred and Stellar.
+- 🧩 **Seventeen backends, one contract.** Etherscan, Blockscout, Blockchair, Mempool, Blockstream, Solscan, Helius, TONAPI, TRONSCAN, Aptos, Blockberry, Koios, Arweave, dcrdata, Horizon, WhatsOnChain and Blockbook, and from your side they all look the same.
+- ⛓️ **28 chains.** Ethereum, Base, Arbitrum, Optimism, Polygon, BSC, Avalanche, Gnosis, Linea, Berachain, zkSync, Scroll, Bitcoin, Bitcoin Cash, Bitcoin SV, Bitcoin Gold, Litecoin, Pepecoin, eCash, Solana, TON, TRON, Aptos, Sui, Cardano, Arweave, Decred and Stellar.
 - 🔢 **Amounts stay exact.** Strings in the smallest unit. Your 0.1 ETH is `100000000000000000` and it stays that way.
 - 🖥️ **CLI, library, MCP, Pi and OMP.** Whatever you're holding, same commands, same objects.
 - 🏷️ **ENS just works.** `vitalik.eth` wherever an Ethereum address would go, no extra dependency.
@@ -104,18 +104,18 @@ explorers tx 8bae12b5f4c088d940733dcd1455efc6a3a69cf9340e17a981286d3778615684 -c
 
 ### Commands
 
-| Command     | What it does                                               | Example                           |
-| ----------- | ---------------------------------------------------------- | --------------------------------- |
-| `balance`   | Native balance, several addresses at once                  | `explorers balance vitalik.eth`   |
-| `tx`        | Transaction history or one transaction                     | `explorers tx vitalik.eth -n 5`   |
-| `utxos`     | Unspent outputs on Bitcoin, Bitcoin SV, Litecoin, Pepecoin | `explorers utxos bc1q... -c btc`  |
-| `contract`  | ABI, source and verification status                        | `explorers contract 0x1f984...`   |
-| `tokens`    | ERC-20, SPL and Cardano native holdings                    | `explorers tokens vitalik.eth`    |
-| `transfers` | ERC-20 transfer history for an address                     | `explorers transfers vitalik.eth` |
-| `gas`       | Current gas prices                                         | `explorers gas -c base`           |
-| `block`     | Block data by number                                       | `explorers block 18000000`        |
-| `providers` | Registered providers and their capabilities                | `explorers providers`             |
-| `mcp`       | The MCP server on stdio                                    | `explorers mcp`                   |
+| Command     | What it does                                                             | Example                           |
+| ----------- | ------------------------------------------------------------------------ | --------------------------------- |
+| `balance`   | Native balance, several addresses at once                                | `explorers balance vitalik.eth`   |
+| `tx`        | Transaction history or one transaction                                   | `explorers tx vitalik.eth -n 5`   |
+| `utxos`     | Unspent outputs on Bitcoin, Bitcoin SV, Bitcoin Gold, Litecoin, Pepecoin | `explorers utxos bc1q... -c btc`  |
+| `contract`  | ABI, source and verification status                                      | `explorers contract 0x1f984...`   |
+| `tokens`    | ERC-20, SPL and Cardano native holdings                                  | `explorers tokens vitalik.eth`    |
+| `transfers` | ERC-20 transfer history for an address                                   | `explorers transfers vitalik.eth` |
+| `gas`       | Current gas prices                                                       | `explorers gas -c base`           |
+| `block`     | Block data by number                                                     | `explorers block 18000000`        |
+| `providers` | Registered providers and their capabilities                              | `explorers providers`             |
+| `mcp`       | The MCP server on stdio                                                  | `explorers mcp`                   |
 
 Every command takes `-c` for the chain and `-p` for the provider. `tx`, `transfers` and `tokens` take `-n`, `transfers` takes `-t` if you only care about one token. Everything else: [CLI guide](https://explorers.agntn.dev/guide/cli).
 
@@ -157,6 +157,7 @@ That's most of it, really. `create()` loads one provider and nothing else. `with
 | **dcrdata**      | None                            | decred                                                                                | balances, tx detail/history, block                               |
 | **horizon**      | None                            | stellar                                                                               | balances, tx detail/history, transfers, tokens, gas, block       |
 | **whatsonchain** | Optional `WHATSONCHAIN_API_KEY` | bitcoinsv                                                                             | balances, tx detail/history, utxos, block                        |
+| **blockbook**    | None                            | bitcoingold                                                                           | balances, tx detail/history, utxos, block                        |
 
 Aptos is in the table so you don't ask why it's not in the table. Aptos Explorer has no documented account or history API, so it's registered, does nothing and throws `UnsupportedOperationError` if you insist. Bitcoin SV kept Bitcoin's `1...` addresses, so one of those still reads as Bitcoin until you say `-c bsv` or `-p whatsonchain`. The rest, with their quirks: [Providers](https://explorers.agntn.dev/providers).
 
@@ -184,7 +185,7 @@ Nodes. No RPC, no `eth_call`, no fullnode anything, that's not this package. Als
 
 ## 🧩 Adding a provider
 
-Want a seventeenth? A class extending `Provider`, an entry in `builtins`, a line in `vite.config.ts`, and there's a test that notices when you skip one. Walkthrough: [Custom providers](https://explorers.agntn.dev/guide/custom).
+Want an eighteenth? A class extending `Provider`, an entry in `builtins`, a line in `vite.config.ts`, and there's a test that notices when you skip one. Walkthrough: [Custom providers](https://explorers.agntn.dev/guide/custom).
 
 ## 🛠️ Development
 

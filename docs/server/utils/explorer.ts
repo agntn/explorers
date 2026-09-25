@@ -74,6 +74,7 @@ const PAGED_HISTORY = new Set([
   "dcrdata",
   "horizon",
   "whatsonchain",
+  "blockbook",
 ]);
 
 /** Same for `getTokenTransfers`: Blockscout ignores `page` there too. */

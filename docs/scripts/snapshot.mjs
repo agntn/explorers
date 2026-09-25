@@ -31,6 +31,7 @@ const PROVIDER_DEFAULT_CHAIN = {
   dcrdata: "decred",
   horizon: "stellar",
   whatsonchain: "bitcoinsv",
+  blockbook: "bitcoingold",
 };
 
 const out = fileURLToPath(new URL("../app/data/explorers.json", import.meta.url));

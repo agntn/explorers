@@ -8,14 +8,14 @@ const props = defineProps<{ sample: ExplorerSample; tick: number }>();
 const W = 1200;
 const H = 420;
 const CALL = { x: 24, y: 130, w: 340, h: 160 };
-const NODE = { x: 510, w: 200, h: 24, gap: 1 };
+const NODE = { x: 510, w: 200, h: 23, gap: 1 };
 const RESULT = { x: 870, y: 20, w: 306, h: 380 };
 
-/** Every registered provider, in registry order; the ones that serve the sample's chain are wired, the chosen one lit. Sixteen rows fit the 420 high box with 1 between them. */
+/** Every registered provider, in registry order; the ones that serve the sample's chain are wired, the chosen one lit. Seventeen rows fit the 420 high box with 1 between them and 6 above the first. */
 const nodes = computed(() =>
   PROVIDERS.map((provider, index) => ({
     ...provider,
-    y: 8 + index * (NODE.h + NODE.gap),
+    y: 6 + index * (NODE.h + NODE.gap),
     serves: provider.chains.includes(props.sample.chain),
     active: provider.key === props.sample.provider,
   })),
@@ -125,12 +125,12 @@ const inputFontSize = computed(() =>
       :opacity="node.serves ? 1 : 0.45"
     >
       <rect :x="NODE.x" :y="node.y" :width="NODE.w" :height="NODE.h" rx="6" />
-      <text :x="NODE.x + 12" :y="node.y + 17" class="explorers-flow-small">
+      <text :x="NODE.x + 12" :y="node.y + 16" class="explorers-flow-small">
         {{ providerLabel(node.key) }}
       </text>
       <text
         :x="NODE.x + NODE.w - 12"
-        :y="node.y + 17"
+        :y="node.y + 16"
         text-anchor="end"
         class="explorers-flow-label"
       >

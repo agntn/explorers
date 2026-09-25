@@ -29,7 +29,7 @@ export default defineNuxtConfig({
     domain: "https://explorers.agntn.dev",
     title: "@agntn/explorers",
     description:
-      "Sixteen block explorer APIs behind one TypeScript contract: balances, transactions, token transfers, contracts, tokens, gas and blocks on 27 chains. Library, CLI and agent tools.",
+      "Seventeen block explorer APIs behind one TypeScript contract: balances, transactions, token transfers, contracts, tokens, gas and blocks on 28 chains. Library, CLI and agent tools.",
     sections: [
       {
         title: "Tools",
@@ -38,7 +38,7 @@ export default defineNuxtConfig({
           {
             title: "Explorer",
             description:
-              "Search an address, an ENS name, a transaction hash or a block number on any of the 27 chains and open its page.",
+              "Search an address, an ENS name, a transaction hash or a block number on any of the 28 chains and open its page.",
             href: "https://explorers.agntn.dev/explorer",
           },
           {
@@ -61,7 +61,7 @@ export default defineNuxtConfig({
   /** Docus pages define their own OG images; the alt text is the one thing they leave unset. */
   ogImage: {
     defaults: {
-      alt: "@agntn/explorers: sixteen block explorer APIs, one shape",
+      alt: "@agntn/explorers: seventeen block explorer APIs, one shape",
     },
   },
   icon: {
@@ -71,6 +71,7 @@ export default defineNuxtConfig({
         "lucide:arrow-left-right",
         "lucide:arrow-right",
         "lucide:arrow-up-right",
+        "lucide:book-marked",
         "lucide:book-open",
         "lucide:bot",
         "lucide:box",
@@ -116,6 +117,7 @@ export default defineNuxtConfig({
         "token:avax",
         "token:bch",
         "token:bsv",
+        "token:btg",
         "token:base",
         "token:berachain",
         "token:bnb",

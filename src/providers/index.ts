@@ -173,4 +173,11 @@ export const builtins: readonly ProviderEntry[] = [
     defaultURL: "https://api.whatsonchain.com/v1/bsv/main",
     load: () => import("./whatsonchain.ts").then((m) => m.WhatsOnChain),
   },
+  {
+    key: "blockbook",
+    chains: ["bitcoingold"],
+    capabilities: ["balances", "txHistory", "txDetail", "utxos", "blockInfo"],
+    defaultURL: "https://btgexplorer.com",
+    load: () => import("./blockbook.ts").then((m) => m.Blockbook),
+  },
 ] satisfies readonly BuiltinProviderEntry[];
