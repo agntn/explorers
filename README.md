@@ -143,7 +143,7 @@ That's most of it, really. `create()` loads one provider and nothing else. `with
 | ---------------- | ------------------------------- | ------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
 | **etherscan**    | `ETHERSCAN_API_KEY`             | ethereum, base, arbitrum, optimism, polygon, bsc, avalanche, gnosis, linea, berachain | balances, tx, transfers, contract, tokens, gas, block            |
 | **blockscout**   | None                            | ethereum, base, arbitrum, optimism, polygon, gnosis, linea, scroll, zksync, avalanche | balances, tx, transfers, contract, tokens, gas, block            |
-| **blockchair**   | Optional `BLOCKCHAIR_API_KEY`   | bitcoin, bitcoincash, ethereum, ecash, zcash                                          | balances, tx, block                                              |
+| **blockchair**   | Optional `BLOCKCHAIR_API_KEY`   | bitcoin, bitcoincash, litecoin, ethereum, ecash, zcash                                | balances, tx, block                                              |
 | **mempool**      | None                            | bitcoin, litecoin, pepecoin                                                           | balances, tx, utxos, gas and block, the last two not on Pepecoin |
 | **blockstream**  | None                            | bitcoin                                                                               | balances, tx detail/history, utxos, block                        |
 | **solscan**      | `SOLSCAN_API_KEY`               | solana                                                                                | balances, tx detail/history, block                               |

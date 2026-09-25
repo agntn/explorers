@@ -357,6 +357,21 @@ describe("withProvider", () => {
     expect(fallbackError.cause).toBe(primaryError);
   });
 
+  it("retries Litecoin on Blockchair when litecoinspace.org fails", async () => {
+    useNoProviderCredentials();
+    const tried: string[] = [];
+
+    const name = await withProvider(undefined, "litecoin", async ({ name }) => {
+      tried.push(name);
+      if (name === "mempool")
+        throw new HTTPError(522, "https://litecoinspace.org/api/address/x", undefined, name);
+      return name;
+    });
+
+    expect(tried).toEqual(["mempool", "blockchair"]);
+    expect(name).toBe("blockchair");
+  });
+
   it("retries Bitcoin on keyless Blockstream before keyless Blockchair", async () => {
     useNoProviderCredentials();
     const tried: string[] = [];

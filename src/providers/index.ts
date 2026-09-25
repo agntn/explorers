@@ -70,7 +70,7 @@ export const builtins: readonly ProviderEntry[] = [
   },
   {
     key: "blockchair",
-    chains: ["bitcoin", "bitcoincash", "ethereum", "ecash", "zcash"],
+    chains: ["bitcoin", "bitcoincash", "litecoin", "ethereum", "ecash", "zcash"],
     capabilities: ["balances", "txHistory", "txDetail", "blockInfo"],
     defaultURL: "https://api.blockchair.com",
     load: () => import("./blockchair.ts").then((m) => m.Blockchair),

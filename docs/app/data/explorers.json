@@ -1,6 +1,6 @@
 {
   "version": "0.5.6",
-  "generatedAt": "2026-09-25T09:31:59.928Z",
+  "generatedAt": "2026-09-25T09:49:48.512Z",
   "providers": [
     {
       "key": "etherscan",
@@ -61,6 +61,7 @@
       "chains": [
         "bitcoin",
         "bitcoincash",
+        "litecoin",
         "ethereum",
         "ecash",
         "zcash"
@@ -424,6 +425,17 @@
       ]
     },
     {
+      "key": "litecoin",
+      "name": "Litecoin",
+      "symbol": "LTC",
+      "type": "utxo",
+      "explorer": "https://litecoinspace.org",
+      "providers": [
+        "blockchair",
+        "mempool"
+      ]
+    },
+    {
       "key": "ecash",
       "name": "eCash",
       "symbol": "XEC",
@@ -441,16 +453,6 @@
       "explorer": "https://blockchair.com/zcash",
       "providers": [
         "blockchair"
-      ]
-    },
-    {
-      "key": "litecoin",
-      "name": "Litecoin",
-      "symbol": "LTC",
-      "type": "utxo",
-      "explorer": "https://litecoinspace.org",
-      "providers": [
-        "mempool"
       ]
     },
     {

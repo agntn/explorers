@@ -84,7 +84,7 @@ const PRESENTATION: Record<string, ProviderPresentation> = {
     icon: "i-lucide-database",
     envVars: ["BLOCKCHAIR_API_KEY"],
     optionalKey: true,
-    blurb: "One dashboard API for Bitcoin, Bitcoin Cash, Ethereum, eCash and Zcash. Works without a key, ranks higher with one.",
+    blurb: "One dashboard API for Bitcoin, Bitcoin Cash, Litecoin, Ethereum, eCash and Zcash. Works without a key, ranks higher with one.",
   },
   mempool: {
     label: "Mempool",
