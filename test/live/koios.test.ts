@@ -1,5 +1,5 @@
 /** Live Koios public instance roundtrip. Run with `pnpm test:live`. */
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { create } from "../../src/core/registry.ts";
 
 const ADDRESS =

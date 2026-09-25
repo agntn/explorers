@@ -1,5 +1,5 @@
 /** Blockscout provider contract tests with deterministic API fixtures. */
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { create } from "../../src/core/registry.ts";
 
 const VITALIK = "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045";

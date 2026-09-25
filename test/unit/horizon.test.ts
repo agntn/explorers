@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import { create, getDefaultURL, supportsCapability } from "../../src/core/registry.ts";
 import { normalizeChain } from "../../src/core/types.ts";
 import { resolveProvider, withProvider } from "../../src/core/resolve.ts";

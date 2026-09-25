@@ -1,5 +1,5 @@
 /** TON provider tests with stubbed tonapi.io responses. */
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { create } from "../../src/core/registry.ts";
 
 // A known TON address with balance

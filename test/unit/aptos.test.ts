@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vite-plus/test";
 import { UnsupportedChainError, UnsupportedOperationError } from "../../src/core/errors.ts";
 import { create } from "../../src/core/registry.ts";
 

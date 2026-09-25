@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import { ExplorerError, HTTPError, NotFoundError, TransportError } from "../../src/core/errors.ts";
 import { getJSON, postJSON } from "../../src/core/client.ts";
 

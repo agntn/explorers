@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import { HTTPError, Provider, RateLimitError, create, register } from "../../src/index.ts";
 import type { ProviderCapabilities, ProviderConfig } from "../../src/index.ts";
 
