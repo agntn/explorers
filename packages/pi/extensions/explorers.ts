@@ -124,8 +124,9 @@ async function resolveAddress(
   resolveAddresses: typeof ExplorersModule.resolveAddresses,
   input: string,
   chain: ExplorersModule.ChainKey,
+  signal: AbortSignal | undefined,
 ): Promise<string> {
-  const [address] = await resolveAddresses(input, chain);
+  const [address] = await resolveAddresses(input, chain, signal);
   if (address === undefined) throw new TypeError("Address resolution returned no result");
   return address;
 }
@@ -218,7 +219,7 @@ export default function explorersExtension(pi: ExtensionAPI) {
         "balances",
         signal,
         async ({ chain, lib, name, provider }) => {
-          const addresses = await lib.resolveAddresses(params.address, chain);
+          const addresses = await lib.resolveAddresses(params.address, chain, signal);
           const balances = await Promise.all(
             addresses.map((address) => provider.getBalance(address, chain)),
           );
@@ -277,7 +278,7 @@ export default function explorersExtension(pi: ExtensionAPI) {
         "txHistory",
         signal,
         async ({ chain, lib, name, provider }) => {
-          const address = await resolveAddress(lib.resolveAddresses, params.address, chain);
+          const address = await resolveAddress(lib.resolveAddresses, params.address, chain, signal);
           const txs = await provider.getTxHistory(address, chain, { limit: params.limit });
           const lines = txs.map(
             (tx) =>
@@ -438,7 +439,7 @@ export default function explorersExtension(pi: ExtensionAPI) {
           if (!provider.capabilities.utxos || !provider.getUtxos) {
             throw new lib.UnsupportedOperationError("getUtxos", name);
           }
-          const address = await resolveAddress(lib.resolveAddresses, params.address, chain);
+          const address = await resolveAddress(lib.resolveAddresses, params.address, chain, signal);
           const utxos = await provider.getUtxos(address, chain);
           return textResult(describeUtxos(name, address, chain, utxos));
         },
@@ -474,7 +475,7 @@ export default function explorersExtension(pi: ExtensionAPI) {
           if (!provider.capabilities.contractInfo || !provider.getContractInfo) {
             throw new lib.UnsupportedOperationError("getContractInfo", name);
           }
-          const address = await resolveAddress(lib.resolveAddresses, params.address, chain);
+          const address = await resolveAddress(lib.resolveAddresses, params.address, chain, signal);
           const info = await provider.getContractInfo(address, chain);
           const parts = [
             `[${name}] Contract ${info.address}`,
@@ -536,7 +537,7 @@ export default function explorersExtension(pi: ExtensionAPI) {
           if (!provider.capabilities.tokenBalances || !provider.getTokenBalances) {
             throw new lib.UnsupportedOperationError("getTokenBalances", name);
           }
-          const address = await resolveAddress(lib.resolveAddresses, params.address, chain);
+          const address = await resolveAddress(lib.resolveAddresses, params.address, chain, signal);
           const holdings = await provider.getTokenBalances(address, chain, {
             nonZeroOnly: params.nonZeroOnly ?? true,
           });
@@ -597,7 +598,7 @@ export default function explorersExtension(pi: ExtensionAPI) {
           if (!provider.capabilities.tokenTransfers || !provider.getTokenTransfers) {
             throw new lib.UnsupportedOperationError("getTokenTransfers", name);
           }
-          const address = await resolveAddress(lib.resolveAddresses, params.address, chain);
+          const address = await resolveAddress(lib.resolveAddresses, params.address, chain, signal);
           const transfers = await provider.getTokenTransfers(address, chain, {
             limit: params.limit ?? 10,
             token: params.token,

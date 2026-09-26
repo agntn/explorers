@@ -48,6 +48,30 @@ describe("ens helpers", () => {
     expect(init?.signal).toBeInstanceOf(AbortSignal);
   });
 
+  it("stops at the first resolver when the caller aborts", async () => {
+    const signals: AbortSignal[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        (_input: string | URL | Request, init?: RequestInit) =>
+          new Promise<Response>((_resolve, reject) => {
+            if (init?.signal) signals.push(init.signal);
+            init?.signal?.addEventListener("abort", () => reject(init.signal?.reason), {
+              once: true,
+            });
+          }),
+      ),
+    );
+    const controller = new AbortController();
+
+    const lookup = resolveEns("vitalik.eth", controller.signal).catch((error: unknown) => error);
+    await vi.waitFor(() => expect(signals).toHaveLength(1));
+    controller.abort();
+
+    expect(await lookup).toMatchObject({ name: "AbortError" });
+    expect(signals).toHaveLength(1);
+  });
+
   it("falls through to the next resolver when the first one fails", async () => {
     const fetch = vi.fn(async (input: string | URL | Request) =>
       String(input).startsWith("https://api.ensideas.com/")

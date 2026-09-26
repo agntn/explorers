@@ -131,11 +131,13 @@ export function inferChain(
  *
  * @param {string} input - The `input` value.
  * @param {ChainKey} chain - The `chain` value.
+ * @param {AbortSignal} signal - Cancels ENS resolution.
  * @returns {Promise<{ address: string; type: InputType }>} The resulting value.
  */
 export async function resolveInput(
   input: string,
   chain?: ChainKey,
+  signal?: AbortSignal,
 ): Promise<{ address: string; type: InputType }> {
   const trimmed = input.trim();
   const type = classifyInput(trimmed, chain);
@@ -149,7 +151,7 @@ export async function resolveInput(
     return { address: trimmed, type };
   }
 
-  const resolved = await resolveEns(trimmed);
+  const resolved = await resolveEns(trimmed, signal);
   if (!resolved) {
     throw new NotFoundError(`ENS name ${trimmed}`);
   }
@@ -191,13 +193,15 @@ function parseSerializedAddressList(input: string): readonly string[] | undefine
  *
  * @param {string | readonly string[]} input - The `input` value.
  * @param {ChainKey} chain - The `chain` value.
+ * @param {AbortSignal} signal - Cancels ENS resolution.
  * @returns {Promise<string[]>} The resulting value.
  */
 export async function resolveAddresses(
   input: string | readonly string[],
   chain?: ChainKey,
+  signal?: AbortSignal,
 ): Promise<string[]> {
   const list = typeof input === "string" ? (parseSerializedAddressList(input) ?? [input]) : input;
-  const resolved = await Promise.all(list.map((item) => resolveInput(item, chain)));
+  const resolved = await Promise.all(list.map((item) => resolveInput(item, chain, signal)));
   return resolved.map((entry) => entry.address);
 }
