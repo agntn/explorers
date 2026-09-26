@@ -16,7 +16,13 @@ import type {
   BlockInfo,
 } from "../core/types.ts";
 import { Provider } from "../core/provider.ts";
-import { HTTPError, NotFoundError, RateLimitError, UnsupportedChainError } from "../core/errors.ts";
+import {
+  AuthError,
+  HTTPError,
+  NotFoundError,
+  RateLimitError,
+  UnsupportedChainError,
+} from "../core/errors.ts";
 import { buildQuery, normalizeBaseUrl } from "../core/client.ts";
 import { create as createChain } from "@agntn/chains";
 import { formatWei, clampMaxResults } from "../core/types.ts";
@@ -46,6 +52,9 @@ const DEFAULT_BASE = "https://api.blockchair.com";
    434). Its docs say both clear on their own after a while, and a key lifts an IP block. */
 const LIMIT_STATUSES: readonly number[] = [402, 430, 434, 435, 436, 437];
 const BLOCK_STATUSES: readonly number[] = [430, 434];
+/* A key Blockchair does not know also comes back as 402, and only the reason tells it apart
+   from a spent limit: "Invalid API token. Please contact us at info@blockchair.com." */
+const REJECTED_KEY = /\binvalid api (?:token|key)\b/i;
 
 interface BlockchairResponse<T> {
   readonly data: T;
@@ -230,13 +239,15 @@ export class Blockchair extends Provider {
   }
 
   /* A limit or block comes back as a status outside HTTP, so it would otherwise leave as a bare
-     HTTPError that no fallback picks up and that hides Blockchair's reason. */
+     HTTPError that no fallback picks up and that hides Blockchair's reason. A rejected key shares
+     402 with a spent limit, but waiting never clears it, so it leaves as an AuthError. */
   private async read<T>(url: string): Promise<T> {
     try {
       return await this.getJSON<T>(url);
     } catch (error) {
       if (!(error instanceof HTTPError) || !LIMIT_STATUSES.includes(error.statusCode)) throw error;
       const reason = limitReason(error.body) ?? `HTTP ${error.statusCode}`;
+      if (REJECTED_KEY.test(reason)) throw new AuthError(Blockchair.key, reason);
       const hint =
         !this.apiKey && BLOCK_STATUSES.includes(error.statusCode)
           ? "; set BLOCKCHAIR_API_KEY to lift the block"

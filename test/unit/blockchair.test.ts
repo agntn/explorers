@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
-import { NotFoundError, RateLimitError, UnsupportedChainError } from "../../src/core/errors.ts";
+import {
+  AuthError,
+  NotFoundError,
+  RateLimitError,
+  UnsupportedChainError,
+} from "../../src/core/errors.ts";
 import { create } from "../../src/core/registry.ts";
 import { withProvider } from "../../src/core/resolve.ts";
 import { Blockchair } from "../../src/providers/blockchair.ts";
@@ -24,6 +29,9 @@ function stubJSON(body: unknown) {
   vi.stubGlobal("fetch", fetch);
   return fetch;
 }
+
+/* What Blockchair answers, with status 402, for a key it does not know. */
+const REJECTED = "Invalid API token. Please contact us at info@blockchair.com.";
 
 const BLOCKED =
   "Your IP address is temporary blacklisted due to exceeding usage of API resources. Please apply for an API key by contacting us at info@blockchair.com";
@@ -477,6 +485,28 @@ describe("blockchair provider", () => {
 
     expect(error).toBeInstanceOf(RateLimitError);
     expect((error as Error).message).toBe("Rate limited by blockchair: Limit exceeded");
+  });
+
+  it("reads a rejected key as an authentication failure", async () => {
+    stubStatus(402, REJECTED);
+    const provider = new Blockchair({ apiKey: "bogus" });
+
+    const error = await provider.getBalance(BTC_ADDRESS, "bitcoin").catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(AuthError);
+    expect((error as Error).message).toBe(`Authentication failed for blockchair: ${REJECTED}`);
+  });
+
+  it("keeps an automatic read on Blockchair when it rejects the key", async () => {
+    vi.stubEnv("BLOCKCHAIR_API_KEY", "bogus");
+    const fetch = stubStatus(402, REJECTED);
+
+    const error = await withProvider(undefined, "bitcoin", ({ provider }) =>
+      provider.getBalance(BTC_ADDRESS, "bitcoin"),
+    ).catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(AuthError);
+    expect(fetch).toHaveBeenCalledTimes(1);
   });
 
   it("names the status when a limit arrives without a reason", async () => {
