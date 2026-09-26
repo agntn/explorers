@@ -452,6 +452,23 @@ describe("blockchair provider", () => {
     expect(fetch).toHaveBeenCalledTimes(1);
   });
 
+  it.each([
+    ["an empty variable", "", "https://api.blockchair.com/bitcoin/dashboards/blocks/1"],
+    [
+      "a set variable",
+      "configured",
+      "https://api.blockchair.com/bitcoin/dashboards/blocks/1?key=configured",
+    ],
+  ])("sends the key only for %s", async (_, key, url) => {
+    vi.stubEnv("BLOCKCHAIR_API_KEY", key);
+    const fetch = stubStatus(430, BLOCKED);
+    const provider = new Blockchair({});
+
+    await provider.getBlockInfo(1, "bitcoin").catch(() => undefined);
+
+    expect(String(fetch.mock.calls[0]?.[0])).toBe(url);
+  });
+
   it.each([402, 434, 435, 436, 437])("reads HTTP %i as a Blockchair limit", async (status) => {
     stubStatus(status, "Limit exceeded");
     const provider = new Blockchair({ apiKey: "configured" });
