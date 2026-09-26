@@ -120,6 +120,48 @@ describe("abstract provider registry", () => {
   });
 });
 
+describe("provider cancellation", () => {
+  it("aborts inherited requests with the configured signal", async () => {
+    const signals: AbortSignal[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        (_input: string | URL | Request, init?: RequestInit) =>
+          new Promise<Response>((_resolve, reject) => {
+            if (init?.signal) signals.push(init.signal);
+            init?.signal?.addEventListener("abort", () => reject(init.signal?.reason), {
+              once: true,
+            });
+          }),
+      ),
+    );
+    const controller = new AbortController();
+    const provider = new Custom({ signal: controller.signal });
+
+    const request = provider.request("https://example.test").catch((error: unknown) => error);
+    await vi.waitFor(() => expect(signals).toHaveLength(1));
+    controller.abort();
+
+    expect(await request).toMatchObject({ code: "AbortError", provider: "abstract-provider-test" });
+  });
+
+  it("stops waiting out a rate limit when the configured signal aborts", async () => {
+    vi.useFakeTimers();
+    const fetch = vi.fn(async () => new Response("", { status: 429 }));
+    vi.stubGlobal("fetch", fetch);
+    const controller = new AbortController();
+    const provider = new Custom({ signal: controller.signal });
+
+    const request = provider.request("https://example.test").catch((error: unknown) => error);
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalledOnce());
+    controller.abort();
+
+    expect(await request).toMatchObject({ name: "AbortError" });
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(fetch).toHaveBeenCalledOnce();
+  });
+});
+
 describe("provider rate limit retry", () => {
   function jsonResponse(body: unknown): Response {
     return new Response(JSON.stringify(body), {

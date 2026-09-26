@@ -277,6 +277,8 @@ export interface ProviderConfig {
   timeout?: number;
   /** Fallback chain for multi-chain providers. */
   defaultChain?: ChainKey;
+  /** Cancels every request the provider makes, rate limit waits included. */
+  signal?: AbortSignal;
 }
 
 /**

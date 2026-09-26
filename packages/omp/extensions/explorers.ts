@@ -75,6 +75,7 @@ async function withSelected<T>(
   preferred: string | undefined,
   requestedChain: string | undefined,
   capability: ExplorersModule.ProviderCapability,
+  signal: AbortSignal | undefined,
   /* oxlint-disable-next-line typescript/prefer-readonly-parameter-types */
   run: (selected: SelectedProvider) => Promise<T>,
   input?: string | readonly string[],
@@ -87,6 +88,7 @@ async function withSelected<T>(
     (selected) => run({ ...selected, lib }),
     capability,
     input,
+    signal,
   );
 }
 
@@ -191,11 +193,12 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
         0,
       );
     },
-    async execute(_toolCallId, params) {
+    async execute(_toolCallId, params, signal) {
       return withSelected(
         params.provider,
         params.chain,
         "balances",
+        signal,
         async ({ chain, lib, name, provider }) => {
           const addresses = await lib.resolveAddresses(params.address, chain);
           const balances = await Promise.all(
@@ -247,11 +250,12 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
         0,
       );
     },
-    async execute(_toolCallId, params) {
+    async execute(_toolCallId, params, signal) {
       return withSelected(
         params.provider,
         params.chain,
         "txHistory",
+        signal,
         async ({ chain, lib, name, provider }) => {
           const address = await resolveAddress(lib.resolveAddresses, params.address, chain);
           const txs = await provider.getTxHistory(address, chain, { limit: params.limit });
@@ -282,11 +286,12 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
     renderCall(args, _options, _theme) {
       return new Text(sanitizeTerminalText(`Tx detail: ${args.hash.slice(0, 18)}…`), 0, 0);
     },
-    async execute(_toolCallId, params) {
+    async execute(_toolCallId, params, signal) {
       return withSelected(
         params.provider,
         params.chain,
         "txDetail",
+        signal,
         async ({ chain, lib, name, provider }) => {
           if (!provider.capabilities.txDetail || !provider.getTxDetail) {
             throw new lib.UnsupportedOperationError("getTxDetail", name);
@@ -399,11 +404,12 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
         0,
       );
     },
-    async execute(_toolCallId, params) {
+    async execute(_toolCallId, params, signal) {
       return withSelected(
         params.provider,
         params.chain,
         "utxos",
+        signal,
         async ({ chain, lib, name, provider }) => {
           if (!provider.capabilities.utxos || !provider.getUtxos) {
             throw new lib.UnsupportedOperationError("getUtxos", name);
@@ -433,11 +439,12 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
     renderCall(args, _options, _theme) {
       return new Text(sanitizeTerminalText(`Contract: ${args.address}`), 0, 0);
     },
-    async execute(_toolCallId, params) {
+    async execute(_toolCallId, params, signal) {
       return withSelected(
         params.provider,
         params.chain,
         "contractInfo",
+        signal,
         async ({ chain, lib, name, provider }) => {
           if (!provider.capabilities.contractInfo || !provider.getContractInfo) {
             throw new lib.UnsupportedOperationError("getContractInfo", name);
@@ -494,11 +501,12 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
         0,
       );
     },
-    async execute(_toolCallId, params) {
+    async execute(_toolCallId, params, signal) {
       return withSelected(
         params.provider,
         params.chain,
         "tokenBalances",
+        signal,
         async ({ chain, lib, name, provider }) => {
           if (!provider.capabilities.tokenBalances || !provider.getTokenBalances) {
             throw new lib.UnsupportedOperationError("getTokenBalances", name);
@@ -551,11 +559,12 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
         0,
       );
     },
-    async execute(_toolCallId, params) {
+    async execute(_toolCallId, params, signal) {
       return withSelected(
         params.provider,
         params.chain,
         "tokenTransfers",
+        signal,
         async ({ chain, lib, name, provider }) => {
           if (!provider.capabilities.tokenTransfers || !provider.getTokenTransfers) {
             throw new lib.UnsupportedOperationError("getTokenTransfers", name);
@@ -598,11 +607,12 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
         0,
       );
     },
-    async execute(_toolCallId, params) {
+    async execute(_toolCallId, params, signal) {
       return withSelected(
         params.provider,
         params.chain,
         "gasData",
+        signal,
         async ({ chain, lib, name, provider }) => {
           const caps = provider.capabilities;
           if (!caps.gasData || !provider.getGasData) {
@@ -643,11 +653,12 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
         0,
       );
     },
-    async execute(_toolCallId, params) {
+    async execute(_toolCallId, params, signal) {
       return withSelected(
         params.provider,
         params.chain,
         "blockInfo",
+        signal,
         async ({ chain, lib, name, provider }) => {
           if (!provider.capabilities.blockInfo || !provider.getBlockInfo) {
             throw new lib.UnsupportedOperationError("getBlockInfo", name);

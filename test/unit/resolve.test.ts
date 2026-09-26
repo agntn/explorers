@@ -344,6 +344,60 @@ describe("withProvider", () => {
     expect(tried).toEqual(["mempool"]);
   });
 
+  it("hands the caller's signal to the provider it creates", async () => {
+    useNoProviderCredentials();
+    const signals: AbortSignal[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        (_input: string | URL | Request, init?: RequestInit) =>
+          new Promise<Response>((_resolve, reject) => {
+            if (init?.signal) signals.push(init.signal);
+            init?.signal?.addEventListener("abort", () => reject(init.signal?.reason), {
+              once: true,
+            });
+          }),
+      ),
+    );
+    const controller = new AbortController();
+
+    const read = withProvider(
+      undefined,
+      "bitcoin",
+      ({ provider }) => provider.getBalance("bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh"),
+      "balances",
+      undefined,
+      controller.signal,
+    ).catch((error: unknown) => error);
+    await vi.waitFor(() => expect(signals).toHaveLength(1));
+    controller.abort();
+
+    expect(await read).toMatchObject({ code: "AbortError", provider: "mempool" });
+    expect(signals).toHaveLength(1);
+  });
+
+  it("stays on the provider an aborted read reached, whatever it threw", async () => {
+    useNoProviderCredentials();
+    const controller = new AbortController();
+    const tried: string[] = [];
+
+    await expect(
+      withProvider(
+        undefined,
+        "bitcoin",
+        async ({ name }) => {
+          tried.push(name);
+          controller.abort();
+          throw new RateLimitError(name);
+        },
+        "balances",
+        undefined,
+        controller.signal,
+      ),
+    ).rejects.toBeInstanceOf(RateLimitError);
+    expect(tried).toEqual(["mempool"]);
+  });
+
   it("keeps the primary failure as the cause when the fallback fails too", async () => {
     useNoProviderCredentials();
     const primaryError = new TransportError("connect ETIMEDOUT", undefined, "ETIMEDOUT", "mempool");

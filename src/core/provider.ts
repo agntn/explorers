@@ -92,9 +92,17 @@ async function withRateLimitRetry<T>(
 // oxlint-disable-next-line typescript/no-unsafe-declaration-merging -- Optional methods stay absent at runtime.
 export abstract class Provider {
   private readonly timeout: number | undefined;
+  private readonly signal: AbortSignal | undefined;
 
   constructor(config: Readonly<ProviderConfig> = {}) {
     this.timeout = config.timeout;
+    this.signal = config.signal;
+  }
+
+  /* A request signal adds to the configured one; either of them cancels the request. */
+  private requestSignal(signal: AbortSignal | undefined): AbortSignal | undefined {
+    if (signal === undefined || this.signal === undefined) return signal ?? this.signal;
+    return AbortSignal.any([signal, this.signal]);
   }
 
   /**
@@ -130,15 +138,17 @@ export abstract class Provider {
    * @returns {Promise<T>} Parsed JSON body.
    */
   protected getJSON<T>(url: string, options?: Omit<ClientRequestOptions, "provider">): Promise<T> {
+    const signal = this.requestSignal(options?.signal);
     return withRateLimitRetry(async () => {
       const data = await getJSON<T>(url, {
         ...options,
+        signal,
         timeout: options?.timeout ?? this.timeout,
         provider: this.name,
       });
       throwIfRateLimited(data, this.name);
       return data;
-    }, options?.signal);
+    }, signal);
   }
 
   /**
@@ -157,15 +167,17 @@ export abstract class Provider {
     body: unknown,
     options?: Omit<ClientRequestOptions, "provider">,
   ): Promise<T> {
+    const signal = this.requestSignal(options?.signal);
     return withRateLimitRetry(async () => {
       const data = await postJSON<T>(url, body, {
         ...options,
+        signal,
         timeout: options?.timeout ?? this.timeout,
         provider: this.name,
       });
       throwIfRateLimited(data, this.name);
       return data;
-    }, options?.signal);
+    }, signal);
   }
 
   /**
