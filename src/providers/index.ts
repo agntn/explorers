@@ -180,4 +180,11 @@ export const builtins: readonly ProviderEntry[] = [
     defaultURL: "https://btgexplorer.com",
     load: () => import("./blockbook.ts").then((m) => m.Blockbook),
   },
+  {
+    key: "haskoin",
+    chains: ["bitcoincash"],
+    capabilities: ["balances", "txHistory", "txDetail", "utxos", "blockInfo"],
+    defaultURL: "https://api.haskoin.com/bch",
+    load: () => import("./haskoin.ts").then((m) => m.Haskoin),
+  },
 ] satisfies readonly BuiltinProviderEntry[];

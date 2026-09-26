@@ -34,6 +34,7 @@ const ENV_MAP: Record<string, string[]> = {
   horizon: [],
   whatsonchain: ["WHATSONCHAIN_API_KEY"],
   blockbook: [],
+  haskoin: [],
 };
 
 const OPTIONAL_CREDENTIAL_PROVIDERS: readonly string[] = ["blockchair", "whatsonchain"];
@@ -54,6 +55,7 @@ export const PROVIDER_DEFAULT_CHAIN: Partial<Record<string, ChainKey>> = {
   horizon: "stellar",
   whatsonchain: "bitcoinsv",
   blockbook: "bitcoingold",
+  haskoin: "bitcoincash",
 };
 
 function hasConfiguredCredentials(envKeys: readonly string[]): boolean {

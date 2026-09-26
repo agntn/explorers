@@ -1,6 +1,6 @@
 {
-  "version": "0.5.6",
-  "generatedAt": "2026-09-25T09:49:48.512Z",
+  "version": "0.5.7",
+  "generatedAt": "2026-09-26T16:20:50.303Z",
   "providers": [
     {
       "key": "etherscan",
@@ -270,6 +270,21 @@
       ],
       "defaultURL": "https://btgexplorer.com",
       "defaultChain": "bitcoingold"
+    },
+    {
+      "key": "haskoin",
+      "chains": [
+        "bitcoincash"
+      ],
+      "capabilities": [
+        "balances",
+        "txHistory",
+        "txDetail",
+        "utxos",
+        "blockInfo"
+      ],
+      "defaultURL": "https://api.haskoin.com/bch",
+      "defaultChain": "bitcoincash"
     }
   ],
   "chains": [
@@ -421,7 +436,8 @@
       "type": "utxo",
       "explorer": "https://blockchair.com/bitcoin-cash",
       "providers": [
-        "blockchair"
+        "blockchair",
+        "haskoin"
       ]
     },
     {

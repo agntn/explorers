@@ -400,6 +400,36 @@ describe("Explorers MCP server", () => {
     });
   });
 
+  it("reads Bitcoin Cash through Haskoin without a Blockchair key", async () => {
+    vi.stubEnv("BLOCKCHAIR_API_KEY", "");
+    const address = "bitcoincash:qzstp4swtxg40rkn0j769vta3vkwyw4jj5fmdl2vtm";
+    const fetch = vi.fn(async () =>
+      Response.json({
+        address,
+        confirmed: 7995718728451,
+        unconfirmed: 0,
+        utxo: 129,
+        txs: 129,
+        received: 7995718728451,
+      }),
+    );
+    vi.stubGlobal("fetch", fetch);
+    const client = await connectTestClient();
+    const balance = parseToolResult(
+      await client.callTool({ name: "explorers_balance", arguments: { address } }),
+    );
+    expect(balance.isError).toBe(false);
+    expect(JSON.parse(balance.content[0]?.text ?? "null")).toMatchObject({
+      provider: "haskoin",
+      data: {
+        chain: "bitcoincash",
+        balance: "7995718728451",
+        balanceFormatted: "79957.18728451",
+        symbol: "BCH",
+      },
+    });
+  });
+
   it("reads Stellar balances and trustlines through the MCP transport", async () => {
     const address = "GAHK7EEG2WWHVKDNT4CEQFZGKF2LGDSW2IVM4S5DP42RBW3K6BTODB4A";
     const issuer = "GDM4RQUQQUVSKQA7S6EM7XBZP3FCGH4Q7CL6TABQ7B2BEJ5ERARM2M5M";

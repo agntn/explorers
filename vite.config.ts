@@ -91,6 +91,7 @@ export default defineConfig({
       "providers/horizon": "src/providers/horizon.ts",
       "providers/whatsonchain": "src/providers/whatsonchain.ts",
       "providers/blockbook": "src/providers/blockbook.ts",
+      "providers/haskoin": "src/providers/haskoin.ts",
     },
     dts: true,
     format: "esm",
