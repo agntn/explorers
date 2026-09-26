@@ -209,7 +209,9 @@ export class Blockchair extends Provider {
 
   constructor(config: Readonly<ProviderConfig>) {
     super(config);
-    this.apiKey = config.apiKey ?? process.env.BLOCKCHAIR_API_KEY;
+    /* An empty variable is no key, as provider selection reads it: sent as `?key=`, it comes back
+       as "Invalid API token". */
+    this.apiKey = (config.apiKey ?? process.env.BLOCKCHAIR_API_KEY) || undefined;
     this.baseUrl = normalizeBaseUrl(config.baseUrl ?? DEFAULT_BASE);
     this.defaultChain = config.defaultChain ?? "ethereum";
   }
