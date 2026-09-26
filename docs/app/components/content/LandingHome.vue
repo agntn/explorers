@@ -26,12 +26,12 @@ const activeProvider = computed(() => current.value.provider);
       <h1
         class="explorers-enter mx-auto max-w-3xl text-4xl leading-[1.08] font-medium tracking-tight text-highlighted sm:text-5xl lg:text-[3.75rem]"
       >
-        Seventeen explorers. <span class="text-primary whitespace-nowrap">One shape.</span>
+        Eighteen explorers. <span class="text-primary whitespace-nowrap">One shape.</span>
       </h1>
       <p
         class="explorers-enter explorers-enter-2 mx-auto mt-6 max-w-xl text-base leading-7 text-muted"
       >
-        Etherscan, Blockscout, Mempool, Solscan, Koios, dcrdata and eleven more behind one
+        Etherscan, Blockscout, Mempool, Solscan, Koios, dcrdata and twelve more behind one
         TypeScript contract. Balances, transactions, unspent outputs, tokens, contracts, gas and
         blocks on 29 chains, amounts as exact strings, and a provider picked for you from the keys
         you have. Library, CLI, MCP server, Pi and OMP, all reading through the same code, so
@@ -162,7 +162,7 @@ const activeProvider = computed(() => current.value.provider);
 
     <LandingFeature
       eyebrow="Providers"
-      title="Seventeen backends, honest about what they serve"
+      title="Eighteen backends, honest about what they serve"
       to="/providers"
       link="All providers"
       :checks="[
@@ -255,7 +255,7 @@ const activeProvider = computed(() => current.value.provider);
       with two required reads and seven optional ones. Concrete classes implement the mappers and
       the explorer calls, nothing else leaks upward. A sub path import like
       <code class="font-mono text-[13px] text-highlighted">@agntn/explorers/providers/mempool</code>
-      gives you one backend without the other sixteen in your bundle.
+      gives you one backend without the other seventeen in your bundle.
       <template #visual>
         <LandingRotatingCode :sample="current" />
       </template>

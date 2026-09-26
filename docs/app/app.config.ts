@@ -6,7 +6,7 @@ export default defineAppConfig({
   seo: {
     title: "@agntn/explorers",
     description:
-      "Seventeen block explorer APIs behind one TypeScript contract. Balances, transactions, unspent outputs, tokens, contracts, gas and blocks on 29 chains. Library, CLI, MCP server, Pi and OMP.",
+      "Eighteen block explorer APIs behind one TypeScript contract. Balances, transactions, unspent outputs, tokens, contracts, gas and blocks on 29 chains. Library, CLI, MCP server, Pi and OMP.",
     schema: {
       type: "SoftwareApplication",
       applicationCategory: "DeveloperApplication",

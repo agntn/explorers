@@ -29,7 +29,7 @@ export default defineNuxtConfig({
     domain: "https://explorers.agntn.dev",
     title: "@agntn/explorers",
     description:
-      "Seventeen block explorer APIs behind one TypeScript contract: balances, transactions, token transfers, contracts, tokens, gas and blocks on 29 chains. Library, CLI and agent tools.",
+      "Eighteen block explorer APIs behind one TypeScript contract: balances, transactions, token transfers, contracts, tokens, gas and blocks on 29 chains. Library, CLI and agent tools.",
     sections: [
       {
         title: "Tools",
@@ -61,7 +61,7 @@ export default defineNuxtConfig({
   /** Docus pages define their own OG images; the alt text is the one thing they leave unset. */
   ogImage: {
     defaults: {
-      alt: "@agntn/explorers: seventeen block explorer APIs, one shape",
+      alt: "@agntn/explorers: eighteen block explorer APIs, one shape",
     },
   },
   icon: {
@@ -101,6 +101,7 @@ export default defineNuxtConfig({
         "lucide:search",
         "lucide:server",
         "lucide:sliders-horizontal",
+        "lucide:square-function",
         "lucide:sun",
         "lucide:sunrise",
         "lucide:terminal",

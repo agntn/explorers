@@ -119,7 +119,7 @@ describe("resolveProvider", () => {
 
     expect(resolveProvider(undefined, "solana")).toBe("solscan");
     expect(resolveProvider(undefined, "ecash")).toBe("blockchair");
-    expect(resolveProvider(undefined, "bitcoincash")).toBe("blockchair");
+    expect(resolveProvider(undefined, "bitcoincash")).toBe("haskoin");
     expect(resolveProvider(undefined, "zcash")).toBe("blockchair");
     expect(resolveProvider(undefined, "pepecoin")).toBe("mempool");
   });
@@ -183,7 +183,7 @@ describe("withProvider", () => {
         "balances",
         "bitcoincash:qz3yjg59ypg6jqpwhaxgvjj44jm4hdx0w5wsxw2qez",
       ),
-    ).resolves.toEqual({ chain: "bitcoincash", name: "blockchair" });
+    ).resolves.toEqual({ chain: "bitcoincash", name: "haskoin" });
     await expect(
       withProvider(
         undefined,
@@ -383,6 +383,21 @@ describe("withProvider", () => {
     });
 
     expect(tried).toEqual(["mempool", "blockstream"]);
+  });
+
+  it("retries Bitcoin Cash on keyless Haskoin when a keyed Blockchair is blocked", async () => {
+    useNoProviderCredentials();
+    vi.stubEnv("BLOCKCHAIR_API_KEY", "configured");
+    const tried: string[] = [];
+
+    const name = await withProvider(undefined, "bitcoincash", async ({ name }) => {
+      tried.push(name);
+      if (name === "blockchair") throw new RateLimitError(name);
+      return name;
+    });
+
+    expect(tried).toEqual(["blockchair", "haskoin"]);
+    expect(name).toBe("haskoin");
   });
 
   it("uses a provider with optional credentials after the keyless default", async () => {

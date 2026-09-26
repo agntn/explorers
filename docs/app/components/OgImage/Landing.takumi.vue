@@ -4,7 +4,7 @@
 defineProps<{ title?: string; description?: string }>();
 
 const TAGLINE =
-  "Balances, transactions, unspent outputs, tokens, contracts, gas and blocks from seventeen explorer APIs. One shape.";
+  "Balances, transactions, unspent outputs, tokens, contracts, gas and blocks from eighteen explorer APIs. One shape.";
 
 const { name: siteName } = useSiteConfig();
 
@@ -52,7 +52,7 @@ const PROVIDERS = ["Etherscan", "Blockscout", "Mempool", "Solscan", "Koios", "Ar
           class="m-0 text-[76px] font-medium leading-[1.05] tracking-[-0.03em]"
           style="color: #f0f4f8"
         >
-          Seventeen explorers.
+          Eighteen explorers.
         </h1>
         <h1
           class="m-0 ml-[22px] text-[76px] font-medium leading-[1.05] tracking-[-0.03em]"

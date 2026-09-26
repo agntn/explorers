@@ -32,6 +32,7 @@ const PROVIDER_DEFAULT_CHAIN = {
   horizon: "stellar",
   whatsonchain: "bitcoinsv",
   blockbook: "bitcoingold",
+  haskoin: "bitcoincash",
 };
 
 const out = fileURLToPath(new URL("../app/data/explorers.json", import.meta.url));

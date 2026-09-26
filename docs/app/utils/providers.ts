@@ -171,6 +171,12 @@ const PRESENTATION: Record<string, ProviderPresentation> = {
     envVars: [],
     blurb: "Bitcoin Gold through the Blockbook API of btgexplorer.com. Satoshis, unspent outputs, fees and senders straight from each transaction, no key.",
   },
+  haskoin: {
+    label: "Haskoin",
+    icon: "i-lucide-square-function",
+    envVars: [],
+    blurb: "Bitcoin Cash through Haskoin Store at api.haskoin.com. Satoshis, unspent outputs, fees and senders straight from each transaction, no key.",
+  },
 };
 
 export interface ProviderInfo extends ProviderSnapshot, ProviderPresentation {
