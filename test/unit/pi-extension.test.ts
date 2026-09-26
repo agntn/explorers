@@ -351,6 +351,37 @@ describe("explorers Pi extension", () => {
     },
   );
 
+  it("aborts the explorer request when the host cancels the tool", async () => {
+    const signals: AbortSignal[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        (_input: string | URL | Request, init?: RequestInit) =>
+          new Promise<Response>((_resolve, reject) => {
+            if (init?.signal) signals.push(init.signal);
+            init?.signal?.addEventListener("abort", () => reject(init.signal?.reason), {
+              once: true,
+            });
+          }),
+      ),
+    );
+    const controller = new AbortController();
+
+    const execution = requireTool(registerExtensionTools(), "explorers_balance")
+      .execute(
+        "test",
+        { address: "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh", chain: "bitcoin" },
+        controller.signal,
+        undefined,
+        unusedContext,
+      )
+      .catch((error: unknown) => error);
+    await vi.waitFor(() => expect(signals).toHaveLength(1));
+    controller.abort();
+
+    expect(await execution).toMatchObject({ code: "AbortError", provider: "mempool" });
+  });
+
   it("routes Arweave balance and block tools through gateway REST", async () => {
     const address = "FPjbN_btYKzcf8QASjs30v5C0FPv7XpwKXENBW8dqVw";
     const fetch = vi.fn(async (input: RequestInfo | URL) => {

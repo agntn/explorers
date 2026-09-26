@@ -97,6 +97,7 @@ async function withSelected<T>(
   preferred: string | undefined,
   requestedChain: string | undefined,
   capability: ExplorersModule.ProviderCapability,
+  signal: AbortSignal | undefined,
   /* oxlint-disable-next-line typescript/prefer-readonly-parameter-types */
   run: (selected: SelectedProvider) => Promise<T>,
   input?: string | readonly string[],
@@ -109,6 +110,7 @@ async function withSelected<T>(
     (selected) => run({ ...selected, lib }),
     capability,
     input,
+    signal,
   );
 }
 
@@ -122,8 +124,9 @@ async function resolveAddress(
   resolveAddresses: typeof ExplorersModule.resolveAddresses,
   input: string,
   chain: ExplorersModule.ChainKey,
+  signal: AbortSignal | undefined,
 ): Promise<string> {
-  const [address] = await resolveAddresses(input, chain);
+  const [address] = await resolveAddresses(input, chain, signal);
   if (address === undefined) throw new TypeError("Address resolution returned no result");
   return address;
 }
@@ -209,13 +212,14 @@ export default function explorersExtension(pi: ExtensionAPI) {
         0,
       );
     },
-    async execute(_toolCallId, params): Promise<ExplorersToolResult> {
+    async execute(_toolCallId, params, signal): Promise<ExplorersToolResult> {
       return withSelected(
         params.provider,
         params.chain,
         "balances",
+        signal,
         async ({ chain, lib, name, provider }) => {
-          const addresses = await lib.resolveAddresses(params.address, chain);
+          const addresses = await lib.resolveAddresses(params.address, chain, signal);
           const balances = await Promise.all(
             addresses.map((address) => provider.getBalance(address, chain)),
           );
@@ -267,13 +271,14 @@ export default function explorersExtension(pi: ExtensionAPI) {
         0,
       );
     },
-    async execute(_toolCallId, params): Promise<ExplorersToolResult> {
+    async execute(_toolCallId, params, signal): Promise<ExplorersToolResult> {
       return withSelected(
         params.provider,
         params.chain,
         "txHistory",
+        signal,
         async ({ chain, lib, name, provider }) => {
-          const address = await resolveAddress(lib.resolveAddresses, params.address, chain);
+          const address = await resolveAddress(lib.resolveAddresses, params.address, chain, signal);
           const txs = await provider.getTxHistory(address, chain, { limit: params.limit });
           const lines = txs.map(
             (tx) =>
@@ -304,11 +309,12 @@ export default function explorersExtension(pi: ExtensionAPI) {
     renderCall(args, _theme) {
       return new Text(sanitizeTerminalText(`🔬 Tx detail: ${args.hash.slice(0, 18)}…`), 0, 0);
     },
-    async execute(_toolCallId, params): Promise<TxDetailToolResult> {
+    async execute(_toolCallId, params, signal): Promise<TxDetailToolResult> {
       return withSelected(
         params.provider,
         params.chain,
         "txDetail",
+        signal,
         async ({ chain, lib, name, provider }) => {
           if (!provider.capabilities.txDetail || !provider.getTxDetail) {
             throw new lib.UnsupportedOperationError("getTxDetail", name);
@@ -423,16 +429,17 @@ export default function explorersExtension(pi: ExtensionAPI) {
         0,
       );
     },
-    async execute(_toolCallId, params): Promise<ExplorersToolResult> {
+    async execute(_toolCallId, params, signal): Promise<ExplorersToolResult> {
       return withSelected(
         params.provider,
         params.chain,
         "utxos",
+        signal,
         async ({ chain, lib, name, provider }) => {
           if (!provider.capabilities.utxos || !provider.getUtxos) {
             throw new lib.UnsupportedOperationError("getUtxos", name);
           }
-          const address = await resolveAddress(lib.resolveAddresses, params.address, chain);
+          const address = await resolveAddress(lib.resolveAddresses, params.address, chain, signal);
           const utxos = await provider.getUtxos(address, chain);
           return textResult(describeUtxos(name, address, chain, utxos));
         },
@@ -458,16 +465,17 @@ export default function explorersExtension(pi: ExtensionAPI) {
     renderCall(args, _theme) {
       return new Text(sanitizeTerminalText(`📋 Contract: ${args.address}`), 0, 0);
     },
-    async execute(_toolCallId, params): Promise<ExplorersToolResult> {
+    async execute(_toolCallId, params, signal): Promise<ExplorersToolResult> {
       return withSelected(
         params.provider,
         params.chain,
         "contractInfo",
+        signal,
         async ({ chain, lib, name, provider }) => {
           if (!provider.capabilities.contractInfo || !provider.getContractInfo) {
             throw new lib.UnsupportedOperationError("getContractInfo", name);
           }
-          const address = await resolveAddress(lib.resolveAddresses, params.address, chain);
+          const address = await resolveAddress(lib.resolveAddresses, params.address, chain, signal);
           const info = await provider.getContractInfo(address, chain);
           const parts = [
             `[${name}] Contract ${info.address}`,
@@ -519,16 +527,17 @@ export default function explorersExtension(pi: ExtensionAPI) {
         0,
       );
     },
-    async execute(_toolCallId, params): Promise<ExplorersToolResult> {
+    async execute(_toolCallId, params, signal): Promise<ExplorersToolResult> {
       return withSelected(
         params.provider,
         params.chain,
         "tokenBalances",
+        signal,
         async ({ chain, lib, name, provider }) => {
           if (!provider.capabilities.tokenBalances || !provider.getTokenBalances) {
             throw new lib.UnsupportedOperationError("getTokenBalances", name);
           }
-          const address = await resolveAddress(lib.resolveAddresses, params.address, chain);
+          const address = await resolveAddress(lib.resolveAddresses, params.address, chain, signal);
           const holdings = await provider.getTokenBalances(address, chain, {
             nonZeroOnly: params.nonZeroOnly ?? true,
           });
@@ -579,16 +588,17 @@ export default function explorersExtension(pi: ExtensionAPI) {
         0,
       );
     },
-    async execute(_toolCallId, params): Promise<ExplorersToolResult> {
+    async execute(_toolCallId, params, signal): Promise<ExplorersToolResult> {
       return withSelected(
         params.provider,
         params.chain,
         "tokenTransfers",
+        signal,
         async ({ chain, lib, name, provider }) => {
           if (!provider.capabilities.tokenTransfers || !provider.getTokenTransfers) {
             throw new lib.UnsupportedOperationError("getTokenTransfers", name);
           }
-          const address = await resolveAddress(lib.resolveAddresses, params.address, chain);
+          const address = await resolveAddress(lib.resolveAddresses, params.address, chain, signal);
           const transfers = await provider.getTokenTransfers(address, chain, {
             limit: params.limit ?? 10,
             token: params.token,
@@ -627,11 +637,12 @@ export default function explorersExtension(pi: ExtensionAPI) {
         0,
       );
     },
-    async execute(_toolCallId, params): Promise<ExplorersToolResult> {
+    async execute(_toolCallId, params, signal): Promise<ExplorersToolResult> {
       return withSelected(
         params.provider,
         params.chain,
         "gasData",
+        signal,
         async ({ chain, lib, name, provider }) => {
           const caps = provider.capabilities;
           if (!caps.gasData || !provider.getGasData) {
@@ -675,11 +686,12 @@ export default function explorersExtension(pi: ExtensionAPI) {
         0,
       );
     },
-    async execute(_toolCallId, params): Promise<ExplorersToolResult> {
+    async execute(_toolCallId, params, signal): Promise<ExplorersToolResult> {
       return withSelected(
         params.provider,
         params.chain,
         "blockInfo",
+        signal,
         async ({ chain, lib, name, provider }) => {
           if (!provider.capabilities.blockInfo || !provider.getBlockInfo) {
             throw new lib.UnsupportedOperationError("getBlockInfo", name);

@@ -141,6 +141,57 @@ describe("HTTP client", () => {
     });
   });
 
+  it("still times out a request that carries a signal", async () => {
+    const signals: AbortSignal[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        (_input: string | URL | Request, init?: RequestInit) =>
+          new Promise<Response>((_resolve, reject) => {
+            if (init?.signal) signals.push(init.signal);
+            init?.signal?.addEventListener("abort", () => reject(init.signal?.reason), {
+              once: true,
+            });
+          }),
+      ),
+    );
+
+    const error = await getJSON("https://example.test/data", {
+      provider: "mempool",
+      signal: new AbortController().signal,
+      timeout: 20,
+    }).catch((failure: unknown) => failure);
+
+    expect(error).toBeInstanceOf(TransportError);
+    expect(error).toMatchObject({ code: "TimeoutError" });
+    expect(signals[0]?.aborted).toBe(true);
+  });
+
+  it("stops a request when its signal aborts", async () => {
+    const signals: AbortSignal[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        (_input: string | URL | Request, init?: RequestInit) =>
+          new Promise<Response>((_resolve, reject) => {
+            if (init?.signal) signals.push(init.signal);
+            init?.signal?.addEventListener("abort", () => reject(init.signal?.reason), {
+              once: true,
+            });
+          }),
+      ),
+    );
+    const controller = new AbortController();
+
+    const request = getJSON("https://example.test/data", {
+      provider: "mempool",
+      signal: controller.signal,
+    }).catch((failure: unknown) => failure);
+    controller.abort();
+
+    expect(await request).toMatchObject({ code: "AbortError", provider: "mempool" });
+  });
+
   it("keeps the URL but invents no status for a body that is not JSON", async () => {
     vi.stubGlobal(
       "fetch",

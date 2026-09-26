@@ -61,12 +61,20 @@ function withSelectedProvider<T>(
   providerName: string | undefined,
   chainName: string | undefined,
   operation: ProviderOperation,
+  signal: AbortSignal,
   /* oxlint-disable-next-line typescript/prefer-readonly-parameter-types */
   run: (selected: ProviderContext) => Promise<T>,
   input?: string,
 ): Promise<T> {
   const requestedChain = chainName === undefined ? undefined : normalizeChain(chainName);
-  return withProvider(providerName, requestedChain, run, OPERATION_CAPABILITIES[operation], input);
+  return withProvider(
+    providerName,
+    requestedChain,
+    run,
+    OPERATION_CAPABILITIES[operation],
+    input,
+    signal,
+  );
 }
 
 function result(value: unknown): CallToolResult {
@@ -99,8 +107,12 @@ function trimContract(
   return contract;
 }
 
-async function addressForChain(address: string, chain: Parameters<typeof resolveInput>[1]) {
-  return (await resolveInput(address, chain)).address;
+async function addressForChain(
+  address: string,
+  chain: Parameters<typeof resolveInput>[1],
+  signal: AbortSignal,
+) {
+  return (await resolveInput(address, chain, signal)).address;
 }
 
 function requireOperation<K extends ProviderOperation>(
@@ -145,13 +157,13 @@ export function createMcpServer(): McpServer {
       },
       annotations: { readOnlyHint: true },
     },
-    async ({ address, chain, provider }) => {
+    async ({ address, chain, provider }, { signal }) => {
       const requestedChain = chain === undefined ? undefined : normalizeChain(chain);
       return withProvider(
         provider,
         requestedChain,
         async (selected) => {
-          const resolvedAddresses = await resolveAddresses(address, selected.chain);
+          const resolvedAddresses = await resolveAddresses(address, selected.chain, signal);
           const getBalance = requireOperation(selected.provider, "getBalance");
           const balances = await Promise.all(
             resolvedAddresses.map((resolvedAddress) => getBalance(resolvedAddress, selected.chain)),
@@ -163,6 +175,7 @@ export function createMcpServer(): McpServer {
         },
         "balances",
         address,
+        signal,
       );
     },
   );
@@ -183,13 +196,14 @@ export function createMcpServer(): McpServer {
       },
       annotations: { readOnlyHint: true },
     },
-    async ({ address, chain, provider, raw, ...options }) =>
+    async ({ address, chain, provider, raw, ...options }, { signal }) =>
       withSelectedProvider(
         provider,
         chain,
         "getTxHistory",
+        signal,
         async (selected) => {
-          const resolvedAddress = await addressForChain(address, selected.chain);
+          const resolvedAddress = await addressForChain(address, selected.chain, signal);
           const getTxHistory = requireOperation(selected.provider, "getTxHistory");
           const transactions = await getTxHistory(resolvedAddress, selected.chain, options);
           return providerResult(
@@ -209,8 +223,8 @@ export function createMcpServer(): McpServer {
       inputSchema: { hash: z.string().min(1), ...providerInput, ...rawInput },
       annotations: { readOnlyHint: true },
     },
-    async ({ hash, chain, provider, raw }) =>
-      withSelectedProvider(provider, chain, "getTxDetail", async (selected) => {
+    async ({ hash, chain, provider, raw }, { signal }) =>
+      withSelectedProvider(provider, chain, "getTxDetail", signal, async (selected) => {
         const getTxDetail = requireOperation(selected.provider, "getTxDetail");
         return providerResult(
           selected.name,
@@ -227,13 +241,14 @@ export function createMcpServer(): McpServer {
       inputSchema: { address: z.string().min(1), ...providerInput },
       annotations: { readOnlyHint: true },
     },
-    async ({ address, chain, provider }) =>
+    async ({ address, chain, provider }, { signal }) =>
       withSelectedProvider(
         provider,
         chain,
         "getUtxos",
+        signal,
         async (selected) => {
-          const resolvedAddress = await addressForChain(address, selected.chain);
+          const resolvedAddress = await addressForChain(address, selected.chain, signal);
           const getUtxos = requireOperation(selected.provider, "getUtxos");
           return providerResult(selected.name, await getUtxos(resolvedAddress, selected.chain));
         },
@@ -249,14 +264,15 @@ export function createMcpServer(): McpServer {
       inputSchema: { address: z.string().min(1), ...providerInput, ...contractPayloadInput },
       annotations: { readOnlyHint: true },
     },
-    async ({ address, chain, provider, ...requested }) =>
+    async ({ address, chain, provider, ...requested }, { signal }) =>
       withSelectedProvider(
         provider,
         chain,
         "getContractInfo",
+        signal,
         async (selected) => {
           const getContractInfo = requireOperation(selected.provider, "getContractInfo");
-          const resolvedAddress = await addressForChain(address, selected.chain);
+          const resolvedAddress = await addressForChain(address, selected.chain, signal);
           return providerResult(
             selected.name,
             trimContract(await getContractInfo(resolvedAddress, selected.chain), requested),
@@ -292,13 +308,14 @@ export function createMcpServer(): McpServer {
       },
       annotations: { readOnlyHint: true },
     },
-    async ({ address, chain, provider, nonZeroOnly, limit }) =>
+    async ({ address, chain, provider, nonZeroOnly, limit }, { signal }) =>
       withSelectedProvider(
         provider,
         chain,
         "getTokenBalances",
+        signal,
         async (selected) => {
-          const resolvedAddress = await addressForChain(address, selected.chain);
+          const resolvedAddress = await addressForChain(address, selected.chain, signal);
           const getTokenBalances = requireOperation(selected.provider, "getTokenBalances");
           const holdings = await getTokenBalances(resolvedAddress, selected.chain, {
             nonZeroOnly: nonZeroOnly ?? true,
@@ -335,13 +352,14 @@ export function createMcpServer(): McpServer {
       },
       annotations: { readOnlyHint: true },
     },
-    async ({ address, chain, provider, ...options }) =>
+    async ({ address, chain, provider, ...options }, { signal }) =>
       withSelectedProvider(
         provider,
         chain,
         "getTokenTransfers",
+        signal,
         async (selected) => {
-          const resolvedAddress = await addressForChain(address, selected.chain);
+          const resolvedAddress = await addressForChain(address, selected.chain, signal);
           const getTokenTransfers = requireOperation(selected.provider, "getTokenTransfers");
           return providerResult(
             selected.name,
@@ -359,8 +377,8 @@ export function createMcpServer(): McpServer {
       inputSchema: providerInput,
       annotations: { readOnlyHint: true },
     },
-    async ({ chain, provider }) =>
-      withSelectedProvider(provider, chain, "getGasData", async (selected) => {
+    async ({ chain, provider }, { signal }) =>
+      withSelectedProvider(provider, chain, "getGasData", signal, async (selected) => {
         const getGasData = requireOperation(selected.provider, "getGasData");
         return providerResult(selected.name, await getGasData(selected.chain));
       }),
@@ -376,8 +394,8 @@ export function createMcpServer(): McpServer {
       },
       annotations: { readOnlyHint: true },
     },
-    async ({ blockNumber, chain, provider }) =>
-      withSelectedProvider(provider, chain, "getBlockInfo", async (selected) => {
+    async ({ blockNumber, chain, provider }, { signal }) =>
+      withSelectedProvider(provider, chain, "getBlockInfo", signal, async (selected) => {
         const getBlockInfo = requireOperation(selected.provider, "getBlockInfo");
         return providerResult(selected.name, await getBlockInfo(blockNumber, selected.chain));
       }),

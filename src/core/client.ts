@@ -56,6 +56,13 @@ function parseJSON<T>(text: string | undefined): T {
   }) as T;
 }
 
+/* ofetch drops its timeout when a signal is passed, so the timeout rides on the signal. */
+function cancellation(options?: ClientRequestOptions): { timeout?: number; signal?: AbortSignal } {
+  const timeout = options?.timeout ?? 15_000;
+  if (options?.signal === undefined) return { timeout };
+  return { signal: AbortSignal.any([options.signal, AbortSignal.timeout(timeout)]) };
+}
+
 /**
  * Fetch JSON with Explorers headers and a 15-second default timeout.
  *
@@ -74,8 +81,7 @@ export async function getJSON<T>(url: string, options?: ClientRequestOptions): P
         "User-Agent": agent(),
         ...options?.headers,
       },
-      timeout: options?.timeout ?? 15_000,
-      signal: options?.signal,
+      ...cancellation(options),
       retry: false,
       responseType: "text",
     });
@@ -100,8 +106,7 @@ export async function postJSON<T>(
         ...options?.headers,
       },
       body: JSON.stringify(body),
-      timeout: options?.timeout ?? 15_000,
-      signal: options?.signal,
+      ...cancellation(options),
       retry: false,
       responseType: "text",
     });

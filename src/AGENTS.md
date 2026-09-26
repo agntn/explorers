@@ -26,7 +26,7 @@ src/
 
 - `Provider` - abstract base class all providers extend. Each concrete class owns a static `key`; the inherited instance `name` reads it. Registry metadata lives in `builtins`, not on the class. Required getter: `capabilities`. Required methods: `getBalance()`, `getTxHistory()`. Optional: `getTxDetail()`, `getUtxos()`, `getContractInfo()`, `getTokenBalances()`, `getTokenTransfers()`, `getGasData()`, `getBlockInfo()`.
 - `ProviderCapabilities` — boolean flags for what a provider supports
-- `ProviderConfig` — `{ apiKey?, baseUrl?, timeout?, defaultChain? }`
+- `ProviderConfig` - `{ apiKey?, baseUrl?, timeout?, defaultChain?, signal? }`
 
 ## Anti-patterns
 

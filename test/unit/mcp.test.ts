@@ -752,6 +752,75 @@ describe("Explorers MCP server", () => {
     ]);
   }, 10_000);
 
+  it("aborts the explorer request when the client cancels the call", async () => {
+    const signals: AbortSignal[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        (_input: string | URL | Request, init?: RequestInit) =>
+          new Promise<Response>((_resolve, reject) => {
+            if (init?.signal) signals.push(init.signal);
+            init?.signal?.addEventListener("abort", () => reject(init.signal?.reason), {
+              once: true,
+            });
+          }),
+      ),
+    );
+    const client = await connectTestClient();
+    const controller = new AbortController();
+
+    const call = client
+      .callTool(
+        {
+          name: "explorers_balance",
+          arguments: { address: "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh", chain: "bitcoin" },
+        },
+        undefined,
+        { signal: controller.signal },
+      )
+      .catch((error: unknown) => error);
+    await vi.waitFor(() => expect(signals).toHaveLength(1));
+    controller.abort();
+
+    await call;
+    await vi.waitFor(() => expect(signals[0]?.aborted).toBe(true));
+  });
+
+  it("aborts ENS resolution when the client cancels the call", async () => {
+    const signals: AbortSignal[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        (_input: string | URL | Request, init?: RequestInit) =>
+          new Promise<Response>((_resolve, reject) => {
+            if (init?.signal) signals.push(init.signal);
+            init?.signal?.addEventListener("abort", () => reject(init.signal?.reason), {
+              once: true,
+            });
+          }),
+      ),
+    );
+    const client = await connectTestClient();
+    const controller = new AbortController();
+
+    const call = client
+      .callTool(
+        {
+          name: "explorers_tx_history",
+          arguments: { address: "vitalik.eth", provider: "blockscout" },
+        },
+        undefined,
+        { signal: controller.signal },
+      )
+      .catch((error: unknown) => error);
+    await vi.waitFor(() => expect(signals).toHaveLength(1));
+    controller.abort();
+
+    await call;
+    await vi.waitFor(() => expect(signals[0]?.aborted).toBe(true));
+    expect(signals).toHaveLength(1);
+  });
+
   it("returns one balance per address for a batch request", async () => {
     vi.stubGlobal(
       "fetch",

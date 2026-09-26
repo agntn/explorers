@@ -35,15 +35,18 @@ export function isAddress(input: string): boolean {
 /**
  * Resolve an ENS name through public HTTP resolvers.
  *
- * Resolver failures are tried in order and collapse to `null` when every endpoint fails.
+ * Resolver failures are tried in order and collapse to `null` when every endpoint fails. An abort
+ * of `signal` is no resolver failure: it stops the lookup and throws the signal's reason.
  *
  * @param {string} name - The `name` value.
+ * @param {AbortSignal} signal - Cancels the lookup.
  * @returns {Promise<string | null>} The resulting value.
  */
-export async function resolveEns(name: string): Promise<string | null> {
+export async function resolveEns(name: string, signal?: AbortSignal): Promise<string | null> {
   const normalized = name.toLowerCase().trim();
 
   for (const buildUrl of RESOLVERS) {
+    signal?.throwIfAborted();
     const url = buildUrl(normalized);
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 5000);
@@ -51,7 +54,7 @@ export async function resolveEns(name: string): Promise<string | null> {
     try {
       const res = await fetch(url, {
         headers: { Accept: "application/json" },
-        signal: controller.signal,
+        signal: signal ? AbortSignal.any([signal, controller.signal]) : controller.signal,
       });
 
       if (!res.ok) continue;
@@ -63,6 +66,7 @@ export async function resolveEns(name: string): Promise<string | null> {
         return address;
       }
     } catch {
+      signal?.throwIfAborted();
       // Try next resolver
     } finally {
       clearTimeout(timeout);

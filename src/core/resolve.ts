@@ -275,11 +275,15 @@ function startingChain(
  * even over an explicit provider's default. Only when the address fits no single chain does
  * selection start on Ethereum, or on the explicit provider's default chain. The callback must be safe to run twice.
  *
+ * A signal reaches every request of the created provider. Once it aborts, the read stays with the
+ * provider it reached, whatever that provider threw.
+ *
  * @param {string | undefined} preferred - The `preferred` value.
  * @param {ChainKey | undefined} chain - The `chain` value.
  * @param {(context: Readonly<ProviderContext>) => Promise<T>} run - The `run` value.
  * @param {ProviderCapability} capability - Operation required from an automatic selection.
  * @param {string | readonly string[]} input - Address or addresses the read is about.
+ * @param {AbortSignal} signal - Cancels the read and its requests.
  * @returns {Promise<T>} The resulting value.
  */
 export async function withProvider<T>(
@@ -289,6 +293,7 @@ export async function withProvider<T>(
   run: (context: ProviderContext) => Promise<T>,
   capability?: ProviderCapability,
   input?: string | readonly string[],
+  signal?: AbortSignal,
 ): Promise<T> {
   const requestedChain = startingChain(preferred, chain, input);
   const primaryName = resolveProvider(preferred, requestedChain, capability);
@@ -297,7 +302,7 @@ export async function withProvider<T>(
     (name) => name !== primaryName,
   );
   const execute = async (name: string) => {
-    const provider = await create(name);
+    const provider = await create(name, { signal });
     // The constructor has just read the key, so a refusal from this read belongs to that key.
     const credentials = credentialsOf(name);
     try {
@@ -319,7 +324,12 @@ export async function withProvider<T>(
   try {
     return await execute(primaryName);
   } catch (error) {
-    if (preferred !== undefined || fallbackName === undefined || !isTransientFailure(error)) {
+    if (
+      preferred !== undefined ||
+      fallbackName === undefined ||
+      signal?.aborted === true ||
+      !isTransientFailure(error)
+    ) {
       throw error;
     }
 
