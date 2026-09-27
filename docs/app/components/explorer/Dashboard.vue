@@ -102,7 +102,7 @@ const feedless = computed(() => !hasTip(props.chain));
           v-for="row in tabs"
           :key="row.key"
           :color="chain === row.key ? 'primary' : 'neutral'"
-          variant="soft"
+          variant="chip"
           :icon="row.icon"
           :label="row.name"
           :aria-pressed="chain === row.key"

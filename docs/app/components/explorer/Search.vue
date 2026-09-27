@@ -142,7 +142,7 @@ function pick(example: (typeof EXAMPLES)[number]) {
               v-for="example in EXAMPLES"
               :key="example.label"
               color="neutral"
-              variant="soft"
+              variant="chip"
               :icon="chainIcon(example.chain)"
               :label="example.label"
               @click="pick(example)"

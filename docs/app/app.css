@@ -2969,7 +2969,7 @@ button.console-lead:focus-visible {
   height: 14px;
 }
 
-/* UButton soft: a chip; primary soft is the chip that is picked. */
+/* UButton variant chip: a chip; primary is the chip that is picked. */
 .explorers-chip {
   display: inline-flex;
   align-items: center;

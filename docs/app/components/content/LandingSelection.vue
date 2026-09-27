@@ -90,7 +90,10 @@ const others = computed(
           <span class="console-tag">00</span>
         </li>
       </ol>
-      <p class="console-label console-rule-title selection-keys-title">
+    </div>
+
+    <div class="selection-body selection-band">
+      <p class="console-label console-rule-title">
         <span>With keys set <span aria-hidden="true">[ configured first ]</span></span>
         <span class="console-mark" aria-hidden="true" />
       </p>
@@ -172,8 +175,8 @@ const others = computed(
 .selection-spare {
   visibility: hidden;
 }
-.selection-keys-title {
-  margin: 16px 0 10px;
+.selection-band {
+  border-top: 1px solid var(--console-line);
 }
 .selection-keys .console-readout-rows > div {
   grid-template-columns: 5rem minmax(0, 1fr);

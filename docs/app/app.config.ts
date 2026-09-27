@@ -45,12 +45,18 @@ export default defineAppConfig({
     /**
      * Buttons in the instrument grammar, by variant, so a page writes <UButton> and gets the look
      * from app.css: primary solid and neutral outline are boxed actions with the glyph in its own
-     * cell, neutral subtle the small control of an instrument (`square` for a step button), soft
-     * a chip and primary soft the picked chip. Docus keeps neutral ghost and link for its own.
+     * cell, neutral subtle the small control of an instrument (`square` for a step button), and
+     * the site's own `chip` variant a chip, primary for the picked one. Docus renders its search
+     * field as neutral soft and its own buttons as neutral ghost and link, so those stay default.
      */
     button: {
       slots: {
         base: "h-9 rounded-lg px-3.5 text-sm leading-none font-medium cursor-pointer transition-colors",
+      },
+      variants: {
+        variant: {
+          chip: "",
+        },
       },
       compoundVariants: [
         {
@@ -76,12 +82,12 @@ export default defineAppConfig({
         },
         {
           color: "neutral",
-          variant: "soft",
+          variant: "chip",
           class: "explorers-chip",
         },
         {
           color: "primary",
-          variant: "soft",
+          variant: "chip",
           class: "explorers-chip explorers-chip-on",
         },
       ],

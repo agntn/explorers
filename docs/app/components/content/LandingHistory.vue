@@ -34,9 +34,8 @@ function extra(transaction: SampleTransaction): string {
 
     <header class="console-bar">
       <span class="console-title"
-        ><span class="console-tag">List</span>getTxHistory(address, <span class="tok-str"
-          >"{{ sample.chain }}"</span
-        >)</span
+        ><span class="console-tag">List</span>getTxHistory(address,
+        <span class="tok-str">"{{ sample.chain }}"</span>)</span
       >
       <span class="console-meta">limit 5 · {{ sample.live ? "live" : "recorded" }}</span>
       <span class="console-mark" aria-hidden="true" />
@@ -74,6 +73,9 @@ function extra(transaction: SampleTransaction): string {
         >
       </li>
     </ol>
+    <p class="history-note">
+      No recipient reads <code>none</code>, an Arweave upload <code>data upload</code>.
+    </p>
 
     <footer class="console-footer console-footer-plain">
       <span>same Transaction shape from {{ providerLabel(sample.provider) }}</span>
@@ -103,7 +105,24 @@ function extra(transaction: SampleTransaction): string {
   grid-column: 1 / -1;
   font-size: 11px;
 }
+.history-note {
+  margin: 0;
+  padding: 12px 20px 14px;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--ui-text-muted);
+  box-shadow: inset 0 1px 0 var(--console-line);
+}
+.history-note > code {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ui-text-highlighted);
+}
 @media (width < 400px) {
+  .history-note {
+    padding-inline: 14px;
+  }
   .history-rows > li {
     padding-inline: 14px;
   }
