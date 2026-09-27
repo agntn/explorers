@@ -180,6 +180,10 @@ export default defineNuxtConfig({
   mcp: {
     enabled: false,
   },
+  /** The chain matrix moved under Providers; old links keep working. */
+  routeRules: {
+    "/chains": { redirect: { to: "/providers/chains", statusCode: 301 } },
+  },
   nitro: {
     preset: "cloudflare_module",
     compatibilityDate: "2026-09-03",

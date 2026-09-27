@@ -15,7 +15,7 @@ The instruments explorers owns:
 | [LandingRotatingCode.vue](app/components/content/LandingRotatingCode.vue) | "Same calls, every provider" | the same nine lines for every sample, as a file |
 | [LandingStart.vue](app/components/content/LandingStart.vue) | closing section | install, notes, first balance as a file |
 | [ProviderMatrix.vue](app/components/content/ProviderMatrix.vue) | landing and `/providers` | roster of the providers on `UTable`, sortable |
-| [ChainMatrix.vue](app/components/content/ChainMatrix.vue) | `/chains` | roster of the chains with the providers that serve them |
+| [ChainMatrix.vue](app/components/content/ChainMatrix.vue) | `/providers/chains` | roster of the chains with the providers that serve them |
 | [ProviderFacts.vue](app/components/content/ProviderFacts.vue) | every provider page | provider dossier: ID bar with position, reticle, chains, operations, access |
 | [Dashboard.vue](app/components/explorer/Dashboard.vue) | `/explorer` | one chain's tip: chain chips, subject, stats, blocks and transactions |
 | [GasBoard.vue](app/components/explorer/GasBoard.vue) | `/explorer/gas` | one cell per chain that quotes fees |
@@ -34,13 +34,13 @@ Controls are Nuxt UI components; `app.config.ts` gives each variant its family l
 | `UButton` primary solid | amber action segment, glyph in its own cell | the one main action: get started, open address, read the guide |
 | `UButton` neutral outline | quiet action segment | second action: GitHub, open the explorer |
 | `UButton` neutral subtle | 22 px boxed control, `square` 28 px | copy, refresh, previous and next |
-| `UButton` neutral soft, primary soft | chip, picked chip on the accent edge | examples, chain picker, same address on other chains |
+| `UButton` variant `chip`, neutral or primary | chip, picked chip on the accent edge | examples, chain picker, same address on other chains |
 | `UBadge` neutral outline, neutral subtle, error outline | boxed mono word: quiet, bright, red | transaction and output status, worker state, contract flags, fee unit |
 | `UTabs` link | mono capitals on a rule, accent segment under the active tab | address data |
 | `UInput`, `USelectMenu` none | the readout row is the frame, the value mono | the search form; the chain menu in the tooltip grammar |
 | `UAlert` error outline | red edge, message in mono | a failed read |
 
-Docus keeps neutral ghost and neutral link for its own buttons.
+`chip` is a variant this site adds in `app.config.ts`. Docus renders its header search as neutral soft and its own buttons as neutral ghost and link, so those pairs keep the default look.
 
 ## Anatomy
 
@@ -67,6 +67,7 @@ Departures from the shared rules, recorded for the shared package:
 - The landing's hero instrument is a working form, so it stays on a phone (`hero-instrument-keep`) instead of hiding below 48rem.
 - The landing instruments walk recorded samples and swap in the worker's live answer when it lands; the bar meta says `recorded` or `live`.
 - `.explorers-band`, `.explorers-rows`, `.explorers-facts`, `.feed-*` and `.list-*` are new: explorer panels carry more rows than any keys or puzzles instrument.
+- The sidebar lifts out every view of a section, not only its index: a page with `navigation.lead` in its frontmatter stands as a lead under that tag, so the chain matrix reads `Matrix Chains` above the providers instead of sitting among them. The tags share one width.
 - The version comes from the root `package.json`, like keys; no data version exists, so ID strips and footers carry none.
 - The OG images ship local Figtree and Fira Code TTFs, the keys mechanism.
 

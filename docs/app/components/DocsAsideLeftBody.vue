@@ -10,18 +10,29 @@ import type { ContentNavigationItem } from "@nuxt/content";
 const props = defineProps<{ full?: boolean }>();
 
 const { sidebarNavigation, fullNavigation } = useSubNavigation();
+/** A page that is a view of the section rather than one of its entries names its tag in `navigation.lead`. */
+type NavigationPage = ContentNavigationItem & { lead?: string };
+
 /**
- * Each group with its index page lifted out: the page whose path is the section's own (an overview,
- * or the guide's first page) is not one of the section's entries, so it gets its own row.
+ * Each group with its views lifted out as leads: the page whose path is the section's own (an
+ * overview, or the guide's first page) as `Index`, and any page whose frontmatter sets
+ * `navigation.lead`, such as the chain matrix among the providers, under that tag.
  */
 const groups = computed(() =>
-  (props.full ? fullNavigation.value : sidebarNavigation.value).map((group) => ({
-    ...group,
-    /** `useSubNavigation` sets the icon; the content type doesn't declare it. */
-    icon: (group as ContentNavigationItem & { icon?: string }).icon,
-    index: group.children?.find((item) => item.path === group.path),
-    entries: (group.children ?? []).filter((item) => item.path !== group.path),
-  })),
+  (props.full ? fullNavigation.value : sidebarNavigation.value).map((group) => {
+    const children = (group.children ?? []) as NavigationPage[];
+    const isLead = (item: NavigationPage) => item.path === group.path || Boolean(item.lead);
+    return {
+      ...group,
+      /** `useSubNavigation` sets the icon; the content type doesn't declare it. */
+      icon: (group as ContentNavigationItem & { icon?: string }).icon,
+      leads: children
+        .filter(isLead)
+        .sort((a, b) => Number(b.path === group.path) - Number(a.path === group.path))
+        .map((item) => ({ item, tag: item.path === group.path ? "Index" : item.lead! })),
+      entries: children.filter((item) => !isLead(item)),
+    };
+  }),
 );
 const route = useRoute();
 
@@ -50,13 +61,14 @@ function isActive(item: ContentNavigationItem): boolean {
         <span class="console-mark" aria-hidden="true" />
       </p>
       <NuxtLink
-        v-if="group.index"
-        :to="group.index.path"
+        v-for="lead in group.leads"
+        :key="lead.item.path"
+        :to="lead.item.path"
         class="nav-index"
-        :aria-current="isActive(group.index) ? 'page' : undefined"
+        :aria-current="isActive(lead.item) ? 'page' : undefined"
       >
-        <span class="console-tag">Index</span>
-        <span class="nav-index-text">{{ group.index.title }}</span>
+        <span class="console-tag">{{ lead.tag }}</span>
+        <span class="nav-index-text">{{ lead.item.title }}</span>
         <span class="console-leader" aria-hidden="true" />
       </NuxtLink>
       <ol v-if="group.entries.length" class="nav-list">
@@ -146,7 +158,9 @@ function isActive(item: ContentNavigationItem): boolean {
 }
 .nav-index > .console-tag {
   flex: none;
+  min-width: 4.5rem;
   margin: 0;
+  text-align: center;
 }
 .nav-index-text {
   min-width: 0;

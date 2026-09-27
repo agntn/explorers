@@ -15,7 +15,7 @@ const NAV_ICONS: Record<string, string> = {
   "/guide/custom": "i-lucide-plus",
   "/guide/explorer": "i-lucide-sliders-horizontal",
   "/providers": "i-lucide-library",
-  "/chains": "i-lucide-layers",
+  "/providers/chains": "i-lucide-layers",
   "/explorer": "i-lucide-scan-search",
   ...Object.fromEntries(PROVIDERS.map((provider) => [provider.to, provider.icon])),
 };

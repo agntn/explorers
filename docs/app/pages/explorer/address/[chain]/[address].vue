@@ -232,8 +232,8 @@ watch([chain, address], read);
       <span class="console-tag">Input</span
       ><span
         >That isn't a chain this package serves, or not an address the worker accepts. Chains are
-        listed on <NuxtLink to="/chains" class="entity-link">Chains</NuxtLink>; an address is at
-        most 128 characters of letters, digits, dots, dashes, underscores and colons.</span
+        listed on <NuxtLink to="/providers/chains" class="entity-link">Chains</NuxtLink>; an address
+        is at most 128 characters of letters, digits, dots, dashes, underscores and colons.</span
       >
     </p>
 

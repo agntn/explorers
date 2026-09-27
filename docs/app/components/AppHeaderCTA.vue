@@ -3,7 +3,7 @@ const route = useRoute();
 
 /** The site's areas; the docs sections are the tabs under the header. */
 const links = [
-  { label: "Docs", to: "/guide", areas: ["/guide", "/providers", "/chains"] },
+  { label: "Docs", to: "/guide", areas: ["/guide", "/providers"] },
   { label: "Explorer", to: "/explorer", areas: ["/explorer"] },
 ] as const;
 

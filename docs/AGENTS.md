@@ -29,8 +29,7 @@ docs/
 ├── public/                        # fonts, favicon.svg and the icons and manifest cut from it
 ├── content/index.md               # landing
 ├── content/1.guide/               # getting started, cli, selection, balances, transactions, tokens, contracts, gas-and-blocks, errors, agents, custom, explorer
-├── content/2.providers/           # one page per provider
-└── content/3.chains.md            # the chain matrix
+└── content/2.providers/           # the index, the chain matrix (0.chains.md, /providers/chains; /chains redirects there) and one page per provider
 ```
 
 ## Commands
