@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import type { BalanceAnswer } from "../../utils/wire";
-import { useClipboard } from "@vueuse/core";
 import { addressPath, blockPath, externalHost, externalUrl } from "../../utils/entities";
-import { dateTime, groupDigits, trimDecimals } from "../../utils/format";
+import { dateTime, groupDigits, shortHash, trimDecimals } from "../../utils/format";
 import { CHAINS, chainIcon, chainLabel, isEvm, providerLabel } from "../../utils/providers";
 
 const props = defineProps<{ answer: BalanceAnswer }>();
@@ -17,99 +16,236 @@ const siblings = computed(() =>
     : [],
 );
 
-const { copy: copyAddress, copied } = useClipboard({
-  source: computed(() => balance.value.address),
-  copiedDuring: 1200,
+const unconfirmed = computed(() => {
+  const value = balance.value.unconfirmed;
+  return value !== undefined && value !== "0" ? value : null;
 });
+
+const { copied, copy } = useCopied();
 </script>
 
 <template>
-  <div class="explorers-frame overflow-hidden rounded-xl">
-    <div class="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-muted px-4 py-3">
-      <UIcon :name="chainIcon(answer.chain)" class="size-4 text-primary" />
-      <span class="text-sm font-medium text-highlighted">{{ chainLabel(answer.chain) }}</span>
-      <span class="font-mono text-[11px] text-dimmed">
-        via {{ providerLabel(answer.provider) }}
-        {{ answer.input !== balance.address ? ` · ${answer.input}` : "" }}
-      </span>
-      <span class="ms-auto font-mono text-[11px] text-dimmed">fetched {{ dateTime(answer.fetchedAt) }}</span>
+  <section class="tool-console console-wide not-prose" aria-label="Address">
+    <span class="console-cross console-cross-tl" aria-hidden="true">+</span>
+    <span class="console-cross console-cross-br" aria-hidden="true">+</span>
+
+    <header class="console-bar">
+      <span class="console-title"
+        ><span class="console-tag">Call</span>getBalance(<span class="overview-str"
+          >"{{ shortHash(answer.input, 10, 6) }}"</span
+        >, <span class="overview-str">"{{ answer.chain }}"</span>)</span
+      >
+      <span class="console-meta">via {{ providerLabel(answer.provider) }}</span>
+      <span class="console-mark" aria-hidden="true" />
+    </header>
+    <div class="console-ruler" aria-hidden="true">
+      <span :key="answer.fetchedAt" class="console-cursor" />
     </div>
-    <div class="grid gap-0 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
-      <div class="border-muted px-4 py-5 lg:border-r">
-        <p class="explorers-eyebrow">balance</p>
-        <p class="explorers-amount mt-2 text-highlighted">
-          {{ trimDecimals(balance.balanceFormatted, 8) }}
-          <span class="text-primary">{{ balance.symbol }}</span>
-        </p>
-        <p class="mt-2 font-mono text-[11px] text-dimmed">
-          "{{ groupDigits(balance.balance) }}" in the smallest unit, exact
-        </p>
-        <p v-if="balance.unconfirmed !== undefined && balance.unconfirmed !== '0'" class="mt-2 font-mono text-[11px] text-dimmed">
-          unconfirmed {{ balance.unconfirmed.startsWith("-") ? "" : "+" }}{{ groupDigits(balance.unconfirmed) }} · in the mempool, not in the balance
-        </p>
-        <div v-if="balance.funded !== undefined" class="mt-4 grid grid-cols-2 gap-3">
-          <div>
-            <p class="font-mono text-[10px] tracking-[0.12em] text-dimmed uppercase">funded</p>
-            <p class="mt-1 font-mono text-[13px] text-highlighted">{{ groupDigits(balance.funded) }}</p>
-          </div>
-          <div>
-            <p class="font-mono text-[10px] tracking-[0.12em] text-dimmed uppercase">spent</p>
-            <p class="mt-1 font-mono text-[13px] text-highlighted">{{ groupDigits(balance.spent ?? "0") }}</p>
-          </div>
+
+    <div class="console-band console-subject-band">
+      <div class="console-scan" aria-hidden="true" />
+      <div class="console-identity-block">
+        <ConsoleReticle :key="balance.address" :icon="chainIcon(answer.chain)" />
+        <div class="console-name">
+          <span class="console-label"
+            >Address / <span class="console-label-key">{{ answer.chain }}</span></span
+          >
+          <p class="overview-address">
+            <span>{{ balance.address }}</span>
+            <UButton
+              color="neutral"
+              variant="subtle"
+              :icon="copied === 'address' ? 'i-lucide-check' : 'i-lucide-copy'"
+              :aria-label="copied === 'address' ? 'Copied' : 'Copy address'"
+              @click="copy('address', balance.address)"
+            />
+          </p>
+          <p class="console-about">
+            <template v-if="answer.input !== balance.address"
+              >{{ answer.input }} resolved to this address before the read. </template
+            >The balance is a string in the smallest unit, exact; the amount beside it is the same
+            number for people.
+          </p>
         </div>
       </div>
-      <dl class="explorers-kv border-t border-muted lg:border-t-0">
-        <dt>address</dt>
-        <dd class="font-mono text-[13px]">
-          <span class="break-all">{{ balance.address }}</span>
-          <button
-            type="button"
-            class="explorers-copy ms-1 align-middle"
-            :aria-label="copied ? 'Copied' : 'Copy address'"
-            :data-copied="copied"
-            @click="copyAddress()"
+
+      <div class="console-readout">
+        <svg class="console-link" viewBox="0 0 32 40" fill="none" aria-hidden="true">
+          <circle cx="3" cy="12" r="2.5" />
+          <path d="M5.5 12H14L22 20H32" />
+        </svg>
+        <dl class="console-readout-rows">
+          <div>
+            <dt>Balance</dt>
+            <dd class="console-accent overview-nowrap">
+              {{ trimDecimals(balance.balanceFormatted, 8) }} {{ balance.symbol }}
+            </dd>
+          </div>
+          <div>
+            <dt>Raw</dt>
+            <dd>
+              <UTooltip :text="`&quot;${balance.balance}&quot; in the smallest unit`">
+                <span class="overview-clip">{{ groupDigits(balance.balance) }}</span>
+              </UTooltip>
+            </dd>
+          </div>
+          <div v-if="balance.funded !== undefined">
+            <dt>In / out</dt>
+            <dd>
+              <UTooltip
+                :text="`funded ${groupDigits(balance.funded)} · spent ${groupDigits(balance.spent ?? '0')}`"
+              >
+                <span class="overview-clip"
+                  >{{ groupDigits(balance.funded) }}
+                  <span class="overview-dim">/</span>
+                  {{ groupDigits(balance.spent ?? "0") }}</span
+                >
+              </UTooltip>
+            </dd>
+          </div>
+          <div v-if="unconfirmed">
+            <dt>Mempool</dt>
+            <dd class="overview-clip">
+              {{ unconfirmed.startsWith("-") ? "" : "+" }}{{ groupDigits(unconfirmed) }}
+            </dd>
+          </div>
+          <div>
+            <dt>Block</dt>
+            <dd>
+              <NuxtLink
+                v-if="balance.blockNumber !== null"
+                :to="blockPath(answer.chain, balance.blockNumber)"
+                class="overview-link"
+                >{{ balance.blockNumber }}</NuxtLink
+              >
+              <span v-else class="overview-dim">not named</span>
+            </dd>
+          </div>
+        </dl>
+      </div>
+    </div>
+
+    <div class="console-band">
+      <p class="console-label console-rule-title">
+        <span>Elsewhere <span aria-hidden="true">[ same address ]</span></span>
+        <span class="console-mark" aria-hidden="true" />
+      </p>
+      <dl class="overview-leads">
+        <dd class="console-lead">
+          <span class="console-tag">Explorer</span>
+          <a v-if="external" :href="external" target="_blank" rel="noopener nofollow"
+            >{{ externalHost(answer.chain) }}<span class="overview-dim"> ↗</span></a
           >
-            <UIcon :name="copied ? 'i-lucide-check' : 'i-lucide-copy'" class="size-3.5" />
-          </button>
+          <span v-else class="overview-dim"
+            >no canonical explorer link for {{ chainLabel(answer.chain) }}</span
+          >
+          <span class="console-leader" aria-hidden="true" />
         </dd>
-        <dt>blockNumber</dt>
-        <dd class="font-mono text-[13px]">
-          <NuxtLink
-            v-if="balance.blockNumber !== null"
-            :to="blockPath(answer.chain, balance.blockNumber)"
-            class="hover:text-primary"
-            >{{ balance.blockNumber }}</NuxtLink
-          >
-          <span v-else>null <span class="text-dimmed">· the explorer named no block</span></span>
-        </dd>
-        <dt>blockHash</dt>
-        <dd class="font-mono text-[13px] break-all">{{ balance.blockHash ?? "null" }}</dd>
-        <dt>fetchedAt</dt>
-        <dd class="font-mono text-[13px]">{{ balance.fetchedAt }}</dd>
-        <dt>elsewhere</dt>
-        <dd class="font-mono text-[13px]">
-          <a
-            v-if="external"
-            :href="external"
-            target="_blank"
-            rel="noopener nofollow"
-            class="inline-flex items-center gap-1 hover:text-primary"
-            >{{ externalHost(answer.chain) }} <UIcon name="i-lucide-arrow-up-right" class="size-3.5" /></a
-          >
-          <span v-else class="text-dimmed">no canonical explorer link for this chain</span>
+        <dd v-if="siblings.length" class="overview-siblings">
+          <span class="console-tag">Also on</span>
+          <span class="overview-chips">
+            <UButton
+              v-for="chain in siblings"
+              :key="chain.key"
+              color="neutral"
+              variant="chip"
+              :icon="chain.icon"
+              :label="chain.name"
+              :to="addressPath(chain.key, balance.address)"
+            />
+          </span>
         </dd>
       </dl>
     </div>
-    <div v-if="siblings.length" class="flex flex-wrap items-center gap-1.5 border-t border-muted px-4 py-3">
-      <span class="me-1 font-mono text-[11px] text-dimmed">same address on</span>
-      <NuxtLink
-        v-for="chain in siblings"
-        :key="chain.key"
-        :to="addressPath(chain.key, balance.address)"
-        class="explorers-chip explorers-chip-small hover:text-highlighted"
-      >
-        <UIcon :name="chain.icon" class="size-3" /> {{ chain.name }}
-      </NuxtLink>
-    </div>
-  </div>
+
+    <footer class="console-footer console-footer-plain">
+      <ul class="console-links">
+        <li>
+          <NuxtLink to="/explorer"><span aria-hidden="true">→ </span>Explorer</NuxtLink>
+        </li>
+        <li>
+          <NuxtLink :to="`/providers/${answer.provider}`"
+            ><span aria-hidden="true">→ </span>{{ providerLabel(answer.provider) }}</NuxtLink
+          >
+        </li>
+      </ul>
+      <span class="console-meta">fetched {{ dateTime(answer.fetchedAt) }}</span>
+    </footer>
+  </section>
 </template>
+
+<style scoped>
+.overview-str {
+  color: var(--shiki-token-string);
+}
+.overview-address {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 4px 0 6px;
+  font-family: var(--font-mono);
+  font-size: 17px;
+  line-height: 1.45;
+  color: var(--ui-text-highlighted);
+}
+.overview-address > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.overview-address > .explorers-control {
+  flex: none;
+}
+.overview-nowrap {
+  white-space: nowrap;
+}
+.overview-clip {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.overview-link {
+  color: var(--ui-text-highlighted);
+}
+.overview-link:hover {
+  color: var(--console-accent);
+}
+.overview-dim {
+  color: var(--ui-text-dimmed);
+}
+.overview-leads {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+.overview-leads > dd {
+  margin: 0;
+}
+.overview-siblings {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.overview-siblings > .console-tag {
+  flex: none;
+  justify-self: start;
+  margin-top: 3px;
+}
+.overview-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+@media (width < 640px) {
+  .overview-address {
+    font-size: 14px;
+  }
+  .overview-siblings {
+    display: grid;
+    gap: 8px;
+  }
+  .overview-leads .console-leader {
+    display: none;
+  }
+}
+</style>

@@ -8,7 +8,7 @@ import type {
   UtxosAnswer,
 } from "../../../../utils/wire";
 import { isIdentifier, txPath } from "../../../../utils/entities";
-import { shortHash } from "../../../../utils/format";
+import { dateTime, shortHash } from "../../../../utils/format";
 import { chainInfo, chainLabel, providerLabel, providersFor } from "../../../../utils/providers";
 
 definePageMeta({ layout: "default" });
@@ -49,15 +49,47 @@ const TABS: ReadonlyArray<{
   /** Whether the tab pages through its list. */
   paged: boolean;
 }> = [
-  { key: "transactions", label: "Transactions", icon: "i-lucide-list", capability: "txHistory", paged: true },
-  { key: "utxos", label: "Unspent outputs", icon: "i-lucide-wallet", capability: "utxos", paged: false },
-  { key: "tokens", label: "Tokens", icon: "i-lucide-database", capability: "tokenBalances", paged: false },
-  { key: "transfers", label: "Token transfers", icon: "i-lucide-arrow-left-right", capability: "tokenTransfers", paged: true },
-  { key: "contract", label: "Contract", icon: "i-lucide-file-code", capability: "contractInfo", paged: false },
+  {
+    key: "transactions",
+    label: "Transactions",
+    icon: "i-lucide-list",
+    capability: "txHistory",
+    paged: true,
+  },
+  {
+    key: "utxos",
+    label: "Unspent outputs",
+    icon: "i-lucide-wallet",
+    capability: "utxos",
+    paged: false,
+  },
+  {
+    key: "tokens",
+    label: "Tokens",
+    icon: "i-lucide-database",
+    capability: "tokenBalances",
+    paged: false,
+  },
+  {
+    key: "transfers",
+    label: "Token transfers",
+    icon: "i-lucide-arrow-left-right",
+    capability: "tokenTransfers",
+    paged: true,
+  },
+  {
+    key: "contract",
+    label: "Contract",
+    icon: "i-lucide-file-code",
+    capability: "contractInfo",
+    paged: false,
+  },
 ];
 
 /** Only the tabs some provider can serve on this chain; the others would be a 422 every time. */
-const tabs = computed(() => TABS.filter((tab) => providersFor(chain.value, tab.capability).length > 0));
+const tabs = computed(() =>
+  TABS.filter((tab) => providersFor(chain.value, tab.capability).length > 0),
+);
 
 const tab = ref<Tab>("transactions");
 const page = ref(1);
@@ -108,6 +140,60 @@ function pickPage(next: number) {
   void loadTab();
 }
 
+/** The tabs as UTabs items; the value is the tab key the query carries. */
+const tabItems = computed(() =>
+  tabs.value.map((row) => ({ label: row.label, icon: row.icon, value: row.key })),
+);
+
+/** What the bar calls for the tab that is open; the method name is the one the library exposes. */
+const CALLS: Record<Tab, string> = {
+  transactions: "getTxHistory",
+  utxos: "getUtxos",
+  tokens: "getTokenBalances",
+  transfers: "getTokenTransfers",
+  contract: "getContractInfo",
+};
+
+/** The open tab's answer, its state and the line the bar carries about it. */
+const panel = computed(() => {
+  switch (tab.value) {
+    case "transactions":
+      return {
+        state: history,
+        label: "Reading the transaction history",
+        meta: history.answer.value
+          ? `${history.answer.value.items.length} on page ${history.answer.value.page}`
+          : "",
+      };
+    case "utxos":
+      return {
+        state: utxos,
+        label: "Reading the unspent outputs",
+        meta: utxos.answer.value ? `${utxos.answer.value.total} unspent` : "",
+      };
+    case "tokens":
+      return {
+        state: tokens,
+        label: "Reading the token holdings",
+        meta: tokens.answer.value ? `${tokens.answer.value.total} with a balance` : "",
+      };
+    case "transfers":
+      return {
+        state: transfers,
+        label: "Reading the token transfers",
+        meta: transfers.answer.value
+          ? `${transfers.answer.value.items.length} on page ${transfers.answer.value.page}`
+          : "",
+      };
+    default:
+      return { state: contract, label: "Reading the contract metadata", meta: "" };
+  }
+});
+
+const panelAnswer = computed(
+  () => panel.value.state.answer.value as { provider: string; fetchedAt: string } | undefined,
+);
+
 /** The address as the explorer spells it after ENS resolution, for muting its side of each row. */
 const resolved = computed(
   () => balance.answer.value?.balance.address ?? history.answer.value?.address ?? address.value,
@@ -137,117 +223,153 @@ watch([chain, address], read);
 </script>
 
 <template>
-  <ExplorerShell eyebrow="explorer · address" :title="chainLabel(chain)" accent="address" :chain="chain" compact>
+  <ExplorerShell section="address" :title="chainLabel(chain)" accent="address" :chain="chain">
     <template #status>
-      <p class="explorers-enter explorers-enter-2 mx-auto mt-4 max-w-2xl font-mono text-sm break-all text-muted">
-        {{ address }}
-      </p>
+      <p class="entity-id">{{ address }}</p>
     </template>
 
-    <div v-if="!known" class="explorers-frame rounded-xl px-5 py-6 text-sm text-muted">
-      That isn't a chain this package serves, or not an address the worker accepts. Chains are listed on
-      <NuxtLink to="/chains" class="text-primary hover:underline">Chains</NuxtLink>; an address is at most 128
-      characters of letters, digits, dots, dashes, underscores and colons.
-    </div>
+    <p v-if="!known" class="explorers-error">
+      <span class="console-tag">Input</span
+      ><span
+        >That isn't a chain this package serves, or not an address the worker accepts. Chains are
+        listed on <NuxtLink to="/providers/chains" class="entity-link">Chains</NuxtLink>; an address
+        is at most 128 characters of letters, digits, dots, dashes, underscores and colons.</span
+      >
+    </p>
 
-    <div v-else class="space-y-5">
-      <ExplorerState :loading="balance.loading.value" :error="balance.error.value" label="Reading the balance…" />
+    <div v-else class="entity-stack">
+      <ExplorerState
+        :loading="balance.loading.value"
+        :error="balance.error.value"
+        label="Reading the balance"
+      />
       <ExplorerAddressOverview v-if="balance.answer.value" :answer="balance.answer.value" />
 
-      <p v-if="chain === 'arweave'" class="flex items-start gap-2 text-sm text-dimmed">
-        <UIcon name="i-lucide-info" class="mt-0.5 size-4 shrink-0 text-primary" />
+      <p v-if="chain === 'arweave'" class="explorers-note">
+        <UIcon name="i-lucide-info" class="size-3.5" aria-hidden="true" />
         <span
-          >Arweave addresses and transaction ids share a shape. If this is a transaction id, open it as
-          <NuxtLink :to="txPath(chain, address)" class="text-primary hover:underline">a transaction</NuxtLink>.</span
+          >Arweave addresses and transaction ids share a shape. If this is a transaction id, open it
+          as
+          <NuxtLink :to="txPath(chain, address)" class="entity-link">a transaction</NuxtLink>.</span
         >
       </p>
 
-      <div class="explorers-frame overflow-hidden rounded-xl">
-        <nav aria-label="Address data" class="flex flex-wrap gap-1 border-b border-muted px-3 py-2">
-          <button
-            v-for="row in tabs"
-            :key="row.key"
-            type="button"
-            class="explorers-explorer-link"
-            :class="{ 'explorers-explorer-link-active': tab === row.key }"
-            @click="pickTab(row.key)"
+      <section class="tool-console console-wide" aria-label="Address data">
+        <span class="console-cross console-cross-tl" aria-hidden="true">+</span>
+        <span class="console-cross console-cross-br" aria-hidden="true">+</span>
+
+        <header class="console-bar">
+          <span class="console-title"
+            ><span class="console-tag">List</span>{{ CALLS[tab] }}(address,
+            <span class="entity-str">"{{ chain }}"</span>)</span
           >
-            <UIcon :name="row.icon" class="size-3.5" />
-            {{ row.label }}
-          </button>
-        </nav>
+          <span class="console-meta">{{
+            panelAnswer
+              ? [panel.meta, `via ${providerLabel(panelAnswer.provider)}`]
+                  .filter(Boolean)
+                  .join(" · ")
+              : ""
+          }}</span>
+          <span class="console-mark" aria-hidden="true" />
+        </header>
+        <div class="console-ruler" aria-hidden="true">
+          <span
+            :key="`${tab}-${page}`"
+            class="console-cursor"
+            :class="{ 'console-cursor-busy': panel.state.loading.value }"
+          />
+        </div>
 
-        <template v-if="tab === 'transactions'">
-          <div v-if="history.loading.value || history.error.value" class="p-3">
-            <ExplorerState :loading="history.loading.value" :error="history.error.value" label="Reading the transaction history…" />
-          </div>
-          <template v-else-if="history.answer.value">
-            <ExplorerAnswerMeta
-              :summary="`${history.answer.value.items.length} transactions on page ${history.answer.value.page}`"
-              :provider="history.answer.value.provider"
-              :fetched-at="history.answer.value.fetchedAt"
+        <UTabs
+          :model-value="tab"
+          :items="tabItems"
+          :content="false"
+          variant="link"
+          class="entity-tabs"
+          aria-label="Address data"
+          @update:model-value="pickTab($event as Tab)"
+        />
+
+        <div v-if="panel.state.loading.value || panel.state.error.value" class="explorers-band">
+          <ExplorerState
+            :loading="panel.state.loading.value"
+            :error="panel.state.error.value"
+            :label="panel.label"
+          />
+        </div>
+
+        <div v-else class="entity-list">
+          <ExplorerTransactionsList
+            v-if="tab === 'transactions' && history.answer.value"
+            :chain="chain"
+            :items="history.answer.value.items"
+            :address="resolved"
+          />
+          <ExplorerUtxosList
+            v-else-if="tab === 'utxos' && utxos.answer.value"
+            :chain="chain"
+            :items="utxos.answer.value.items"
+            :total="utxos.answer.value.total"
+          />
+          <ExplorerTokensTable
+            v-else-if="tab === 'tokens' && tokens.answer.value"
+            :chain="chain"
+            :items="tokens.answer.value.items"
+            :total="tokens.answer.value.total"
+          />
+          <ExplorerTransfersList
+            v-else-if="tab === 'transfers' && transfers.answer.value"
+            :chain="chain"
+            :items="transfers.answer.value.items"
+            :address="resolved"
+          />
+          <ExplorerContractCard
+            v-else-if="tab === 'contract' && contract.answer.value"
+            :answer="contract.answer.value"
+          />
+        </div>
+
+        <footer class="console-footer console-footer-plain">
+          <template v-if="tab === 'transactions' && history.answer.value">
+            <span v-if="!history.answer.value.paged"
+              >{{ providerLabel(history.answer.value.provider) }} pages by cursor, which the library
+              keeps to itself, so this is the newest {{ history.answer.value.limit }}.</span
+            >
+            <span v-else class="console-meta">{{ history.answer.value.limit }} a page</span>
+            <ExplorerPager
+              v-if="history.answer.value.paged"
+              :page="page"
+              :count="history.answer.value.items.length"
+              :limit="history.answer.value.limit"
+              :loading="history.loading.value"
+              @change="pickPage"
             />
-            <ExplorerTransactionsList :chain="chain" :items="history.answer.value.items" :address="resolved" />
-            <ExplorerPager v-if="history.answer.value.paged" :page="page" :count="history.answer.value.items.length" :limit="history.answer.value.limit" :loading="history.loading.value" @change="pickPage" />
-            <p v-else class="border-t border-muted px-4 py-3 font-mono text-[11px] text-dimmed">
-              {{ providerLabel(history.answer.value.provider) }} pages by cursor, which the library keeps to itself, so this is the newest {{ history.answer.value.limit }} and there's no page two.
-            </p>
           </template>
-        </template>
-
-        <template v-else-if="tab === 'utxos'">
-          <div v-if="utxos.loading.value || utxos.error.value" class="p-3">
-            <ExplorerState :loading="utxos.loading.value" :error="utxos.error.value" label="Reading the unspent outputs…" />
-          </div>
-          <template v-else-if="utxos.answer.value">
-            <ExplorerAnswerMeta
-              :summary="`${utxos.answer.value.total} unspent outputs`"
-              :provider="utxos.answer.value.provider"
-              :fetched-at="utxos.answer.value.fetchedAt"
+          <template v-else-if="tab === 'transfers' && transfers.answer.value">
+            <span v-if="!transfers.answer.value.paged"
+              >{{ providerLabel(transfers.answer.value.provider) }} pages by cursor, which the
+              library keeps to itself, so this is the newest
+              {{ transfers.answer.value.limit }}.</span
+            >
+            <span v-else class="console-meta">{{ transfers.answer.value.limit }} a page</span>
+            <ExplorerPager
+              v-if="transfers.answer.value.paged"
+              :page="page"
+              :count="transfers.answer.value.items.length"
+              :limit="transfers.answer.value.limit"
+              :loading="transfers.loading.value"
+              @change="pickPage"
             />
-            <ExplorerUtxosList :chain="chain" :items="utxos.answer.value.items" :total="utxos.answer.value.total" />
           </template>
-        </template>
-
-        <template v-else-if="tab === 'tokens'">
-          <div v-if="tokens.loading.value || tokens.error.value" class="p-3">
-            <ExplorerState :loading="tokens.loading.value" :error="tokens.error.value" label="Reading the token holdings…" />
-          </div>
-          <template v-else-if="tokens.answer.value">
-            <ExplorerAnswerMeta
-              :summary="`${tokens.answer.value.total} holdings with a balance`"
-              :provider="tokens.answer.value.provider"
-              :fetched-at="tokens.answer.value.fetchedAt"
-            />
-            <ExplorerTokensTable :chain="chain" :items="tokens.answer.value.items" :total="tokens.answer.value.total" />
+          <template v-else>
+            <span>{{
+              panelAnswer
+                ? `fetched ${dateTime(panelAnswer.fetchedAt)}`
+                : "live read through the docs worker"
+            }}</span>
           </template>
-        </template>
-
-        <template v-else-if="tab === 'transfers'">
-          <div v-if="transfers.loading.value || transfers.error.value" class="p-3">
-            <ExplorerState :loading="transfers.loading.value" :error="transfers.error.value" label="Reading the token transfers…" />
-          </div>
-          <template v-else-if="transfers.answer.value">
-            <ExplorerAnswerMeta
-              :summary="`${transfers.answer.value.items.length} transfers on page ${transfers.answer.value.page}`"
-              :provider="transfers.answer.value.provider"
-              :fetched-at="transfers.answer.value.fetchedAt"
-            />
-            <ExplorerTransfersList :chain="chain" :items="transfers.answer.value.items" :address="resolved" />
-            <ExplorerPager v-if="transfers.answer.value.paged" :page="page" :count="transfers.answer.value.items.length" :limit="transfers.answer.value.limit" :loading="transfers.loading.value" @change="pickPage" />
-            <p v-else class="border-t border-muted px-4 py-3 font-mono text-[11px] text-dimmed">
-              {{ providerLabel(transfers.answer.value.provider) }} pages by cursor, which the library keeps to itself, so this is the newest {{ transfers.answer.value.limit }} and there's no page two.
-            </p>
-          </template>
-        </template>
-
-        <template v-else-if="tab === 'contract'">
-          <div v-if="contract.loading.value || contract.error.value" class="p-3">
-            <ExplorerState :loading="contract.loading.value" :error="contract.error.value" label="Reading the contract metadata…" />
-          </div>
-          <ExplorerContractCard v-else-if="contract.answer.value" :answer="contract.answer.value" />
-        </template>
-      </div>
+        </footer>
+      </section>
     </div>
   </ExplorerShell>
 </template>

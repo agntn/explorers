@@ -15,40 +15,57 @@ defineProps<{
 </script>
 
 <template>
-  <div class="explorers-frame overflow-hidden rounded-xl">
-    <div class="flex items-center gap-2 border-b border-muted px-4 py-3">
-      <UIcon name="i-lucide-list" class="size-4 text-primary" />
-      <span class="text-sm font-medium text-highlighted">{{ pending ? "Mempool" : "Latest transactions" }}</span>
-      <span class="ms-auto font-mono text-[11px] text-dimmed">
-        {{ pending ? `${transactions.length} newest unconfirmed` : `${transactions.length} newest` }}
-      </span>
-    </div>
-    <p v-if="!transactions.length" class="px-4 py-6 text-sm text-muted">The explorer lists none right now.</p>
-    <ol class="divide-y divide-muted">
-      <li v-for="transaction in transactions" :key="transaction.hash" class="explorers-derive flex items-center gap-3 px-4 py-2.5">
-        <span class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted font-mono text-[10px] text-dimmed">Tx</span>
-        <div class="min-w-0 flex-1">
-          <p class="flex items-baseline gap-2">
-            <NuxtLink :to="txPath(chain, transaction.hash)" class="truncate font-mono text-[13px] text-highlighted hover:text-primary" :title="transaction.hash">{{ shortHash(transaction.hash, 12, 8) }}</NuxtLink>
-            <span v-if="transaction.timestamp" class="shrink-0 font-mono text-[11px] text-dimmed" :title="transaction.timestamp">{{ ago(transaction.timestamp, now) }}</span>
-            <span v-else class="shrink-0 font-mono text-[11px] text-dimmed">unconfirmed</span>
-          </p>
-          <p class="mt-0.5 truncate font-mono text-[11px] text-dimmed">
-            <template v-if="transaction.from">
-              <NuxtLink :to="addressPath(chain, transaction.from)" class="text-muted hover:text-primary" :title="transaction.from">{{ shortHash(transaction.from, 6, 4) }}</NuxtLink>
-              →
-              <NuxtLink v-if="transaction.to" :to="addressPath(chain, transaction.to)" class="text-muted hover:text-primary" :title="transaction.to">{{ shortHash(transaction.to, 6, 4) }}</NuxtLink>
-              <span v-else>{{ transaction.method === "data" ? "data upload" : "contract creation" }}</span>
-              <template v-if="transaction.method && transaction.method !== 'data'"> · {{ transaction.method }}</template>
-            </template>
-            <template v-else-if="transaction.fee">fee {{ transaction.fee }} {{ feeUnit ?? "" }} · {{ transaction.method }}</template>
-          </p>
-        </div>
-        <span class="shrink-0 text-right">
-          <span class="block font-mono text-[13px] whitespace-nowrap" :class="transaction.value === '0' ? 'text-dimmed' : 'text-highlighted'">
-            {{ trimDecimals(transaction.valueFormatted, 5) }} {{ symbol }}
-          </span>
-          <ExplorerStatus v-if="transaction.status !== 'success'" :status="transaction.status" class="mt-0.5" />
+  <div class="feed">
+    <p class="console-label console-rule-title">
+      <span
+        >{{ pending ? "Mempool" : "Transactions" }}
+        <span aria-hidden="true"
+          >[ {{ transactions.length }} newest{{ pending ? " unconfirmed" : "" }} ]</span
+        ></span
+      >
+      <span class="console-mark" aria-hidden="true" />
+    </p>
+    <p v-if="!transactions.length" class="explorers-note feed-empty">
+      The explorer lists none right now.
+    </p>
+    <ol class="explorers-rows feed-rows console-animate">
+      <li v-for="(transaction, index) in transactions" :key="transaction.hash" :style="{ animationDelay: `${Math.min(index * 30, 600)}ms` }">
+        <UTooltip :text="transaction.hash">
+          <NuxtLink :to="txPath(chain, transaction.hash)" class="explorers-clip">{{
+            shortHash(transaction.hash, 10, 6)
+          }}</NuxtLink>
+        </UTooltip>
+        <UTooltip v-if="transaction.timestamp" :text="transaction.timestamp">
+          <span class="explorers-dim feed-age">{{ ago(transaction.timestamp, now) }}</span>
+        </UTooltip>
+        <span v-else class="explorers-dim feed-age">unconfirmed</span>
+        <span class="explorers-clip feed-sub">
+          <template v-if="transaction.from">
+            <NuxtLink :to="addressPath(chain, transaction.from)" class="feed-link">{{
+              shortHash(transaction.from, 6, 4)
+            }}</NuxtLink>
+            <span class="explorers-dim"> → </span>
+            <NuxtLink v-if="transaction.to" :to="addressPath(chain, transaction.to)" class="feed-link">{{
+              shortHash(transaction.to, 6, 4)
+            }}</NuxtLink>
+            <span v-else>{{
+              transaction.method === "data" ? "data upload" : "contract creation"
+            }}</span>
+            <span v-if="transaction.method && transaction.method !== 'data'" class="explorers-dim">
+              · {{ transaction.method }}</span
+            >
+          </template>
+          <template v-else-if="transaction.fee"
+            >fee {{ transaction.fee }} {{ feeUnit ?? "" }}
+            <span class="explorers-dim">· {{ transaction.method }}</span></template
+          >
+        </span>
+        <span class="feed-end">
+          <span :class="transaction.value === '0' ? 'explorers-dim' : 'explorers-value'"
+            >{{ trimDecimals(transaction.valueFormatted, 5) }}
+            <span class="explorers-dim">{{ symbol }}</span></span
+          >
+          <ExplorerStatus v-if="transaction.status !== 'success'" :status="transaction.status" />
         </span>
       </li>
     </ol>

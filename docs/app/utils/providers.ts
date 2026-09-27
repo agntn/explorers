@@ -37,6 +37,32 @@ export const CAPABILITY_LABELS: Record<Capability, string> = {
   blockInfo: "block",
 };
 
+/** Three letters per operation, for the cells a roster row lights; the tooltip names the whole one. */
+export const CAPABILITY_SHORT: Record<Capability, string> = {
+  balances: "bal",
+  txHistory: "his",
+  txDetail: "tx",
+  utxos: "utx",
+  contractInfo: "con",
+  tokenBalances: "tok",
+  tokenTransfers: "trf",
+  gasData: "gas",
+  blockInfo: "blk",
+};
+
+/** The `Provider` method behind each flag; an optional one is absent when its flag is false. */
+export const CAPABILITY_METHODS: Record<Capability, string> = {
+  balances: "getBalance",
+  txHistory: "getTxHistory",
+  txDetail: "getTxDetail",
+  utxos: "getUtxos",
+  contractInfo: "getContractInfo",
+  tokenBalances: "getTokenBalances",
+  tokenTransfers: "getTokenTransfers",
+  gasData: "getGasData",
+  blockInfo: "getBlockInfo",
+};
+
 /** What `scripts/snapshot.mjs` copies out of `builtins` and `@agntn/chains`. */
 export interface ProviderSnapshot {
   readonly key: string;

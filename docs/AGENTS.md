@@ -8,15 +8,17 @@ Docus site for `@agntn/explorers`. Markdown lives in `content/`. The explorer is
 docs/
 ├── nuxt.config.ts                 # extends: ['docus'], cloudflare_module preset (Workers), prerender list
 ├── app/app.config.ts              # title, github, theme, seo schema
-├── app/app.css                    # theme tokens (light + .dark), shared `explorers-*` classes
-├── app/components/                # Docus overrides: AppHeaderLogo, AppHeaderCTA (nav), AppFooterLeft, DocsAsideLeftBody; icons are Lucide, chain logos the monochrome token set, brands simple-icons
-├── app/components/content/        # MDC components (`::landing-home`, `::provider-facts`, `::provider-matrix`, `::chain-matrix`), the landing panels, ToolHero, LandingFeature
-├── app/components/explorer/       # the explorer: Shell, Search, Nav, State, Pager, the Dashboard (StatTiles, LatestBlocks, LatestTransactions) and one card per entity (AddressOverview, TransactionsList, UtxosList, TokensTable, TransfersList, ContractCard, TransactionCard, BlockCard, BlockTransactions, GasBoard, ProvidersBoard)
+├── DESIGN.md                      # the instruments this site owns and where it departs from the agntn design system
+├── shiki-theme.ts                 # code blocks colored from the `--shiki-token-*` variables in app.css
+├── app/app.css                    # theme tokens, the shared `console-*` / `hero-*` / `roster` grammar, `explorers-*` explorer parts
+├── app/components/                # Docus overrides (header, tabs, sidebar, toc, page links, surround, callout), CapabilityCells, RosterSort; icons are Lucide, chain logos the monochrome token set, brands simple-icons
+├── app/components/content/        # MDC components (`::landing-home`, `::provider-facts`, `::provider-matrix`, `::chain-matrix`), the landing instruments, ConsoleReticle, ConsoleResponse, Prose* overrides
+├── app/components/explorer/       # the explorer: Shell, Search, State, Pager, Hash, the Dashboard (StatTiles, LatestBlocks, LatestTransactions) and one instrument per entity (AddressOverview, TransactionsList, UtxosList, TokensTable, TransfersList, ContractCard, TransactionCard, BlockCard, BlockTransactions, GasBoard, ProvidersBoard)
 ├── app/components/OgImage/        # Docs.takumi and Landing.takumi override the Docus OG templates
 ├── app/assets/fonts.css           # @font-face for the TTFs served from public/fonts (site and OG images)
-├── app/composables/               # useAnswer (one worker call with its state, memoised per query), useLandingExplorer (one clock for every live panel), useSubNavigation
+├── app/composables/               # useAnswer (one worker call with its state, memoised per query), useLandingExplorer (one clock for every live panel), useSubNavigation, useCopied, useRosterFlip
 ├── app/data/explorers.json        # the registry snapshot; written by scripts/snapshot.mjs, committed
-├── app/utils/                     # providers (presentation over the snapshot), entities (classify, paths, external links), wire (errorText over the shared shapes), format, landing-fixtures
+├── app/utils/                     # providers (presentation over the snapshot), entities (classify, paths, external links), wire (errorText over the shared shapes), format, landing-fixtures, roster and entity-table (UTable classes), tokens (snippet coloring)
 ├── shared/                        # wire.ts (answer shapes, one declaration for app and server), tip-chains.ts (the feed list), identifier.ts (the address predicate)
 ├── app/pages/explorer/            # index (search hub), gas, providers, address/[chain]/[address], tx/[chain]/[hash], block/[chain]/[number]
 ├── scripts/snapshot.mjs           # ../src + @agntn/chains -> app/data/explorers.json
@@ -27,8 +29,7 @@ docs/
 ├── public/                        # fonts, favicon.svg and the icons and manifest cut from it
 ├── content/index.md               # landing
 ├── content/1.guide/               # getting started, cli, selection, balances, transactions, tokens, contracts, gas-and-blocks, errors, agents, custom, explorer
-├── content/2.providers/           # one page per provider
-└── content/3.chains.md            # the chain matrix
+└── content/2.providers/           # the index, the chain matrix (0.chains.md, /providers/chains; /chains redirects there) and one page per provider
 ```
 
 ## Commands
@@ -82,12 +83,13 @@ Resolution traps, both caused by the repo root being a pnpm workspace:
 ## OG images
 
 - `app/components/OgImage/Docs.takumi.vue` and `Landing.takumi.vue` override the Docus templates of the same name and are rendered by Takumi at build time. Takumi has no CSS variables, so the theme colours from `app.css` are repeated there as literals.
-- nuxt-og-image does not see the faces `@nuxt/fonts` generates on this Nuxt version, but it parses `@font-face` rules from the files in `css`. That is why `app/assets/fonts.css` declares the five TTFs in `public/fonts` and `fonts.families` uses the `local` provider.
+- nuxt-og-image does not see the faces `@nuxt/fonts` generates on this Nuxt version, but it parses `@font-face` rules from the files in `css`. That is why `app/assets/fonts.css` declares the four Figtree and Fira Code TTFs in `public/fonts` and `fonts.families` uses the `local` provider.
 - The landing OG file is named from the SEO description. Nitro refuses to write a prerender path containing `..`, so a description ending in a period is silently skipped and the landing ships with a dead `og:image`. Docus also cuts a description longer than 150 minus the title's length at the last period, which puts a period at the end. Keep the description in `content/index.md` under that budget and without a trailing period, and check the build log for `c_Landing` with `(skipped)`.
 
 ## Constraints
 
 - Token symbols, token names, contract names and decoded function names come from public chains and the explorers that index them; anyone can deploy a token called anything. Render them as text through interpolation, clip them, never `v-html`; nothing in `app/` uses it.
+- The look follows the agntn design system; `DESIGN.md` lists what this site owns and every departure. A new panel is an instrument on the `console-*` grammar, a list is `UTable` with the roster classes, a control is a Nuxt UI component (`UButton`, `UBadge`, `UTabs`, `UInput`, `USelectMenu`, `UAlert`) whose look comes from its variant in `app.config.ts`, a shortened value gets a `UTooltip`, never `title`.
 - Provider labels, icons, env vars, blurbs and chain icons live once in `app/utils/providers.ts`. The sidebar, the landing grid, the matrices, the explorer and `::provider-facts` read from it.
 - The docs API shapes live once, in `shared/wire.ts`; routes type their answers with them and the page reads the same declarations.
 - Every endpoint, option, error class and limit quoted in `content/` has a line in `src/` or in the snapshot. Check a new one the same way before writing it down.

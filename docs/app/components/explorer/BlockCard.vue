@@ -7,87 +7,192 @@ import { chainIcon, chainLabel, isEvm, providerLabel } from "../../utils/provide
 const props = defineProps<{ answer: BlockAnswer }>();
 
 const block = computed(() => props.answer.block);
-const external = computed(() => externalUrl("block", props.answer.chain, String(block.value.number)));
+const external = computed(() =>
+  externalUrl("block", props.answer.chain, String(block.value.number)),
+);
 const hasGas = computed(() => block.value.gasLimit !== "0");
+
 /** On the Bitcoin family the two gas fields carry size and weight, as `src/providers/mempool.ts` and `src/providers/blockstream.ts` map them. */
 const evm = computed(() => isEvm(props.answer.chain));
+
 /** Gas used as a share of the limit, from the two strings without a float on the raw values. */
 const utilization = computed(() => {
-  if (!hasGas.value || !/^\d+$/u.test(block.value.gasUsed) || !/^\d+$/u.test(block.value.gasLimit)) {
+  if (
+    !hasGas.value ||
+    !/^\d+$/u.test(block.value.gasUsed) ||
+    !/^\d+$/u.test(block.value.gasLimit)
+  ) {
     return null;
   }
   const used = BigInt(block.value.gasUsed);
   const limit = BigInt(block.value.gasLimit);
   return limit > 0n ? Number((used * 10000n) / limit) / 100 : null;
 });
+
+/** Twenty ticks for the share: the used ones hatched, the headroom in the accent, like every gauge. */
+const TICKS = 20;
+const usedTicks = computed(() =>
+  utilization.value === null ? 0 : Math.round((Math.min(100, utilization.value) / 100) * TICKS),
+);
+
 const baseFeeText = computed(() => {
   const fee = block.value.baseFee;
   if (!fee) return null;
-  return isEvm(props.answer.chain) ? `${trimDecimals(formatUnits(fee, 9), 4)} gwei` : groupDigits(fee);
+  return isEvm(props.answer.chain)
+    ? `${trimDecimals(formatUnits(fee, 9), 4)} gwei`
+    : groupDigits(fee);
 });
 </script>
 
 <template>
-  <div class="explorers-frame overflow-hidden rounded-xl">
-    <div class="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-muted px-4 py-3">
-      <UIcon :name="chainIcon(answer.chain)" class="size-4 text-primary" />
-      <span class="text-sm font-medium text-highlighted">{{ chainLabel(answer.chain) }} block {{ block.number }}</span>
-      <span class="font-mono text-[11px] text-dimmed">{{ dateTime(block.timestamp) }}</span>
-      <span class="ms-auto flex items-center gap-1">
-        <NuxtLink v-if="block.number > 0" :to="blockPath(answer.chain, block.number - 1)" class="explorers-copy" aria-label="Previous block">
-          <UIcon name="i-lucide-chevron-left" class="size-3.5" /> {{ block.number - 1 }}
-        </NuxtLink>
-        <NuxtLink :to="blockPath(answer.chain, block.number + 1)" class="explorers-copy" aria-label="Next block">
-          {{ block.number + 1 }} <UIcon name="i-lucide-chevron-right" class="size-3.5" />
-        </NuxtLink>
-      </span>
+  <section class="tool-console console-wide not-prose" aria-label="Block">
+    <span class="console-cross console-cross-tl" aria-hidden="true">+</span>
+    <span class="console-cross console-cross-br" aria-hidden="true">+</span>
+
+    <header class="console-bar">
+      <span class="console-title"
+        ><span class="console-tag">Call</span>getBlockInfo(<span class="entity-str"
+          >"{{ answer.chain }}"</span
+        >, {{ block.number }})</span
+      >
+      <span class="console-meta">via {{ providerLabel(answer.provider) }}</span>
+      <span class="console-mark" aria-hidden="true" />
+    </header>
+    <div class="console-ruler" aria-hidden="true">
+      <span :key="block.hash" class="console-cursor" />
     </div>
-    <dl class="grid grid-cols-2 border-b border-muted sm:grid-cols-4">
-      <div class="border-muted px-4 py-3.5">
-        <dt class="font-mono text-[10px] tracking-[0.12em] text-dimmed uppercase">transactions</dt>
-        <dd class="mt-1 font-mono text-lg text-highlighted">{{ block.txCount }}</dd>
-      </div>
-      <div class="border-l border-muted px-4 py-3.5">
-        <dt class="font-mono text-[10px] tracking-[0.12em] text-dimmed uppercase">{{ evm ? "gas used" : "size" }}</dt>
-        <dd class="mt-1 font-mono text-lg text-highlighted">{{ hasGas ? groupDigits(block.gasUsed) : "n/a" }}</dd>
-        <div v-if="utilization !== null" class="mt-2 h-1 overflow-hidden rounded-full bg-accented">
-          <div class="h-full rounded-full bg-primary" :style="{ width: `${Math.min(100, utilization)}%` }" />
+
+    <div class="console-band console-subject-band">
+      <div class="console-scan" aria-hidden="true" />
+      <div class="console-identity-block">
+        <ConsoleReticle :key="block.hash" :icon="chainIcon(answer.chain)" />
+        <div class="console-name">
+          <span class="console-label"
+            >Block / <span class="console-label-key">{{ answer.chain }}</span></span
+          >
+          <h3 class="block-number">{{ block.number }}</h3>
+          <p class="console-about">
+            Sealed {{ dateTime(block.timestamp) }}, read through
+            {{ providerLabel(answer.provider) }}. The arrows at the foot step to its neighbours.
+          </p>
         </div>
-        <p v-if="utilization !== null" class="mt-1 font-mono text-[10px] text-dimmed">{{ utilization }}% of the {{ evm ? "limit" : "weight cap" }}</p>
       </div>
-      <div class="border-t border-muted px-4 py-3.5 sm:border-t-0 sm:border-l">
-        <dt class="font-mono text-[10px] tracking-[0.12em] text-dimmed uppercase">{{ evm ? "gas limit" : "weight" }}</dt>
-        <dd class="mt-1 font-mono text-lg text-highlighted">{{ hasGas ? groupDigits(block.gasLimit) : "n/a" }}</dd>
+
+      <div class="console-readout">
+        <svg class="console-link" viewBox="0 0 32 40" fill="none" aria-hidden="true">
+          <circle cx="3" cy="12" r="2.5" />
+          <path d="M5.5 12H14L22 20H32" />
+        </svg>
+        <dl class="console-readout-rows">
+          <div>
+            <dt>Transactions</dt>
+            <dd class="console-accent">{{ block.txCount }}</dd>
+          </div>
+          <div>
+            <dt>{{ evm ? "Gas used" : "Size" }}</dt>
+            <dd>{{ hasGas ? groupDigits(block.gasUsed) : "n/a" }}</dd>
+          </div>
+          <div>
+            <dt>{{ evm ? "Gas limit" : "Weight" }}</dt>
+            <dd>{{ hasGas ? groupDigits(block.gasLimit) : "n/a" }}</dd>
+          </div>
+          <div>
+            <dt>Base fee</dt>
+            <dd>{{ baseFeeText ?? "none" }}</dd>
+          </div>
+        </dl>
+        <div
+          v-if="utilization !== null"
+          class="console-gauge"
+          :aria-label="`${utilization}% of the ${evm ? 'gas limit' : 'weight cap'} used`"
+        >
+          <span class="console-ticks" aria-hidden="true">
+            <span
+              v-for="index in TICKS"
+              :key="index"
+              :class="index <= usedTicks ? 'console-tick-closed' : 'console-tick-open'"
+              :style="{ animationDelay: `${index * 12}ms` }"
+            />
+          </span>
+          <span class="console-gauge-read"
+            >used {{ utilization }}% of the {{ evm ? "limit" : "cap" }}</span
+          >
+        </div>
       </div>
-      <div class="border-t border-l border-muted px-4 py-3.5 sm:border-t-0">
-        <dt class="font-mono text-[10px] tracking-[0.12em] text-dimmed uppercase">base fee</dt>
-        <dd class="mt-1 font-mono text-lg text-highlighted">{{ baseFeeText ?? "none" }}</dd>
+    </div>
+
+    <div class="explorers-band">
+      <p class="console-label console-rule-title">
+        <span>Chain <span aria-hidden="true">[ hash · parent · producer ]</span></span>
+        <span class="console-mark" aria-hidden="true" />
+      </p>
+      <dl class="explorers-facts">
+        <div>
+          <dt>Hash</dt>
+          <dd>{{ block.hash }}</dd>
+        </div>
+        <div>
+          <dt>Parent</dt>
+          <dd>
+            <NuxtLink v-if="block.number > 0" :to="blockPath(answer.chain, block.number - 1)">{{
+              block.parentHash
+            }}</NuxtLink>
+            <template v-else>{{ block.parentHash }}</template>
+          </dd>
+        </div>
+        <div>
+          <dt>Timestamp</dt>
+          <dd>{{ block.timestamp }}</dd>
+        </div>
+        <div>
+          <dt>Producer</dt>
+          <dd>
+            <NuxtLink v-if="block.miner" :to="addressPath(answer.chain, block.miner)">{{
+              block.miner
+            }}</NuxtLink>
+            <span v-else class="explorers-dim">empty · the explorer names no producer</span>
+          </dd>
+        </div>
+      </dl>
+    </div>
+
+    <footer class="console-footer console-footer-plain">
+      <ul class="console-links">
+        <li>
+          <NuxtLink to="/explorer"><span aria-hidden="true">→ </span>Explorer</NuxtLink>
+        </li>
+        <li v-if="external">
+          <a :href="external" target="_blank" rel="noopener nofollow"
+            ><span aria-hidden="true">↗ </span>{{ externalHost(answer.chain) }}</a
+          >
+        </li>
+      </ul>
+      <div class="console-controls" aria-label="Blocks">
+        <UButton
+          v-if="block.number > 0"
+          color="neutral"
+          variant="subtle"
+          square
+          icon="i-lucide-chevron-left"
+          :to="blockPath(answer.chain, block.number - 1)"
+          :aria-label="`Block ${block.number - 1}`"
+        />
+        <span>{{ chainLabel(answer.chain) }} block</span>
+        <UButton
+          color="neutral"
+          variant="subtle"
+          square
+          icon="i-lucide-chevron-right"
+          :to="blockPath(answer.chain, block.number + 1)"
+          :aria-label="`Block ${block.number + 1}`"
+        />
       </div>
-    </dl>
-    <dl class="explorers-kv">
-      <dt>hash</dt>
-      <dd class="font-mono text-[13px] break-all">{{ block.hash }}</dd>
-      <dt>parentHash</dt>
-      <dd class="font-mono text-[13px] break-all">
-        <NuxtLink v-if="block.number > 0" :to="blockPath(answer.chain, block.number - 1)" class="hover:text-primary">{{ block.parentHash }}</NuxtLink>
-        <span v-else>{{ block.parentHash }}</span>
-      </dd>
-      <dt>timestamp</dt>
-      <dd class="font-mono text-[13px]">{{ block.timestamp }}</dd>
-      <dt>miner</dt>
-      <dd class="font-mono text-[13px] break-all">
-        <NuxtLink v-if="block.miner" :to="addressPath(answer.chain, block.miner)" class="hover:text-primary">{{ block.miner }}</NuxtLink>
-        <span v-else class="text-dimmed">empty · the explorer names no producer</span>
-      </dd>
-      <dt>provider</dt>
-      <dd class="font-mono text-[13px]">{{ providerLabel(answer.provider) }} <span class="text-dimmed">· fetched {{ dateTime(answer.fetchedAt) }}</span></dd>
-      <dt>elsewhere</dt>
-      <dd class="font-mono text-[13px]">
-        <a v-if="external" :href="external" target="_blank" rel="noopener nofollow" class="inline-flex items-center gap-1 hover:text-primary">
-          {{ externalHost(answer.chain) }} <UIcon name="i-lucide-arrow-up-right" class="size-3.5" />
-        </a>
-        <span v-else class="text-dimmed">no canonical explorer link for this chain</span>
-      </dd>
-    </dl>
-  </div>
+    </footer>
+  </section>
 </template>
+
+<style scoped>
+.block-number {
+  font-family: var(--font-mono) !important;
+}
+</style>

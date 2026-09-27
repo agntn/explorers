@@ -1,43 +1,51 @@
 <script setup lang="ts">
+import type { TableColumn } from "@nuxt/ui";
 import type { TokenBalance } from "@agntn/explorers";
 import { addressPath } from "../../utils/entities";
-import { clip, shortHash, trimDecimals } from "../../utils/format";
+import { STACK } from "../../utils/entity-table";
+import { clip, trimDecimals } from "../../utils/format";
+import { ROSTER_TABLE_UI } from "../../utils/roster";
 
 defineProps<{ chain: string; items: TokenBalance[]; total: number }>();
+
+const columns: TableColumn<TokenBalance>[] = [
+  { id: "token", header: "Token" },
+  { id: "contract", header: "Contract", meta: { class: { th: "w-[11rem]", td: STACK.lastStart } } },
+  { id: "balance", header: "Balance", meta: { class: { th: "w-[12rem] text-end", td: `text-end ${STACK.end}` } } },
+  { id: "usd", header: "Value", meta: { class: { th: "w-[7rem] text-end", td: `text-end ${STACK.lastEnd}` } } },
+];
 </script>
 
 <template>
-  <p v-if="!items.length" class="px-4 py-6 text-sm text-muted">No token holdings with a balance.</p>
-  <div v-else class="explorers-table-wrap">
-    <table class="explorers-table">
-      <thead>
-        <tr>
-          <th>token</th>
-          <th class="text-right">balance</th>
-          <th>decimals</th>
-          <th>contract</th>
-          <th class="text-right">value</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="holding in items" :key="holding.contract">
-          <td>
-            <span class="font-mono text-xs text-highlighted">{{ clip(holding.symbol, 12) }}</span>
-            <span v-if="holding.name" class="ms-2 text-xs text-muted">{{ clip(holding.name, 32) }}</span>
-          </td>
-          <td class="text-right font-mono text-xs text-highlighted whitespace-nowrap">{{ trimDecimals(holding.balanceFormatted, 6) }}</td>
-          <td class="font-mono text-xs text-muted">{{ holding.decimals }}</td>
-          <td class="font-mono text-xs">
-            <NuxtLink :to="addressPath(chain, holding.contract)" class="text-muted hover:text-primary" :title="holding.contract">{{ shortHash(holding.contract, 8, 6) }}</NuxtLink>
-          </td>
-          <td class="text-right font-mono text-xs text-muted whitespace-nowrap">
-            {{ holding.valueUsd !== undefined ? `$${holding.valueUsd.toFixed(2)}` : "no quote" }}
-          </td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-  <p v-if="total > items.length" class="border-t border-muted px-4 py-3 font-mono text-[11px] text-dimmed">
+  <p v-if="!items.length" class="explorers-note list-empty">No token holdings with a balance.</p>
+  <UTable
+    v-else
+    :data="items"
+    :columns="columns"
+    :get-row-id="(row) => row.contract"
+    :ui="ROSTER_TABLE_UI"
+  >
+    <template #token-cell="{ row }">
+      <!-- Symbols and names come from whoever deployed the token: interpolated, clipped, never markup. -->
+      <span class="list-route">
+        <span class="explorers-value">{{ clip(row.original.symbol, 12) }}</span>
+        <span v-if="row.original.name" class="list-sub">{{ clip(row.original.name, 32) }}</span>
+        <span class="list-sub">· {{ row.original.decimals }} dec</span>
+      </span>
+    </template>
+    <template #contract-cell="{ row }">
+      <ExplorerHash :value="row.original.contract" :to="addressPath(chain, row.original.contract)" />
+    </template>
+    <template #balance-cell="{ row }">
+      <span class="list-amount explorers-value">{{ trimDecimals(row.original.balanceFormatted, 6) }}</span>
+    </template>
+    <template #usd-cell="{ row }">
+      <span class="list-amount" :class="row.original.valueUsd !== undefined ? '' : 'list-sub'">{{
+        row.original.valueUsd !== undefined ? `$${row.original.valueUsd.toFixed(2)}` : "no quote"
+      }}</span>
+    </template>
+  </UTable>
+  <p v-if="total > items.length" class="explorers-note list-empty list-more">
     {{ total }} holdings in total, the first {{ items.length }} shown. The library returns them all.
   </p>
 </template>

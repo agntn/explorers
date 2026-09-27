@@ -1,4 +1,5 @@
 import { fileURLToPath } from "node:url";
+import { explorersTheme } from "./shiki-theme";
 
 /** Bundled from the checkout's sources: a deploy needs neither dist/ nor the root node_modules. */
 const repoRoot = fileURLToPath(new URL("../", import.meta.url));
@@ -68,8 +69,11 @@ export default defineNuxtConfig({
     clientBundle: {
       icons: [
         "lucide:archive",
+        "lucide:arrow-down",
+        "lucide:arrow-left",
         "lucide:arrow-left-right",
         "lucide:arrow-right",
+        "lucide:arrow-up",
         "lucide:arrow-up-right",
         "lucide:book-marked",
         "lucide:book-open",
@@ -77,11 +81,15 @@ export default defineNuxtConfig({
         "lucide:box",
         "lucide:chart-column",
         "lucide:check",
+        "lucide:check-circle",
+        "lucide:chevron-down",
         "lucide:chevron-left",
         "lucide:chevron-right",
+        "lucide:chevrons-up-down",
         "lucide:circle-x",
         "lucide:copy",
         "lucide:database",
+        "lucide:expand",
         "lucide:external-link",
         "lucide:eye",
         "lucide:file-code",
@@ -91,13 +99,16 @@ export default defineNuxtConfig({
         "lucide:layers",
         "lucide:leaf",
         "lucide:library",
+        "lucide:link",
         "lucide:list",
+        "lucide:loader-circle",
         "lucide:network",
         "lucide:plus",
         "lucide:radio-tower",
         "lucide:receipt",
         "lucide:refresh-cw",
         "lucide:route",
+        "lucide:scan-search",
         "lucide:search",
         "lucide:server",
         "lucide:sliders-horizontal",
@@ -116,13 +127,13 @@ export default defineNuxtConfig({
         "token:ar",
         "token:arbitrum-one",
         "token:avax",
-        "token:bch",
-        "token:bsv",
-        "token:btg",
         "token:base",
+        "token:bch",
         "token:berachain",
         "token:bnb",
+        "token:bsv",
         "token:btc",
+        "token:btg",
         "token:dcr",
         "token:eth",
         "token:gno",
@@ -137,6 +148,7 @@ export default defineNuxtConfig({
         "token:trx",
         "token:xec",
         "token:xlm",
+        "token:zec",
         "token:zksync",
         "vscode-icons:file-type-js",
         "vscode-icons:file-type-json",
@@ -167,6 +179,10 @@ export default defineNuxtConfig({
   /** Docus ships an MCP endpoint that wants the Cloudflare Agents SDK on Workers. Not needed. */
   mcp: {
     enabled: false,
+  },
+  /** The chain matrix moved under Providers; old links keep working. */
+  routeRules: {
+    "/chains": { redirect: { to: "/providers/chains", statusCode: 301 } },
   },
   nitro: {
     preset: "cloudflare_module",
@@ -207,8 +223,8 @@ export default defineNuxtConfig({
   css: ["~/assets/fonts.css"],
   fonts: {
     families: [
-      { name: "Space Grotesk", provider: "local", weights: [400, 500, 600] },
-      { name: "Space Mono", provider: "local", weights: [400, 700] },
+      { name: "Figtree", provider: "local", weights: [400, 500] },
+      { name: "Fira Code", provider: "local", weights: [400, 500] },
     ],
   },
   content: {
@@ -220,9 +236,9 @@ export default defineNuxtConfig({
       markdown: {
         highlight: {
           theme: {
-            default: "github-light",
-            light: "github-light",
-            dark: "poimandres",
+            default: explorersTheme,
+            light: explorersTheme,
+            dark: explorersTheme,
           },
         },
       },

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ExplorerSample, SampleTransaction } from "../../utils/landing-fixtures";
 import { dateOnly, shortHash, trimDecimals } from "../../utils/format";
+import { providerLabel } from "../../utils/providers";
 
 const props = defineProps<{ sample: ExplorerSample }>();
 
@@ -13,55 +14,117 @@ function recipient(transaction: SampleTransaction): string {
   if (transaction.to === "") return "data upload";
   return shortHash(transaction.to, 6, 4);
 }
+
+/** What the row carries besides value: a method, token transfers, an OP_RETURN push. */
+function extra(transaction: SampleTransaction): string {
+  return [
+    transaction.functionName ?? "",
+    transaction.tokenTransfers.length ? `${transaction.tokenTransfers.length} token transfers` : "",
+    transaction.opReturn?.length ? "OP_RETURN" : "",
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
 </script>
 
 <template>
-  <div class="explorers-frame overflow-hidden rounded-xl">
-    <div class="flex items-center justify-between gap-3 border-b border-muted px-4 py-3">
-      <p class="font-mono text-xs text-muted">
-        <span class="text-dimmed">getTxHistory</span>
-        <span class="ms-2 text-highlighted">{ limit: 5 }</span>
-      </p>
-      <p class="font-mono text-[11px] text-dimmed">
-        {{ sample.history.length }} rows · {{ sample.live ? "live" : "sample" }}
-      </p>
-    </div>
-    <ol class="divide-y divide-muted">
-      <li
-        v-for="transaction in sample.history"
-        :key="transaction.hash"
-        class="explorers-derive flex items-start gap-3 px-4 py-3"
+  <section class="tool-console landing-history" aria-label="Transaction history">
+    <span class="console-cross console-cross-tl" aria-hidden="true">+</span>
+    <span class="console-cross console-cross-br" aria-hidden="true">+</span>
+
+    <header class="console-bar">
+      <span class="console-title"
+        ><span class="console-tag">List</span>getTxHistory(address,
+        <span class="tok-str">"{{ sample.chain }}"</span>)</span
       >
-        <UIcon
-          :name="
-            transaction.status === 'success'
-              ? 'i-lucide-check'
-              : transaction.status === 'failed'
-                ? 'i-lucide-circle-x'
-                : 'i-lucide-archive'
-          "
-          class="mt-0.5 size-4 shrink-0"
-          :class="transaction.status === 'success' ? 'text-primary' : 'text-dimmed'"
-        />
-        <div class="min-w-0 flex-1">
-          <p class="truncate font-mono text-[12px] text-highlighted" :title="transaction.hash">
-            {{ shortHash(transaction.hash, 14, 8) }}
-          </p>
-          <p class="mt-0.5 truncate font-mono text-[11px] text-dimmed">
-            {{ shortHash(transaction.from, 6, 4) }} →
-            {{ recipient(transaction) }}
-            · block {{ transaction.blockNumber }}
-            {{ transaction.timestamp ? ` · ${dateOnly(transaction.timestamp)}` : "" }}
-            {{ transaction.functionName ? ` · ${transaction.functionName}` : "" }}
-            {{ transaction.tokenTransfers.length ? ` · ${transaction.tokenTransfers.length} token transfers` : "" }}
-            {{ transaction.opReturn?.length ? ` · OP_RETURN` : "" }}
-          </p>
-        </div>
-        <span class="shrink-0 font-mono text-[12px] text-muted">
-          {{ trimDecimals(transaction.valueFormatted, 6) }} {{ symbol }}
+      <span class="console-meta">limit 5 · {{ sample.live ? "live" : "recorded" }}</span>
+      <span class="console-mark" aria-hidden="true" />
+    </header>
+    <div class="console-ruler" aria-hidden="true">
+      <span :key="sample.input" class="console-cursor" />
+    </div>
+
+    <!-- Five rows of two lines each whatever the sample, so the panel keeps one height. -->
+    <ol :key="sample.input" class="explorers-rows history-rows console-animate">
+      <li
+        v-for="(transaction, index) in sample.history.slice(0, 5)"
+        :key="transaction.hash"
+        :style="{ animationDelay: `${index * 45}ms` }"
+      >
+        <UTooltip :text="transaction.hash">
+          <span class="explorers-value history-hash" tabindex="0">{{
+            shortHash(transaction.hash, 12, 6)
+          }}</span>
+        </UTooltip>
+        <span class="history-end">
+          <span :class="transaction.value === '0' ? 'explorers-dim' : 'explorers-value'"
+            >{{ trimDecimals(transaction.valueFormatted, 6) }}
+            <span class="explorers-dim">{{ symbol }}</span></span
+          >
+          <ExplorerStatus v-if="transaction.status !== 'success'" :status="transaction.status" />
         </span>
-        <ExplorerStatus :status="transaction.status" />
+        <span class="explorers-clip history-sub"
+          >{{ shortHash(transaction.from, 6, 4) || "?" }} → {{ recipient(transaction)
+          }}<span class="explorers-dim">
+            · block {{ transaction.blockNumber
+            }}{{ transaction.timestamp ? ` · ${dateOnly(transaction.timestamp)}` : ""
+            }}{{ extra(transaction) ? ` · ${extra(transaction)}` : "" }}</span
+          ></span
+        >
       </li>
     </ol>
-  </div>
+    <p class="history-note">
+      No recipient reads <code>none</code>, an Arweave upload <code>data upload</code>.
+    </p>
+
+    <footer class="console-footer console-footer-plain">
+      <span>same Transaction shape from {{ providerLabel(sample.provider) }}</span>
+      <span class="console-meta">raw kept in .raw</span>
+    </footer>
+  </section>
 </template>
+
+<style scoped>
+.history-rows {
+  padding: 6px 0;
+}
+.history-rows > li {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+.history-hash {
+  white-space: nowrap;
+}
+.history-end {
+  display: flex;
+  justify-content: flex-end;
+  align-items: baseline;
+  gap: 8px;
+  white-space: nowrap;
+}
+.history-sub {
+  grid-column: 1 / -1;
+  font-size: 11px;
+}
+.history-note {
+  margin: 0;
+  padding: 12px 20px 14px;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--ui-text-muted);
+  box-shadow: inset 0 1px 0 var(--console-line);
+}
+.history-note > code {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ui-text-highlighted);
+}
+@media (width < 400px) {
+  .history-note {
+    padding-inline: 14px;
+  }
+  .history-rows > li {
+    padding-inline: 14px;
+  }
+}
+</style>

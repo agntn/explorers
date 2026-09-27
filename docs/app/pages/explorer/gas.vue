@@ -24,7 +24,7 @@ defineOgImage(
 
 <template>
   <ExplorerShell
-    eyebrow="explorer · gas"
+    section="gas"
     title="Fees right now,"
     accent="every chain."
     description="getGasData on every chain with a provider that quotes fees. The unit is part of the answer, fields a provider doesn't quote are absent, and nothing here gets converted to a currency."
