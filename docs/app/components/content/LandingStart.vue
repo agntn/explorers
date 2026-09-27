@@ -61,39 +61,34 @@ const NOTES = [
           </li>
         </ul>
         <div class="console-actions start-actions">
-          <NuxtLink to="/guide" class="console-action console-action-primary">
-            <span class="console-action-label">Read the guide</span>
-            <span class="console-action-cell" aria-hidden="true"
-              ><UIcon name="i-lucide-arrow-right" class="size-4"
-            /></span>
-          </NuxtLink>
-          <NuxtLink to="/explorer" class="console-action">
-            <span class="console-action-cell" aria-hidden="true"
-              ><UIcon name="i-lucide-scan-search" class="size-4"
-            /></span>
-            <span class="console-action-label">Open the explorer</span>
-          </NuxtLink>
+          <UButton
+            to="/guide"
+            color="primary"
+            variant="solid"
+            trailing-icon="i-lucide-arrow-right"
+            label="Read the guide"
+          />
+          <UButton
+            to="/explorer"
+            color="neutral"
+            variant="outline"
+            icon="i-lucide-scan-search"
+            label="Open the explorer"
+          />
         </div>
       </div>
-
       <div class="start-file">
         <p class="console-label console-rule-title">
           <span>First balance <span aria-hidden="true">[ index.ts ]</span></span>
           <span class="console-mark" aria-hidden="true" />
-          <button
-            type="button"
-            class="console-button"
+          <UButton
+            color="neutral"
+            variant="subtle"
+            :icon="copied === 'start' ? 'i-lucide-check' : 'i-lucide-copy'"
+            :label="copied === 'start' ? 'copied' : 'copy'"
             :aria-label="copied === 'start' ? 'Copied' : 'Copy the first balance'"
-            :data-copied="copied === 'start'"
             @click="copy('start', SNIPPET)"
-          >
-            <UIcon
-              :name="copied === 'start' ? 'i-lucide-check' : 'i-lucide-copy'"
-              class="size-3"
-              aria-hidden="true"
-            />
-            {{ copied === "start" ? "copied" : "copy" }}
-          </button>
+          />
         </p>
         <!-- prettier-ignore -->
         <pre

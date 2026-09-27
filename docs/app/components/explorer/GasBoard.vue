@@ -92,28 +92,39 @@ const cards = computed(() =>
     <div class="explorers-band">
       <p class="console-label console-rule-title">
         <span>Fees <span aria-hidden="true">[ in the provider's own unit ]</span></span>
-        <button type="button" class="console-button" :disabled="busy" @click="refresh">
-          <UIcon
-            name="i-lucide-refresh-cw"
-            class="size-3"
-            :class="{ 'animate-spin': busy }"
-            aria-hidden="true"
-          />
-          refresh
-        </button>
+        <UButton
+          color="neutral"
+          variant="subtle"
+          icon="i-lucide-refresh-cw"
+          label="refresh"
+          :loading="busy"
+          @click="refresh"
+        />
       </p>
       <ul class="gas-cells">
         <li v-for="{ chain, tile, fields } in cards" :key="chain.key">
           <p class="gas-head">
             <UIcon :name="chain.icon" class="gas-glyph" aria-hidden="true" />
             <span class="gas-name">{{ chain.name }}</span>
-            <span class="gas-unit">{{ tile?.answer ? tile.answer.gas.unit : chain.key }}</span>
+            <UBadge
+              v-if="tile?.answer"
+              class="gas-unit"
+              color="neutral"
+              variant="outline"
+              :label="tile.answer.gas.unit"
+            />
           </p>
           <p v-if="!tile || tile.loading" class="explorers-note gas-state">
             <UIcon name="i-lucide-loader-circle" class="size-3.5 animate-spin" aria-hidden="true" />
             Asking
           </p>
-          <p v-else-if="tile.error" class="explorers-error gas-state gas-error">{{ tile.error }}</p>
+          <UAlert
+            v-else-if="tile.error"
+            color="error"
+            variant="outline"
+            :title="tile.error"
+            role="alert"
+          />
           <template v-else-if="tile.answer">
             <dl class="gas-fields">
               <div v-for="[label, value] in fields" :key="label">
@@ -129,15 +140,21 @@ const cards = computed(() =>
       </ul>
     </div>
 
+    <div class="explorers-band">
+      <p class="explorers-note">
+        A chain missing here has no provider with fee data: Blockstream's estimates don't match the
+        recommendation shape, Peppool publishes none, Arweave prices storage per byte, and the
+        single chain explorers quote no fees.
+      </p>
+    </div>
+
     <footer class="console-footer console-footer-plain">
-      <span
-        >A chain missing here has no provider with fee data: Blockstream's estimates don't match
-        the recommendation shape, Peppool publishes none, Arweave prices storage per byte, and the
-        single chain explorers quote no fees.</span
-      >
+      <span>{{ chains.length }} chains, three reads at a time</span>
       <ul class="console-links">
         <li>
-          <NuxtLink to="/guide/gas-and-blocks"><span aria-hidden="true">→ </span>Gas and blocks</NuxtLink>
+          <NuxtLink to="/guide/gas-and-blocks"
+            ><span aria-hidden="true">→ </span>Gas and blocks</NuxtLink
+          >
         </li>
       </ul>
     </footer>
@@ -185,13 +202,8 @@ const cards = computed(() =>
 .gas-unit {
   margin-left: auto;
   flex: none;
-  padding: 0 5px;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  line-height: 1.6;
+  text-transform: none;
   letter-spacing: 0.04em;
-  color: var(--ui-text-muted);
-  box-shadow: inset 0 0 0 1px var(--console-line);
 }
 .gas-fields {
   display: grid;
@@ -229,10 +241,5 @@ const cards = computed(() =>
 }
 .gas-state {
   font-size: 13px;
-}
-.gas-error {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  overflow-wrap: anywhere;
 }
 </style>

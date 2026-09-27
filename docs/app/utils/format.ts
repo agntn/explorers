@@ -86,12 +86,6 @@ export function hostPath(url: string): string {
   }
 }
 
-/** The badge class for a transaction status: success stays quiet, a failure red, anything pending bright. */
-export function statusClass(status: string): string {
-  if (status === "success") return "";
-  if (status === "failed") return "explorers-state-failed";
-  return "explorers-state-warn";
-}
 
 /**
  * Border classes for cell `index` in a grid that's two columns on phones and `sm`/`lg` columns

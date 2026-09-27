@@ -72,8 +72,8 @@ const baseFeeText = computed(() => {
           >
           <h3 class="block-number">{{ block.number }}</h3>
           <p class="console-about">
-            Sealed {{ dateTime(block.timestamp) }}, read through {{ providerLabel(answer.provider) }}.
-            The arrows at the foot step to its neighbours.
+            Sealed {{ dateTime(block.timestamp) }}, read through
+            {{ providerLabel(answer.provider) }}. The arrows at the foot step to its neighbours.
           </p>
         </div>
       </div>
@@ -168,18 +168,24 @@ const baseFeeText = computed(() => {
         </li>
       </ul>
       <div class="console-controls" aria-label="Blocks">
-        <NuxtLink
+        <UButton
           v-if="block.number > 0"
+          color="neutral"
+          variant="subtle"
+          square
+          icon="i-lucide-chevron-left"
           :to="blockPath(answer.chain, block.number - 1)"
           :aria-label="`Block ${block.number - 1}`"
-          ><UIcon name="i-lucide-chevron-left"
-        /></NuxtLink>
+        />
         <span>{{ chainLabel(answer.chain) }} block</span>
-        <NuxtLink
+        <UButton
+          color="neutral"
+          variant="subtle"
+          square
+          icon="i-lucide-chevron-right"
           :to="blockPath(answer.chain, block.number + 1)"
           :aria-label="`Block ${block.number + 1}`"
-          ><UIcon name="i-lucide-chevron-right"
-        /></NuxtLink>
+        />
       </div>
     </footer>
   </section>

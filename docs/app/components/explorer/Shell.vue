@@ -31,7 +31,7 @@ defineProps<{
             <span>{{ section }}</span>
           </template>
           <span class="console-id-sep" aria-hidden="true">/</span>
-          <span>@agntn/explorers v{{ version }}</span>
+          <span>v{{ version }}</span>
         </p>
 
         <h1 class="hero-title">

@@ -97,17 +97,17 @@ const feedless = computed(() => !hasTip(props.chain));
         <span>Chain <span aria-hidden="true">[ live feed first ]</span></span>
         <span class="console-mark" aria-hidden="true" />
       </p>
-      <div class="console-chips dashboard-chips" role="group" aria-label="Chain">
-        <button
+      <div class="dashboard-chips" role="group" aria-label="Chain">
+        <UButton
           v-for="row in tabs"
           :key="row.key"
-          type="button"
+          :color="chain === row.key ? 'primary' : 'neutral'"
+          variant="soft"
+          :icon="row.icon"
+          :label="row.name"
           :aria-pressed="chain === row.key"
           @click="emit('pick', row.key)"
-        >
-          <UIcon :name="row.icon" class="size-3" aria-hidden="true" />
-          {{ row.name }}
-        </button>
+        />
       </div>
     </div>
 
@@ -116,7 +116,9 @@ const feedless = computed(() => !hasTip(props.chain));
       <div class="console-identity-block">
         <ConsoleReticle :key="chain" :icon="chainIcon(chain)" />
         <div class="console-name">
-          <span class="console-label">Chain / <span class="console-label-key">{{ chain }}</span></span>
+          <span class="console-label"
+            >Chain / <span class="console-label-key">{{ chain }}</span></span
+          >
           <h3>{{ chainLabel(chain) }}</h3>
           <p class="console-about">
             <template v-if="feedless"
@@ -165,7 +167,9 @@ const feedless = computed(() => !hasTip(props.chain));
     <template v-if="tip && !feedless">
       <div v-if="tip.stats.length" class="explorers-band">
         <p class="console-label console-rule-title">
-          <span>Stats <span aria-hidden="true">[ as {{ tip.source }} counts them ]</span></span>
+          <span
+            >Stats <span aria-hidden="true">[ as {{ tip.source }} counts them ]</span></span
+          >
           <span class="console-mark" aria-hidden="true" />
         </p>
         <ExplorerStatTiles :stats="tip.stats" />
@@ -184,10 +188,7 @@ const feedless = computed(() => !hasTip(props.chain));
     </template>
 
     <footer class="console-footer console-footer-plain">
-      <span
-        >The feed reads the explorer's list endpoints, outside the library; every page it opens
-        runs the library.</span
-      >
+      <span>list endpoints, outside the library</span>
       <ul class="console-links">
         <li>
           <NuxtLink to="/guide/explorer"><span aria-hidden="true">→ </span>How it works</NuxtLink>
@@ -202,12 +203,9 @@ const feedless = computed(() => !hasTip(props.chain));
   color: var(--shiki-token-string);
 }
 .dashboard-chips {
-  margin: 0;
-}
-.dashboard-chips > button {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 .dashboard-feeds {
   display: grid;

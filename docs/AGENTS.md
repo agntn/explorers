@@ -90,7 +90,7 @@ Resolution traps, both caused by the repo root being a pnpm workspace:
 ## Constraints
 
 - Token symbols, token names, contract names and decoded function names come from public chains and the explorers that index them; anyone can deploy a token called anything. Render them as text through interpolation, clip them, never `v-html`; nothing in `app/` uses it.
-- The look follows the agntn design system; `DESIGN.md` lists what this site owns and every departure. A new panel is an instrument on the `console-*` grammar, a list is `UTable` with the roster classes, a shortened value gets a `UTooltip`, never `title`.
+- The look follows the agntn design system; `DESIGN.md` lists what this site owns and every departure. A new panel is an instrument on the `console-*` grammar, a list is `UTable` with the roster classes, a control is a Nuxt UI component (`UButton`, `UBadge`, `UTabs`, `UInput`, `USelectMenu`, `UAlert`) whose look comes from its variant in `app.config.ts`, a shortened value gets a `UTooltip`, never `title`.
 - Provider labels, icons, env vars, blurbs and chain icons live once in `app/utils/providers.ts`. The sidebar, the landing grid, the matrices, the explorer and `::provider-facts` read from it.
 - The docs API shapes live once, in `shared/wire.ts`; routes type their answers with them and the page reads the same declarations.
 - Every endpoint, option, error class and limit quoted in `content/` has a line in `src/` or in the snapshot. Check a new one the same way before writing it down.

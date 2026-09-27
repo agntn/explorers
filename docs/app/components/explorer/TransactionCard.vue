@@ -1,13 +1,7 @@
 <script setup lang="ts">
 import type { DetailAnswer } from "../../utils/wire";
 import { addressPath, blockPath, externalHost, externalUrl } from "../../utils/entities";
-import {
-  dateTime,
-  formatUnits,
-  groupDigits,
-  shortHash,
-  trimDecimals,
-} from "../../utils/format";
+import { dateTime, formatUnits, groupDigits, shortHash, trimDecimals } from "../../utils/format";
 import {
   chainIcon,
   chainInfo,
@@ -70,21 +64,34 @@ const { copied, copy } = useCopied();
           >
           <p class="explorers-subject-id">
             <span>{{ transaction.hash }}</span>
-            <button
-              type="button"
-              class="console-button"
-              :data-copied="copied === 'hash'"
+            <UButton
+              color="neutral"
+              variant="subtle"
+              :icon="copied === 'hash' ? 'i-lucide-check' : 'i-lucide-copy'"
               :aria-label="copied === 'hash' ? 'Copied' : 'Copy hash'"
               @click="copy('hash', transaction.hash)"
-            >
-              <UIcon :name="copied === 'hash' ? 'i-lucide-check' : 'i-lucide-copy'" class="size-3" />
-            </button>
+            />
           </p>
           <p class="explorers-tags">
             <ExplorerStatus :status="transaction.status" />
-            <span v-if="transaction.isContractInteraction" class="explorers-state">contract call</span>
-            <span v-if="transaction.createdContract" class="explorers-state">deployment</span>
-            <span v-if="transaction.opReturn?.length" class="explorers-state">OP_RETURN</span>
+            <UBadge
+              v-if="transaction.isContractInteraction"
+              color="neutral"
+              variant="outline"
+              label="contract call"
+            />
+            <UBadge
+              v-if="transaction.createdContract"
+              color="neutral"
+              variant="outline"
+              label="deployment"
+            />
+            <UBadge
+              v-if="transaction.opReturn?.length"
+              color="neutral"
+              variant="outline"
+              label="OP_RETURN"
+            />
           </p>
         </div>
       </div>
@@ -123,7 +130,9 @@ const { copied, copy } = useCopied();
           <div>
             <dt>Time</dt>
             <dd class="tx-nowrap">
-              <template v-if="transaction.timestamp">{{ dateTime(transaction.timestamp) }}</template>
+              <template v-if="transaction.timestamp">{{
+                dateTime(transaction.timestamp)
+              }}</template>
               <span v-else class="explorers-dim">not given</span>
             </dd>
           </div>
@@ -193,7 +202,9 @@ const { copied, copy } = useCopied();
         <div v-if="transaction.gasUsed || gasPriceText">
           <dt>Gas</dt>
           <dd>
-            <template v-if="transaction.gasUsed">{{ groupDigits(transaction.gasUsed) }} used</template>
+            <template v-if="transaction.gasUsed"
+              >{{ groupDigits(transaction.gasUsed) }} used</template
+            >
             <span v-if="transaction.gasUsed && gasPriceText" class="explorers-dim"> · </span>
             <template v-if="gasPriceText">{{ gasPriceText }}</template>
           </dd>
@@ -223,14 +234,26 @@ const { copied, copy } = useCopied();
         >
           <span class="list-amount">
             <span class="explorers-value">{{ trimDecimals(transfer.valueFormatted, 6) }}</span>
-            <NuxtLink :to="addressPath(answer.chain, transfer.contract)" class="list-link list-token">{{
-              transfer.symbol
-            }}</NuxtLink>
+            <NuxtLink
+              :to="addressPath(answer.chain, transfer.contract)"
+              class="list-link list-token"
+              >{{ transfer.symbol }}</NuxtLink
+            >
           </span>
           <span class="list-route">
-            <ExplorerHash :value="transfer.from" :to="addressPath(answer.chain, transfer.from)" :head="6" :tail="4" />
+            <ExplorerHash
+              :value="transfer.from"
+              :to="addressPath(answer.chain, transfer.from)"
+              :head="6"
+              :tail="4"
+            />
             <span class="list-dir">→</span>
-            <ExplorerHash :value="transfer.to" :to="addressPath(answer.chain, transfer.to)" :head="6" :tail="4" />
+            <ExplorerHash
+              :value="transfer.to"
+              :to="addressPath(answer.chain, transfer.to)"
+              :head="6"
+              :tail="4"
+            />
           </span>
         </li>
       </ul>
@@ -249,7 +272,8 @@ const { copied, copy } = useCopied();
               >{{ payload.text }} <span class="explorers-dim">· {{ payload.hex }}</span></template
             >
             <template v-else
-              >{{ payload.hex }} <span class="explorers-dim">· binary, no text reading</span></template
+              >{{ payload.hex }}
+              <span class="explorers-dim">· binary, no text reading</span></template
             >
           </dd>
         </div>

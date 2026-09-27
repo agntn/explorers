@@ -18,7 +18,7 @@ defineProps<{ stats: TipStat[] }>();
 <style scoped>
 .census {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 9.5rem), 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 8.5rem), 1fr));
   gap: 0;
   margin: 0;
 }

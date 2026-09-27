@@ -57,20 +57,14 @@ const lines = computed(() => {
       <p class="console-label console-rule-title">
         <span>Read <span aria-hidden="true">[ whichever provider answers ]</span></span>
         <span class="console-mark" aria-hidden="true" />
-        <button
-          type="button"
-          class="console-button"
+        <UButton
+          color="neutral"
+          variant="subtle"
+          :icon="copied === 'file' ? 'i-lucide-check' : 'i-lucide-copy'"
+          :label="copied === 'file' ? 'copied' : 'copy'"
           :aria-label="copied === 'file' ? 'Copied' : 'Copy the file'"
-          :data-copied="copied === 'file'"
           @click="copy('file', lines.join('\n'))"
-        >
-          <UIcon
-            :name="copied === 'file' ? 'i-lucide-check' : 'i-lucide-copy'"
-            class="size-3"
-            aria-hidden="true"
-          />
-          {{ copied === "file" ? "copied" : "copy" }}
-        </button>
+        />
       </p>
       <!-- prettier-ignore -->
       <pre class="console-snippet console-lines file-lines"><code><span v-for="(line, index) in lines" :key="index"><span v-for="(token, part) in tokens(line)" :key="part" :class="token.cls">{{ token.text }}</span></span></code></pre>

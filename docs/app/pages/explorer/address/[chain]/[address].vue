@@ -49,15 +49,47 @@ const TABS: ReadonlyArray<{
   /** Whether the tab pages through its list. */
   paged: boolean;
 }> = [
-  { key: "transactions", label: "Transactions", icon: "i-lucide-list", capability: "txHistory", paged: true },
-  { key: "utxos", label: "Unspent outputs", icon: "i-lucide-wallet", capability: "utxos", paged: false },
-  { key: "tokens", label: "Tokens", icon: "i-lucide-database", capability: "tokenBalances", paged: false },
-  { key: "transfers", label: "Token transfers", icon: "i-lucide-arrow-left-right", capability: "tokenTransfers", paged: true },
-  { key: "contract", label: "Contract", icon: "i-lucide-file-code", capability: "contractInfo", paged: false },
+  {
+    key: "transactions",
+    label: "Transactions",
+    icon: "i-lucide-list",
+    capability: "txHistory",
+    paged: true,
+  },
+  {
+    key: "utxos",
+    label: "Unspent outputs",
+    icon: "i-lucide-wallet",
+    capability: "utxos",
+    paged: false,
+  },
+  {
+    key: "tokens",
+    label: "Tokens",
+    icon: "i-lucide-database",
+    capability: "tokenBalances",
+    paged: false,
+  },
+  {
+    key: "transfers",
+    label: "Token transfers",
+    icon: "i-lucide-arrow-left-right",
+    capability: "tokenTransfers",
+    paged: true,
+  },
+  {
+    key: "contract",
+    label: "Contract",
+    icon: "i-lucide-file-code",
+    capability: "contractInfo",
+    paged: false,
+  },
 ];
 
 /** Only the tabs some provider can serve on this chain; the others would be a 422 every time. */
-const tabs = computed(() => TABS.filter((tab) => providersFor(chain.value, tab.capability).length > 0));
+const tabs = computed(() =>
+  TABS.filter((tab) => providersFor(chain.value, tab.capability).length > 0),
+);
 
 const tab = ref<Tab>("transactions");
 const page = ref(1);
@@ -107,6 +139,11 @@ function pickPage(next: number) {
   syncQuery();
   void loadTab();
 }
+
+/** The tabs as UTabs items; the value is the tab key the query carries. */
+const tabItems = computed(() =>
+  tabs.value.map((row) => ({ label: row.label, icon: row.icon, value: row.key })),
+);
 
 /** What the bar calls for the tab that is open; the method name is the one the library exposes. */
 const CALLS: Record<Tab, string> = {
@@ -212,7 +249,8 @@ watch([chain, address], read);
         <UIcon name="i-lucide-info" class="size-3.5" aria-hidden="true" />
         <span
           >Arweave addresses and transaction ids share a shape. If this is a transaction id, open it
-          as <NuxtLink :to="txPath(chain, address)" class="entity-link">a transaction</NuxtLink>.</span
+          as
+          <NuxtLink :to="txPath(chain, address)" class="entity-link">a transaction</NuxtLink>.</span
         >
       </p>
 
@@ -227,7 +265,9 @@ watch([chain, address], read);
           >
           <span class="console-meta">{{
             panelAnswer
-              ? [panel.meta, `via ${providerLabel(panelAnswer.provider)}`].filter(Boolean).join(" · ")
+              ? [panel.meta, `via ${providerLabel(panelAnswer.provider)}`]
+                  .filter(Boolean)
+                  .join(" · ")
               : ""
           }}</span>
           <span class="console-mark" aria-hidden="true" />
@@ -240,25 +280,17 @@ watch([chain, address], read);
           />
         </div>
 
-        <div class="explorers-band">
-          <div class="console-chips entity-tabs" role="group" aria-label="Address data">
-            <button
-              v-for="row in tabs"
-              :key="row.key"
-              type="button"
-              :aria-pressed="tab === row.key"
-              @click="pickTab(row.key)"
-            >
-              <UIcon :name="row.icon" class="size-3" aria-hidden="true" />
-              {{ row.label }}
-            </button>
-          </div>
-        </div>
+        <UTabs
+          :model-value="tab"
+          :items="tabItems"
+          :content="false"
+          variant="link"
+          class="entity-tabs"
+          aria-label="Address data"
+          @update:model-value="pickTab($event as Tab)"
+        />
 
-        <div
-          v-if="panel.state.loading.value || panel.state.error.value"
-          class="explorers-band"
-        >
+        <div v-if="panel.state.loading.value || panel.state.error.value" class="explorers-band">
           <ExplorerState
             :loading="panel.state.loading.value"
             :error="panel.state.error.value"
@@ -316,7 +348,8 @@ watch([chain, address], read);
           <template v-else-if="tab === 'transfers' && transfers.answer.value">
             <span v-if="!transfers.answer.value.paged"
               >{{ providerLabel(transfers.answer.value.provider) }} pages by cursor, which the
-              library keeps to itself, so this is the newest {{ transfers.answer.value.limit }}.</span
+              library keeps to itself, so this is the newest
+              {{ transfers.answer.value.limit }}.</span
             >
             <span v-else class="console-meta">{{ transfers.answer.value.limit }} a page</span>
             <ExplorerPager
@@ -329,7 +362,11 @@ watch([chain, address], read);
             />
           </template>
           <template v-else>
-            <span>{{ panelAnswer ? `fetched ${dateTime(panelAnswer.fetchedAt)}` : "live read through the docs worker" }}</span>
+            <span>{{
+              panelAnswer
+                ? `fetched ${dateTime(panelAnswer.fetchedAt)}`
+                : "live read through the docs worker"
+            }}</span>
           </template>
         </footer>
       </section>

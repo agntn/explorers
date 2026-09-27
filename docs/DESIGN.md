@@ -25,12 +25,29 @@ The instruments explorers owns:
 
 Provider and chain names, icons, blurbs and capabilities come from [providers.ts](app/utils/providers.ts) over the registry snapshot. The landing samples come from [landing-fixtures.ts](app/utils/landing-fixtures.ts), recorded through the library.
 
+## Nuxt UI variants
+
+Controls are Nuxt UI components; `app.config.ts` gives each variant its family look with classes from `app.css`, so a page never hand-builds a button, a field or a status word.
+
+| Component and variant | Look | Used for |
+| --- | --- | --- |
+| `UButton` primary solid | amber action segment, glyph in its own cell | the one main action: get started, open address, read the guide |
+| `UButton` neutral outline | quiet action segment | second action: GitHub, open the explorer |
+| `UButton` neutral subtle | 22 px boxed control, `square` 28 px | copy, refresh, previous and next |
+| `UButton` neutral soft, primary soft | chip, picked chip on the accent edge | examples, chain picker, same address on other chains |
+| `UBadge` neutral outline, neutral subtle, error outline | boxed mono word: quiet, bright, red | transaction and output status, worker state, contract flags, fee unit |
+| `UTabs` link | mono capitals on a rule, accent segment under the active tab | address data |
+| `UInput`, `USelectMenu` none | the readout row is the frame, the value mono | the search form; the chain menu in the tooltip grammar |
+| `UAlert` error outline | red edge, message in mono | a failed read |
+
+Docus keeps neutral ghost and neutral link for its own buttons.
+
 ## Anatomy
 
 - **Operations.** `CapabilityCells` prints the nine `Provider` operations as boxed three letter cells in registry order, the served ones bright on an accent underline, the full name and method in a `UTooltip`. The provider dossier prints the same nine as cells with the method name and a node, an absent method struck through.
 - **Provider dossier.** ID bar with the provider key and `04 / 18`, meta with its environment variables or `keyless`. Subject band: reticle with the provider glyph, chain keys as boxed identifiers in their own case. Readout: chains, auth, operations served in the accent, one tick per operation. Bands `Operations [ Provider contract ]` and `Access` with leads `Create`, `Import`, `Host`, `Status`. Footer back to the index with the default chain.
-- **Search.** Bar `Call classify(input, "<chain>") → <kind>`; the reticle carries the selected chain. The readout rows hold the controls; `Reads as` answers live in the accent. The submit is a `console-action`, the examples `console-chips`.
-- **Explorer pages.** A hero zone per page (`ID explorer / <section>`), the circuit `input` into the search, then the page's instruments on the landing gutters. Entity pages print the id under the title and stack a dossier over a `List` instrument whose tabs are chips, rows `UTable` with the roster classes and the pager in the footer.
+- **Search.** Bar `Call classify(input, "<chain>") → <kind>`; the reticle carries the selected chain. The readout rows hold a `USelectMenu` with every chain and its glyph, filterable, and a `UInput`; `Reads as` answers live in the accent. The submit is a primary `UButton`, the examples soft ones.
+- **Explorer pages.** A hero zone per page (`ID explorer / <section>`), the circuit `input` into the search, then the page's instruments on the landing gutters. Entity pages print the id under the title and stack a dossier over a `List` instrument whose tabs are `UTabs`, rows `UTable` with the roster classes and the pager in the footer.
 - **Lists.** Five columns at most; narrow, `STACK` in [entity-table.ts](app/utils/entity-table.ts) puts the id and the amount on the first line, the route on the second, block and status on the third. Hashes and addresses go through `ExplorerHash`: short on screen, whole in the tooltip.
 
 ## Motion

@@ -14,7 +14,11 @@ const symbol = computed(() => chainInfo(props.chain)?.symbol ?? "");
 const columns: TableColumn<Utxo>[] = [
   { id: "output", header: "Output" },
   { id: "block", header: "Block", meta: { class: { th: "w-[10rem]", td: STACK.lastStart } } },
-  { id: "value", header: "Value", meta: { class: { th: "w-[11rem] text-end", td: `text-end ${STACK.end}` } } },
+  {
+    id: "value",
+    header: "Value",
+    meta: { class: { th: "w-[11rem] text-end", td: `text-end ${STACK.end}` } },
+  },
   { id: "state", header: "State", meta: { class: { th: "w-[7.5rem]", td: STACK.lastEnd } } },
 ];
 </script>
@@ -32,7 +36,12 @@ const columns: TableColumn<Utxo>[] = [
   >
     <template #output-cell="{ row }">
       <span class="list-route">
-        <ExplorerHash :value="row.original.txid" :to="txPath(chain, row.original.txid)" :head="10" strong />
+        <ExplorerHash
+          :value="row.original.txid"
+          :to="txPath(chain, row.original.txid)"
+          :head="10"
+          strong
+        />
         <span class="list-sub">:{{ row.original.vout }}</span>
       </span>
     </template>
@@ -57,9 +66,11 @@ const columns: TableColumn<Utxo>[] = [
       >
     </template>
     <template #state-cell="{ row }">
-      <span class="explorers-state" :class="{ 'explorers-state-warn': row.original.confirmed }">{{
-        row.original.confirmed ? "confirmed" : "pending"
-      }}</span>
+      <UBadge
+        color="neutral"
+        :variant="row.original.confirmed ? 'outline' : 'subtle'"
+        :label="row.original.confirmed ? 'confirmed' : 'pending'"
+      />
     </template>
   </UTable>
   <p v-if="total > items.length" class="explorers-note list-empty list-more">

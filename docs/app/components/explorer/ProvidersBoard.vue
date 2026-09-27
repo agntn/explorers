@@ -78,7 +78,11 @@ const columns: TableColumn<Row>[] = [
     </header>
     <div class="roster-ruler" aria-hidden="true" />
     <div v-if="loading || error" class="px-5 py-4">
-      <ExplorerState :loading="loading" :error="error" label="Asking the worker which keys it holds" />
+      <ExplorerState
+        :loading="loading"
+        :error="error"
+        label="Asking the worker which keys it holds"
+      />
     </div>
     <UTable
       v-if="answer"
@@ -88,7 +92,10 @@ const columns: TableColumn<Row>[] = [
       :ui="ROSTER_TABLE_UI"
     >
       <template #label-cell="{ row }">
-        <NuxtLink :to="`/providers/${row.original.key}`" :class="[ROSTER_CLASS.name, 'items-baseline']">
+        <NuxtLink
+          :to="`/providers/${row.original.key}`"
+          :class="[ROSTER_CLASS.name, 'items-baseline']"
+        >
           <UIcon
             :name="row.original.info?.icon ?? 'i-lucide-server'"
             class="relative top-0.5 size-3.5 flex-none"
@@ -108,12 +115,11 @@ const columns: TableColumn<Row>[] = [
       </template>
       <template #state-cell="{ row }">
         <span :class="ROSTER_CLASS.count"
-          ><span :class="ROSTER_CLASS.leader" aria-hidden="true" /><span
-            class="explorers-state"
-            :class="{ 'explorers-state-warn': row.original.configured }"
-            >{{ row.original.state }}</span
-          ></span
-        >
+          ><span :class="ROSTER_CLASS.leader" aria-hidden="true" /><UBadge
+            :color="'neutral'"
+            :variant="row.original.configured ? 'subtle' : 'outline'"
+            :label="row.original.state"
+        /></span>
       </template>
     </UTable>
     <footer :class="ROSTER_CLASS.footer">

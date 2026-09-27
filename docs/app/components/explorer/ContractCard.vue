@@ -12,18 +12,23 @@ defineProps<{ answer: ContractAnswer }>();
       <!-- The name comes from whoever verified the contract: interpolated, never markup. -->
       <span
         ><span class="console-label-key">{{ answer.contract.name ?? "unnamed contract" }}</span>
-        <span aria-hidden="true">[ getContractInfo ]</span></span
+        <span aria-hidden="true">&#32;[ getContractInfo ]</span></span
       >
       <span class="console-mark" aria-hidden="true" />
     </p>
     <p class="explorers-tags contract-tags">
-      <span class="explorers-state" :class="{ 'explorers-state-warn': answer.contract.isVerified }">{{
-        answer.contract.isVerified ? "verified" : "unverified"
-      }}</span>
-      <span v-if="answer.contract.isProxy" class="explorers-state explorers-state-warn">proxy</span>
-      <span v-if="answer.contract.isToken" class="explorers-state">{{
-        answer.contract.tokenStandard ?? "token"
-      }}</span>
+      <UBadge
+        color="neutral"
+        :variant="answer.contract.isVerified ? 'subtle' : 'outline'"
+        :label="answer.contract.isVerified ? 'verified' : 'unverified'"
+      />
+      <UBadge v-if="answer.contract.isProxy" color="neutral" variant="subtle" label="proxy" />
+      <UBadge
+        v-if="answer.contract.isToken"
+        color="neutral"
+        variant="outline"
+        :label="answer.contract.tokenStandard ?? 'token'"
+      />
     </p>
     <dl class="explorers-facts">
       <div>
@@ -66,7 +71,9 @@ defineProps<{ answer: ContractAnswer }>();
       <div>
         <dt>ABI</dt>
         <dd>
-          {{ answer.contract.abiEntries === null ? "absent" : `${answer.contract.abiEntries} entries` }}
+          {{
+            answer.contract.abiEntries === null ? "absent" : `${answer.contract.abiEntries} entries`
+          }}
         </dd>
       </div>
       <div>

@@ -52,18 +52,13 @@ const { copied, copy } = useCopied();
           >
           <p class="overview-address">
             <span>{{ balance.address }}</span>
-            <button
-              type="button"
-              class="console-button"
-              :data-copied="copied === 'address'"
+            <UButton
+              color="neutral"
+              variant="subtle"
+              :icon="copied === 'address' ? 'i-lucide-check' : 'i-lucide-copy'"
               :aria-label="copied === 'address' ? 'Copied' : 'Copy address'"
               @click="copy('address', balance.address)"
-            >
-              <UIcon
-                :name="copied === 'address' ? 'i-lucide-check' : 'i-lucide-copy'"
-                class="size-3"
-              />
-            </button>
+            />
           </p>
           <p class="console-about">
             <template v-if="answer.input !== balance.address"
@@ -141,20 +136,23 @@ const { copied, copy } = useCopied();
           <a v-if="external" :href="external" target="_blank" rel="noopener nofollow"
             >{{ externalHost(answer.chain) }}<span class="overview-dim"> ↗</span></a
           >
-          <span v-else class="overview-dim">no canonical explorer link for {{ chainLabel(answer.chain) }}</span>
+          <span v-else class="overview-dim"
+            >no canonical explorer link for {{ chainLabel(answer.chain) }}</span
+          >
           <span class="console-leader" aria-hidden="true" />
         </dd>
         <dd v-if="siblings.length" class="overview-siblings">
           <span class="console-tag">Also on</span>
-          <span class="console-chips overview-chips">
-            <NuxtLink
+          <span class="overview-chips">
+            <UButton
               v-for="chain in siblings"
               :key="chain.key"
+              color="neutral"
+              variant="soft"
+              :icon="chain.icon"
+              :label="chain.name"
               :to="addressPath(chain.key, balance.address)"
-            >
-              <UIcon :name="chain.icon" class="size-3" aria-hidden="true" />
-              {{ chain.name }}
-            </NuxtLink>
+            />
           </span>
         </dd>
       </dl>
@@ -194,7 +192,7 @@ const { copied, copy } = useCopied();
   min-width: 0;
   overflow-wrap: anywhere;
 }
-.overview-address > .console-button {
+.overview-address > .explorers-control {
   flex: none;
 }
 .overview-nowrap {
@@ -225,29 +223,18 @@ const { copied, copy } = useCopied();
 }
 .overview-siblings {
   display: flex;
-  align-items: baseline;
+  align-items: flex-start;
   gap: 12px;
 }
 .overview-siblings > .console-tag {
   flex: none;
+  justify-self: start;
+  margin-top: 3px;
 }
 .overview-chips {
-  margin: 0;
-}
-.overview-chips > a {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 2px 7px;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  line-height: 1.5;
-  color: var(--ui-text-muted);
-  box-shadow: inset 0 0 0 1px var(--console-line);
-}
-.overview-chips > a:hover {
-  color: var(--ui-text-highlighted);
-  box-shadow: inset 0 0 0 1px var(--console-corner);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 @media (width < 640px) {
   .overview-address {

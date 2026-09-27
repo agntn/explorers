@@ -32,7 +32,8 @@ const cells = computed(() =>
     <li v-for="cell in cells" :key="cell.capability">
       <UTooltip :text="cell.note">
         <span class="capability-cell" :class="{ 'capability-cell-on': cell.served }"
-          >{{ cell.short }}<span class="sr-only">: {{ cell.served ? "served" : "absent" }}</span></span
+          >{{ cell.short
+          }}<span class="sr-only">: {{ cell.served ? "served" : "absent" }}</span></span
         >
       </UTooltip>
     </li>
@@ -41,6 +42,7 @@ const cells = computed(() =>
 
 <style scoped>
 .capability-cells {
+  container-type: inline-size;
   display: flex;
   flex-wrap: wrap;
   gap: 3px;
@@ -60,6 +62,13 @@ const cells = computed(() =>
   text-transform: uppercase;
   color: color-mix(in srgb, var(--ui-text-dimmed) 70%, var(--ui-bg));
   box-shadow: inset 0 0 0 1px var(--ui-border-muted);
+}
+@container (width < 19rem) {
+  .capability-cell {
+    min-width: 0;
+    padding-inline: 2px;
+    letter-spacing: 0.02em;
+  }
 }
 .capability-cell-on {
   color: var(--ui-text-highlighted);

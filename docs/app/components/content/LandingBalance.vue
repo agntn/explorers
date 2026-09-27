@@ -80,7 +80,9 @@ const totals = computed(() =>
           <div>
             <dt>In / out</dt>
             <dd :class="{ 'balance-dim': !totals }">
-              <span class="balance-line">{{ totals ?? `not sent on ${chainLabel(sample.chain)}` }}</span>
+              <span class="balance-line">{{
+                totals ?? `not sent on ${chainLabel(sample.chain)}`
+              }}</span>
             </dd>
           </div>
           <div>
@@ -102,13 +104,23 @@ const totals = computed(() =>
         ><span aria-hidden="true">→ </span>open in the explorer</NuxtLink
       >
       <div class="console-controls" aria-label="Sample addresses">
-        <button type="button" aria-label="Previous address" @click="emit('step', -1)">
-          <UIcon name="i-lucide-chevron-left" />
-        </button>
+        <UButton
+          color="neutral"
+          variant="subtle"
+          square
+          icon="i-lucide-chevron-left"
+          aria-label="Previous address"
+          @click="emit('step', -1)"
+        />
         <span>Address</span>
-        <button type="button" aria-label="Next address" @click="emit('step', 1)">
-          <UIcon name="i-lucide-chevron-right" />
-        </button>
+        <UButton
+          color="neutral"
+          variant="subtle"
+          square
+          icon="i-lucide-chevron-right"
+          aria-label="Next address"
+          @click="emit('step', 1)"
+        />
       </div>
     </footer>
   </section>

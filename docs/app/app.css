@@ -164,36 +164,6 @@ button:not(:disabled),
   box-shadow: var(--explorers-frame);
 }
 
-.explorers-primary-fill,
-:is(a, button).bg-primary {
-  background-color: var(--explorers-fill);
-  background-image: none;
-  color: var(--explorers-fill-text);
-  box-shadow: none;
-}
-
-.explorers-primary-fill:hover,
-:is(a, button).bg-primary:hover {
-  background-color: var(--explorers-fill-hover);
-}
-
-.explorers-primary-fill:focus-visible,
-.explorers-neutral-outline:focus-visible {
-  outline: 2px solid color-mix(in oklch, var(--ui-primary) 55%, transparent);
-  outline-offset: 2px;
-}
-
-.explorers-neutral-outline {
-  background-color: var(--ui-bg-elevated);
-  color: var(--ui-text-highlighted);
-  box-shadow: inset 0 0 0 1px var(--ui-border);
-}
-
-.explorers-neutral-outline:hover {
-  background-color: var(--ui-bg-accented);
-  box-shadow: inset 0 0 0 1px var(--ui-border-accented);
-}
-
 .explorers-landing {
   overflow-anchor: none;
 }
@@ -2132,8 +2102,8 @@ button.console-lead:focus-visible {
   color: var(--ui-text-dimmed);
   font-size: 10px;
 }
-.console-controls button,
-.console-controls a {
+.console-controls button:not([data-slot]),
+.console-controls a:not([data-slot]) {
   display: grid;
   place-items: center;
   width: 28px;
@@ -2142,14 +2112,14 @@ button.console-lead:focus-visible {
   border: 1px solid var(--console-line);
   cursor: pointer;
 }
-.console-controls button:hover,
-.console-controls a:hover {
+.console-controls button:not([data-slot]):hover,
+.console-controls a:not([data-slot]):hover {
   color: var(--console-accent);
   border-color: var(--console-corner);
   background: color-mix(in srgb, var(--ui-text-muted) 8%, var(--ui-bg));
 }
-.console-controls button:focus-visible,
-.console-controls a:focus-visible {
+.console-controls button:not([data-slot]):focus-visible,
+.console-controls a:not([data-slot]):focus-visible {
   outline: 1px solid var(--ui-primary);
   outline-offset: 3px;
 }
@@ -2601,30 +2571,6 @@ button.console-lead:focus-visible {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-/* A transaction or block status as a boxed word: success in the accent, a failure in red, the rest quiet. */
-.explorers-state {
-  display: inline-block;
-  padding: 0 6px;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  line-height: 1.6;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  white-space: nowrap;
-  color: var(--ui-text-muted);
-  box-shadow: inset 0 0 0 1px var(--console-line);
-}
-.explorers-state-ok {
-  color: var(--console-accent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--console-accent) 55%, transparent);
-}
-.explorers-state-failed {
-  color: var(--explorers-del);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--explorers-del) 55%, transparent);
-}
-.explorers-state-warn {
-  color: var(--ui-text-highlighted);
-}
 @media (width < 640px) {
   .explorers-band {
     padding-inline: 14px;
@@ -2784,15 +2730,13 @@ button.console-lead:focus-visible {
   color: var(--shiki-token-string);
 }
 .entity-tabs {
-  margin: 0;
+  padding: 10px 20px 0;
 }
-.entity-tabs > button {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-}
-.entity-list {
-  border-top: 1px solid var(--console-line);
+@media (width < 640px) {
+  .entity-tabs {
+    padding-inline: 14px;
+    overflow-x: auto;
+  }
 }
 
 /* Facts of one record: a label column and the whole value in mono, wrapped, quiet dividers between rows. */
@@ -2855,7 +2799,7 @@ button.console-lead:focus-visible {
   min-width: 0;
   overflow-wrap: anywhere;
 }
-.explorers-subject-id > .console-button {
+.explorers-subject-id > .explorers-control {
   flex: none;
 }
 .explorers-tags {
@@ -2863,4 +2807,334 @@ button.console-lead:focus-visible {
   flex-wrap: wrap;
   gap: 6px;
   margin: 6px 0 0;
+}
+
+/*
+ * Nuxt UI in the instrument grammar. app.config.ts hands these classes to the variants the site
+ * owns (Docus keeps neutral ghost and link for its own buttons), so a page writes <UButton>,
+ * <UBadge>, <UTabs>, <UInput>, <USelectMenu> or <UAlert> and gets the family look. Unlayered,
+ * so they win over the Tailwind utilities in the default theme.
+ */
+
+/* UButton primary solid and neutral outline: a boxed segment, mono label, the glyph in its own cell, the corner cut. */
+.explorers-action {
+  position: relative;
+  isolation: isolate;
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  height: 34px;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ui-text-highlighted);
+}
+.explorers-action::before,
+.explorers-action::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%);
+  pointer-events: none;
+}
+.explorers-action::before {
+  inset: 0;
+  background: var(--console-line);
+  transition: background 0.15s ease;
+}
+.explorers-action::after {
+  inset: 1px;
+  background: var(--ui-bg);
+}
+/* The rule between the label and the glyph cell, on whichever side the glyph sits. */
+.explorers-action:has(> [data-slot="trailingIcon"])::after {
+  background:
+    linear-gradient(90deg, transparent calc(100% - 37px), var(--console-line) 0 calc(100% - 36px), transparent 0),
+    var(--ui-bg);
+}
+.explorers-action:has(> [data-slot="leadingIcon"])::after {
+  background:
+    linear-gradient(90deg, transparent 35px, var(--console-line) 0 36px, transparent 0),
+    var(--ui-bg);
+}
+.explorers-action > [data-slot="label"] {
+  padding: 0 14px;
+}
+.explorers-action > [data-slot="leadingIcon"],
+.explorers-action > [data-slot="trailingIcon"] {
+  width: 16px;
+  height: 16px;
+  margin: 0 10px;
+  color: var(--ui-text-muted);
+  transition:
+    color 0.15s ease,
+    transform 0.15s ease;
+}
+.explorers-action:hover {
+  background: transparent;
+}
+.explorers-action:hover::before {
+  background: color-mix(in srgb, var(--console-accent) 45%, var(--console-line));
+}
+.explorers-action:hover > [data-slot$="Icon"] {
+  color: var(--console-accent);
+}
+.explorers-action-primary {
+  color: var(--ui-bg);
+  font-weight: 500;
+}
+.explorers-action-primary::before,
+.explorers-action-primary::after,
+.explorers-action-primary:has(> [data-slot="trailingIcon"])::after {
+  background:
+    linear-gradient(
+      90deg,
+      transparent calc(100% - 37px),
+      color-mix(in srgb, var(--ui-bg) 18%, transparent) 0 calc(100% - 36px),
+      transparent 0
+    ),
+    var(--ui-primary);
+}
+.explorers-action-primary > [data-slot$="Icon"],
+.explorers-action-primary:hover > [data-slot$="Icon"] {
+  color: var(--ui-bg);
+}
+.explorers-action-primary:hover {
+  color: var(--ui-bg);
+}
+.explorers-action-primary:hover::before,
+.explorers-action-primary:hover::after {
+  background: color-mix(in srgb, var(--ui-primary) 88%, var(--ui-text-highlighted));
+}
+.explorers-action-primary:hover > [data-slot="trailingIcon"] {
+  transform: translateX(2px);
+}
+.explorers-action:focus-visible {
+  outline: 1px solid var(--ui-primary);
+  outline-offset: 3px;
+}
+
+/* UButton neutral subtle: the small boxed control of an instrument (copy, refresh, previous, next). */
+.explorers-control {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--console-line);
+  color: var(--ui-text-muted);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.explorers-control > [data-slot$="Icon"] {
+  width: 12px;
+  height: 12px;
+  color: inherit;
+}
+.explorers-control:hover:not(:disabled, [aria-disabled="true"]) {
+  background: color-mix(in srgb, var(--ui-text-muted) 8%, var(--ui-bg));
+  box-shadow: inset 0 0 0 1px var(--console-corner);
+  color: var(--console-accent);
+}
+.explorers-control:disabled,
+.explorers-control[aria-disabled="true"] {
+  opacity: 0.4;
+}
+.explorers-control:focus-visible {
+  outline: 1px solid var(--ui-primary);
+  outline-offset: 2px;
+}
+/* Square, it is a step button: 28 px like the controls under a walking instrument. */
+.explorers-control-square {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+}
+.explorers-control-square > [data-slot$="Icon"] {
+  width: 14px;
+  height: 14px;
+}
+
+/* UButton soft: a chip; primary soft is the chip that is picked. */
+.explorers-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: auto;
+  padding: 2px 7px;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--console-line);
+  color: var(--ui-text-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+.explorers-chip > [data-slot$="Icon"] {
+  width: 12px;
+  height: 12px;
+  color: inherit;
+}
+.explorers-chip:hover {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--console-corner);
+  color: var(--ui-text-highlighted);
+}
+.explorers-chip-on,
+.explorers-chip-on:hover {
+  box-shadow: inset 0 0 0 1px var(--console-accent);
+  color: var(--ui-text-highlighted);
+}
+.explorers-chip:focus-visible {
+  outline: 1px solid var(--ui-primary);
+  outline-offset: 2px;
+}
+
+/* UBadge: a boxed word in mono capitals; neutral quiet, error red, primary the accent, subtle bright. */
+.explorers-badge {
+  padding: 0 6px;
+  border-radius: 0;
+  background: transparent;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 400;
+  line-height: 1.6;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  box-shadow: inset 0 0 0 1px var(--console-line);
+  color: var(--ui-text-muted);
+}
+.explorers-badge-bright {
+  color: var(--ui-text-highlighted);
+}
+.explorers-badge-accent {
+  color: var(--console-accent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--console-accent) 55%, transparent);
+}
+.explorers-badge-error {
+  color: var(--explorers-del);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--explorers-del) 55%, transparent);
+}
+
+/* UTabs link: mono capitals on a quiet rule, the active one bright over an accent segment. */
+.explorers-tabs-list {
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  box-shadow: inset 0 -1px 0 var(--console-line);
+}
+.explorers-tabs-trigger {
+  flex: none;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.explorers-tabs-trigger[data-state="active"] {
+  color: var(--ui-text-highlighted);
+}
+.explorers-tabs-trigger > [data-slot="label"] {
+  overflow: visible;
+}
+.explorers-tabs-trigger > [data-slot="leadingIcon"] {
+  width: 13px;
+  height: 13px;
+}
+.explorers-tabs-trigger[data-state="active"] > [data-slot="leadingIcon"] {
+  color: var(--console-accent);
+}
+.explorers-tabs-trigger:focus-visible {
+  outline: 1px solid var(--ui-primary);
+  outline-offset: -2px;
+}
+.explorers-tabs-indicator {
+  height: 2px;
+  border-radius: 0;
+  background: var(--console-accent);
+}
+
+/* UInput and USelectMenu with variant none: the field is a readout value, mono and bright, no box of its own. */
+.explorers-field {
+  width: 100%;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ui-text-highlighted);
+}
+.explorers-field::placeholder,
+.explorers-field [data-slot="placeholder"] {
+  color: var(--ui-text-dimmed);
+}
+.explorers-field-icon {
+  width: 13px;
+  height: 13px;
+  color: var(--ui-text-muted);
+}
+
+/* UAlert error outline: the failure line of a read, a red boxed tag and the message in mono. */
+.explorers-alert {
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: inset 2px 0 0 var(--explorers-del);
+  color: var(--explorers-del);
+}
+.explorers-alert-title {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 400;
+  overflow-wrap: anywhere;
+}
+.explorers-alert-icon {
+  width: 14px;
+  height: 14px;
+}
+.explorers-menu-input {
+  padding: 8px 12px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  border-radius: 0;
+  box-shadow: inset 0 -1px 0 var(--console-line);
+}
+.console-rule-title > .explorers-control {
+  order: 3;
+}
+/* The field's glyphs sit on the row's edge; the value starts after the leading one. */
+.explorers-field > [data-slot="leading"],
+.explorers-field ~ [data-slot="leading"] {
+  padding-inline-start: 0;
+}
+.explorers-field > [data-slot="trailing"],
+.explorers-field ~ [data-slot="trailing"] {
+  padding-inline-end: 0;
+}
+.explorers-field:has(> [data-slot="leading"]),
+.explorers-field:has(~ [data-slot="leading"]) {
+  padding-inline-start: 22px;
+}
+.explorers-field:has(> [data-slot="trailing"]) {
+  padding-inline-end: 22px;
 }

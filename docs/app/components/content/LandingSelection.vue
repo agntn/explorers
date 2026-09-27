@@ -17,7 +17,10 @@ function ranking(chain: string): { provider: ProviderInfo; tier: string }[] {
       .map((provider) => ({ provider, tier: "keyless" })),
     ...candidates
       .filter((provider) => provider.envVars.length > 0)
-      .map((provider) => ({ provider, tier: provider.optionalKey ? "optional key" : "needs a key" })),
+      .map((provider) => ({
+        provider,
+        tier: provider.optionalKey ? "optional key" : "needs a key",
+      })),
   ];
 }
 
@@ -35,7 +38,9 @@ const keyed = computed(() => {
   return candidate ?? rows.value[0]?.provider;
 });
 
-const others = computed(() => PROVIDERS.length - providersFor(props.sample.chain, "balances").length);
+const others = computed(
+  () => PROVIDERS.length - providersFor(props.sample.chain, "balances").length,
+);
 </script>
 
 <template>
@@ -70,12 +75,18 @@ const others = computed(() => PROVIDERS.length - providersFor(props.sample.chain
         >
           <span class="console-tag">{{ String(index + 1).padStart(2, "0") }}</span>
           <NuxtLink :to="row.provider.to" class="selection-name"
-            >{{ row.provider.label }}<span class="selection-dim"> "{{ row.provider.key }}"</span></NuxtLink
+            >{{ row.provider.label
+            }}<span class="selection-dim"> "{{ row.provider.key }}"</span></NuxtLink
           >
           <span class="console-leader console-draw" aria-hidden="true" />
           <span class="selection-tier">{{ row.tier }}</span>
         </li>
-        <li v-for="index in spare" :key="`spare-${index}`" class="console-lead selection-spare" aria-hidden="true">
+        <li
+          v-for="index in spare"
+          :key="`spare-${index}`"
+          class="console-lead selection-spare"
+          aria-hidden="true"
+        >
           <span class="console-tag">00</span>
         </li>
       </ol>
@@ -91,7 +102,7 @@ const others = computed(() => PROVIDERS.length - providersFor(props.sample.chain
           </div>
           <div>
             <dt>Env</dt>
-            <dd :class="{ 'selection-dim': !keyed?.envVars.length }">
+            <dd :class="{ 'selection-quiet': !keyed?.envVars.length }">
               {{ keyed?.envVars.length ? keyed.envVars.join(" · ") : "nothing to set" }}
             </dd>
           </div>
@@ -139,6 +150,9 @@ const others = computed(() => PROVIDERS.length - providersFor(props.sample.chain
   color: var(--console-accent);
 }
 .selection-dim {
+  color: var(--ui-text-dimmed);
+}
+.selection-quiet {
   color: var(--ui-text-dimmed);
 }
 .selection-tier {

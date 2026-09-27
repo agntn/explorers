@@ -42,6 +42,12 @@ export default defineAppConfig({
       primary: "amber",
       neutral: "slate",
     },
+    /**
+     * Buttons in the instrument grammar, by variant, so a page writes <UButton> and gets the look
+     * from app.css: primary solid and neutral outline are boxed actions with the glyph in its own
+     * cell, neutral subtle the small control of an instrument (`square` for a step button), soft
+     * a chip and primary soft the picked chip. Docus keeps neutral ghost and link for its own.
+     */
     button: {
       slots: {
         base: "h-9 rounded-lg px-3.5 text-sm leading-none font-medium cursor-pointer transition-colors",
@@ -50,12 +56,97 @@ export default defineAppConfig({
         {
           color: "primary",
           variant: "solid",
-          class: "explorers-primary-fill ring-0",
+          class: "explorers-action explorers-action-primary ring-0",
         },
         {
           color: "neutral",
           variant: "outline",
-          class: "explorers-neutral-outline ring-0",
+          class: "explorers-action ring-0",
+        },
+        {
+          color: "neutral",
+          variant: "subtle",
+          class: "explorers-control ring-0",
+        },
+        {
+          color: "neutral",
+          variant: "subtle",
+          square: true,
+          class: "explorers-control-square",
+        },
+        {
+          color: "neutral",
+          variant: "soft",
+          class: "explorers-chip",
+        },
+        {
+          color: "primary",
+          variant: "soft",
+          class: "explorers-chip explorers-chip-on",
+        },
+      ],
+    },
+    /** Status words as boxed mono capitals: neutral quiet, subtle bright, primary the accent, error red. */
+    badge: {
+      slots: {
+        base: "explorers-badge",
+      },
+      compoundVariants: [
+        { color: "neutral", variant: "subtle", class: "explorers-badge-bright ring-0" },
+        { color: "neutral", variant: "outline", class: "ring-0" },
+        { color: "primary", variant: "outline", class: "explorers-badge-accent ring-0" },
+        { color: "error", variant: "outline", class: "explorers-badge-error ring-0" },
+      ],
+    },
+    /** Tabs as mono capitals on a quiet rule, the active one over an accent segment. */
+    tabs: {
+      compoundVariants: [
+        {
+          variant: "link",
+          class: {
+            list: "explorers-tabs-list",
+            trigger: "explorers-tabs-trigger",
+            indicator: "explorers-tabs-indicator",
+          },
+        },
+      ],
+    },
+    /** A field with variant none sits inside a readout row: the row is its frame, the value is mono. */
+    input: {
+      compoundVariants: [
+        { variant: "none", class: { base: "explorers-field", leadingIcon: "explorers-field-icon" } },
+      ],
+    },
+    selectMenu: {
+      slots: {
+        content: "explorers-menu rounded-none ring-0 shadow-none bg-transparent",
+        group: "explorers-menu-group",
+        item: "explorers-menu-item",
+        itemLeadingIcon: "explorers-field-icon",
+        input: "explorers-menu-input",
+      },
+      compoundVariants: [
+        {
+          variant: "none",
+          class: {
+            base: "explorers-field",
+            leadingIcon: "explorers-field-icon",
+            trailingIcon: "explorers-field-icon",
+          },
+        },
+      ],
+    },
+    /** A failed read: a red edge and the message in mono, no box. */
+    alert: {
+      compoundVariants: [
+        {
+          color: "error",
+          variant: "outline",
+          class: {
+            root: "explorers-alert ring-0",
+            title: "explorers-alert-title",
+            icon: "explorers-alert-icon",
+          },
         },
       ],
     },

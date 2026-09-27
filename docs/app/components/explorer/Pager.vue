@@ -6,30 +6,25 @@ const emit = defineEmits<{ change: [page: number] }>();
 </script>
 
 <template>
-  <div class="console-controls pager" aria-label="Pages">
-    <button
-      type="button"
+  <div class="console-controls" aria-label="Pages">
+    <UButton
+      color="neutral"
+      variant="subtle"
+      square
+      icon="i-lucide-chevron-left"
       aria-label="Previous page"
       :disabled="page <= 1 || loading"
       @click="emit('change', page - 1)"
-    >
-      <UIcon name="i-lucide-chevron-left" />
-    </button>
+    />
     <span>Page {{ page }}</span>
-    <button
-      type="button"
+    <UButton
+      color="neutral"
+      variant="subtle"
+      square
+      icon="i-lucide-chevron-right"
       aria-label="Next page"
       :disabled="count < limit || loading"
       @click="emit('change', page + 1)"
-    >
-      <UIcon name="i-lucide-chevron-right" />
-    </button>
+    />
   </div>
 </template>
-
-<style scoped>
-.pager button:disabled {
-  cursor: default;
-  opacity: 0.4;
-}
-</style>

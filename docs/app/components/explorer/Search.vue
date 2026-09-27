@@ -25,6 +25,9 @@ watch(
   },
 );
 
+/** The chain list as select items, each with its glyph. */
+const chainItems = CHAINS.map((row) => ({ label: row.name, value: row.key, icon: row.icon }));
+
 const kind = computed(() => (query.value.trim() ? classify(query.value, chain.value) : null));
 const KIND_WORDS = { address: "an address", tx: "a transaction", block: "a block" } as const;
 
@@ -86,23 +89,30 @@ function pick(example: (typeof EXAMPLES)[number]) {
             <div>
               <dt><label for="explorer-chain">Chain</label></dt>
               <dd>
-                <select id="explorer-chain" v-model="chain">
-                  <option v-for="row in CHAINS" :key="row.key" :value="row.key">
-                    {{ row.name }}
-                  </option>
-                </select>
+                <USelectMenu
+                  id="explorer-chain"
+                  v-model="chain"
+                  :items="chainItems"
+                  value-key="value"
+                  :icon="chainIcon(chain)"
+                  variant="none"
+                  :search-input="{ placeholder: 'Filter chains' }"
+                  class="w-full"
+                />
               </dd>
             </div>
             <div>
               <dt><label for="explorer-search">Input</label></dt>
               <dd>
-                <input
+                <UInput
                   id="explorer-search"
                   v-model="query"
+                  variant="none"
                   placeholder="address, name.eth, tx hash or block"
                   spellcheck="false"
                   autocomplete="off"
-                  maxlength="128"
+                  :maxlength="128"
+                  class="w-full"
                 />
               </dd>
             </div>
@@ -118,24 +128,25 @@ function pick(example: (typeof EXAMPLES)[number]) {
           <span class="console-tag">Input</span>{{ problem }}
         </p>
         <div class="search-actions">
-          <button type="submit" class="console-action console-action-primary">
-            <span class="console-action-label">{{
-              kind === "tx" ? "Open transaction" : kind === "block" ? "Open block" : "Open address"
-            }}</span>
-            <span class="console-action-cell" aria-hidden="true"
-              ><UIcon name="i-lucide-arrow-right" class="size-4"
-            /></span>
-          </button>
-          <div v-if="examples" class="console-chips search-examples" aria-label="Examples">
-            <button
+          <UButton
+            type="submit"
+            color="primary"
+            variant="solid"
+            trailing-icon="i-lucide-arrow-right"
+            :label="
+              kind === 'tx' ? 'Open transaction' : kind === 'block' ? 'Open block' : 'Open address'
+            "
+          />
+          <div v-if="examples" class="search-examples" aria-label="Examples">
+            <UButton
               v-for="example in EXAMPLES"
               :key="example.label"
-              type="button"
+              color="neutral"
+              variant="soft"
+              :icon="chainIcon(example.chain)"
+              :label="example.label"
               @click="pick(example)"
-            >
-              <UIcon :name="chainIcon(example.chain)" class="size-3" aria-hidden="true" />
-              {{ example.label }}
-            </button>
+            />
           </div>
         </div>
       </div>
@@ -192,12 +203,9 @@ function pick(example: (typeof EXAMPLES)[number]) {
   gap: 12px 16px;
 }
 .search-examples {
-  margin: 0;
-}
-.search-examples > button {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 @media (width < 640px) {
   .search-band {

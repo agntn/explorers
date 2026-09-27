@@ -8,15 +8,12 @@ defineProps<{ loading: boolean; error?: string; label: string }>();
     <UIcon name="i-lucide-loader-circle" class="size-3.5 animate-spin" aria-hidden="true" />
     {{ label }}
   </p>
-  <p v-else-if="error" class="explorers-error" role="alert">
-    <span class="console-tag">Error</span><span class="state-text">{{ error }}</span>
-  </p>
+  <UAlert
+    v-else-if="error"
+    color="error"
+    variant="outline"
+    icon="i-lucide-circle-x"
+    :title="error"
+    role="alert"
+  />
 </template>
-
-<style scoped>
-.state-text {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  overflow-wrap: anywhere;
-}
-</style>

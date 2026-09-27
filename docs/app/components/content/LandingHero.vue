@@ -38,9 +38,9 @@ const { copied, copy } = useCopied();
       <h1 class="hero-title">Eighteen explorers. <span>One shape.</span></h1>
       <p class="hero-lead">
         Etherscan, Blockscout, Mempool, Solscan, Koios, dcrdata and the rest behind one TypeScript
-        contract. Balances, transactions, unspent outputs, tokens, contracts, gas and blocks as exact
-        strings, and a provider picked for you from the keys you have. Library, CLI, MCP, Pi and OMP
-        all read through the same code.
+        contract. Balances, transactions, unspent outputs, tokens, contracts, gas and blocks as
+        exact strings, and a provider picked for you from the keys you have. Library, CLI, MCP, Pi
+        and OMP all read through the same code.
       </p>
 
       <dl class="hero-metrics">
@@ -62,34 +62,32 @@ const { copied, copy } = useCopied();
       </dl>
 
       <div class="console-actions">
-        <NuxtLink to="/guide" class="console-action console-action-primary">
-          <span class="console-action-label">Get started</span>
-          <span class="console-action-cell" aria-hidden="true"
-            ><UIcon name="i-lucide-arrow-right" class="size-4"
-          /></span>
-        </NuxtLink>
-        <NuxtLink to="https://github.com/agntn/explorers" target="_blank" class="console-action">
-          <span class="console-action-cell" aria-hidden="true"
-            ><UIcon name="i-simple-icons-github" class="size-4"
-          /></span>
-          <span class="console-action-label">Star on GitHub</span>
-        </NuxtLink>
+        <UButton
+          to="/guide"
+          color="primary"
+          variant="solid"
+          trailing-icon="i-lucide-arrow-right"
+          label="Get started"
+        />
+        <UButton
+          to="https://github.com/agntn/explorers"
+          target="_blank"
+          color="neutral"
+          variant="outline"
+          icon="i-simple-icons-github"
+          label="Star on GitHub"
+        />
       </div>
       <div class="console-install">
         <span class="console-install-tag">Install</span>
         <code><span class="console-install-prompt">$</span> {{ INSTALL }}</code>
-        <button
-          type="button"
-          class="console-button"
-          :data-copied="copied === 'install'"
+        <UButton
+          color="neutral"
+          variant="subtle"
+          :icon="copied === 'install' ? 'i-lucide-check' : 'i-lucide-copy'"
           :aria-label="copied === 'install' ? 'Copied' : 'Copy install command'"
           @click="copy('install', INSTALL)"
-        >
-          <UIcon
-            :name="copied === 'install' ? 'i-lucide-check' : 'i-lucide-copy'"
-            class="size-3.5"
-          />
-        </button>
+        />
       </div>
     </div>
 
