@@ -1,17 +1,15 @@
 <script setup lang="ts">
 import { classify, entityPath, isIdentifier } from "../../utils/entities";
-import { CHAINS, chainIcon } from "../../utils/providers";
+import { CHAINS, chainIcon, chainLabel } from "../../utils/providers";
 
 const props = withDefaults(
   defineProps<{
     /** The chain the page is on; the select starts there. */
     chain?: string;
-    /** Compact rows on entity pages, the tall box on the hub and the landing. */
-    compact?: boolean;
-    /** Show the example chips under the box. */
+    /** Show the example chips under the input. */
     examples?: boolean;
   }>(),
-  { chain: "ethereum", compact: false, examples: false },
+  { chain: "ethereum", examples: false },
 );
 
 const router = useRouter();
@@ -28,6 +26,7 @@ watch(
 );
 
 const kind = computed(() => (query.value.trim() ? classify(query.value, chain.value) : null));
+const KIND_WORDS = { address: "an address", tx: "a transaction", block: "a block" } as const;
 
 const EXAMPLES = [
   { label: "vitalik.eth", chain: "ethereum", id: "vitalik.eth" },
@@ -42,11 +41,13 @@ const EXAMPLES = [
 function submit() {
   const value = query.value.trim();
   if (!value) {
-    problem.value = "Type something first: an address, an ENS name, a transaction hash or a block number.";
+    problem.value =
+      "Type something first: an address, an ENS name, a transaction hash or a block number.";
     return;
   }
   if (!isIdentifier(value)) {
-    problem.value = "Letters, digits, dots, dashes, underscores and colons only, up to 128 characters.";
+    problem.value =
+      "Letters, digits, dots, dashes, underscores and colons only, up to 128 characters.";
     return;
   }
   problem.value = "";
@@ -59,51 +60,154 @@ function pick(example: (typeof EXAMPLES)[number]) {
 </script>
 
 <template>
-  <form
-    class="explorers-frame overflow-hidden rounded-xl text-left"
-    role="search"
-    @submit.prevent="submit"
-  >
-    <div
-      class="flex flex-col gap-3 sm:flex-row sm:items-center"
-      :class="compact ? 'p-3' : 'p-4'"
-    >
-      <select v-model="chain" class="explorers-field sm:w-44" aria-label="Chain">
-        <option v-for="row in CHAINS" :key="row.key" :value="row.key">{{ row.name }}</option>
-      </select>
-      <label class="sr-only" for="explorer-search">Address, ENS name, transaction hash or block number</label>
-      <div class="flex min-w-0 flex-1 items-center gap-2">
-        <UIcon :name="chainIcon(chain)" class="size-4 shrink-0 text-primary" />
-        <input
-          id="explorer-search"
-          v-model="query"
-          class="explorers-field font-mono"
-          placeholder="address, name.eth, tx hash or block"
-          spellcheck="false"
-          autocomplete="off"
-          maxlength="128"
-        />
-      </div>
-      <button type="submit" class="explorers-btn explorers-primary-fill">
-        <UIcon name="i-lucide-search" class="size-4" />
-        {{ kind === "tx" ? "Open transaction" : kind === "block" ? "Open block" : "Open address" }}
-      </button>
-    </div>
-    <p v-if="problem" class="border-t border-muted px-4 py-2.5 text-sm" :style="{ color: 'var(--explorers-del)' }">
-      {{ problem }}
-    </p>
-    <div v-if="examples" class="flex flex-wrap items-center gap-1.5 border-t border-muted px-4 py-3">
-      <span class="me-1 font-mono text-[11px] text-dimmed">try</span>
-      <button
-        v-for="example in EXAMPLES"
-        :key="example.label"
-        type="button"
-        class="explorers-copy"
-        @click="pick(example)"
+  <form class="tool-console console-wide search not-prose" role="search" @submit.prevent="submit">
+    <span class="console-cross console-cross-tl" aria-hidden="true">+</span>
+    <span class="console-cross console-cross-br" aria-hidden="true">+</span>
+
+    <header class="console-bar">
+      <span class="console-title"
+        ><span class="console-tag">Call</span>classify(input,
+        <span class="search-chain">"{{ chain }}"</span>)<span v-if="kind" class="search-kind">
+          → {{ kind }}</span
+        ></span
       >
-        <UIcon :name="chainIcon(example.chain)" class="size-3.5" />
-        {{ example.label }}
-      </button>
+      <span class="console-meta">{{ CHAINS.length }} chains</span>
+      <span class="console-mark" aria-hidden="true" />
+    </header>
+    <div class="console-ruler" aria-hidden="true"><span class="console-cursor" /></div>
+
+    <div class="explorers-band search-band">
+      <div class="search-glyph" aria-hidden="true">
+        <ConsoleReticle :key="chain" :icon="chainIcon(chain)" />
+      </div>
+      <div class="search-fields">
+        <div class="console-readout">
+          <dl class="console-readout-rows">
+            <div>
+              <dt><label for="explorer-chain">Chain</label></dt>
+              <dd>
+                <select id="explorer-chain" v-model="chain">
+                  <option v-for="row in CHAINS" :key="row.key" :value="row.key">
+                    {{ row.name }}
+                  </option>
+                </select>
+              </dd>
+            </div>
+            <div>
+              <dt><label for="explorer-search">Input</label></dt>
+              <dd>
+                <input
+                  id="explorer-search"
+                  v-model="query"
+                  placeholder="address, name.eth, tx hash or block"
+                  spellcheck="false"
+                  autocomplete="off"
+                  maxlength="128"
+                />
+              </dd>
+            </div>
+            <div>
+              <dt>Reads as</dt>
+              <dd :class="kind ? 'console-accent' : 'search-idle'">
+                {{ kind ? `${KIND_WORDS[kind]} on ${chainLabel(chain)}` : "nothing typed yet" }}
+              </dd>
+            </div>
+          </dl>
+        </div>
+        <p v-if="problem" class="explorers-error search-problem" role="alert">
+          <span class="console-tag">Input</span>{{ problem }}
+        </p>
+        <div class="search-actions">
+          <button type="submit" class="console-action console-action-primary">
+            <span class="console-action-label">{{
+              kind === "tx" ? "Open transaction" : kind === "block" ? "Open block" : "Open address"
+            }}</span>
+            <span class="console-action-cell" aria-hidden="true"
+              ><UIcon name="i-lucide-arrow-right" class="size-4"
+            /></span>
+          </button>
+          <div v-if="examples" class="console-chips search-examples" aria-label="Examples">
+            <button
+              v-for="example in EXAMPLES"
+              :key="example.label"
+              type="button"
+              @click="pick(example)"
+            >
+              <UIcon :name="chainIcon(example.chain)" class="size-3" aria-hidden="true" />
+              {{ example.label }}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
+
+    <footer class="console-footer console-footer-plain">
+      <ul class="console-links">
+        <li>
+          <NuxtLink to="/explorer/gas"><span aria-hidden="true">→ </span>Gas</NuxtLink>
+        </li>
+        <li>
+          <NuxtLink to="/explorer/providers"><span aria-hidden="true">→ </span>Providers</NuxtLink>
+        </li>
+        <li>
+          <NuxtLink to="/guide/explorer"><span aria-hidden="true">→ </span>How it works</NuxtLink>
+        </li>
+      </ul>
+      <span class="console-meta">read through the docs worker</span>
+    </footer>
   </form>
 </template>
+
+<style scoped>
+.search-chain {
+  color: var(--shiki-token-string);
+}
+.search-kind {
+  color: var(--console-accent);
+}
+.search-band {
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+.search-glyph {
+  width: 84px;
+}
+.search-fields {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+.search-fields .console-readout-rows > div {
+  grid-template-columns: 6.5rem minmax(0, 1fr);
+}
+.search-idle {
+  color: var(--ui-text-dimmed);
+}
+.search-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 16px;
+}
+.search-examples {
+  margin: 0;
+}
+.search-examples > button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+@media (width < 640px) {
+  .search-band {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .search-glyph {
+    display: none;
+  }
+  .search-fields .console-readout-rows > div {
+    grid-template-columns: 5rem minmax(0, 1fr);
+  }
+}
+</style>

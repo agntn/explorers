@@ -44,6 +44,9 @@ async function refresh() {
 
 onMounted(refresh);
 
+/** The ruler loops while any tile still waits for its answer. */
+const busy = computed(() => chains.some((chain) => tiles[chain.key]?.loading !== false));
+
 const FIELDS: ReadonlyArray<[string, keyof GasAnswer["gas"]]> = [
   ["safe", "safeGasPrice"],
   ["proposed", "proposedGasPrice"],
@@ -69,50 +72,167 @@ const cards = computed(() =>
 </script>
 
 <template>
-  <div class="space-y-4">
-    <div class="flex items-center justify-between gap-3">
-      <p class="text-sm text-muted">
-        {{ chains.length }} chains with a provider that quotes fees. Cached thirty seconds on the worker.
+  <section class="tool-console console-wide gas" aria-label="Fees">
+    <span class="console-cross console-cross-tl" aria-hidden="true">+</span>
+    <span class="console-cross console-cross-br" aria-hidden="true">+</span>
+
+    <header class="console-bar">
+      <span class="console-title"
+        ><span class="console-tag">Call</span>getGasData(chain)<span class="console-file"
+          >× {{ chains.length }}</span
+        ></span
+      >
+      <span class="console-meta">cached 30 s on the worker</span>
+      <span class="console-mark" aria-hidden="true" />
+    </header>
+    <div class="console-ruler" aria-hidden="true">
+      <span class="console-cursor" :class="{ 'console-cursor-busy': busy }" />
+    </div>
+
+    <div class="explorers-band">
+      <p class="console-label console-rule-title">
+        <span>Fees <span aria-hidden="true">[ in the provider's own unit ]</span></span>
+        <button type="button" class="console-button" :disabled="busy" @click="refresh">
+          <UIcon
+            name="i-lucide-refresh-cw"
+            class="size-3"
+            :class="{ 'animate-spin': busy }"
+            aria-hidden="true"
+          />
+          refresh
+        </button>
       </p>
-      <button type="button" class="explorers-btn" @click="refresh">
-        <UIcon name="i-lucide-refresh-cw" class="size-4" /> Refresh
-      </button>
-    </div>
-    <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-      <div v-for="{ chain, tile, fields } in cards" :key="chain.key" class="explorers-frame overflow-hidden rounded-xl">
-        <div class="flex items-center gap-2 border-b border-muted px-4 py-3">
-          <UIcon :name="chain.icon" class="size-4 text-primary" />
-          <span class="text-sm font-medium text-highlighted">{{ chain.name }}</span>
-          <span class="ms-auto font-mono text-[11px] text-dimmed">
-            {{ tile?.answer ? `${tile.answer.gas.unit} · ${providerLabel(tile.answer.provider)}` : chain.key }}
-          </span>
-        </div>
-        <p v-if="!tile || tile.loading" class="flex items-center gap-2 px-4 py-4 text-sm text-muted">
-          <UIcon name="i-lucide-refresh-cw" class="size-4 animate-spin" /> Asking…
-        </p>
-        <p v-else-if="tile.error" class="px-4 py-4 font-mono text-xs" :style="{ color: 'var(--explorers-del)' }">
-          {{ tile.error }}
-        </p>
-        <template v-else-if="tile.answer">
-          <dl class="grid grid-cols-3">
-            <div
-              v-for="([label, value], index) in fields"
-              :key="label"
-              class="border-muted px-4 py-3"
-              :class="{ 'border-l': index % 3 !== 0, 'border-t': index >= 3 }"
-            >
-              <dt class="font-mono text-[10px] tracking-[0.12em] text-dimmed uppercase">{{ label }}</dt>
-              <dd class="mt-1 font-mono text-base text-highlighted">{{ value }}</dd>
-            </div>
-          </dl>
-          <p class="border-t border-muted px-4 py-2 font-mono text-[11px] text-dimmed">
-            fetched {{ dateTime(tile.answer.fetchedAt) }}
+      <ul class="gas-cells">
+        <li v-for="{ chain, tile, fields } in cards" :key="chain.key">
+          <p class="gas-head">
+            <UIcon :name="chain.icon" class="gas-glyph" aria-hidden="true" />
+            <span class="gas-name">{{ chain.name }}</span>
+            <span class="gas-unit">{{ tile?.answer ? tile.answer.gas.unit : chain.key }}</span>
           </p>
-        </template>
-      </div>
+          <p v-if="!tile || tile.loading" class="explorers-note gas-state">
+            <UIcon name="i-lucide-loader-circle" class="size-3.5 animate-spin" aria-hidden="true" />
+            Asking
+          </p>
+          <p v-else-if="tile.error" class="explorers-error gas-state gas-error">{{ tile.error }}</p>
+          <template v-else-if="tile.answer">
+            <dl class="gas-fields">
+              <div v-for="[label, value] in fields" :key="label">
+                <dt>{{ label }}</dt>
+                <dd :class="{ 'console-accent': label === 'proposed' }">{{ value }}</dd>
+              </div>
+            </dl>
+            <p class="gas-foot">
+              via {{ providerLabel(tile.answer.provider) }} · {{ dateTime(tile.answer.fetchedAt) }}
+            </p>
+          </template>
+        </li>
+      </ul>
     </div>
-    <p class="text-sm text-muted">
-      Chains missing here have no provider with fee data: Blockstream's estimates don't match the recommendation shape, Peppool publishes none, Arweave prices storage per byte, and the single chain explorers don't quote fees at all. Details on <NuxtLink to="/guide/gas-and-blocks" class="text-primary hover:underline">Gas and blocks</NuxtLink>.
-    </p>
-  </div>
+
+    <footer class="console-footer console-footer-plain">
+      <span
+        >A chain missing here has no provider with fee data: Blockstream's estimates don't match
+        the recommendation shape, Peppool publishes none, Arweave prices storage per byte, and the
+        single chain explorers quote no fees.</span
+      >
+      <ul class="console-links">
+        <li>
+          <NuxtLink to="/guide/gas-and-blocks"><span aria-hidden="true">→ </span>Gas and blocks</NuxtLink>
+        </li>
+      </ul>
+    </footer>
+  </section>
 </template>
+
+<style scoped>
+.gas-cells {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.gas-cells > li {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  padding: 10px 12px;
+  min-width: 0;
+  box-shadow: inset 0 0 0 1px var(--console-line);
+}
+.gas-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  min-width: 0;
+}
+.gas-glyph {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  color: var(--ui-text-muted);
+}
+.gas-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  color: var(--ui-text-highlighted);
+}
+.gas-unit {
+  margin-left: auto;
+  flex: none;
+  padding: 0 5px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 1.6;
+  letter-spacing: 0.04em;
+  color: var(--ui-text-muted);
+  box-shadow: inset 0 0 0 1px var(--console-line);
+}
+.gas-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px 10px;
+  margin: 0;
+}
+.gas-fields dt {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ui-text-dimmed);
+}
+.gas-fields dd {
+  margin: 2px 0 0;
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ui-text-highlighted);
+}
+.gas-fields dd.console-accent {
+  color: var(--console-accent);
+}
+.gas-foot {
+  margin: 0;
+  padding-top: 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ui-text-dimmed);
+  box-shadow: inset 0 1px 0 var(--console-line);
+}
+.gas-state {
+  font-size: 13px;
+}
+.gas-error {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+</style>

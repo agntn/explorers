@@ -43,16 +43,17 @@ watch([chain, raw], read);
 </script>
 
 <template>
-  <ExplorerShell eyebrow="explorer · block" :title="chainLabel(chain)" :accent="`block ${raw}`" :chain="chain" compact>
-    <div v-if="!known" class="explorers-frame rounded-xl px-5 py-6 text-sm text-muted">
-      That isn't a chain this package serves, or not a block number.
-    </div>
-    <div v-else class="space-y-5">
-      <p v-if="!served" class="flex items-start gap-2 text-sm text-dimmed">
-        <UIcon name="i-lucide-info" class="mt-0.5 size-4 shrink-0 text-primary" />
+  <ExplorerShell section="block" :title="chainLabel(chain)" :accent="`block ${raw}`" :chain="chain">
+    <p v-if="!known" class="explorers-error">
+      <span class="console-tag">Input</span
+      ><span>That isn't a chain this package serves, or not a block number.</span>
+    </p>
+    <div v-else class="entity-stack">
+      <p v-if="!served" class="explorers-note">
+        <UIcon name="i-lucide-info" class="size-3.5" aria-hidden="true" />
         <span>No provider serves blocks on {{ chainLabel(chain) }}; the read below will say so.</span>
       </p>
-      <ExplorerState :loading="loading" :error="error" label="Reading the block…" />
+      <ExplorerState :loading="loading" :error="error" label="Reading the block" />
       <ExplorerBlockCard v-if="answer" :answer="answer" />
       <ExplorerBlockTransactions v-if="answer && number !== null" :chain="chain" :number="number" />
     </div>

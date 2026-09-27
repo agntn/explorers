@@ -24,10 +24,10 @@ defineOgImage(
 
 <template>
   <ExplorerShell
-    eyebrow="explorer · providers"
+    section="providers"
     title="Who answers"
     accent="on this worker."
-    description="The same list explorers_providers returns, read from this worker: every registered provider, whether it needs a key, whether the worker has one, and what it serves. A chain whose only provider has no key here answers 503. The library on your machine with the key answers fine, the worker just doesn't have it."
+    description="The same list explorers_providers returns, read from this worker: every registered provider, whether it needs a key, whether the worker has one, and what it serves. A chain whose only provider has no key here answers 503; the library on your machine with the key answers fine."
   >
     <ExplorerProvidersBoard />
   </ExplorerShell>

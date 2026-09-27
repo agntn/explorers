@@ -1,45 +1,69 @@
 <script setup lang="ts">
+import type { TableColumn } from "@nuxt/ui";
 import type { Utxo } from "@agntn/explorers";
 import { blockPath, txPath } from "../../utils/entities";
-import { ago, dateTime, shortHash, trimDecimals } from "../../utils/format";
+import { STACK } from "../../utils/entity-table";
+import { ago, dateTime, trimDecimals } from "../../utils/format";
 import { chainInfo } from "../../utils/providers";
+import { ROSTER_TABLE_UI } from "../../utils/roster";
 
 const props = defineProps<{ chain: string; items: Utxo[]; total: number }>();
 
 const symbol = computed(() => chainInfo(props.chain)?.symbol ?? "");
+
+const columns: TableColumn<Utxo>[] = [
+  { id: "output", header: "Output" },
+  { id: "block", header: "Block", meta: { class: { th: "w-[10rem]", td: STACK.lastStart } } },
+  { id: "value", header: "Value", meta: { class: { th: "w-[11rem] text-end", td: `text-end ${STACK.end}` } } },
+  { id: "state", header: "State", meta: { class: { th: "w-[7.5rem]", td: STACK.lastEnd } } },
+];
 </script>
 
 <template>
-  <p v-if="!items.length" class="px-4 py-6 text-sm text-muted">Nothing unspent. Every output this address ever received is gone.</p>
-  <div v-else class="explorers-table-wrap">
-    <table class="explorers-table">
-      <thead>
-        <tr>
-          <th>output</th>
-          <th>block</th>
-          <th>age</th>
-          <th class="text-right">value</th>
-          <th>state</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="utxo in items" :key="`${utxo.txid}:${utxo.vout}`">
-          <td class="font-mono text-xs whitespace-nowrap">
-            <NuxtLink :to="txPath(chain, utxo.txid)" class="text-highlighted hover:text-primary" :title="utxo.txid">{{ shortHash(utxo.txid, 10, 6) }}</NuxtLink>
-            <span class="text-dimmed">:{{ utxo.vout }}</span>
-          </td>
-          <td class="font-mono text-xs text-muted">
-            <NuxtLink v-if="utxo.blockNumber !== null" :to="blockPath(chain, utxo.blockNumber)" class="hover:text-primary">{{ utxo.blockNumber }}</NuxtLink>
-            <span v-else class="text-dimmed">mempool</span>
-          </td>
-          <td class="font-mono text-xs text-muted whitespace-nowrap" :title="utxo.timestamp ? dateTime(utxo.timestamp) : ''">{{ utxo.timestamp ? ago(utxo.timestamp) : "no time" }}</td>
-          <td class="text-right font-mono text-xs text-highlighted whitespace-nowrap">{{ trimDecimals(utxo.valueFormatted, 8) }} {{ symbol }}</td>
-          <td><span class="explorers-state" :class="utxo.confirmed ? 'explorers-state-ok' : ''">{{ utxo.confirmed ? "confirmed" : "pending" }}</span></td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-  <p v-if="total > items.length" class="border-t border-muted px-4 py-3 font-mono text-[11px] text-dimmed">
-    {{ total }} unspent outputs in total, the first {{ items.length }} shown. The library returns them all.
+  <p v-if="!items.length" class="explorers-note list-empty">
+    Nothing unspent. Every output this address ever received is gone.
+  </p>
+  <UTable
+    v-else
+    :data="items"
+    :columns="columns"
+    :get-row-id="(row) => `${row.txid}:${row.vout}`"
+    :ui="ROSTER_TABLE_UI"
+  >
+    <template #output-cell="{ row }">
+      <span class="list-route">
+        <ExplorerHash :value="row.original.txid" :to="txPath(chain, row.original.txid)" :head="10" strong />
+        <span class="list-sub">:{{ row.original.vout }}</span>
+      </span>
+    </template>
+    <template #block-cell="{ row }">
+      <span class="list-stack">
+        <NuxtLink
+          v-if="row.original.blockNumber !== null"
+          :to="blockPath(chain, row.original.blockNumber)"
+          class="list-link"
+          >{{ row.original.blockNumber }}</NuxtLink
+        >
+        <span v-else class="list-sub">mempool</span>
+        <UTooltip v-if="row.original.timestamp" :text="dateTime(row.original.timestamp)">
+          <span class="list-sub">{{ ago(row.original.timestamp) }}</span>
+        </UTooltip>
+      </span>
+    </template>
+    <template #value-cell="{ row }">
+      <span class="list-amount explorers-value"
+        >{{ trimDecimals(row.original.valueFormatted, 8) }}
+        <span class="list-sub">{{ symbol }}</span></span
+      >
+    </template>
+    <template #state-cell="{ row }">
+      <span class="explorers-state" :class="{ 'explorers-state-warn': row.original.confirmed }">{{
+        row.original.confirmed ? "confirmed" : "pending"
+      }}</span>
+    </template>
+  </UTable>
+  <p v-if="total > items.length" class="explorers-note list-empty list-more">
+    {{ total }} unspent outputs in total, the first {{ items.length }} shown. The library returns
+    them all.
   </p>
 </template>

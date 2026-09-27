@@ -1,8 +1,21 @@
 <script setup lang="ts">
 import type { DetailAnswer } from "../../utils/wire";
 import { addressPath, blockPath, externalHost, externalUrl } from "../../utils/entities";
-import { dateTime, formatUnits, groupDigits, shortHash, trimDecimals } from "../../utils/format";
-import { chainIcon, chainInfo, chainLabel, isEvm, nativeDecimals, providerLabel } from "../../utils/providers";
+import {
+  dateTime,
+  formatUnits,
+  groupDigits,
+  shortHash,
+  trimDecimals,
+} from "../../utils/format";
+import {
+  chainIcon,
+  chainInfo,
+  chainLabel,
+  isEvm,
+  nativeDecimals,
+  providerLabel,
+} from "../../utils/providers";
 
 const props = defineProps<{ answer: DetailAnswer }>();
 
@@ -10,103 +23,279 @@ const transaction = computed(() => props.answer.transaction);
 const symbol = computed(() => chainInfo(props.answer.chain)?.symbol ?? "");
 const external = computed(() => externalUrl("tx", props.answer.chain, transaction.value.hash));
 const decimals = computed(() => nativeDecimals(props.answer.chain));
+
 const feeFormatted = computed(() =>
-  transaction.value.fee ? trimDecimals(formatUnits(transaction.value.fee, decimals.value), 8) : null,
+  transaction.value.fee
+    ? trimDecimals(formatUnits(transaction.value.fee, decimals.value), 8)
+    : null,
 );
+
 /** Gas price in gwei on EVM chains; other chains keep the smallest unit. */
 const gasPriceText = computed(() => {
   const price = transaction.value.gasPrice;
   if (!price) return null;
-  return isEvm(props.answer.chain) ? `${trimDecimals(formatUnits(price, 9), 4)} gwei` : groupDigits(price);
+  return isEvm(props.answer.chain)
+    ? `${trimDecimals(formatUnits(price, 9), 4)} gwei`
+    : groupDigits(price);
 });
+
+const { copied, copy } = useCopied();
 </script>
 
 <template>
-  <div class="explorers-frame overflow-hidden rounded-xl">
-    <div class="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-muted px-4 py-3">
-      <UIcon :name="chainIcon(answer.chain)" class="size-4 text-primary" />
-      <span class="text-sm font-medium text-highlighted">{{ chainLabel(answer.chain) }} transaction</span>
-      <ExplorerStatus :status="transaction.status" />
-      <span class="ms-auto font-mono text-[11px] text-dimmed">
-        via {{ providerLabel(answer.provider) }} · fetched {{ dateTime(answer.fetchedAt) }}
-      </span>
+  <section class="tool-console console-wide not-prose" aria-label="Transaction">
+    <span class="console-cross console-cross-tl" aria-hidden="true">+</span>
+    <span class="console-cross console-cross-br" aria-hidden="true">+</span>
+
+    <header class="console-bar">
+      <span class="console-title"
+        ><span class="console-tag">Call</span>getTxDetail(<span class="entity-str"
+          >"{{ shortHash(transaction.hash, 8, 6) }}"</span
+        >, <span class="entity-str">"{{ answer.chain }}"</span>)</span
+      >
+      <span class="console-meta">via {{ providerLabel(answer.provider) }}</span>
+      <span class="console-mark" aria-hidden="true" />
+    </header>
+    <div class="console-ruler" aria-hidden="true">
+      <span :key="transaction.hash" class="console-cursor" />
     </div>
-    <dl class="explorers-kv">
-      <dt>hash</dt>
-      <dd class="font-mono text-[13px] break-all">{{ transaction.hash }}</dd>
-      <dt>block</dt>
-      <dd class="font-mono text-[13px]">
-        <NuxtLink v-if="transaction.blockNumber > 0" :to="blockPath(answer.chain, transaction.blockNumber)" class="hover:text-primary">{{ transaction.blockNumber }}</NuxtLink>
-        <span v-else>0 <span class="text-dimmed">· pending, no block yet</span></span>
-        <span v-if="transaction.timestamp" class="text-dimmed"> · {{ dateTime(transaction.timestamp) }}</span>
-      </dd>
-      <dt>from</dt>
-      <dd class="font-mono text-[13px] break-all">
-        <span v-if="transaction.from === ''" class="text-dimmed">empty · the explorer names no sender</span>
-        <NuxtLink v-else :to="addressPath(answer.chain, transaction.from)" class="hover:text-primary">{{ transaction.from }}</NuxtLink>
-      </dd>
-      <dt>to</dt>
-      <dd class="font-mono text-[13px] break-all">
-        <span v-if="transaction.to === null">null <span class="text-dimmed">· {{ transaction.createdContract ? "a contract creation" : "no recipient" }}</span></span>
-        <span v-else-if="transaction.to === ''" class="text-dimmed">empty · a data upload, no recipient</span>
-        <NuxtLink v-else :to="addressPath(answer.chain, transaction.to)" class="hover:text-primary">{{ transaction.to }}</NuxtLink>
-      </dd>
-      <template v-if="transaction.createdContract">
-        <dt>created contract</dt>
-        <dd class="font-mono text-[13px] break-all">
-          <NuxtLink :to="addressPath(answer.chain, transaction.createdContract)" class="hover:text-primary">{{ transaction.createdContract }}</NuxtLink>
-        </dd>
-      </template>
-      <dt>value</dt>
-      <dd class="font-mono text-[13px]">
-        <span class="text-highlighted">{{ trimDecimals(transaction.valueFormatted, 8) }} {{ symbol }}</span>
-        <span class="text-dimmed"> · "{{ groupDigits(transaction.value) }}"</span>
-      </dd>
-      <dt>fee</dt>
-      <dd class="font-mono text-[13px]">
-        <span v-if="feeFormatted" class="text-highlighted">{{ feeFormatted }} {{ symbol }}</span>
-        <span v-if="transaction.fee" class="text-dimmed"> · "{{ groupDigits(transaction.fee) }}"</span>
-        <span v-else class="text-dimmed">absent</span>
-        <span v-if="transaction.gasUsed" class="text-dimmed"> · gas used {{ groupDigits(transaction.gasUsed) }}</span>
-        <span v-if="gasPriceText" class="text-dimmed"> · gas price {{ gasPriceText }}</span>
-      </dd>
-      <dt>method</dt>
-      <dd class="font-mono text-[13px]">
-        {{ transaction.functionName ?? transaction.methodId ?? "absent" }}
-        <span class="text-dimmed"> · isContractInteraction {{ transaction.isContractInteraction }}</span>
-      </dd>
-      <dt>token transfers</dt>
-      <dd class="font-mono text-[13px]">
-        <span v-if="!transaction.tokenTransfers.length" class="text-dimmed">none</span>
+
+    <div class="console-band console-subject-band">
+      <div class="console-scan" aria-hidden="true" />
+      <div class="console-identity-block">
+        <ConsoleReticle :key="transaction.hash" :icon="chainIcon(answer.chain)" />
+        <div class="console-name">
+          <span class="console-label"
+            >Transaction / <span class="console-label-key">{{ answer.chain }}</span></span
+          >
+          <p class="explorers-subject-id">
+            <span>{{ transaction.hash }}</span>
+            <button
+              type="button"
+              class="console-button"
+              :data-copied="copied === 'hash'"
+              :aria-label="copied === 'hash' ? 'Copied' : 'Copy hash'"
+              @click="copy('hash', transaction.hash)"
+            >
+              <UIcon :name="copied === 'hash' ? 'i-lucide-check' : 'i-lucide-copy'" class="size-3" />
+            </button>
+          </p>
+          <p class="explorers-tags">
+            <ExplorerStatus :status="transaction.status" />
+            <span v-if="transaction.isContractInteraction" class="explorers-state">contract call</span>
+            <span v-if="transaction.createdContract" class="explorers-state">deployment</span>
+            <span v-if="transaction.opReturn?.length" class="explorers-state">OP_RETURN</span>
+          </p>
+        </div>
+      </div>
+
+      <div class="console-readout">
+        <svg class="console-link" viewBox="0 0 32 40" fill="none" aria-hidden="true">
+          <circle cx="3" cy="12" r="2.5" />
+          <path d="M5.5 12H14L22 20H32" />
+        </svg>
+        <dl class="console-readout-rows">
+          <div>
+            <dt>Value</dt>
+            <dd class="console-accent tx-nowrap">
+              {{ trimDecimals(transaction.valueFormatted, 8) }} {{ symbol }}
+            </dd>
+          </div>
+          <div>
+            <dt>Fee</dt>
+            <dd class="tx-nowrap">
+              <template v-if="feeFormatted">{{ feeFormatted }} {{ symbol }}</template>
+              <span v-else class="explorers-dim">absent</span>
+            </dd>
+          </div>
+          <div>
+            <dt>Block</dt>
+            <dd>
+              <NuxtLink
+                v-if="transaction.blockNumber > 0"
+                :to="blockPath(answer.chain, transaction.blockNumber)"
+                class="tx-link"
+                >{{ transaction.blockNumber }}</NuxtLink
+              >
+              <span v-else class="explorers-dim">pending</span>
+            </dd>
+          </div>
+          <div>
+            <dt>Time</dt>
+            <dd class="tx-nowrap">
+              <template v-if="transaction.timestamp">{{ dateTime(transaction.timestamp) }}</template>
+              <span v-else class="explorers-dim">not given</span>
+            </dd>
+          </div>
+        </dl>
+      </div>
+    </div>
+
+    <div class="explorers-band">
+      <p class="console-label console-rule-title">
+        <span>Parties <span aria-hidden="true">[ from · to ]</span></span>
+        <span class="console-mark" aria-hidden="true" />
+      </p>
+      <dl class="explorers-facts">
+        <div>
+          <dt>From</dt>
+          <dd>
+            <span v-if="transaction.from === ''" class="explorers-dim"
+              >empty · the explorer names no sender</span
+            >
+            <NuxtLink v-else :to="addressPath(answer.chain, transaction.from)">{{
+              transaction.from
+            }}</NuxtLink>
+          </dd>
+        </div>
+        <div>
+          <dt>To</dt>
+          <dd>
+            <span v-if="transaction.to === null"
+              >null
+              <span class="explorers-dim"
+                >· {{ transaction.createdContract ? "a contract creation" : "no recipient" }}</span
+              ></span
+            >
+            <span v-else-if="transaction.to === ''" class="explorers-dim"
+              >empty · a data upload, no recipient</span
+            >
+            <NuxtLink v-else :to="addressPath(answer.chain, transaction.to)">{{
+              transaction.to
+            }}</NuxtLink>
+          </dd>
+        </div>
+        <div v-if="transaction.createdContract">
+          <dt>Created</dt>
+          <dd>
+            <NuxtLink :to="addressPath(answer.chain, transaction.createdContract)">{{
+              transaction.createdContract
+            }}</NuxtLink>
+          </dd>
+        </div>
+      </dl>
+    </div>
+
+    <div class="explorers-band">
+      <p class="console-label console-rule-title">
+        <span>Execution <span aria-hidden="true">[ as the explorer reports it ]</span></span>
+        <span class="console-mark" aria-hidden="true" />
+      </p>
+      <dl class="explorers-facts">
+        <div>
+          <dt>Value raw</dt>
+          <dd>"{{ groupDigits(transaction.value) }}"</dd>
+        </div>
+        <div v-if="transaction.fee">
+          <dt>Fee raw</dt>
+          <dd>"{{ groupDigits(transaction.fee) }}"</dd>
+        </div>
+        <div v-if="transaction.gasUsed || gasPriceText">
+          <dt>Gas</dt>
+          <dd>
+            <template v-if="transaction.gasUsed">{{ groupDigits(transaction.gasUsed) }} used</template>
+            <span v-if="transaction.gasUsed && gasPriceText" class="explorers-dim"> · </span>
+            <template v-if="gasPriceText">{{ gasPriceText }}</template>
+          </dd>
+        </div>
+        <div>
+          <dt>Method</dt>
+          <!-- A decoded function name comes from a verified ABI anyone can publish: interpolated. -->
+          <dd>
+            {{ transaction.functionName ?? transaction.methodId ?? "absent" }}
+          </dd>
+        </div>
+      </dl>
+    </div>
+
+    <div v-if="transaction.tokenTransfers.length" class="explorers-band">
+      <p class="console-label console-rule-title">
         <span
+          >Token transfers
+          <span aria-hidden="true">[ {{ transaction.tokenTransfers.length }} ]</span></span
+        >
+        <span class="console-mark" aria-hidden="true" />
+      </p>
+      <ul class="explorers-rows tx-transfers">
+        <li
           v-for="transfer in transaction.tokenTransfers"
           :key="transfer.contract + transfer.from + transfer.to + transfer.value"
-          class="block"
         >
-          <span class="text-highlighted">{{ trimDecimals(transfer.valueFormatted, 6) }}</span>
-          <NuxtLink :to="addressPath(answer.chain, transfer.contract)" class="ms-1 hover:text-primary">{{ transfer.symbol }}</NuxtLink>
-          <span class="text-dimmed"> · </span>
-          <NuxtLink :to="addressPath(answer.chain, transfer.from)" class="hover:text-primary">{{ shortHash(transfer.from, 6, 4) }}</NuxtLink>
-          <span class="text-dimmed"> → </span>
-          <NuxtLink :to="addressPath(answer.chain, transfer.to)" class="hover:text-primary">{{ shortHash(transfer.to, 6, 4) }}</NuxtLink>
-        </span>
-      </dd>
-      <template v-if="transaction.opReturn?.length">
-        <dt>OP_RETURN</dt>
-        <dd class="font-mono text-[13px]">
-          <span v-for="payload in transaction.opReturn" :key="payload.hex" class="block break-all">
-            <span v-if="payload.text">{{ payload.text }} <span class="text-dimmed">· {{ payload.hex }}</span></span>
-            <span v-else>{{ payload.hex }} <span class="text-dimmed">· binary, no text reading</span></span>
+          <span class="list-amount">
+            <span class="explorers-value">{{ trimDecimals(transfer.valueFormatted, 6) }}</span>
+            <NuxtLink :to="addressPath(answer.chain, transfer.contract)" class="list-link list-token">{{
+              transfer.symbol
+            }}</NuxtLink>
           </span>
-        </dd>
-      </template>
-      <dt>elsewhere</dt>
-      <dd class="font-mono text-[13px]">
-        <a v-if="external" :href="external" target="_blank" rel="noopener nofollow" class="inline-flex items-center gap-1 hover:text-primary">
-          {{ externalHost(answer.chain) }} <UIcon name="i-lucide-arrow-up-right" class="size-3.5" />
-        </a>
-        <span v-else class="text-dimmed">no canonical explorer link for this chain</span>
-      </dd>
-    </dl>
-  </div>
+          <span class="list-route">
+            <ExplorerHash :value="transfer.from" :to="addressPath(answer.chain, transfer.from)" :head="6" :tail="4" />
+            <span class="list-dir">→</span>
+            <ExplorerHash :value="transfer.to" :to="addressPath(answer.chain, transfer.to)" :head="6" :tail="4" />
+          </span>
+        </li>
+      </ul>
+    </div>
+
+    <div v-if="transaction.opReturn?.length" class="explorers-band">
+      <p class="console-label console-rule-title">
+        <span>OP_RETURN <span aria-hidden="true">[ hex, and text when printable ]</span></span>
+        <span class="console-mark" aria-hidden="true" />
+      </p>
+      <dl class="explorers-facts">
+        <div v-for="(payload, index) in transaction.opReturn" :key="payload.hex">
+          <dt>Push {{ index + 1 }}</dt>
+          <dd>
+            <template v-if="payload.text"
+              >{{ payload.text }} <span class="explorers-dim">· {{ payload.hex }}</span></template
+            >
+            <template v-else
+              >{{ payload.hex }} <span class="explorers-dim">· binary, no text reading</span></template
+            >
+          </dd>
+        </div>
+      </dl>
+    </div>
+
+    <footer class="console-footer console-footer-plain">
+      <ul class="console-links">
+        <li>
+          <NuxtLink to="/explorer"><span aria-hidden="true">→ </span>Explorer</NuxtLink>
+        </li>
+        <li v-if="external">
+          <a :href="external" target="_blank" rel="noopener nofollow"
+            ><span aria-hidden="true">↗ </span>{{ externalHost(answer.chain) }}</a
+          >
+        </li>
+      </ul>
+      <span class="console-meta"
+        >{{ chainLabel(answer.chain) }} · fetched {{ dateTime(answer.fetchedAt) }}</span
+      >
+    </footer>
+  </section>
 </template>
+
+<style scoped>
+.tx-nowrap {
+  white-space: nowrap;
+}
+.tx-link {
+  color: var(--ui-text-highlighted);
+}
+.tx-link:hover {
+  color: var(--console-accent);
+}
+.tx-transfers {
+  margin-inline: -20px;
+}
+.tx-transfers > li {
+  grid-template-columns: 14rem minmax(0, 1fr);
+}
+@media (width < 640px) {
+  .tx-transfers {
+    margin-inline: -14px;
+  }
+  .tx-transfers > li {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+</style>

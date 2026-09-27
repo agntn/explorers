@@ -1,20 +1,22 @@
 <script setup lang="ts">
-/** The loading row and the failure card every explorer panel shows before it has an answer. */
+/** The loading line and the failure line every explorer panel shows before it has an answer. */
 defineProps<{ loading: boolean; error?: string; label: string }>();
 </script>
 
 <template>
-  <p
-    v-if="loading"
-    class="explorers-frame flex items-center gap-2 rounded-xl px-5 py-4 text-sm text-muted"
-  >
-    <UIcon name="i-lucide-refresh-cw" class="size-4 animate-spin" />
+  <p v-if="loading" class="explorers-note" role="status">
+    <UIcon name="i-lucide-loader-circle" class="size-3.5 animate-spin" aria-hidden="true" />
     {{ label }}
   </p>
-  <pre
-    v-else-if="error"
-    class="explorers-body explorers-frame rounded-xl"
-    :style="{ color: 'var(--explorers-del)' }"
-    >{{ error }}</pre
-  >
+  <p v-else-if="error" class="explorers-error" role="alert">
+    <span class="console-tag">Error</span><span class="state-text">{{ error }}</span>
+  </p>
 </template>
+
+<style scoped>
+.state-text {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+</style>
