@@ -275,6 +275,20 @@ describe("Explorers MCP server", () => {
     });
   });
 
+  it("answers with compact JSON that parses to the same result", async () => {
+    const client = await connectTestClient();
+    const result = parseToolResult(
+      await client.callTool({ name: "explorers_providers", arguments: {} }),
+    );
+    const text = result.content[0]?.text;
+    if (!text) throw new Error("Missing providers content");
+    expect(text).not.toContain("\n");
+    expect(text).toBe(JSON.stringify(JSON.parse(text)));
+    expect(JSON.parse(text)).toContainEqual(
+      expect.objectContaining({ name: "mempool", chains: ["bitcoin", "litecoin", "pepecoin"] }),
+    );
+  });
+
   it("reads Decred balances through the MCP transport", async () => {
     const address = "Dcur2mcGjmENx4DhNqDctW5wJCVyT3Qeqkx";
     vi.stubGlobal(
@@ -740,7 +754,7 @@ describe("Explorers MCP server", () => {
       {
         type: "text",
         text: textMatching(
-          /"provider": "blockscout"[\s\S]*"balance": "1"[\s\S]*"fetchedAt": "2026-08-28T12:34:56.789Z"[\s\S]*"blockNumber": null[\s\S]*"blockHash": null/,
+          /"provider":"blockscout"[\s\S]*"balance":"1"[\s\S]*"fetchedAt":"2026-08-28T12:34:56.789Z"[\s\S]*"blockNumber":null[\s\S]*"blockHash":null/,
         ),
       },
     ]);
@@ -777,7 +791,7 @@ describe("Explorers MCP server", () => {
     expect(response.content).toEqual([
       {
         type: "text",
-        text: textMatching(/"provider": "blockscout"[\s\S]*"balance": "1"/),
+        text: textMatching(/"provider":"blockscout"[\s\S]*"balance":"1"/),
       },
     ]);
   }, 10_000);
@@ -1051,7 +1065,7 @@ describe("Explorers MCP server", () => {
     expect(response.content).toEqual([
       {
         type: "text",
-        text: textContaining(`"address": "${resolvedAddress}"`),
+        text: textContaining(`"address":"${resolvedAddress}"`),
       },
     ]);
   });

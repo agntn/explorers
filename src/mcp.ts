@@ -77,9 +77,10 @@ function withSelectedProvider<T>(
   );
 }
 
+/* No indentation: the model pays for every leading space and reads the same record without them. */
 function result(value: unknown): CallToolResult {
   return {
-    content: [{ type: "text", text: JSON.stringify(value, null, 2) }],
+    content: [{ type: "text", text: JSON.stringify(value) }],
   };
 }
 
