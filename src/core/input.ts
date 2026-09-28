@@ -14,6 +14,7 @@ const HEX_HASH_CHAINS: readonly ChainKey[] = [
   "bitcoinsv",
   "bitcoingold",
   "litecoin",
+  "dogecoin",
   "pepecoin",
   "ecash",
   "zcash",

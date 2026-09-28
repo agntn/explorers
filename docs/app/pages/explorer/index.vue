@@ -6,7 +6,7 @@ definePageMeta({ layout: "default" });
 
 const title = "Explorer";
 const description =
-  "A block explorer for 29 chains. Search any address, ENS name, transaction hash or block number. Latest blocks and transactions on fourteen of them, live.";
+  "A block explorer for 30 chains. Search any address, ENS name, transaction hash or block number. Latest blocks and transactions on fourteen of them, live.";
 
 useSeo({
   title,
@@ -18,7 +18,7 @@ useSeo({
 defineOgImage(
   "Docs",
   { headline: "Explorer", title, description },
-  { alt: "Explorer: the latest blocks and transactions on 29 chains, and a search box" },
+  { alt: "Explorer: the latest blocks and transactions on 30 chains, and a search box" },
 );
 
 const route = useRoute();
