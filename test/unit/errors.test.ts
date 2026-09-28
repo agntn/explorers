@@ -66,6 +66,18 @@ describe("ExplorerError", () => {
     );
     expect(e.message).toBe("HTTP 400 from https://x: [2J[31mbad[0m Error: forged line");
   });
+  it("HTTPError keeps the quoted reason apart from the URL", () => {
+    const e = new HTTPError(
+      400,
+      "https://x?apikey=secret",
+      "Too many unspent outputs",
+      "blockstream",
+    );
+    expect(e.reason).toBe("Too many unspent outputs");
+    expect(new HTTPError(502, "https://x", "<html>Bad gateway</html>").reason).toBeUndefined();
+    const echoed = new HTTPError(400, "https://x", "Bad request to https://x?apikey=secret");
+    expect(echoed.reason).toBe("Bad request to https://x?apikey=REDACTED");
+  });
   it("HTTPError cuts a long reason between characters, not inside one", () => {
     const e = new HTTPError(400, "https://x", `${"a".repeat(198)}${"\u{1F600}".repeat(5)}`);
     expect(e.message).toBe(`HTTP 400 from https://x: ${"a".repeat(198)}\u{1F600}…`);

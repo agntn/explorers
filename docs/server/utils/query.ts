@@ -7,6 +7,7 @@ import {
   NotFoundError,
   PlanRestrictedError,
   RateLimitError,
+  TransportError,
   UnknownProviderError,
   UnsupportedChainError,
   UnsupportedOperationError,
@@ -112,11 +113,15 @@ export function cacheKey(prefix: string, params: Readonly<Record<string, unknown
   return `${prefix}:${JSON.stringify(entries)}`;
 }
 
+/** At most 160 characters, cut between code points. */
+function clip(text: string): string {
+  const points = [...text];
+  return points.length > 160 ? `${points.slice(0, 159).join("").trimEnd()}…` : text;
+}
+
 /** The part of a message before the first `:` or `[`, so an endpoint or a response body never reaches the page. */
 export function failureText(message: string): string {
-  const head = message.split(/[:[{]/u, 2)[0]?.trim() || message;
-  const points = [...head];
-  return points.length > 160 ? `${points.slice(0, 159).join("").trimEnd()}…` : head;
+  return clip(message.split(/[:[{]/u, 2)[0]?.trim() || message);
 }
 
 /** Turns a library error into the status the browser can show; the typed hierarchy decides the code. */
@@ -161,9 +166,16 @@ export function toHttpError(error: unknown): never {
     });
   }
   if (error instanceof HTTPError) {
+    const reason = error.reason === undefined ? "" : `: ${clip(error.reason)}`;
     throw createError({
       statusCode: 502,
-      statusMessage: `${error.provider ?? "The explorer"} answered HTTP ${error.statusCode}`,
+      statusMessage: `${error.provider ?? "The explorer"} answered HTTP ${error.statusCode}${reason}`,
+    });
+  }
+  if (error instanceof TransportError) {
+    throw createError({
+      statusCode: 502,
+      statusMessage: `${error.provider ?? "The explorer"} sent no response: ${clip(error.reason)}`,
     });
   }
   if (error instanceof ExplorerError) {
