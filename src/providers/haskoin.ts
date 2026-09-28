@@ -159,8 +159,11 @@ function transfer(tx: HaskoinTransaction, address?: string): Transfer {
   return { from: senderOf(tx), to: address, value: sum(tx.outputs.filter(touches)) };
 }
 
-/* A deleted transaction lost its place to a double spend or a reorganization. */
-function mapTransaction(tx: HaskoinTransaction, address?: string): Transaction {
+/*
+ * A deleted transaction lost its place to a double spend or a reorganization. `raw` is the record
+ * as Haskoin sent it, because the parsed one holds bigint amounts that JSON cannot serialize.
+ */
+function mapTransaction(tx: HaskoinTransaction, raw: unknown, address?: string): Transaction {
   const height = heightOf(tx.block);
   const { from, to, value } = transfer(tx, address);
   return {
@@ -175,7 +178,7 @@ function mapTransaction(tx: HaskoinTransaction, address?: string): Transaction {
     status: tx.deleted ? "failed" : height === null ? "pending" : "success",
     isContractInteraction: false,
     tokenTransfers: [],
-    raw: tx as unknown as Record<string, unknown>,
+    raw: raw as Record<string, unknown>,
   };
 }
 
@@ -291,28 +294,25 @@ export class Haskoin extends Provider {
     assertChain(chain);
     const canonical = cashAddress(address);
     const window = historyWindow(options);
-    const parsed = z
-      .array(transactionSchema())
-      .safeParse(
-        await this.read(
-          `/address/${encodeURIComponent(canonical)}/transactions/full${buildQuery(window)}`,
-          `Address ${address}`,
-        ),
-      );
+    const response = await this.read(
+      `/address/${encodeURIComponent(canonical)}/transactions/full${buildQuery(window)}`,
+      `Address ${address}`,
+    );
+    const parsed = z.array(transactionSchema()).safeParse(response);
     if (!parsed.success)
       throw new ExplorerError("Unexpected Haskoin history response", Haskoin.key);
-    return parsed.data.map((tx) => mapTransaction(tx, canonical));
+    const records = response as readonly unknown[];
+    return parsed.data.map((tx, index) => mapTransaction(tx, records[index], canonical));
   }
 
   override async getTxDetail(hash: string, chain: ChainKey = "bitcoincash"): Promise<Transaction> {
     assertChain(chain);
     assertTxid(hash);
-    const parsed = transactionSchema().safeParse(
-      await this.read(`/transaction/${hash.toLowerCase()}`, `Transaction ${hash}`),
-    );
+    const response = await this.read(`/transaction/${hash.toLowerCase()}`, `Transaction ${hash}`);
+    const parsed = transactionSchema().safeParse(response);
     if (!parsed.success)
       throw new ExplorerError("Unexpected Haskoin transaction response", Haskoin.key);
-    return mapTransaction(parsed.data);
+    return mapTransaction(parsed.data, response);
   }
 
   /* Pages of 1000 outputs, ten at most; an address holding more gets the newest 10000. */

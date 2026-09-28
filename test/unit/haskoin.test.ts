@@ -227,6 +227,24 @@ describe("haskoin provider", () => {
     expect(urls[0]!.pathname).toBe(`/bch/transaction/${SWEEP}`);
   });
 
+  it("keeps the record Haskoin sent as raw, amounts included", async () => {
+    stubApi(() => [sweep, funding]);
+    const provider = await create("haskoin");
+
+    const history = await provider.getTxHistory(PUZZLE);
+    expect(history.map((tx) => tx.raw)).toEqual([sweep, funding]);
+    expect(JSON.parse(JSON.stringify(history))).toHaveLength(2);
+
+    /* 2^53 + 1 satoshis: the HTTP client keeps the integer as a string. */
+    const reward = JSON.stringify(coinbase).replace("312628763", "9007199254740993");
+    stubApi(() => new Response(reward, { headers: { "Content-Type": "application/json" } }));
+    const detail = await provider.getTxDetail?.(COINBASE);
+    expect(detail?.value).toBe("9007199254740993");
+    expect(JSON.parse(JSON.stringify(detail))).toMatchObject({
+      raw: { outputs: [{ value: "9007199254740993" }] },
+    });
+  });
+
   it("reads a block reward with no sender", async () => {
     stubApi(() => coinbase);
     const provider = await create("haskoin");
