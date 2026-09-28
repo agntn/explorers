@@ -516,6 +516,36 @@ describe("Explorers MCP server", () => {
     );
   });
 
+  it("sends a Haskoin transaction record as JSON when raw is requested", async () => {
+    const hash = "1115debca78431eca06608f2cc96c91f136d3f62684c19a391264e3e1b7334f7";
+    const tx = {
+      txid: hash,
+      fee: 226,
+      inputs: [{ coinbase: false, value: 1000, address: null }],
+      outputs: [{ address: null, value: 774 }],
+      block: { height: 900_000 },
+      deleted: false,
+      time: 1_750_000_000,
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => Response.json(tx)),
+    );
+    const client = await connectTestClient();
+    const result = parseToolResult(
+      await client.callTool({
+        name: "explorers_tx_detail",
+        arguments: { hash, chain: "bitcoincash", raw: true },
+      }),
+    );
+
+    expect(result.isError).toBe(false);
+    expect(JSON.parse(result.content[0]?.text ?? "null")).toMatchObject({
+      provider: "haskoin",
+      data: { hash, fee: "226", raw: tx },
+    });
+  });
+
   it("sends a contract's ABI and source only when each is requested", async () => {
     const address = "0x0000000000000000000000000000000000000001";
     register(ContractProvider, { chains: ["ethereum"] });
