@@ -3,12 +3,13 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { UnsupportedOperationError } from "./core/errors.ts";
 import { resolveAddresses, resolveInput } from "./core/input.ts";
-import type { Provider } from "./core/provider.ts";
+import { OPERATION_CAPABILITIES } from "./core/provider.ts";
+import type { Provider, ProviderOperation } from "./core/provider.ts";
 import { listProviders } from "./core/registry.ts";
 import { withProvider } from "./core/resolve.ts";
 import type { ProviderContext } from "./core/resolve.ts";
 import { clampMaxResults, normalizeChain } from "./core/types.ts";
-import type { ContractInfo, ProviderCapabilities, Transaction } from "./core/types.ts";
+import type { ContractInfo, Transaction } from "./core/types.ts";
 import { version } from "./version.ts";
 
 const providerInput = {
@@ -37,27 +38,6 @@ const contractPayloadInput = {
     .optional()
     .describe("Include the source code of a verified contract. Defaults to false."),
 };
-type ProviderOperation =
-  | "getBalance"
-  | "getTxHistory"
-  | "getTxDetail"
-  | "getUtxos"
-  | "getContractInfo"
-  | "getTokenBalances"
-  | "getTokenTransfers"
-  | "getGasData"
-  | "getBlockInfo";
-const OPERATION_CAPABILITIES = {
-  getBalance: "balances",
-  getTxHistory: "txHistory",
-  getTxDetail: "txDetail",
-  getUtxos: "utxos",
-  getContractInfo: "contractInfo",
-  getTokenBalances: "tokenBalances",
-  getTokenTransfers: "tokenTransfers",
-  getGasData: "gasData",
-  getBlockInfo: "blockInfo",
-} as const satisfies Record<ProviderOperation, keyof ProviderCapabilities>;
 
 function withSelectedProvider<T>(
   providerName: string | undefined,

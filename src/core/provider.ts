@@ -210,6 +210,31 @@ export interface ProviderConstructor {
 /** One operation that provider selection can require. */
 export type ProviderCapability = keyof ProviderCapabilities;
 
+/** Provider method behind each capability. */
+export type ProviderOperation =
+  | "getBalance"
+  | "getTxHistory"
+  | "getTxDetail"
+  | "getUtxos"
+  | "getContractInfo"
+  | "getTokenBalances"
+  | "getTokenTransfers"
+  | "getGasData"
+  | "getBlockInfo";
+
+/** Capability flag that gates each provider method. */
+export const OPERATION_CAPABILITIES = {
+  getBalance: "balances",
+  getTxHistory: "txHistory",
+  getTxDetail: "txDetail",
+  getUtxos: "utxos",
+  getContractInfo: "contractInfo",
+  getTokenBalances: "tokenBalances",
+  getTokenTransfers: "tokenTransfers",
+  getGasData: "gasData",
+  getBlockInfo: "blockInfo",
+} as const satisfies Record<ProviderOperation, ProviderCapability>;
+
 /** What the registry answers about a provider without loading its module. */
 export interface ProviderMeta {
   /** Chains the provider can serve, consulted during auto-selection. */

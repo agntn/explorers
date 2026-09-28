@@ -203,16 +203,22 @@ export class NotFoundError extends ExplorerError {
 
 /** Provider does not serve the requested chain. */
 export class UnsupportedChainError extends ExplorerError {
+  public readonly chain: string;
+
   constructor(chain: string, provider: string) {
     super(`Chain "${chain}" not supported by ${provider}`, provider);
+    this.chain = chain;
     this.name = "UnsupportedChainError";
   }
 }
 
 /** Explorer backend does not expose the requested operation. */
 export class UnsupportedOperationError extends ExplorerError {
+  public readonly operation: string;
+
   constructor(operation: string, provider: string) {
     super(`Operation "${operation}" not supported by ${provider}`, provider);
+    this.operation = operation;
     this.name = "UnsupportedOperationError";
   }
 }
@@ -236,10 +242,11 @@ export class AddressChainMismatchError extends ExplorerError {
   }
 }
 
-/** Registry does not contain the requested provider name. */
+/** Registry does not contain the requested provider name. The message lists the names it does hold. */
 export class UnknownProviderError extends ExplorerError {
-  constructor(provider: string) {
-    super(`Unknown provider: ${provider}`, provider);
+  constructor(provider: string, known: readonly string[] = []) {
+    const listed = known.length === 0 ? "" : `; known providers: ${known.join(", ")}`;
+    super(`Unknown provider: ${provider}${listed}`, provider);
     this.name = "UnknownProviderError";
   }
 }

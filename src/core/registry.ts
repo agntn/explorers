@@ -95,7 +95,7 @@ export function register(providerClass: ProviderConstructor, meta: Readonly<Prov
 export async function create(name: string, config?: Readonly<ProviderConfig>): Promise<Provider> {
   const entry = entries().get(name);
   if (!entry) {
-    throw new UnknownProviderError(name);
+    throw new UnknownProviderError(name, providers());
   }
   if (!entry.providerClass) {
     entry.providerClassPromise ??= entry.load();

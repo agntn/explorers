@@ -748,7 +748,9 @@ describe("Explorers MCP server", () => {
     expect(response.content).toEqual([
       {
         type: "text",
-        text: textContaining('Operation "getBlockInfo" not supported by aptos'),
+        text: textContaining(
+          'Operation "getBlockInfo" not supported by aptos; no provider serves this read on aptos',
+        ),
       },
     ]);
   });

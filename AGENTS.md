@@ -39,6 +39,7 @@ Unified block explorer provider library. Normalizes balances, tx history, contra
 - `mempool` and `blockstream` list unspent outputs through Esplora `/api/address/:address/utxo`, `whatsonchain` through `/address/:address/unspent/all`, `blockbook` through `/api/v2/utxo/:address`, `haskoin` through `/address/:address/unspent`. A `Utxo` row keeps `txid`, `vout`, `value` as a base-unit string and the funding block, `null` while the output waits in the mempool. Providers without such an endpoint keep `utxos: false` and no `getUtxos` method
 - CLI default subcommand: `balance` (for address-like input) or `providers` (no input)
 - Error hierarchy: `ExplorerError` → `HTTPError`, `TransportError`, `AuthError`, `RateLimitError`, `PlanRestrictedError`, `NotFoundError`, `UnsupportedChainError`, `UnsupportedOperationError`, `UnknownProviderError`, `AddressChainMismatchError`
+- `withProvider()` ends an `UnsupportedChainError` or `UnsupportedOperationError` from the provider it ran with `; try <providers>` (those the registry says serve that chain and read) or `; no provider serves this read on <chain>`, and `UnknownProviderError` lists the registered names, because MCP, Pi, OMP and the CLI show only the message. A thrown operation outside `OPERATION_CAPABILITIES` in `core/provider.ts` keeps its bare message
 - HTTP client uses `ofetch` with a 15s default timeout and preserves out-of-range JSON integers as strings. `ofetch` drops `timeout` when it also gets a `signal`, so a request with a signal carries the timeout inside it
 
 ## Key files

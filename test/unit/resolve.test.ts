@@ -7,8 +7,10 @@ import {
   RateLimitError,
   TransportError,
   UnknownProviderError,
+  UnsupportedChainError,
   UnsupportedOperationError,
 } from "../../src/core/errors.ts";
+import { providers } from "../../src/core/registry.ts";
 import { forgetPlanLimits, resolveProvider, withProvider } from "../../src/core/resolve.ts";
 
 afterEach(() => {
@@ -39,6 +41,12 @@ describe("resolveProvider", () => {
 
   it.each(["", "missing"])("rejects an unknown explicit provider", (provider) => {
     expect(() => resolveProvider(provider)).toThrow(UnknownProviderError);
+  });
+
+  it("names the registered providers when it rejects an unknown one", () => {
+    expect(() => resolveProvider("mempol")).toThrow(
+      `Unknown provider: mempol; known providers: ${providers().join(", ")}`,
+    );
   });
 
   it("prefers configured credentials before the free fallback", () => {
@@ -705,5 +713,71 @@ describe("plan limits", () => {
     await readBalance("base", tried, []);
 
     expect(tried).toEqual(["blockscout", "etherscan", "blockscout"]);
+  });
+});
+
+describe("refusal hints", () => {
+  it("names the providers that serve the chain an explicit provider refuses", async () => {
+    useNoProviderCredentials();
+
+    await expect(
+      withProvider(
+        "mempool",
+        "stellar",
+        async ({ chain, name }) => {
+          throw new UnsupportedChainError(chain, name);
+        },
+        "gasData",
+      ),
+    ).rejects.toThrow('Chain "stellar" not supported by mempool; try horizon');
+  });
+
+  it("names the providers that serve an operation an explicit provider lacks", async () => {
+    useNoProviderCredentials();
+    vi.stubEnv("HELIUS_API_KEY", "configured");
+
+    await expect(
+      withProvider("helius", "solana", async ({ name }) => {
+        throw new UnsupportedOperationError("getBalance", name);
+      }),
+    ).rejects.toThrow('Operation "getBalance" not supported by helius; try solscan');
+  });
+
+  it("says so when no provider serves the read on that chain", async () => {
+    useNoProviderCredentials();
+    vi.stubEnv("HELIUS_API_KEY", "configured");
+
+    await expect(
+      withProvider(
+        undefined,
+        "solana",
+        async ({ name }) => {
+          throw new UnsupportedOperationError("getGasData", name);
+        },
+        "gasData",
+      ),
+    ).rejects.toThrow(
+      'Operation "getGasData" not supported by helius; no provider serves this read on solana',
+    );
+  });
+
+  it("leaves an unmapped operation and a refusal about another provider or chain alone", async () => {
+    useNoProviderCredentials();
+
+    await expect(
+      withProvider("mempool", "bitcoin", async ({ name }) => {
+        throw new UnsupportedOperationError("getMempool", name);
+      }),
+    ).rejects.toThrow(/^Operation "getMempool" not supported by mempool$/);
+    await expect(
+      withProvider("mempool", "bitcoin", async () => {
+        throw new UnsupportedChainError("bitcoin", "blockstream");
+      }),
+    ).rejects.toThrow(/^Chain "bitcoin" not supported by blockstream$/);
+    await expect(
+      withProvider("mempool", "bitcoin", async ({ name }) => {
+        throw new UnsupportedChainError("stellar", name);
+      }),
+    ).rejects.toThrow(/^Chain "stellar" not supported by mempool$/);
   });
 });
