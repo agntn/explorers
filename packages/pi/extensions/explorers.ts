@@ -142,16 +142,18 @@ function describeUtxos(
   address: string,
   chain: ExplorersModule.ChainKey,
   utxos: readonly Readonly<ExplorersModule.Utxo>[],
+  limit: number,
 ): string[] {
   const confirmed = utxos.filter((utxo) => utxo.confirmed);
   const total = confirmed.reduce((sum, utxo) => sum + BigInt(utxo.value), 0n);
   const pending = utxos.length - confirmed.length;
   const suffix = pending > 0 ? `, ${pending} pending` : "";
-  const header = `[${name}] ${utxos.length} unspent outputs for ${address} on ${chain}, ${total} base units confirmed${suffix}:`;
-  return [header, ...utxos.map(describeUtxo)];
+  const listed = utxos.slice(0, limit);
+  const header = `[${name}] ${utxos.length} unspent outputs for ${address} on ${chain}, ${total} base units confirmed${suffix}${listedCount(listed.length, utxos.length)}:`;
+  return [header, ...listed.map(describeUtxo)];
 }
 
-/* The header's count is every holding; the suffix appears only when the list stops short of it. */
+/* The header's count is every holding or output; the suffix appears only when the list stops short of it. */
 function listedCount(listed: number, total: number): string {
   return listed < total ? `, ${listed} listed` : "";
 }
@@ -412,12 +414,21 @@ export default function explorersExtension(pi: ExtensionAPI) {
     promptSnippet:
       "Use to see which outputs an address can still spend, when a balance total is not enough.",
     promptGuidelines: [
-      "Use explorers_utxos with a Bitcoin, Litecoin or Pepecoin address and its chain to prove which outputs it still controls.",
-      "explorers_utxos returns every unspent output as txid:vout with its value in base units and whether its funding transaction is confirmed.",
+      "Use explorers_utxos with an address and its chain (Bitcoin, Bitcoin Cash, Bitcoin SV, Bitcoin Gold, Litecoin or Pepecoin) to prove which outputs it still controls.",
+      "explorers_utxos returns each unspent output as txid:vout with its value in base units and whether its funding transaction is confirmed.",
+      "explorers_utxos lists 50 outputs in the explorer's order unless limit says otherwise; the first line counts every output and sums the confirmed ones.",
     ],
     parameters: Type.Object({
       address: Type.String({ description: "Blockchain address" }),
       chain: Type.Optional(Type.String({ description: "Chain" })),
+      limit: Type.Optional(
+        Type.Integer({
+          description: "Maximum number of outputs listed; the first line counts them all",
+          minimum: 1,
+          maximum: 100,
+          default: 50,
+        }),
+      ),
       provider: Type.Optional(Type.String({ description: "Provider" })),
     }),
     renderCall(args, _theme) {
@@ -441,7 +452,9 @@ export default function explorersExtension(pi: ExtensionAPI) {
           }
           const address = await resolveAddress(lib.resolveAddresses, params.address, chain, signal);
           const utxos = await provider.getUtxos(address, chain);
-          return textResult(describeUtxos(name, address, chain, utxos));
+          return textResult(
+            describeUtxos(name, address, chain, utxos, lib.clampMaxResults(params.limit ?? 50)),
+          );
         },
         params.address,
       );
