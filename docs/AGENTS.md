@@ -18,7 +18,7 @@ docs/
 ├── app/assets/fonts.css           # @font-face for the TTFs served from public/fonts (site and OG images)
 ├── app/composables/               # useAnswer (one worker call with its state, memoised per query), useLandingExplorer (one clock for every live panel), useSubNavigation, useCopied, useRosterFlip
 ├── app/data/explorers.json        # the registry snapshot; written by scripts/snapshot.mjs, committed
-├── app/utils/                     # providers (presentation over the snapshot), entities (classify, paths, external links), wire (errorText over the shared shapes), format, landing-fixtures, roster and entity-table (UTable classes), tokens (snippet coloring)
+├── app/utils/                     # providers (presentation over the snapshot), entities (classify, paths, external links), wire (errorText over the shared shapes), format, landing-fixtures, roster and entity-table (UTable classes), tokens (snippet coloring), tool-response (the tokenizer ConsoleResponse colors the full tool response with)
 ├── shared/                        # wire.ts (answer shapes, one declaration for app and server), tip-chains.ts (the feed list), identifier.ts (the address predicate)
 ├── app/pages/explorer/            # index (search hub), gas, providers, address/[chain]/[address], tx/[chain]/[hash], block/[chain]/[number]
 ├── scripts/snapshot.mjs           # ../src + @agntn/chains -> app/data/explorers.json
