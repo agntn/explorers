@@ -12,6 +12,7 @@ import {
   UnsupportedOperationError,
 } from "./errors.ts";
 import { inferChain } from "./input.ts";
+import { OPERATION_CAPABILITIES } from "./provider.ts";
 import type { Provider, ProviderCapability } from "./provider.ts";
 import { normalizeChain } from "./types.ts";
 import type { ChainKey } from "./types.ts";
@@ -117,7 +118,7 @@ function appendRankedProvider(
   capability?: ProviderCapability,
 ): readonly string[] {
   const fitsChain = chain === undefined || supportsChain(name, chain);
-  const fitsCapability = capability === undefined || supportsCapability(name, capability);
+  const fitsCapability = capability === undefined || supportsCapability(name, capability, chain);
   return has(name) && fitsChain && fitsCapability && !ranked.includes(name)
     ? [...ranked, name]
     : ranked;
@@ -187,7 +188,7 @@ export function resolveProvider(
   capability?: ProviderCapability,
 ): string {
   if (preferred !== undefined) {
-    if (!has(preferred)) throw new UnknownProviderError(preferred);
+    if (!has(preferred)) throw new UnknownProviderError(preferred, providers());
     return preferred;
   }
 
@@ -209,6 +210,38 @@ export interface ProviderContext {
   readonly chain: ChainKey;
   readonly name: string;
   readonly provider: Provider;
+}
+
+/* The registry knows who serves the read, so a refusal names them instead of leaving the caller to
+   try providers one by one, and says so when nobody does. A chain refusal from a read that named no
+   capability can only name who serves the chain. Only a refusal from the provider that ran, about
+   the chain it ran on, gets the hint; an operation the registry cannot map gets none. */
+function suggestProviders(
+  /* oxlint-disable-next-line typescript/prefer-readonly-parameter-types */
+  error: UnsupportedChainError | UnsupportedOperationError,
+  name: string,
+  chain: ChainKey,
+  capability: ProviderCapability | undefined,
+): void {
+  if (error.provider !== name) return;
+  if (error instanceof UnsupportedChainError && error.chain !== chain) return;
+  let needed = capability;
+  if (error instanceof UnsupportedOperationError) {
+    const operation = error.operation;
+    if (!Object.hasOwn(OPERATION_CAPABILITIES, operation)) return;
+    needed = OPERATION_CAPABILITIES[operation as keyof typeof OPERATION_CAPABILITIES];
+  }
+  const others = rankProviders(chain, "primary", needed).filter((other) => other !== name);
+  error.message += hint(others, chain, needed !== undefined);
+}
+
+function hint(others: readonly string[], chain: ChainKey, knowsRead: boolean): string {
+  if (!knowsRead) {
+    if (others.length === 0) return `; no provider serves ${chain}`;
+    return `; ${others.join(", ")} ${others.length === 1 ? "serves" : "serve"} ${chain}`;
+  }
+  if (others.length === 0) return `; no provider serves this read on ${chain}`;
+  return `; try ${others.join(", ")}`;
 }
 
 function preservesPrimaryError(error: unknown): boolean {
@@ -316,6 +349,9 @@ export async function withProvider<T>(
         error instanceof PlanRestrictedError
       ) {
         rememberPlanLimit(name, effectiveChain, capability, credentials);
+      }
+      if (error instanceof UnsupportedChainError || error instanceof UnsupportedOperationError) {
+        suggestProviders(error, name, effectiveChain, capability);
       }
       throw error;
     }

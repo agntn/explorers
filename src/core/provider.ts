@@ -210,12 +210,39 @@ export interface ProviderConstructor {
 /** One operation that provider selection can require. */
 export type ProviderCapability = keyof ProviderCapabilities;
 
+/** Provider method behind each capability. */
+export type ProviderOperation =
+  | "getBalance"
+  | "getTxHistory"
+  | "getTxDetail"
+  | "getUtxos"
+  | "getContractInfo"
+  | "getTokenBalances"
+  | "getTokenTransfers"
+  | "getGasData"
+  | "getBlockInfo";
+
+/** Capability flag that gates each provider method. */
+export const OPERATION_CAPABILITIES = {
+  getBalance: "balances",
+  getTxHistory: "txHistory",
+  getTxDetail: "txDetail",
+  getUtxos: "utxos",
+  getContractInfo: "contractInfo",
+  getTokenBalances: "tokenBalances",
+  getTokenTransfers: "tokenTransfers",
+  getGasData: "gasData",
+  getBlockInfo: "blockInfo",
+} as const satisfies Record<ProviderOperation, ProviderCapability>;
+
 /** What the registry answers about a provider without loading its module. */
 export interface ProviderMeta {
   /** Chains the provider can serve, consulted during auto-selection. */
   chains: readonly ChainKey[];
   /** Operations the provider can serve. Omit to keep external registrations backward-compatible. */
   capabilities?: readonly ProviderCapability[];
+  /** Declared operations the provider still refuses on one of its chains. */
+  chainGaps?: Readonly<Partial<Record<ChainKey, readonly ProviderCapability[]>>>;
   /** Public endpoint advertised for the provider. */
   defaultURL?: string;
 }

@@ -907,7 +907,7 @@ console.log(result.content[0].text);
       tool.execute("test", params, undefined, undefined, unusedContext),
     ).rejects.toMatchObject({
       name: "UnsupportedOperationError",
-      message: `Operation "${operation}" not supported by aptos`,
+      message: `Operation "${operation}" not supported by aptos; no provider serves this read on aptos`,
       provider: "aptos",
     });
   });
