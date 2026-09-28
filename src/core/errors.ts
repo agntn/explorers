@@ -107,11 +107,16 @@ export class HTTPError extends ExplorerError {
   /** Response body, redacted in case the server echoes the request URL. */
   public readonly body?: string;
 
+  /** The reason the message ends with, for a surface that shows it without the URL. */
+  public readonly reason?: string | undefined;
+
   constructor(statusCode: number, url: string, body?: string, provider?: string) {
     const status = `HTTP ${statusCode} from ${url}`;
     const reason = responseReason(body);
-    super(reason === undefined || reason === status ? status : `${status}: ${reason}`, provider);
+    const quoted = reason === undefined || reason === status ? undefined : reason;
+    super(quoted === undefined ? status : `${status}: ${quoted}`, provider);
     this.statusCode = statusCode;
+    if (quoted !== undefined) this.reason = sanitizeUrl(quoted);
     if (body !== undefined) this.body = sanitizeUrl(body);
     this.rawUrl = sanitizeUrl(url);
     Object.defineProperty(this, "rawUrl", { enumerable: false });
