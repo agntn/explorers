@@ -261,6 +261,7 @@ describe("Explorers MCP server", () => {
     expect(result.isError).toBe(false);
     expect(JSON.parse(result.content[0]?.text ?? "null")).toEqual({
       provider: "mempool",
+      total: 1,
       data: [
         {
           txid: "a".repeat(64),
@@ -273,6 +274,52 @@ describe("Explorers MCP server", () => {
         },
       ],
     });
+  });
+
+  it("lists fifty unspent outputs unless limit says otherwise and counts every one", async () => {
+    const txidOf = (index: number) => index.toString(16).padStart(64, "0");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json(
+          Array.from({ length: 60 }, (_, index) => ({
+            txid: txidOf(index),
+            vout: 0,
+            value: 1000 + index,
+            status: { confirmed: true, block_height: 947_507, block_hash: "b".repeat(64) },
+          })),
+        ),
+      ),
+    );
+    const client = await connectTestClient();
+    const readUtxos = async (args: Readonly<Record<string, unknown>>) => {
+      const result = parseToolResult(
+        await client.callTool({
+          name: "explorers_utxos",
+          arguments: {
+            address: "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
+            chain: "bitcoin",
+            ...args,
+          },
+        }),
+      );
+      if (result.isError) return result.content[0]?.text;
+      return JSON.parse(result.content[0]?.text ?? "null") as {
+        total: number;
+        data: { txid: string }[];
+      };
+    };
+
+    const listed = await readUtxos({});
+    expect(listed).toMatchObject({ provider: "mempool", total: 60 });
+    expect(typeof listed === "object" && listed.data.map(({ txid }) => txid)).toEqual(
+      Array.from({ length: 50 }, (_, index) => txidOf(index)),
+    );
+    expect(await readUtxos({ limit: 2 })).toMatchObject({
+      total: 60,
+      data: [{ txid: txidOf(0) }, { txid: txidOf(1) }],
+    });
+    expect(await readUtxos({ limit: 101 })).toMatch(/limit/);
   });
 
   it("answers with compact JSON that parses to the same result", async () => {

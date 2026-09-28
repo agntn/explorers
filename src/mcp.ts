@@ -25,6 +25,8 @@ const rawInput = {
 };
 /** Holdings one tokens call lists unless asked for more; a busy wallet holds thousands. */
 const TOKEN_HOLDINGS_LIMIT = 50;
+/** Outputs one utxos call lists unless asked for more; a dusted address holds thousands. */
+const UNSPENT_OUTPUTS_LIMIT = 50;
 const contractPayloadInput = {
   abi: z
     .boolean()
@@ -238,11 +240,24 @@ export function createMcpServer(): McpServer {
     "explorers_utxos",
     {
       description:
-        "List the unspent outputs a Bitcoin-like address still controls, each as txid and vout with its value in base units and confirmation state",
-      inputSchema: { address: z.string().min(1), ...providerInput },
+        "List the unspent outputs a Bitcoin-like address still controls, each as txid and vout with its value in base units and confirmation state: the first 50 in the explorer's order unless limit says otherwise; total counts every output the list was cut from.",
+      inputSchema: {
+        address: z.string().min(1),
+        ...providerInput,
+        limit: z
+          .number()
+          .int()
+          .positive()
+          .max(100)
+          .optional()
+          .default(UNSPENT_OUTPUTS_LIMIT)
+          .describe(
+            "Outputs to list, at most 100; total still counts every output. Defaults to 50.",
+          ),
+      },
       annotations: { readOnlyHint: true },
     },
-    async ({ address, chain, provider }, { signal }) =>
+    async ({ address, chain, provider, limit }, { signal }) =>
       withSelectedProvider(
         provider,
         chain,
@@ -251,7 +266,12 @@ export function createMcpServer(): McpServer {
         async (selected) => {
           const resolvedAddress = await addressForChain(address, selected.chain, signal);
           const getUtxos = requireOperation(selected.provider, "getUtxos");
-          return providerResult(selected.name, await getUtxos(resolvedAddress, selected.chain));
+          const utxos = await getUtxos(resolvedAddress, selected.chain);
+          return result({
+            provider: selected.name,
+            total: utxos.length,
+            data: utxos.slice(0, clampMaxResults(limit ?? UNSPENT_OUTPUTS_LIMIT)),
+          });
         },
         address,
       ),

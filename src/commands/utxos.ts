@@ -1,23 +1,32 @@
 /** List the unspent outputs an address still controls */
 import { defineCommand } from "citty";
 import type { Utxo } from "../core/types.ts";
-import { failCommand, print, reportCommandError, withSelectedProvider } from "./shared.ts";
+import {
+  failCommand,
+  parsePositiveInteger,
+  print,
+  reportCommandError,
+  withSelectedProvider,
+} from "./shared.ts";
 
 function renderUtxos(
   providerName: string,
   address: string,
   chain: string,
   utxos: readonly Readonly<Utxo>[],
+  limit: number,
 ): void {
   const confirmed = utxos.filter((utxo) => utxo.confirmed);
   const total = confirmed.reduce((sum, utxo) => sum + BigInt(utxo.value), 0n);
-  print(`[${providerName}] ${utxos.length} unspent outputs for ${address} on ${chain}`);
+  const listed = utxos.slice(0, limit);
+  const suffix = listed.length < utxos.length ? `, ${listed.length} listed` : "";
+  print(`[${providerName}] ${utxos.length} unspent outputs for ${address} on ${chain}${suffix}`);
   print(`  Confirmed total: ${total} base units`);
   if (confirmed.length < utxos.length) {
     print(`  Pending: ${utxos.length - confirmed.length}`);
   }
   print("");
-  for (const utxo of utxos) {
+  for (const utxo of listed) {
     const position = utxo.confirmed ? `block ${utxo.blockNumber ?? "unknown"}` : "pending";
     print(`  ${utxo.txid}:${utxo.vout}  ${utxo.valueFormatted}  [${position}]`);
   }
@@ -37,17 +46,29 @@ export default defineCommand({
     chain: {
       type: "string",
       alias: "c",
-      description: "Chain (bitcoin, litecoin, pepecoin)",
+      description: "Chain (bitcoin, bitcoincash, bitcoinsv, bitcoingold, litecoin, pepecoin)",
+    },
+    limit: {
+      type: "string",
+      alias: "n",
+      description: "Max outputs listed, up to 100",
+      default: "50",
     },
     provider: {
       type: "string",
       alias: "p",
-      description: "Provider (mempool, blockstream)",
+      description: "Provider (mempool, blockstream, whatsonchain, blockbook, haskoin)",
     },
   },
   async run({ args }) {
     try {
-      const { resolveInput } = await import("../core/input.ts");
+      const [{ resolveInput }, { clampMaxResults }] = await Promise.all([
+        import("../core/input.ts"),
+        import("../core/types.ts"),
+      ]);
+      const limit = clampMaxResults(
+        parsePositiveInteger(args.limit as string, "Invalid --limit value"),
+      );
       await withSelectedProvider(
         args.chain as string | undefined,
         args.provider as string | undefined,
@@ -59,7 +80,7 @@ export default defineCommand({
           }
           const { address } = await resolveInput(args.address as string, selected.chain);
           const utxos = await getUtxos(address, selected.chain);
-          renderUtxos(selected.name, address, selected.chain, utxos);
+          renderUtxos(selected.name, address, selected.chain, utxos, limit);
         },
         args.address as string,
       );

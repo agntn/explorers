@@ -840,6 +840,58 @@ console.log(result.content[0].text);
     );
   });
 
+  it("lists fifty unspent outputs unless limit says otherwise and counts every one", async () => {
+    const address = "bc1qexample";
+    const txidOf = (index: number) => index.toString(16).padStart(64, "0");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify(
+              Array.from({ length: 60 }, (_, index) => ({
+                txid: txidOf(index),
+                vout: 0,
+                value: 1000 + index,
+                status:
+                  index === 59
+                    ? { confirmed: false }
+                    : { confirmed: true, block_height: 947_507, block_time: 1 },
+              })),
+            ),
+            { headers: { "Content-Type": "application/json" } },
+          ),
+      ),
+    );
+    const tool = requireTool(registerExtensionTools().tools, "explorers_utxos");
+    const readLines = async (params: Readonly<Record<string, unknown>>) => {
+      const result = parseToolResult(
+        await tool.execute(
+          "test",
+          { address, chain: "bitcoin", provider: "mempool", ...params },
+          undefined,
+          undefined,
+          unusedContext,
+        ),
+      );
+      return (result.content.find((part) => part.type === "text")?.text ?? "").split("\n");
+    };
+    const header = `[mempool] 60 unspent outputs for ${address} on bitcoin, 60711 base units confirmed, 1 pending`;
+
+    const listed = await readLines({});
+    expect(listed).toHaveLength(51);
+    expect(listed[0]).toBe(`${header}, 50 listed:`);
+    expect(listed[50]).toBe(`  ${txidOf(49)}:0  0.00001049 (1049 base units)  [block 947507]`);
+    expect(await readLines({ limit: 1 })).toEqual([
+      `${header}, 1 listed:`,
+      `  ${txidOf(0)}:0  0.00001 (1000 base units)  [block 947507]`,
+    ]);
+    const all = await readLines({ limit: 100 });
+    expect(all).toHaveLength(61);
+    expect(all[0]).toBe(`${header}:`);
+    expect(all[60]).toBe(`  ${txidOf(59)}:0  0.00001059 (1059 base units)  [pending]`);
+  });
+
   it.each([
     ["explorers_tx_detail", { hash: "0xdead", provider: "aptos" }, "getTxDetail"],
     ["explorers_utxos", { address: "0x1", provider: "aptos" }, "getUtxos"],
