@@ -28,8 +28,8 @@ export interface ProviderListing {
    * Operations the provider declares, in the shape of the instance getter.
    *
    * Declared for the provider as a whole, not per chain: a provider can still refuse one of them on
-   * one of its chains at call time. Absent when an external registration left capability metadata
-   * out.
+   * one of its chains at call time, and routing skips the refusals its `chainGaps` metadata names.
+   * Absent when an external registration left capability metadata out.
    */
   readonly capabilities?: Readonly<ProviderCapabilities>;
 }
@@ -44,10 +44,12 @@ let registry: Map<string, RegistryEntry> | undefined;
  */
 function entries(): Map<string, RegistryEntry> {
   registry ??= new Map(
-    builtins.map(({ key, chains, capabilities, defaultURL, load }): [string, RegistryEntry] => [
-      key,
-      { chains, capabilities, defaultURL, load },
-    ]),
+    builtins.map(
+      ({ key, chains, capabilities, chainGaps, defaultURL, load }): [string, RegistryEntry] => [
+        key,
+        { chains, capabilities, chainGaps, defaultURL, load },
+      ],
+    ),
   );
   return registry;
 }
@@ -67,6 +69,7 @@ export function register(providerClass: ProviderConstructor, meta: Readonly<Prov
   entries().set(providerClass.key, {
     chains: meta.chains,
     capabilities: meta.capabilities,
+    chainGaps: meta.chainGaps,
     defaultURL: meta.defaultURL,
     load: () => Promise.resolve(providerClass),
     providerClass,
@@ -179,18 +182,25 @@ export function supportsChain(name: string, chain: ChainKey): boolean {
 }
 
 /**
- * Check whether a registered provider declares support for `capability`.
+ * Check whether a registered provider declares support for `capability`, on `chain` when given.
  *
  * External registrations without capability metadata remain eligible so adding this routing hint
  * does not silently remove existing providers from auto-selection.
  *
  * @param {string} name - The `name` value.
  * @param {ProviderCapability} capability - The required operation.
+ * @param {ChainKey} chain - A chain whose `chainGaps` entry can take the operation back.
  * @returns {boolean} Whether the provider can be considered for the operation.
  */
-export function supportsCapability(name: string, capability: ProviderCapability): boolean {
+export function supportsCapability(
+  name: string,
+  capability: ProviderCapability,
+  chain?: ChainKey,
+): boolean {
   const entry = entries().get(name);
-  return entry !== undefined && (entry.capabilities?.includes(capability) ?? true);
+  if (entry === undefined) return false;
+  if (chain !== undefined && entry.chainGaps?.[chain]?.includes(capability) === true) return false;
+  return entry.capabilities?.includes(capability) ?? true;
 }
 
 /**

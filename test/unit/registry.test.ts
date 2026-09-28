@@ -88,6 +88,26 @@ describe("built-in provider registry", () => {
     }
   });
 
+  it("skips a chain gap in routing, and the provider refuses that read on that chain", async () => {
+    expect(supportsCapability("mempool", "blockInfo")).toBe(true);
+    expect(supportsCapability("mempool", "blockInfo", "bitcoin")).toBe(true);
+    expect(supportsCapability("mempool", "blockInfo", "pepecoin")).toBe(false);
+    expect(supportsCapability("mempool", "gasData", "pepecoin")).toBe(false);
+    expect(supportsCapability("mempool", "balances", "pepecoin")).toBe(true);
+
+    const ProviderClass = await builtins.find((entry) => entry.key === "mempool")?.load();
+    if (!ProviderClass) throw new Error("Missing mempool provider entry");
+    const provider = new ProviderClass({});
+    await expect(provider.getGasData?.("pepecoin")).rejects.toMatchObject({
+      name: "UnsupportedOperationError",
+      operation: "getGasData",
+    });
+    await expect(provider.getBlockInfo?.(1, "pepecoin")).rejects.toMatchObject({
+      name: "UnsupportedOperationError",
+      operation: "getBlockInfo",
+    });
+  });
+
   it("describes every provider without loading a module", async () => {
     vi.resetModules();
     const { builtins: isolatedBuiltins } = await import("../../src/providers/index.ts");

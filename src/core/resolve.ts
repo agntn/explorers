@@ -118,7 +118,7 @@ function appendRankedProvider(
   capability?: ProviderCapability,
 ): readonly string[] {
   const fitsChain = chain === undefined || supportsChain(name, chain);
-  const fitsCapability = capability === undefined || supportsCapability(name, capability);
+  const fitsCapability = capability === undefined || supportsCapability(name, capability, chain);
   return has(name) && fitsChain && fitsCapability && !ranked.includes(name)
     ? [...ranked, name]
     : ranked;

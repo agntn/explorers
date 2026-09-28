@@ -241,6 +241,8 @@ export interface ProviderMeta {
   chains: readonly ChainKey[];
   /** Operations the provider can serve. Omit to keep external registrations backward-compatible. */
   capabilities?: readonly ProviderCapability[];
+  /** Declared operations the provider still refuses on one of its chains. */
+  chainGaps?: Readonly<Partial<Record<ChainKey, readonly ProviderCapability[]>>>;
   /** Public endpoint advertised for the provider. */
   defaultURL?: string;
 }

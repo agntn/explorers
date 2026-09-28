@@ -79,6 +79,7 @@ export const builtins: readonly ProviderEntry[] = [
     key: "mempool",
     chains: ["bitcoin", "litecoin", "pepecoin"],
     capabilities: ["balances", "txHistory", "txDetail", "utxos", "gasData", "blockInfo"],
+    chainGaps: { pepecoin: ["gasData", "blockInfo"] },
     defaultURL: "https://mempool.space",
     load: () => import("./mempool.ts").then((m) => m.Mempool),
   },

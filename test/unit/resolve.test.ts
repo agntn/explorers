@@ -758,6 +758,23 @@ describe("refusal hints", () => {
     ).rejects.toThrow('Operation "getBalance" not supported by helius; try solscan');
   });
 
+  it("leaves out a provider that refuses the read on that chain", async () => {
+    useNoProviderCredentials();
+
+    await expect(
+      withProvider(
+        "blockstream",
+        "pepecoin",
+        async ({ chain, name }) => {
+          throw new UnsupportedChainError(chain, name);
+        },
+        "blockInfo",
+      ),
+    ).rejects.toThrow(
+      /^Chain "pepecoin" not supported by blockstream; no provider serves this read on pepecoin$/,
+    );
+  });
+
   it("says so when no provider serves the read on that chain", async () => {
     useNoProviderCredentials();
     vi.stubEnv("HELIUS_API_KEY", "configured");
