@@ -23,7 +23,78 @@ function sanitizeUrl(url: string): string {
   return url.replaceAll(/([?&])(api[-_]?key|key|secret|token)=[^&#]*/gi, "$1$2=REDACTED");
 }
 
-/** HTTP failure with a redacted request URL in its message and a redacted response body. */
+/** Longest server reason an `HTTPError` message quotes before cutting it. */
+const REASON_LIMIT = 200;
+
+/**
+ * Control bytes a terminal would obey. The reason is text a server chose, and the CLI, Pi and OMP
+ * print an error message without the filter their result lines pass through.
+ */
+// oxlint-disable-next-line no-control-regex -- These bytes are precisely what the reason drops.
+const REASON_CONTROLS = /[\u0000-\u001F\u007F-\u009F]/gu;
+
+/**
+ * JSON fields that carry a server's reason, most specific first, so Horizon's `extras.reason` wins
+ * over its generic `detail` and Blockscout's `errors[0].detail` over its `title`.
+ */
+const REASON_FIELDS = ["reason", "detail", "message", "error", "title"] as const;
+
+function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+/* The body object and the objects one level below it, a list contributing its first entry. */
+function reasonNodes(
+  value: Readonly<Record<string, unknown>>,
+): Readonly<Record<string, unknown>>[] {
+  const nested = Object.values(value).map((child): unknown =>
+    Array.isArray(child) ? (child as readonly unknown[])[0] : child,
+  );
+  return [value, ...nested.filter(isRecord)];
+}
+
+function jsonReason(value: unknown): string | undefined {
+  if (typeof value === "string") return value;
+  if (!isRecord(value)) return undefined;
+  const nodes = reasonNodes(value);
+  for (const field of REASON_FIELDS) {
+    for (const node of nodes) {
+      const reason = node[field];
+      if (typeof reason === "string" && reason.trim() !== "") return reason;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Read the reason a server gave for a failed request: a plain-text body, or the first reason field
+ * of a JSON body. HTML error pages and JSON without such a field give none.
+ *
+ * @param {string} body - Response body as text.
+ * @returns {string | undefined} One line of at most `REASON_LIMIT` characters.
+ */
+function responseReason(body: string | undefined): string | undefined {
+  const text = body?.trim();
+  if (!text || text.startsWith("<")) return undefined;
+  let reason: string | undefined;
+  try {
+    reason = jsonReason(JSON.parse(text));
+  } catch {
+    reason = text;
+  }
+  const line = reason?.replaceAll(/\s+/g, " ").replaceAll(REASON_CONTROLS, "").trim();
+  if (!line) return undefined;
+  const characters = Array.from(line);
+  if (characters.length <= REASON_LIMIT) return line;
+  return `${characters.slice(0, REASON_LIMIT - 1).join("")}…`;
+}
+
+/**
+ * HTTP failure with a redacted request URL in its message and a redacted response body.
+ *
+ * The message ends with the reason the server gave, when the body names one, so every surface that
+ * shows only the message still says why the request failed.
+ */
 export class HTTPError extends ExplorerError {
   public readonly statusCode: number;
 
@@ -37,7 +108,9 @@ export class HTTPError extends ExplorerError {
   public readonly body?: string;
 
   constructor(statusCode: number, url: string, body?: string, provider?: string) {
-    super(`HTTP ${statusCode} from ${url}`, provider);
+    const status = `HTTP ${statusCode} from ${url}`;
+    const reason = responseReason(body);
+    super(reason === undefined || reason === status ? status : `${status}: ${reason}`, provider);
     this.statusCode = statusCode;
     if (body !== undefined) this.body = sanitizeUrl(body);
     this.rawUrl = sanitizeUrl(url);
