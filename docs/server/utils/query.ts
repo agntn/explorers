@@ -1,6 +1,7 @@
 import type { H3Event } from "h3";
 import { hash } from "ohash";
 import {
+  AddressChainMismatchError,
   AuthError,
   ExplorerError,
   HTTPError,
@@ -142,6 +143,10 @@ export function toHttpError(error: unknown): never {
   }
   if (error instanceof UnknownProviderError) {
     throw createError({ statusCode: 400, statusMessage: "No provider with that name" });
+  }
+  if (error instanceof AddressChainMismatchError) {
+    /** Built from the address, the chain and the matches alone, so no endpoint to cut, and a CashAddr prefix keeps its colon. */
+    throw createError({ statusCode: 400, statusMessage: clip(error.message) });
   }
   if (error instanceof UnsupportedChainError || error instanceof UnsupportedOperationError) {
     throw createError({ statusCode: 422, statusMessage: failureText(error.message) });
