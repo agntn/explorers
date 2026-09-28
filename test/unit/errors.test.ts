@@ -56,6 +56,23 @@ describe("ExplorerError", () => {
     expect(e).toBeInstanceOf(HTTPError);
     expect((e as HTTPError).body).not.toContain("secret");
     expect(e.message).not.toContain("secret");
+    expect(e.message).toBe("HTTP 500 from https://api.example.com/v0/txs?api-key=REDACTED&limit=5");
+  });
+  it("HTTPError quotes a reason without terminal controls or line breaks", () => {
+    const e = new HTTPError(
+      400,
+      "https://x",
+      "\u001B[2J\u001B[31mbad\u001B[0m\r\nError: forged line",
+    );
+    expect(e.message).toBe("HTTP 400 from https://x: [2J[31mbad[0m Error: forged line");
+  });
+  it("HTTPError cuts a long reason between characters, not inside one", () => {
+    const e = new HTTPError(400, "https://x", `${"a".repeat(198)}${"\u{1F600}".repeat(5)}`);
+    expect(e.message).toBe(`HTTP 400 from https://x: ${"a".repeat(198)}\u{1F600}…`);
+  });
+  it("HTTPError redacts keys in a quoted reason", () => {
+    const e = new HTTPError(400, "https://x", "Bad request to https://x?apikey=secret");
+    expect(e.message).toBe("HTTP 400 from https://x: Bad request to https://x?apikey=REDACTED");
   });
   it("AuthError", () => {
     const e = new AuthError("x402");

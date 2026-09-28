@@ -58,6 +58,117 @@ describe("HTTP client", () => {
     expect(error).toMatchObject({ statusCode: 400, body: "Invalid request", provider: "test" });
   });
 
+  /* Bodies the live services answered with, 2026-09-28. */
+  it.each([
+    ["Esplora", 400, "text/plain", "Too many unspent outputs", "Too many unspent outputs"],
+    [
+      "Horizon",
+      400,
+      "application/problem+json",
+      JSON.stringify({
+        type: "https://stellar.org/horizon-errors/bad_request",
+        title: "Bad Request",
+        status: 400,
+        detail: "The request you sent was invalid in some way.",
+        extras: {
+          invalid_field: "limit",
+          reason: "invalid limit: value provided that is over limit max of 200",
+        },
+      }),
+      "invalid limit: value provided that is over limit max of 200",
+    ],
+    [
+      "Blockscout",
+      422,
+      "application/json",
+      JSON.stringify({
+        errors: [
+          {
+            title: "Invalid value",
+            source: { pointer: "/address_hash_param" },
+            detail: "Invalid format. Expected ~r/^0x([A-Fa-f0-9]{40})$/",
+          },
+        ],
+      }),
+      "Invalid format. Expected ~r/^0x([A-Fa-f0-9]{40})$/",
+    ],
+    [
+      "Koios",
+      400,
+      "application/json",
+      JSON.stringify({
+        code: "22P02",
+        details: 'Array value must start with "{" or dimension information.',
+        hint: null,
+        message: 'malformed array literal: "x"',
+      }),
+      'malformed array literal: "x"',
+    ],
+    [
+      "TONAPI",
+      400,
+      "application/json",
+      JSON.stringify({ error: "can't decode address zz" }),
+      "can't decode address zz",
+    ],
+  ])(
+    "ends the message with the reason a %s error names",
+    async (_service, status, type, body, reason) => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () => new Response(body, { status, headers: { "Content-Type": type } })),
+      );
+
+      const error = await getJSON("https://example.test/data", { provider: "test" }).catch(
+        (cause: unknown) => cause,
+      );
+
+      expect(error).toBeInstanceOf(HTTPError);
+      expect((error as Error).message).toBe(
+        `HTTP ${status} from https://example.test/data: ${reason}`,
+      );
+    },
+  );
+
+  it.each([
+    ["an HTML error page", "text/html", "<html><body><h1>502 Bad Gateway</h1></body></html>"],
+    ["JSON without a reason field", "application/json", JSON.stringify({ status: 502 })],
+    ["an empty body", "text/plain", ""],
+  ])("keeps the bare status line for %s", async (_case, type, body) => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(body, { status: 502, headers: { "Content-Type": type } })),
+    );
+
+    const error = await getJSON("https://example.test/data", { provider: "test" }).catch(
+      (cause: unknown) => cause,
+    );
+
+    expect(error).toBeInstanceOf(HTTPError);
+    expect((error as Error).message).toBe("HTTP 502 from https://example.test/data");
+  });
+
+  it("quotes a long reason as one cut line", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(`first line\n${"x".repeat(400)}`, {
+            status: 400,
+            headers: { "Content-Type": "text/plain" },
+          }),
+      ),
+    );
+
+    const error = await getJSON("https://example.test/data", { provider: "test" }).catch(
+      (cause: unknown) => cause,
+    );
+    const reason = (error as Error).message.split("data: ")[1] ?? "";
+
+    expect(reason).toMatch(/^first line x+…$/);
+    expect(reason).toHaveLength(200);
+  });
+
   it("classifies a plain-text 404 response as not found", async () => {
     vi.stubGlobal(
       "fetch",
