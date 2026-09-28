@@ -20,6 +20,9 @@ const ZEC_ADDRESS = "t1YQV51DKzKP63xJcynXuRfryMjfmgTJ7Jc";
 /* The 2-of-2 multisig that sent 197 650 LTC in block 3183898 on 2026-09-25, trimmed from
    Blockchair's transaction dashboard for 8a0670f5...a114b. */
 const LTC_ADDRESS = "ltc1q7tm3qxw59zatfzw4993l6h30sp2jwa7dhem62z8v4tw0ty7vl2rsmf963x";
+/* A busy Dogecoin address. Blockchair read it at height 6392933 on 2026-09-28, and its received
+   and spent totals run past Number.MAX_SAFE_INTEGER. */
+const DOGE_ADDRESS = "DH5yaieqoZN36fDVciNyRueRGvGLR3mr7L";
 
 function stubJSON(body: unknown) {
   const fetch = vi.fn<typeof globalThis.fetch>(
@@ -174,6 +177,37 @@ describe("blockchair provider", () => {
     );
   });
 
+  it("keeps Dogecoin totals past the safe integer range exact", async () => {
+    /* Raw text, because JSON.stringify of a number literal this large would round it first. */
+    const fetch = vi.fn<typeof globalThis.fetch>(
+      async () =>
+        new Response(
+          `{"data":{"${DOGE_ADDRESS}":{"address":{"type":"pubkeyhash","balance":6222111119864,` +
+            `"received":5581286332085853042,"spent":5581280109974733178,` +
+            `"transaction_count":1484}}},"context":{"code":200,"state":6392933}}`,
+          { headers: { "Content-Type": "application/json" } },
+        ),
+    );
+    vi.stubGlobal("fetch", fetch);
+    const provider = await create("blockchair");
+
+    const balance = await provider.getBalance(DOGE_ADDRESS, "dogecoin");
+
+    expect(balance).toMatchObject({
+      address: DOGE_ADDRESS,
+      chain: "dogecoin",
+      balance: "6222111119864",
+      balanceFormatted: "62221.11119864",
+      symbol: "DOGE",
+      funded: "5581286332085853042",
+      spent: "5581280109974733178",
+      blockNumber: 6392933,
+    });
+    expect(String(fetch.mock.calls[0]?.[0])).toBe(
+      `https://api.blockchair.com/dogecoin/dashboards/address/${DOGE_ADDRESS}`,
+    );
+  });
+
   it("does not label account balances as UTXO funding", async () => {
     stubJSON({
       data: {
@@ -307,6 +341,53 @@ describe("blockchair provider", () => {
     );
   });
 
+  it("reads a Dogecoin transaction in koinu", async () => {
+    /* Trimmed from Blockchair's transaction dashboard on 2026-09-28. */
+    const hash = "484c94145e97c0b2dd96912c1f056c9e05c8d358ab96ea429c51039d75d0d3c4";
+    const sender = "DGUzATWpGdehtujWNyM464LB9Zx7Ch1Z67";
+    const fetch = stubJSON({
+      data: {
+        [hash]: {
+          transaction: {
+            block_id: 6385234,
+            hash,
+            time: "2026-09-22 19:10:21",
+            is_coinbase: false,
+            input_count: 1,
+            output_count: 2,
+            input_total: 7036607481,
+            output_total: 6991007481,
+            fee: 45600000,
+          },
+          inputs: [{ index: 1, value: 7036607481, recipient: sender }],
+          outputs: [
+            { index: 0, value: 951727163, recipient: DOGE_ADDRESS },
+            { index: 1, value: 6039280318, recipient: sender },
+          ],
+        },
+      },
+      context: { code: 200, state: 6392933 },
+    });
+    const provider = await create("blockchair");
+
+    const transaction = await provider.getTxDetail(hash, "dogecoin");
+
+    expect(transaction).toMatchObject({
+      hash,
+      blockNumber: 6385234,
+      timestamp: "2026-09-22T19:10:21.000Z",
+      to: null,
+      value: "6991007481",
+      valueFormatted: "69.91007481",
+      fee: "45600000",
+      status: "success",
+      isContractInteraction: false,
+    });
+    expect(String(fetch.mock.calls[0]?.[0])).toBe(
+      `https://api.blockchair.com/dogecoin/dashboards/transaction/${hash}`,
+    );
+  });
+
   it("maps Ethereum transaction fields without multiplying wei", async () => {
     stubJSON({
       data: {
@@ -409,6 +490,40 @@ describe("blockchair provider", () => {
       gasUsed: "105000",
       gasLimit: "1500000",
       txCount: 5,
+      baseFee: undefined,
+    });
+  });
+
+  it("reads a Dogecoin block without EVM gas fields", async () => {
+    const hash = "5ae6eadfe5fd98fa7f388b671c4863db4b62e46eecc054465a276d419500e469";
+    stubJSON({
+      data: {
+        "5000000": {
+          block: {
+            id: 5000000,
+            hash,
+            time: "2023-12-10 06:03:55",
+            transaction_count: 2749,
+            fee_total: 29768408048,
+            guessed_miner: "Unknown",
+            is_aux: true,
+          },
+          transactions: [],
+        },
+      },
+      context: { code: 200, state: 6392933 },
+    });
+    const provider = new Blockchair({});
+
+    expect(await provider.getBlockInfo(5000000, "dogecoin")).toEqual({
+      number: 5000000,
+      hash,
+      parentHash: "",
+      timestamp: "2023-12-10T06:03:55.000Z",
+      miner: "",
+      gasUsed: "0",
+      gasLimit: "0",
+      txCount: 2749,
       baseFee: undefined,
     });
   });

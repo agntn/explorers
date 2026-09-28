@@ -45,6 +45,7 @@ describe("classifyInput", () => {
     expect(classifyInput("a".repeat(64), "bitcoinsv")).toBe("txhash");
     expect(classifyInput("a".repeat(64), "bitcoingold")).toBe("txhash");
     expect(classifyInput("a".repeat(64), "zcash")).toBe("txhash");
+    expect(classifyInput("a".repeat(64), "dogecoin")).toBe("txhash");
     expect(classifyInput("a".repeat(64), "pepecoin")).toBe("txhash");
     expect(classifyInput("2".repeat(64), "solana")).toBe("txhash");
     expect(classifyInput("2".repeat(44), "sui")).toBe("txhash");
