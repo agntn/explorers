@@ -213,8 +213,9 @@ export interface ProviderContext {
 }
 
 /* The registry knows who serves the read, so a refusal names them instead of leaving the caller to
-   try providers one by one, and says so when nobody does. Only a refusal from the provider that ran,
-   about the chain it ran on, gets the hint; an operation the registry cannot map gets none. */
+   try providers one by one, and says so when nobody does. A chain refusal from a read that named no
+   capability can only name who serves the chain. Only a refusal from the provider that ran, about
+   the chain it ran on, gets the hint; an operation the registry cannot map gets none. */
 function suggestProviders(
   /* oxlint-disable-next-line typescript/prefer-readonly-parameter-types */
   error: UnsupportedChainError | UnsupportedOperationError,
@@ -231,10 +232,16 @@ function suggestProviders(
     needed = OPERATION_CAPABILITIES[operation as keyof typeof OPERATION_CAPABILITIES];
   }
   const others = rankProviders(chain, "primary", needed).filter((other) => other !== name);
-  error.message +=
-    others.length === 0
-      ? `; no provider serves this read on ${chain}`
-      : `; try ${others.join(", ")}`;
+  error.message += hint(others, chain, needed !== undefined);
+}
+
+function hint(others: readonly string[], chain: ChainKey, knowsRead: boolean): string {
+  if (!knowsRead) {
+    if (others.length === 0) return `; no provider serves ${chain}`;
+    return `; ${others.join(", ")} ${others.length === 1 ? "serves" : "serve"} ${chain}`;
+  }
+  if (others.length === 0) return `; no provider serves this read on ${chain}`;
+  return `; try ${others.join(", ")}`;
 }
 
 function preservesPrimaryError(error: unknown): boolean {

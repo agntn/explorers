@@ -732,6 +732,21 @@ describe("refusal hints", () => {
     ).rejects.toThrow('Chain "stellar" not supported by mempool; try horizon');
   });
 
+  it("names only who serves the chain when the read named no capability", async () => {
+    useNoProviderCredentials();
+
+    await expect(
+      withProvider("mempool", "solana", async ({ chain, name }) => {
+        throw new UnsupportedChainError(chain, name);
+      }),
+    ).rejects.toThrow(/^Chain "solana" not supported by mempool; solscan, helius serve solana$/);
+    await expect(
+      withProvider("mempool", "stellar", async ({ chain, name }) => {
+        throw new UnsupportedChainError(chain, name);
+      }),
+    ).rejects.toThrow(/^Chain "stellar" not supported by mempool; horizon serves stellar$/);
+  });
+
   it("names the providers that serve an operation an explicit provider lacks", async () => {
     useNoProviderCredentials();
     vi.stubEnv("HELIUS_API_KEY", "configured");
