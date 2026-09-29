@@ -5,6 +5,7 @@ import {
   failCommand,
   parsePositiveInteger,
   print,
+  refuseOperation,
   reportCommandError,
   withSelectedProvider,
 } from "./shared.ts";
@@ -54,7 +55,7 @@ function renderTransaction(providerName: string, transaction: Transaction): void
 async function runDetail(selected: SelectedProvider, target: string): Promise<void> {
   const getTxDetail = selected.provider.getTxDetail?.bind(selected.provider);
   if (!selected.provider.capabilities.txDetail || !getTxDetail) {
-    failCommand(`Provider "${selected.name}" does not support transaction details`);
+    return refuseOperation("getTxDetail", selected.name);
   }
   const transaction = await getTxDetail(target, selected.chain);
   renderTransaction(selected.name, transaction);

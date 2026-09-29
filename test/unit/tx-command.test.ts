@@ -235,7 +235,7 @@ describe("tx command", () => {
     ).rejects.toBe(exit);
 
     expect(error).toHaveBeenCalledWith(
-      'Provider "blockberry" does not support transaction details',
+      'Error: Operation "getTxDetail" not supported by blockberry; no provider serves this read on sui',
     );
     expect(fetch).not.toHaveBeenCalled();
   });

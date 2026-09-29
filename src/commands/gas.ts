@@ -1,7 +1,7 @@
 /** Get current gas prices */
 import { defineCommand } from "citty";
 import type { GasData } from "../core/types.ts";
-import { failCommand, print, reportCommandError, withSelectedProvider } from "./shared.ts";
+import { print, refuseOperation, reportCommandError, withSelectedProvider } from "./shared.ts";
 
 function renderGas(providerName: string, gas: Readonly<GasData>): void {
   print(`[${providerName}] Gas prices on ${gas.chain}`);
@@ -38,7 +38,7 @@ export default defineCommand({
         async (selected) => {
           const getGasData = selected.provider.getGasData?.bind(selected.provider);
           if (!selected.provider.capabilities.gasData || !getGasData) {
-            failCommand(`Provider "${selected.name}" does not support gas data`);
+            return refuseOperation("getGasData", selected.name);
           }
           const gas = await getGasData(selected.chain);
           renderGas(selected.name, gas);

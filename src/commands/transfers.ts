@@ -2,9 +2,9 @@
 import { defineCommand } from "citty";
 import type { TokenTransfer } from "../core/types.ts";
 import {
-  failCommand,
   parsePositiveInteger,
   print,
+  refuseOperation,
   reportCommandError,
   withSelectedProvider,
 } from "./shared.ts";
@@ -68,7 +68,7 @@ export default defineCommand({
         async (selected) => {
           const getTokenTransfers = selected.provider.getTokenTransfers?.bind(selected.provider);
           if (!selected.provider.capabilities.tokenTransfers || !getTokenTransfers) {
-            failCommand(`Provider "${selected.name}" does not support token transfers`);
+            return refuseOperation("getTokenTransfers", selected.name);
           }
           const limit = parsePositiveInteger(args.limit as string, "Invalid --limit value");
           const { address } = await resolveInput(args.address as string, selected.chain);

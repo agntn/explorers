@@ -1,5 +1,5 @@
 import consola from "consola";
-import type { Provider, ProviderCapability } from "../core/provider.ts";
+import type { Provider, ProviderCapability, ProviderOperation } from "../core/provider.ts";
 import type { ChainKey } from "../core/types.ts";
 
 export interface SelectedProvider {
@@ -22,6 +22,22 @@ export async function withSelectedProvider<T>(
   ]);
   const requestedChain = chainInput === undefined ? undefined : normalizeChain(chainInput);
   return withProvider(providerInput, requestedChain, run, capability, input);
+}
+
+/**
+ * Refuse a read the selected provider lacks. The refusal travels as `UnsupportedOperationError`
+ * through `withProvider()`, which appends the providers that do serve the read, so the command
+ * prints the same hint MCP, Pi and OMP give.
+ *
+ * @param {ProviderOperation} operation - The optional method the provider does not offer.
+ * @param {string} provider - The provider that ran.
+ */
+export async function refuseOperation(
+  operation: ProviderOperation,
+  provider: string,
+): Promise<never> {
+  const { UnsupportedOperationError } = await import("../core/errors.ts");
+  throw new UnsupportedOperationError(operation, provider);
 }
 
 export function failCommand(message: string): never {

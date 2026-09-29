@@ -1,7 +1,7 @@
 /** Get contract info (supports ENS) */
 import { defineCommand } from "citty";
 import type { ContractInfo } from "../core/types.ts";
-import { failCommand, print, reportCommandError, withSelectedProvider } from "./shared.ts";
+import { print, refuseOperation, reportCommandError, withSelectedProvider } from "./shared.ts";
 
 function renderContract(providerName: string, info: Readonly<ContractInfo>): void {
   print(`[${providerName}] Contract ${info.address}`);
@@ -45,7 +45,7 @@ export default defineCommand({
         async (selected) => {
           const getContractInfo = selected.provider.getContractInfo?.bind(selected.provider);
           if (!selected.provider.capabilities.contractInfo || !getContractInfo) {
-            failCommand(`Provider "${selected.name}" does not support contract info`);
+            return refuseOperation("getContractInfo", selected.name);
           }
           const { address } = await resolveInput(args.address as string, selected.chain);
           const info = await getContractInfo(address, selected.chain);

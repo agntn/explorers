@@ -1,7 +1,7 @@
 /** List fungible token holdings (supports ENS) */
 import { defineCommand } from "citty";
 import consola from "consola";
-import { parsePositiveInteger, print, withSelectedProvider } from "./shared.ts";
+import { parsePositiveInteger, print, refuseOperation, withSelectedProvider } from "./shared.ts";
 
 export default defineCommand({
   meta: {
@@ -47,8 +47,7 @@ export default defineCommand({
         async ({ chain, name, provider }) => {
           const caps = provider.capabilities;
           if (!caps.tokenBalances || !provider.getTokenBalances) {
-            consola.error(`Provider "${name}" does not support token balances`);
-            process.exit(1);
+            return refuseOperation("getTokenBalances", name);
           }
           const { address } = await resolveInput(args.address as string, chain);
           const holdings = await provider.getTokenBalances(address, chain, { nonZeroOnly: true });
