@@ -14,6 +14,7 @@ const LINE_SEPARATOR = String.fromCodePoint(0x2028);
 
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.unstubAllEnvs();
   vi.unstubAllGlobals();
 });
 
@@ -132,5 +133,34 @@ describe("tokens command", () => {
       "",
       `  USDC[blockscout] 1 tokens for ${HOLDER}Value: forged: 1.25  [${USDC.slice(0, 10)}…]`,
     ]);
+  });
+
+  it("says nobody serves token balances on a chain without them", async () => {
+    vi.stubEnv("BLOCKCHAIR_API_KEY", "");
+    const error = vi.spyOn(consola, "error").mockImplementation(() => undefined);
+    const exit = new Error("exit");
+    vi.spyOn(process, "exit").mockImplementation(() => {
+      throw exit;
+    });
+    const fetch = vi.fn(async () => {
+      throw new Error("network should not be reached");
+    });
+    vi.stubGlobal("fetch", fetch);
+
+    await expect(
+      tokensCommand.run?.({
+        args: {
+          _: [],
+          address: "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa",
+          chain: "bitcoin",
+          limit: "50",
+        },
+      }),
+    ).rejects.toBe(exit);
+
+    expect(error).toHaveBeenCalledWith(
+      'Error: Operation "getTokenBalances" not supported by mempool; no provider serves this read on bitcoin',
+    );
+    expect(fetch).not.toHaveBeenCalled();
   });
 });

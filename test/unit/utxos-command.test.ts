@@ -63,4 +63,33 @@ describe("utxos command", () => {
     await expect(run("0")).rejects.toThrow("exit");
     expect(error).toHaveBeenCalledWith("Invalid --limit value");
   });
+
+  it("points a provider without unspent outputs at one that has them", async () => {
+    const error = vi.spyOn(consola, "error").mockImplementation(() => undefined);
+    const exit = new Error("exit");
+    vi.spyOn(process, "exit").mockImplementation(() => {
+      throw exit;
+    });
+    const fetch = vi.fn(async () => {
+      throw new Error("network should not be reached");
+    });
+    vi.stubGlobal("fetch", fetch);
+
+    await expect(
+      utxosCommand.run?.({
+        args: {
+          _: [],
+          address: "qpm2qsznhks23z7629mms6s4cwef74vcwvy22gdx6a",
+          chain: "bitcoincash",
+          provider: "blockchair",
+          limit: "50",
+        },
+      }),
+    ).rejects.toBe(exit);
+
+    expect(error).toHaveBeenCalledWith(
+      'Error: Operation "getUtxos" not supported by blockchair; try haskoin',
+    );
+    expect(fetch).not.toHaveBeenCalled();
+  });
 });
