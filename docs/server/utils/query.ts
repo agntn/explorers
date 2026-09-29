@@ -204,23 +204,42 @@ export function markPublic(event: H3Event, seconds: number): void {
   );
 }
 
-/** Uncached explorer requests one client may start per minute; cache hits are free. */
+/** Uncached explorer requests one client may start per minute; `ratelimits` in wrangler.jsonc carries the same number. */
 export const RATE_LIMIT = 30;
+
+/** The Workers Rate Limiting binding: Cloudflare keeps the count, so parallel misses cannot race past it. */
+interface RateLimiter {
+  limit(options: { key: string }): Promise<{ success: boolean }>;
+}
+
+/** Fallback for `nuxt dev` without the binding: one counter per isolate, raised synchronously. */
+const localCounts = new Map<string, number>();
+
+/** The address Cloudflare saw. X-Forwarded-For stays out: its first entry is whatever the client sent. */
+function clientAddress(event: H3Event): string {
+  return getRequestHeader(event, "cf-connecting-ip") ?? getRequestIP(event) ?? "unknown";
+}
 
 /** Counts uncached requests per client and minute; cache hits are free, so a warm demo never trips it. */
 export async function assertRateLimit(event: H3Event): Promise<void> {
-  /** Cloudflare's own header first; X-Forwarded-For is whatever the client typed. */
-  const ip =
-    getRequestHeader(event, "cf-connecting-ip") ??
-    getRequestIP(event, { xForwardedFor: true }) ??
-    "unknown";
-  const minute = Math.floor(Date.now() / 60_000);
-  const key = `docs:rate:${hash(ip)}:${minute}`;
-  const storage = useStorage("cache");
-  const count = Number((await storage.getItem<number>(key).catch(() => 0)) ?? 0) + 1;
-  await storage.setItem(key, count, { ttl: 120 }).catch(() => undefined);
-  if (count > RATE_LIMIT) {
-    setResponseHeader(event, "Retry-After", 60 - (Math.floor(Date.now() / 1000) % 60));
+  const key = hash(clientAddress(event));
+  const limiter = (event.context.cloudflare?.env as { EXPLORER_LIMIT?: RateLimiter } | undefined)
+    ?.EXPLORER_LIMIT;
+  let allowed: boolean;
+  if (limiter) {
+    allowed = (await limiter.limit({ key })).success;
+  } else {
+    const minute = Math.floor(Date.now() / 60_000);
+    for (const slot of localCounts.keys()) {
+      if (!slot.endsWith(`:${minute}`)) localCounts.delete(slot);
+    }
+    const slot = `${key}:${minute}`;
+    const count = (localCounts.get(slot) ?? 0) + 1;
+    localCounts.set(slot, count);
+    allowed = count <= RATE_LIMIT;
+  }
+  if (!allowed) {
+    setResponseHeader(event, "Retry-After", 60);
     throw createError({
       statusCode: 429,
       statusMessage: `More than ${RATE_LIMIT} new explorer requests in a minute from one address; cached answers are not counted. Wait a moment.`,
