@@ -1,8 +1,8 @@
 # Changelog
 
-## v0.5.8
+## v0.5.9
 
-[compare changes](https://github.com/agntn/explorers/compare/v0.5.7...v0.5.8)
+[compare changes](https://github.com/agntn/explorers/compare/v0.5.7...v0.5.9)
 
 ### 🚀 Enhancements
 
@@ -29,6 +29,7 @@
 - **docs:** Count misses on a Workers rate limiter ([#188](https://github.com/agntn/explorers/pull/188))
 - **cli:** Name who serves a refused read ([#190](https://github.com/agntn/explorers/pull/190))
 - **docs:** Drop the MCP links that answer 404 ([#191](https://github.com/agntn/explorers/pull/191))
+- **release:** Test a fresh build ([#197](https://github.com/agntn/explorers/pull/197))
 
 ### 📖 Documentation
 
