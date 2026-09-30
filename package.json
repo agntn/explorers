@@ -53,7 +53,7 @@
     "test:run": "vp test run",
     "test:live": "EXPLORERS_LIVE=1 vp test run",
     "prepack": "pnpm run build",
-    "release": "pnpm test:run && changelogen --release --push"
+    "release": "pnpm build && pnpm test:run && changelogen --release --push"
   },
   "dependencies": {
     "@agntn/chains": "0.3.10",

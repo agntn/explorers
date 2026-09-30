@@ -161,7 +161,7 @@ pnpm lint           # vp lint, then vp fmt --check; CHANGELOG.md stays out of th
 pnpm test           # vp test watch (unit, offline)
 pnpm test:run       # vp test run (unit, offline)
 pnpm test:live      # public explorer roundtrips, not CI
-pnpm release        # test, changelog, tag, push; CI publishes the tag
+pnpm release        # build, test, changelog, tag, push; CI publishes the tag
 ```
 
 Every pull request and push to `main` runs lint, typecheck, build and `pnpm test:run` on Node 24 and 26 through `.github/workflows/test.yml`; `autofix.yml` commits what `pnpm fmt` changes back to the pull request branch.
