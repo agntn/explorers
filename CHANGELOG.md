@@ -1,5 +1,48 @@
 # Changelog
 
+## v0.5.8
+
+[compare changes](https://github.com/agntn/explorers/compare/v0.5.7...v0.5.8)
+
+### 🚀 Enhancements
+
+- **providers:** Serve Bitcoin Cash via `haskoin` ([#161](https://github.com/agntn/explorers/pull/161))
+- Cancel a read when the caller aborts ([#167](https://github.com/agntn/explorers/pull/167))
+- **docs:** Move to the agntn instrument design ([#169](https://github.com/agntn/explorers/pull/169))
+- **utxos:** List fifty outputs unless asked ([#180](https://github.com/agntn/explorers/pull/180))
+- **blockchair:** Cover Dogecoin ([#181](https://github.com/agntn/explorers/pull/181))
+
+### 🔥 Performance
+
+- **mcp:** Drop JSON indentation ([#179](https://github.com/agntn/explorers/pull/179))
+
+### 🩹 Fixes
+
+- **blockchair:** Skip an empty API key ([#163](https://github.com/agntn/explorers/pull/163))
+- **blockchair:** Read a rejected key as AuthError ([#166](https://github.com/agntn/explorers/pull/166))
+- **haskoin:** Keep raw free of bigint amounts ([#172](https://github.com/agntn/explorers/pull/172))
+- **docs:** Add the tool response tokenizer ([#173](https://github.com/agntn/explorers/pull/173))
+- **errors:** Quote the server's reason ([#174](https://github.com/agntn/explorers/pull/174))
+- **docs:** Say why the explorer failed ([#176](https://github.com/agntn/explorers/pull/176))
+- **docs:** Answer a wrong-chain address with 400 ([#178](https://github.com/agntn/explorers/pull/178))
+- **resolve:** Point a refusal at other providers ([#182](https://github.com/agntn/explorers/pull/182))
+- **docs:** Count misses on a Workers rate limiter ([#188](https://github.com/agntn/explorers/pull/188))
+- **cli:** Name who serves a refused read ([#190](https://github.com/agntn/explorers/pull/190))
+- **docs:** Drop the MCP links that answer 404 ([#191](https://github.com/agntn/explorers/pull/191))
+
+### 📖 Documentation
+
+- **blockchair:** Name the plural block route ([#157](https://github.com/agntn/explorers/pull/157))
+
+### 🤖 CI
+
+- Build before the publish tests ([#158](https://github.com/agntn/explorers/pull/158))
+
+### ❤️ Contributors
+
+- Ori ([@oritwoen](https://github.com/oritwoen))
+- Aeitwoen ([@aeitwoen](https://github.com/aeitwoen))
+
 ## v0.5.7
 
 [compare changes](https://github.com/agntn/explorers/compare/v0.5.6...v0.5.7)
