@@ -33,7 +33,7 @@ function transactionSchema() {
       })
       .nullable(),
     bundledIn: z.object({ id: z.string() }).nullable(),
-    data: z.object({ size: z.string(), type: z.string().nullable() }),
+    data: z.object({ size: z.string().nullable(), type: z.string().nullable() }),
     tags: z.array(z.object({ name: z.string(), value: z.string() })),
   });
 }
@@ -53,6 +53,12 @@ function assertIdentifier(value: string): void {
   }
 }
 
+/* arweave.net leaves `bundledIn.id` empty on every row, so a data item shows only by its zero fee. */
+/* oxlint-disable-next-line typescript/prefer-readonly-parameter-types */
+function paysOwnFee(tx: IndexedTransaction): boolean {
+  return !tx.bundledIn?.id && tx.fee.winston !== "0";
+}
+
 /* oxlint-disable-next-line typescript/prefer-readonly-parameter-types */
 function mapTransaction(tx: IndexedTransaction): Transaction {
   return {
@@ -61,7 +67,7 @@ function mapTransaction(tx: IndexedTransaction): Transaction {
     to: tx.recipient,
     value: tx.quantity.winston,
     valueFormatted: formatWei(tx.quantity.winston, 12),
-    ...(tx.bundledIn === null ? { fee: tx.fee.winston } : {}),
+    ...(paysOwnFee(tx) ? { fee: tx.fee.winston } : {}),
     blockNumber: tx.block?.height ?? 0,
     ...(tx.block === null ? {} : { timestamp: toTimestamp(tx.block.timestamp) }),
     status: tx.block === null ? "pending" : "success",
@@ -243,7 +249,7 @@ export class Arweave extends Provider {
     let after: string | undefined;
     while (result.length < count) {
       const { transactions } = await this.query(
-        `query ($addresses: [String!]!, $first: Int!, $after: String, $sort: SortOrder!, $block: RangeFilter) {
+        `query ($addresses: [String!]!, $first: Int!, $after: String, $sort: SortOrder!, $block: BlockFilter) {
           transactions(${direction}: $addresses, first: $first, after: $after, sort: $sort, block: $block) {
             pageInfo { hasNextPage } edges { cursor node { ${TX_FIELDS} } }
           }
