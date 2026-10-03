@@ -199,6 +199,24 @@ describe("Arweave gateway", () => {
     expect(tx.fee).toBeUndefined();
   });
 
+  it("reads the gateway's empty bundle id and missing data size, keeping fees on paid rows only", async () => {
+    const paid = { ...transaction("paid", 40), bundledIn: { id: "" } };
+    const item = {
+      ...transaction("item", 30),
+      bundledIn: { id: "" },
+      fee: { winston: "0" },
+      data: { size: null, type: null },
+    };
+    vi.stubGlobal("fetch", async (_input: RequestInfo | URL, init?: RequestInit) =>
+      json(connection(String(init?.body).includes("owners:") ? [paid, item] : [])),
+    );
+    const txs = await new Arweave().getTxHistory(ADDRESS);
+    expect(txs.map((tx) => [tx.hash, tx.fee])).toEqual([
+      ["paid", "3242223203"],
+      ["item", undefined],
+    ]);
+  });
+
   it("distinguishes an absent transaction from a broken GraphQL response", async () => {
     stub({ data: { transaction: null } });
     await expect(new Arweave().getTxDetail(HASH)).rejects.toThrow(NotFoundError);
@@ -256,6 +274,19 @@ describe("Arweave gateway", () => {
       sort: "HEIGHT_DESC",
       block: { min: 10, max: 40 },
     });
+  });
+
+  it("declares the block bounds with the BlockFilter type the gateway's transactions field takes", async () => {
+    vi.stubGlobal("fetch", async (_input: RequestInfo | URL, init?: RequestInit) => {
+      const { query } = JSON.parse(String(init?.body)) as { query: string };
+      if (!/\$block: BlockFilter\b/.test(query))
+        return new Response('Variable "$block" used in position expecting type "BlockFilter"', {
+          status: 400,
+        });
+      return json(connection([transaction()]));
+    });
+    const txs = await new Arweave().getTxHistory(ADDRESS, "arweave", { startBlock: 10 });
+    expect(txs.map((tx) => tx.hash)).toEqual([HASH]);
   });
 
   it("walks each direction's cursor even when the API returns a short page", async () => {
