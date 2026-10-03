@@ -234,13 +234,17 @@ describe("blockchair provider", () => {
 
     await provider.getTxHistory(BTC_ADDRESS, "bitcoin", { limit: 20 });
     await provider.getTxHistory(BTC_ADDRESS, "bitcoin", { limit: 20, page: 3 });
+    await provider.getTxHistory(BTC_ADDRESS, "bitcoin", { limit: 100, page: 10_001 });
 
     expect(fetch.mock.calls.map(([input]) => new URL(String(input)).search)).toEqual([
       "?limit=20",
       "?limit=20&offset=40",
+      "?limit=100&offset=1000000",
     ]);
-    await expect(provider.getTxHistory(BTC_ADDRESS, "bitcoin", { page: 1.5 })).rejects.toThrow(
-      "blockchair history requires a whole page from 1 and page * limit <= 1000000",
+    await expect(
+      provider.getTxHistory(BTC_ADDRESS, "bitcoin", { limit: 100, page: 10_002 }),
+    ).rejects.toThrow(
+      "blockchair history requires a whole page from 1 and page * limit <= 1000100",
     );
   });
 
