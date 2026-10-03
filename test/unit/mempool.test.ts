@@ -366,6 +366,40 @@ describe("mempool provider", () => {
     ]);
   });
 
+  it("walks the cursor past earlier pages to answer the requested one", async () => {
+    const pages = Array.from({ length: 3 }, (_, page) =>
+      Array.from({ length: 25 }, (_, index) => historyTransaction(page * 25 + index)),
+    );
+    const fetch = vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+      const page = url.endsWith("/txs")
+        ? pages[0]
+        : pages.find(
+            (_, index) => index > 0 && url.endsWith(`/chain/${pages[index - 1]!.at(-1)!.txid}`),
+          );
+      return page
+        ? new Response(JSON.stringify(page), { headers: { "Content-Type": "application/json" } })
+        : new Response(null, { status: 404 });
+    });
+    vi.stubGlobal("fetch", fetch);
+
+    const transactions = await provider.getTxHistory(KNOWN_BTC, "bitcoin", { limit: 20, page: 2 });
+
+    expect(transactions.map((transaction) => transaction.hash)).toEqual(
+      Array.from({ length: 20 }, (_, index) => historyTransaction(index + 20).txid),
+    );
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("rejects a page past the rows a history read walks", async () => {
+    await expect(
+      provider.getTxHistory(KNOWN_BTC, "bitcoin", { limit: 100, page: 11 }),
+    ).rejects.toThrow("mempool history requires a whole page from 1 and page * limit <= 1000");
+    await expect(provider.getTxHistory(KNOWN_BTC, "bitcoin", { page: 0 })).rejects.toThrow(
+      "page * limit <= 1000",
+    );
+  });
+
   it("uses Peppool's cursor query to continue Pepecoin history", async () => {
     const firstPage = Array.from({ length: 25 }, (_, index) => historyTransaction(index));
     const secondPage = Array.from({ length: 25 }, (_, index) => historyTransaction(index + 25));

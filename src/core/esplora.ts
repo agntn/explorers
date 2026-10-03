@@ -1,8 +1,11 @@
 import { assertSafePathSegment } from "./path-safety.ts";
-import { clampMaxResults, formatWei, toTimestamp } from "./types.ts";
+import { formatWei, toTimestamp } from "./types.ts";
 import type { Utxo } from "./types.ts";
 
 const CHAIN_PAGE_SIZE = 25;
+
+/** A history read walks at most this many rows, 40 confirmed pages, to reach its page. */
+export const ESPLORA_HISTORY_ROWS = 1000;
 
 /** Every Esplora backend served here counts in satoshi-sized units. */
 const ESPLORA_DECIMALS = 8;
@@ -96,10 +99,10 @@ export function selectEsploraRecipientOutput(
 }
 
 /**
- * Fetch an Esplora address feed across its initial page and confirmed-chain cursor pages.
+ * Fetch one page of an Esplora address feed, walking the confirmed-chain cursor past earlier rows.
  *
  * @param {string} address - The `address` value.
- * @param {number | undefined} requestedLimit - The `requestedLimit` value.
+ * @param {Readonly<{ limit: number; offset: number }>} window - Rows to return and to skip first.
  * @param {(path: string) => Promise<T[]>} fetchPage - The `fetchPage` value.
  * @param {(encodedAddress: string, encodedCursor: string) => string} nextPagePath - Build the
  *   provider-specific confirmed-history cursor path.
@@ -107,11 +110,11 @@ export function selectEsploraRecipientOutput(
  */
 export async function getEsploraAddressHistory<T extends EsploraAddressTransaction>(
   address: string,
-  requestedLimit: number | undefined,
+  window: Readonly<{ limit: number; offset: number }>,
   fetchPage: (path: string) => Promise<T[]>,
   nextPagePath: (encodedAddress: string, encodedCursor: string) => string = confirmedHistoryPath,
 ): Promise<T[]> {
-  const limit = clampMaxResults(requestedLimit);
+  const limit = window.offset + window.limit;
   assertSafePathSegment(address, "address");
   const encodedAddress = encodeURIComponent(address);
   const firstPage = await fetchPage(`/api/address/${encodedAddress}/txs`);
@@ -128,5 +131,5 @@ export async function getEsploraAddressHistory<T extends EsploraAddressTransacti
     cursor = nextCursor;
   }
 
-  return transactions;
+  return transactions.slice(window.offset);
 }

@@ -2,6 +2,7 @@
 
 import { getChain } from "@agntn/chains";
 import type { ChainKey } from "@agntn/chains";
+import { ExplorerError } from "./errors.ts";
 
 export type { ChainKey } from "@agntn/chains";
 
@@ -293,6 +294,30 @@ export interface ProviderConfig {
 export function clampMaxResults(limit?: number, max = 100): number {
   if (!limit) return max;
   return Math.min(Math.max(1, Math.round(limit)), max);
+}
+
+/**
+ * Turn `limit` and the 1-based `page` into the rows a history read keeps and the rows it skips.
+ *
+ * @param {Readonly<TxHistoryOptions> | undefined} options - The caller's `limit` and `page`.
+ * @param {number} maxRows - The most rows a read may walk to reach its page.
+ * @param {string} provider - The provider key the error names.
+ * @returns {{ limit: number; offset: number }} The clamped limit and the rows before the page.
+ */
+export function historyPage(
+  options: Readonly<TxHistoryOptions> | undefined,
+  maxRows: number,
+  provider: string,
+): { limit: number; offset: number } {
+  const limit = clampMaxResults(options?.limit);
+  const page = options?.page ?? 1;
+  if (!Number.isSafeInteger(page) || page < 1 || page * limit > maxRows) {
+    throw new ExplorerError(
+      `${provider} history requires a whole page from 1 and page * limit <= ${maxRows}`,
+      provider,
+    );
+  }
+  return { limit, offset: (page - 1) * limit };
 }
 
 /**

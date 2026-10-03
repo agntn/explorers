@@ -26,9 +26,10 @@ import { Provider } from "../core/provider.ts";
 import { normalizeBaseUrl } from "../core/client.ts";
 import { NotFoundError, UnsupportedChainError, UnsupportedOperationError } from "../core/errors.ts";
 import { create as createChain } from "@agntn/chains";
-import { formatWei } from "../core/types.ts";
+import { formatWei, historyPage } from "../core/types.ts";
 import { assertSafePathSegment } from "../core/path-safety.ts";
 import {
+  ESPLORA_HISTORY_ROWS,
   getEsploraAddressHistory,
   getEsploraUtxos,
   selectEsploraRecipientOutput,
@@ -466,7 +467,7 @@ export class Mempool extends Provider {
     const c = chain ?? this.defaultChain;
     const transactions = await getEsploraAddressHistory(
       address,
-      options?.limit,
+      historyPage(options, ESPLORA_HISTORY_ROWS, this.name),
       async (path) => this.api<MempoolAddressTx[]>(c, path),
       c === "pepecoin" ? peppoolHistoryPath : undefined,
     );

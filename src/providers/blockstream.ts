@@ -12,8 +12,9 @@ import { NotFoundError, UnsupportedChainError } from "../core/errors.ts";
 import { assertSafePathSegment } from "../core/path-safety.ts";
 import { Provider } from "../core/provider.ts";
 import { normalizeBaseUrl } from "../core/client.ts";
-import { formatWei } from "../core/types.ts";
+import { formatWei, historyPage } from "../core/types.ts";
 import {
+  ESPLORA_HISTORY_ROWS,
   getEsploraAddressHistory,
   getEsploraUtxos,
   selectEsploraRecipientOutput,
@@ -206,8 +207,10 @@ export class Blockstream extends Provider {
     options?: Readonly<TxHistoryOptions>,
   ): Promise<Transaction[]> {
     const selectedChain = chain ?? this.defaultChain;
-    const transactions = await getEsploraAddressHistory(address, options?.limit, async (path) =>
-      this.api<EsploraAddressTx[]>(selectedChain, path),
+    const transactions = await getEsploraAddressHistory(
+      address,
+      historyPage(options, ESPLORA_HISTORY_ROWS, this.name),
+      async (path) => this.api<EsploraAddressTx[]>(selectedChain, path),
     );
 
     return transactions.map((transaction) => mapAddressTx(transaction, address));
