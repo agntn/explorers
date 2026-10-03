@@ -25,7 +25,7 @@ import {
 } from "../core/errors.ts";
 import { buildQuery, normalizeBaseUrl } from "../core/client.ts";
 import { create as createChain } from "@agntn/chains";
-import { formatWei, clampMaxResults } from "../core/types.ts";
+import { clampMaxResults, formatWei, historyPage } from "../core/types.ts";
 import { assertSafePathSegment } from "../core/path-safety.ts";
 
 const CHAIN_NAMES: Partial<Record<ChainKey, string>> = {
@@ -49,6 +49,9 @@ const UTXO_DECIMALS: Partial<Record<ChainKey, number>> = {
 };
 
 const DEFAULT_BASE = "https://api.blockchair.com";
+
+/** An address dashboard skips at most a million rows. */
+const MAX_OFFSET = 1_000_000;
 
 /* Blockchair's own statuses for an exceeded request limit (402, 435-437) and a blocked IP (430,
    434). Its docs say both clear on their own after a while, and a key lifts an IP block. */
@@ -311,9 +314,14 @@ export class Blockchair extends Provider {
   ): Promise<Transaction[]> {
     const c = chain ?? this.defaultChain;
     assertSafePathSegment(address, "address");
-    const limit = clampMaxResults(options?.limit);
+    const { limit, offset } = historyPage(
+      options,
+      MAX_OFFSET + clampMaxResults(options?.limit),
+      this.name,
+    );
     const url = this.buildUrl(c, `/dashboards/address/${encodeURIComponent(address)}`, {
       limit,
+      offset: offset || undefined,
     });
     const res = await this.read<BlockchairResponse<Record<string, BlockchairAddressData>>>(url);
 

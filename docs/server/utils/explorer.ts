@@ -69,6 +69,10 @@ export function providerStatuses(): ProviderStatus[] {
  */
 const PAGED_HISTORY = new Set([
   "etherscan",
+  "blockscout",
+  "blockchair",
+  "mempool",
+  "blockstream",
   "koios",
   "arweave",
   "dcrdata",

@@ -29,10 +29,13 @@ import { buildQuery, normalizeBaseUrl } from "../core/client.ts";
 import { NotFoundError, UnsupportedChainError } from "../core/errors.ts";
 import { assertSafePathSegment } from "../core/path-safety.ts";
 import { create as createChain } from "@agntn/chains";
-import { clampMaxResults, formatWei, multiplyIntegerStrings } from "../core/types.ts";
+import { clampMaxResults, formatWei, historyPage, multiplyIntegerStrings } from "../core/types.ts";
 
 const DEFAULT_BASE = "https://eth.blockscout.com";
 const TOKEN_BALANCE_DEFAULT_TIMEOUT = 60_000;
+
+/** A history read walks at most this many rows, 20 keyset pages, to reach its page. */
+const HISTORY_ROWS = 1000;
 
 const CHAIN_BASES: Partial<Record<ChainKey, string>> = {
   ethereum: DEFAULT_BASE,
@@ -298,11 +301,11 @@ export class Blockscout extends Provider {
   }
 
   /**
-   * Follow Blockscout's 50-item keyset pages up to the 100-result provider limit.
+   * Follow Blockscout's 50-item keyset pages past the rows before `page`, up to 1000 rows in all.
    *
    * @param {string} address - The `address` value.
    * @param {ChainKey} chain - The `chain` value.
-   * @param {Readonly<TxHistoryOptions>} options - The `options` value.
+   * @param {Readonly<TxHistoryOptions>} options - `limit` up to 100, `page * limit` up to 1000.
    * @returns {Promise<Transaction[]>} The resulting value.
    */
   async getTxHistory(
@@ -312,19 +315,20 @@ export class Blockscout extends Provider {
   ): Promise<Transaction[]> {
     const c = chain ?? this.defaultChain;
     assertSafePathSegment(address, "address");
-    const limit = clampMaxResults(options?.limit);
+    const { limit, offset } = historyPage(options, HISTORY_ROWS, this.name);
+    const rows = offset + limit;
     const baseUrl = `${this.base(c)}/api/v2/addresses/${encodeURIComponent(address)}/transactions`;
 
-    const transactions: Transaction[] = [];
+    const items: BlockscoutTx[] = [];
     let cursor: Record<string, string | number> = {};
-    for (let fetches = 0; fetches < 2 && transactions.length < limit; fetches++) {
+    for (let fetches = 0; fetches < Math.ceil(rows / 50) && items.length < rows; fetches++) {
       const data = await this.getJSON<BlockscoutTransactionPage>(`${baseUrl}${buildQuery(cursor)}`);
       if (!data.items.length) break;
-      transactions.push(...data.items.slice(0, limit - transactions.length).map(mapTx));
+      items.push(...data.items);
       if (!data.next_page_params) break;
       cursor = data.next_page_params;
     }
-    return transactions.slice(0, limit);
+    return items.slice(offset, rows).map(mapTx);
   }
 
   override async getTxDetail(hash: string, chain?: ChainKey): Promise<Transaction> {
@@ -397,8 +401,7 @@ export class Blockscout extends Provider {
    * Walk the keyset-paginated ERC-20 transfer list until `limit` is reached.
    *
    * The endpoint accepts only a token filter and a `next_page_params` cursor. Block range, sort,
-   * and page have no server-side equivalent and are ignored, the same way `getTxHistory` ignores
-   * them.
+   * and page have no server-side equivalent and are ignored.
    *
    * @param {string} address - The `address` value.
    * @param {ChainKey} chain - The `chain` value.

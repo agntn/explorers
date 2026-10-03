@@ -106,9 +106,9 @@ describe("Esplora address history", () => {
   it("rejects an unsafe address before requesting a page", async () => {
     const fetchPage = vi.fn(async () => [historyTransaction(0)]);
 
-    await expect(getEsploraAddressHistory("../admin", 30, fetchPage)).rejects.toThrow(
-      /separator|traversal/,
-    );
+    await expect(
+      getEsploraAddressHistory("../admin", { limit: 30, offset: 0 }, fetchPage),
+    ).rejects.toThrow(/separator|traversal/);
     expect(fetchPage).not.toHaveBeenCalled();
   });
 
@@ -117,7 +117,11 @@ describe("Esplora address history", () => {
     const cursor = page.at(-1)!.txid;
     const fetchPage = vi.fn(async () => page);
 
-    const transactions = await getEsploraAddressHistory(ADDRESS, 30, fetchPage);
+    const transactions = await getEsploraAddressHistory(
+      ADDRESS,
+      { limit: 30, offset: 0 },
+      fetchPage,
+    );
 
     expect(transactions).toEqual(page);
     expect(fetchPage.mock.calls.map(([path]) => path)).toEqual([

@@ -225,6 +225,29 @@ describe("blockchair provider", () => {
     expect(balance).not.toHaveProperty("spent");
   });
 
+  it("asks the address dashboard for the rows of the requested page", async () => {
+    const fetch = stubJSON({
+      data: { [BTC_ADDRESS]: { transactions: [] } },
+      context: { code: 200 },
+    });
+    const provider = await create("blockchair");
+
+    await provider.getTxHistory(BTC_ADDRESS, "bitcoin", { limit: 20 });
+    await provider.getTxHistory(BTC_ADDRESS, "bitcoin", { limit: 20, page: 3 });
+    await provider.getTxHistory(BTC_ADDRESS, "bitcoin", { limit: 100, page: 10_001 });
+
+    expect(fetch.mock.calls.map(([input]) => new URL(String(input)).search)).toEqual([
+      "?limit=20",
+      "?limit=20&offset=40",
+      "?limit=100&offset=1000000",
+    ]);
+    await expect(
+      provider.getTxHistory(BTC_ADDRESS, "bitcoin", { limit: 100, page: 10_002 }),
+    ).rejects.toThrow(
+      "blockchair history requires a whole page from 1 and page * limit <= 1000100",
+    );
+  });
+
   it("maps eCash transactions through the UTXO shape", async () => {
     stubJSON({
       data: {

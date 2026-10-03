@@ -264,6 +264,45 @@ describe("blockscout provider", () => {
     });
   });
 
+  it("walks keyset pages past the rows before the requested page", async () => {
+    const transaction = (block: number) => ({
+      hash: `0x${block.toString(16).padStart(64, "0")}`,
+      block_number: block,
+      timestamp: "2026-08-22T18:24:59.000000Z",
+      from: { hash: "0x1111111111111111111111111111111111111111" },
+      to: { hash: VITALIK },
+      value: "0",
+      gas_used: "21000",
+      gas_price: "1",
+      status: "ok",
+      transaction_types: [],
+    });
+    const page = (start: number, next: Readonly<Record<string, number>> | null): Response =>
+      new Response(
+        JSON.stringify({
+          items: Array.from({ length: 50 }, (_, index) => transaction(start - index)),
+          next_page_params: next,
+        }),
+        { headers: { "Content-Type": "application/json" } },
+      );
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(page(200, { block_number: 151 }))
+      .mockResolvedValueOnce(page(150, { block_number: 101 }))
+      .mockResolvedValueOnce(page(100, null));
+    vi.stubGlobal("fetch", fetch);
+
+    const transactions = await provider.getTxHistory(VITALIK, "ethereum", { limit: 40, page: 2 });
+
+    expect(transactions.map((transaction) => transaction.blockNumber)).toEqual(
+      Array.from({ length: 40 }, (_, index) => 160 - index),
+    );
+    expect(fetch).toHaveBeenCalledTimes(2);
+    await expect(
+      provider.getTxHistory(VITALIK, "ethereum", { limit: 100, page: 11 }),
+    ).rejects.toThrow("blockscout history requires a whole page from 1 and page * limit <= 1000");
+  });
+
   it("maps verified contract information", async () => {
     stubJSON({
       is_verified: true,

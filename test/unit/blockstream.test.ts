@@ -154,6 +154,28 @@ describe("blockstream provider", () => {
     ]);
   });
 
+  it("answers the second page from the confirmed-chain cursor", async () => {
+    const firstPage = Array.from({ length: 25 }, (_, index) => historyTransaction(index));
+    const secondPage = Array.from({ length: 25 }, (_, index) => historyTransaction(index + 25));
+    const cursor = firstPage.at(-1)!.txid;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string | URL | Request) => {
+        const url = String(input);
+        if (url.endsWith("/txs")) return jsonResponse(firstPage);
+        if (url.endsWith(`/txs/chain/${cursor}`)) return jsonResponse(secondPage);
+        return new Response(null, { status: 404 });
+      }),
+    );
+
+    const provider = await create("blockstream");
+    const transactions = await provider.getTxHistory(ADDRESS, "bitcoin", { limit: 25, page: 2 });
+
+    expect(transactions.map((transaction) => transaction.hash)).toEqual(
+      secondPage.map((transaction) => transaction.txid),
+    );
+  });
+
   it("lists the unspent outputs Blockstream reports for an address", async () => {
     const fetch = vi.fn(async () =>
       jsonResponse([
