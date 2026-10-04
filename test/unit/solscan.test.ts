@@ -138,6 +138,32 @@ describe("solscan provider", () => {
     ]);
   });
 
+  it("walks the before cursor past the rows ahead of the requested page", async () => {
+    const page = (start: number) =>
+      new Response(
+        JSON.stringify({
+          success: true,
+          data: Array.from({ length: 40 }, (_, index) => accountTransaction(start + index)),
+        }),
+        { headers: { "Content-Type": "application/json" } },
+      );
+    const fetch = vi.fn().mockResolvedValueOnce(page(0)).mockResolvedValueOnce(page(40));
+    vi.stubGlobal("fetch", fetch);
+
+    const transactions = await provider.getTxHistory(ADDRESS, "solana", { limit: 30, page: 2 });
+
+    expect(transactions.map(({ hash }) => hash)).toEqual(
+      Array.from({ length: 30 }, (_, index) => `signature-${index + 30}`),
+    );
+    expect(fetch.mock.calls.map(([input]) => String(input))).toEqual([
+      `https://example.test/account/transactions?address=${ADDRESS}&limit=40`,
+      `https://example.test/account/transactions?address=${ADDRESS}&before=signature-39&limit=40`,
+    ]);
+    await expect(
+      provider.getTxHistory(ADDRESS, "solana", { limit: 100, page: 11 }),
+    ).rejects.toThrow("solscan history requires a whole page from 1 and page * limit <= 1000");
+  });
+
   it("stops when Solscan repeats a transaction page", async () => {
     const page = Array.from({ length: 40 }, (_, index) => accountTransaction(index));
     const fetch = vi.fn(

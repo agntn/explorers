@@ -73,6 +73,11 @@ const PAGED_HISTORY = new Set([
   "blockchair",
   "mempool",
   "blockstream",
+  "solscan",
+  "helius",
+  "ton",
+  "tronscan",
+  "blockberry",
   "koios",
   "arweave",
   "dcrdata",
@@ -82,8 +87,8 @@ const PAGED_HISTORY = new Set([
   "haskoin",
 ]);
 
-/** Same for `getTokenTransfers`: Blockscout ignores `page` there too. */
-const PAGED_TRANSFERS = new Set(["etherscan", "horizon"]);
+/** Same for `getTokenTransfers`. */
+const PAGED_TRANSFERS = new Set(["etherscan", "blockscout", "horizon"]);
 
 export function pagesHistory(provider: string): boolean {
   return PAGED_HISTORY.has(provider);

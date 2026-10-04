@@ -18,10 +18,13 @@ import { Provider } from "../core/provider.ts";
 import { normalizeBaseUrl, buildQuery } from "../core/client.ts";
 import { AuthError, ExplorerError, UnsupportedChainError } from "../core/errors.ts";
 import { assertSafePathSegment } from "../core/path-safety.ts";
-import { clampMaxResults, formatWei, toTimestamp } from "../core/types.ts";
+import { formatWei, historyPage, toTimestamp } from "../core/types.ts";
 
 const DEFAULT_BASE = "https://pro-api.solscan.io/v2.0";
 const TRANSACTION_PAGE_SIZE = 40;
+
+/** A history read walks at most this many rows, 25 `before` pages, to reach its page. */
+const HISTORY_ROWS = 1000;
 
 interface SolscanResponse<T> {
   readonly success: boolean;
@@ -192,15 +195,15 @@ export class Solscan extends Provider {
     if (c !== "solana") throw new UnsupportedChainError(c, this.name);
     assertSafePathSegment(address, "address");
 
-    const limit = clampMaxResults(options?.limit);
-    const transactions = await collectAccountTransactions(limit, (before) =>
+    const { limit, offset } = historyPage(options, HISTORY_ROWS, this.name);
+    const transactions = await collectAccountTransactions(offset + limit, (before) =>
       this.api<SolscanAccountTransaction[]>("/account/transactions", {
         address,
         before,
         limit: TRANSACTION_PAGE_SIZE,
       }),
     );
-    return transactions.map(mapAccountTransaction);
+    return transactions.slice(offset).map(mapAccountTransaction);
   }
 
   override async getTxDetail(hash: string, chain?: ChainKey): Promise<Transaction> {

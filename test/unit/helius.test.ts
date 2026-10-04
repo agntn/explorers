@@ -123,6 +123,38 @@ describe("helius provider", () => {
     );
   });
 
+  it("walks before-signature past the rows ahead of the requested page", async () => {
+    const page = (start: number, length: number) =>
+      Array.from({ length }, (_, index) => ({
+        ...SYSTEM_TRANSFER,
+        signature: `signature-${start + index}`,
+        slot: 1000 - start - index,
+      }));
+    const fetch = stubJSONPages([page(0, 100), page(100, 20)]);
+
+    const transactions = await provider.getTxHistory(ADDRESS, "solana", { limit: 60, page: 2 });
+
+    expect(transactions.map(({ hash }) => hash)).toEqual(
+      Array.from({ length: 60 }, (_, index) => `signature-${index + 60}`),
+    );
+    expect(fetch.mock.calls.map(([input]) => String(input))).toEqual([
+      `https://example.test/v0/addresses/${ADDRESS}/transactions?api-key=secret&limit=100`,
+      `https://example.test/v0/addresses/${ADDRESS}/transactions?api-key=secret&limit=20&before-signature=signature-99`,
+    ]);
+    await expect(
+      provider.getTxHistory(ADDRESS, "solana", { limit: 100, page: 11 }),
+    ).rejects.toThrow("helius history requires a whole page from 1 and page * limit <= 1000");
+  });
+
+  it("stops at a short page instead of asking past the end", async () => {
+    const fetch = stubJSON([SYSTEM_TRANSFER]);
+
+    await expect(provider.getTxHistory(ADDRESS, "solana", { limit: 10, page: 3 })).resolves.toEqual(
+      [],
+    );
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
   it("marks non-system programs as contract interactions and errors as failed", async () => {
     stubJSON([
       {

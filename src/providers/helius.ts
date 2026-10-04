@@ -25,9 +25,15 @@ import {
   UnsupportedOperationError,
 } from "../core/errors.ts";
 import { assertSafePathSegment } from "../core/path-safety.ts";
-import { clampMaxResults, formatWei, toTimestamp } from "../core/types.ts";
+import { formatWei, historyPage, toTimestamp } from "../core/types.ts";
 
 const DEFAULT_BASE = "https://mainnet.helius-rpc.com";
+
+/** Largest page of enhanced transactions the address history endpoint returns. */
+const HISTORY_PAGE_SIZE = 100;
+
+/** A history read walks at most this many rows, 10 `before-signature` pages, to reach its page. */
+const HISTORY_ROWS = 1000;
 
 /** Largest page the DAS search endpoint accepts; it answers 1001 with a validation error. */
 const DAS_PAGE_LIMIT = 1000;
@@ -200,11 +206,23 @@ export class Helius extends Provider {
     if (c !== "solana") throw new UnsupportedChainError(c, this.name);
     assertSafePathSegment(address, "address");
 
-    const transactions = await this.api<HeliusTransaction[]>(
-      `/v0/addresses/${encodeURIComponent(address)}/transactions`,
-      { limit: clampMaxResults(options?.limit, 100) },
-    );
-    return transactions.map(mapTransaction);
+    const { limit, offset } = historyPage(options, HISTORY_ROWS, this.name);
+    const rows = offset + limit;
+    const path = `/v0/addresses/${encodeURIComponent(address)}/transactions`;
+    const transactions: HeliusTransaction[] = [];
+    let before: string | undefined;
+    while (transactions.length < rows) {
+      const size = Math.min(HISTORY_PAGE_SIZE, rows - transactions.length);
+      const page = await this.api<HeliusTransaction[]>(path, {
+        limit: size,
+        "before-signature": before,
+      });
+      transactions.push(...page);
+      const cursor = page.at(-1)?.signature;
+      if (page.length < size || cursor === undefined || cursor === before) break;
+      before = cursor;
+    }
+    return transactions.slice(offset, rows).map(mapTransaction);
   }
 
   /**
