@@ -29,12 +29,12 @@ import { buildQuery, normalizeBaseUrl } from "../core/client.ts";
 import { NotFoundError, UnsupportedChainError } from "../core/errors.ts";
 import { assertSafePathSegment } from "../core/path-safety.ts";
 import { create as createChain } from "@agntn/chains";
-import { clampMaxResults, formatWei, historyPage, multiplyIntegerStrings } from "../core/types.ts";
+import { formatWei, historyPage, multiplyIntegerStrings } from "../core/types.ts";
 
 const DEFAULT_BASE = "https://eth.blockscout.com";
 const TOKEN_BALANCE_DEFAULT_TIMEOUT = 60_000;
 
-/** A history read walks at most this many rows, 20 keyset pages, to reach its page. */
+/** A history or transfer read walks at most this many rows to reach its page. */
 const HISTORY_ROWS = 1000;
 
 const CHAIN_BASES: Partial<Record<ChainKey, string>> = {
@@ -398,14 +398,15 @@ export class Blockscout extends Provider {
   }
 
   /**
-   * Walk the keyset-paginated ERC-20 transfer list until `limit` is reached.
+   * Walk the keyset-paginated ERC-20 transfer list past the rows before `page`, up to 1000 rows.
    *
-   * The endpoint accepts only a token filter and a `next_page_params` cursor. Block range, sort,
-   * and page have no server-side equivalent and are ignored.
+   * The endpoint accepts only a token filter and a `next_page_params` cursor. Block range and sort
+   * have no server-side equivalent and are ignored. A transfer without a value never becomes a row,
+   * so the walk allows twice the pages of 50 the window needs, and never fewer than four.
    *
    * @param {string} address - The `address` value.
    * @param {ChainKey} chain - The `chain` value.
-   * @param {Readonly<TokenTransferOptions>} options - The `options` value.
+   * @param {Readonly<TokenTransferOptions>} options - `limit` up to 100, `page * limit` up to 1000.
    * @returns {Promise<TokenTransfer[]>} The resulting value.
    */
   override async getTokenTransfers(
@@ -415,13 +416,14 @@ export class Blockscout extends Provider {
   ): Promise<TokenTransfer[]> {
     const c = chain ?? this.defaultChain;
     assertSafePathSegment(address, "address");
-    const limit = clampMaxResults(options?.limit);
+    const { limit, offset } = historyPage(options, HISTORY_ROWS, this.name);
+    const rows = offset + limit;
     const baseUrl = `${this.base(c)}/api/v2/addresses/${encodeURIComponent(address)}/token-transfers`;
 
+    const maxFetches = Math.max(4, 2 * Math.ceil(rows / 50));
     const transfers: TokenTransfer[] = [];
     let cursor: Record<string, string | number> = {};
-    // Pages hold 50 items and the limit clamps at 100, so 4 fetches always cover it.
-    for (let fetches = 0; fetches < 4 && transfers.length < limit; fetches++) {
+    for (let fetches = 0; fetches < maxFetches && transfers.length < rows; fetches++) {
       const query = buildQuery({ type: "ERC-20", token: options?.token, ...cursor });
       const data = await this.getJSON<{
         items?: BlockscoutTokenTransfer[];
@@ -432,7 +434,7 @@ export class Blockscout extends Provider {
       if (!data.next_page_params) break;
       cursor = data.next_page_params;
     }
-    return transfers.slice(0, limit);
+    return transfers.slice(offset, rows);
   }
 
   override async getGasData(chain?: ChainKey): Promise<GasData> {

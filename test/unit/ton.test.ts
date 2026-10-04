@@ -108,6 +108,57 @@ describe("ton provider", () => {
     );
   });
 
+  it("walks before_lt past the events ahead of the requested page", async () => {
+    const event = (index: number) => ({
+      event_id: `event-${index}`,
+      timestamp: 1_700_000_000 - index,
+      in_progress: false,
+      actions: [],
+      involved: {},
+    });
+    const page = (start: number, length: number, nextFrom: number) =>
+      new Response(
+        JSON.stringify({
+          events: Array.from({ length }, (_, index) => event(start + index)),
+          next_from: nextFrom,
+        }),
+        { headers: { "Content-Type": "application/json" } },
+      );
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(page(0, 100, 47_048_172_000_053))
+      .mockResolvedValueOnce(page(100, 50, 46_000_000_000_001));
+    vi.stubGlobal("fetch", fetch);
+
+    const transactions = await provider.getTxHistory(KNOWN_TON, "ton", { limit: 75, page: 2 });
+
+    expect(transactions.map(({ hash }) => hash)).toEqual(
+      Array.from({ length: 75 }, (_, index) => `event-${index + 75}`),
+    );
+    expect(fetch.mock.calls.map(([input]) => String(input))).toEqual([
+      `https://tonapi.io/v2/accounts/${KNOWN_TON}/events?limit=100`,
+      `https://tonapi.io/v2/accounts/${KNOWN_TON}/events?limit=50&before_lt=47048172000053`,
+    ]);
+    await expect(provider.getTxHistory(KNOWN_TON, "ton", { limit: 100, page: 11 })).rejects.toThrow(
+      "ton history requires a whole page from 1 and page * limit <= 1000",
+    );
+  });
+
+  it("stops where tonapi.io says the history ends", async () => {
+    const fetch = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ events: [], next_from: 0 }), {
+          headers: { "Content-Type": "application/json" },
+        }),
+    );
+    vi.stubGlobal("fetch", fetch);
+
+    await expect(provider.getTxHistory(KNOWN_TON, "ton", { limit: 10, page: 4 })).resolves.toEqual(
+      [],
+    );
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
   it("reports unfinished events as pending", async () => {
     vi.stubGlobal(
       "fetch",

@@ -18,9 +18,12 @@ import { Provider } from "../core/provider.ts";
 import { normalizeBaseUrl, buildQuery } from "../core/client.ts";
 import { AuthError, NotFoundError, UnsupportedChainError } from "../core/errors.ts";
 import { assertSafePathSegment } from "../core/path-safety.ts";
-import { clampMaxResults, formatWei } from "../core/types.ts";
+import { formatWei, historyPage } from "../core/types.ts";
 
 const DEFAULT_BASE = "https://apilist.tronscanapi.com";
+
+/** TRONSCAN refuses a list read whose `start + limit` passes this many rows. */
+const HISTORY_ROWS = 10_000;
 
 interface TronscanAccount {
   readonly address: string;
@@ -144,10 +147,11 @@ export class Tronscan extends Provider {
     if (c !== "tron") throw new UnsupportedChainError(c, this.name);
     assertSafePathSegment(address, "address");
 
+    const { limit, offset } = historyPage(options, HISTORY_ROWS, this.name, 50);
     const response = await this.api<{ data: TronscanTransaction[] }>("/api/transaction", {
       address,
-      limit: clampMaxResults(options?.limit, 50),
-      start: 0,
+      limit,
+      start: offset,
       sort: options?.sort === "asc" ? "timestamp" : "-timestamp",
     });
     return response.data.map(mapTransaction);

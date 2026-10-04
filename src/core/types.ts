@@ -302,14 +302,16 @@ export function clampMaxResults(limit?: number, max = 100): number {
  * @param {Readonly<TxHistoryOptions> | undefined} options - The caller's `limit` and `page`.
  * @param {number} maxRows - The most rows a read may walk to reach its page.
  * @param {string} provider - The provider key the error names.
+ * @param {number} maxLimit - The most rows the provider's API returns in one page.
  * @returns {{ limit: number; offset: number }} The clamped limit and the rows before the page.
  */
 export function historyPage(
   options: Readonly<TxHistoryOptions> | undefined,
   maxRows: number,
   provider: string,
+  maxLimit = 100,
 ): { limit: number; offset: number } {
-  const limit = clampMaxResults(options?.limit);
+  const limit = clampMaxResults(options?.limit, maxLimit);
   const page = options?.page ?? 1;
   if (!Number.isSafeInteger(page) || page < 1 || page * limit > maxRows) {
     throw new ExplorerError(

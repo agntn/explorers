@@ -151,6 +151,38 @@ describe("blockberry provider", () => {
     expect(secondUrl).toContain("size=25");
   });
 
+  it("follows the activity cursor past the rows ahead of the requested page", async () => {
+    const page = (start: number, nextCursor: string) =>
+      new Response(
+        JSON.stringify({
+          content: Array.from({ length: 50 }, (_, index) => ({
+            activityType: ["TRANSFER"],
+            timestamp: 1_700_000_000_000 - start - index,
+            digest: `digest-${start + index}`,
+            txStatus: "SUCCESS",
+            gasFee: "1",
+          })),
+          nextCursor,
+        }),
+        { headers: { "Content-Type": "application/json" } },
+      );
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(page(0, "next-50"))
+      .mockResolvedValueOnce(page(50, "next-100"));
+    vi.stubGlobal("fetch", fetch);
+
+    const transactions = await provider.getTxHistory(ADDRESS, "sui", { page: 2 });
+
+    expect(transactions.map(({ hash }) => hash)).toEqual(
+      Array.from({ length: 50 }, (_, index) => `digest-${index + 50}`),
+    );
+    expect(String(fetch.mock.calls[1]?.[0])).toContain("nextCursor=next-50");
+    await expect(provider.getTxHistory(ADDRESS, "sui", { limit: 100, page: 11 })).rejects.toThrow(
+      "blockberry history requires a whole page from 1 and page * limit <= 1000",
+    );
+  });
+
   it("returns zero when the explorer has no native SUI row", async () => {
     stubJSON([]);
     await expect(provider.getBalance(ADDRESS, "sui")).resolves.toMatchObject({

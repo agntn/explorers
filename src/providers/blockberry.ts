@@ -17,11 +17,14 @@ import { Provider } from "../core/provider.ts";
 import { normalizeBaseUrl, buildQuery } from "../core/client.ts";
 import { AuthError, UnsupportedChainError } from "../core/errors.ts";
 import { assertSafePathSegment } from "../core/path-safety.ts";
-import { clampMaxResults, formatWei } from "../core/types.ts";
+import { clampMaxResults, formatWei, historyPage } from "../core/types.ts";
 
 const DEFAULT_BASE = "https://api.blockberry.one/sui";
 const SUI_COIN_TYPE = "0x2::sui::SUI";
 const ACTIVITY_PAGE_SIZE = 50;
+
+/** A history read walks at most this many rows, 20 `nextCursor` pages, to reach its page. */
+const HISTORY_ROWS = 1000;
 
 interface BlockberryBalance {
   readonly coinType: string;
@@ -150,8 +153,12 @@ export class Blockberry extends Provider {
     if (c !== "sui") throw new UnsupportedChainError(c, this.name);
     assertSafePathSegment(address, "address");
 
-    const limit = options?.limit ? clampMaxResults(options.limit) : ACTIVITY_PAGE_SIZE;
-    const activities = await collectActivities(limit, (size, nextCursor) => {
+    const { limit, offset } = historyPage(
+      { ...options, limit: options?.limit ? clampMaxResults(options.limit) : ACTIVITY_PAGE_SIZE },
+      HISTORY_ROWS,
+      this.name,
+    );
+    const activities = await collectActivities(offset + limit, (size, nextCursor) => {
       const query = buildQuery({
         actionType: "ALL",
         nextCursor,
@@ -163,6 +170,6 @@ export class Blockberry extends Provider {
       );
     });
 
-    return activities.map(mapActivity);
+    return activities.slice(offset).map(mapActivity);
   }
 }

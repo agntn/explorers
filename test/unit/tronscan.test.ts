@@ -95,6 +95,24 @@ describe("tronscan provider", () => {
     expect(String(fetch.mock.calls[0]?.[0])).toContain("sort=-timestamp");
   });
 
+  it("asks for the requested page through start", async () => {
+    const fetch = stubJSON({ data: [] });
+
+    await provider.getTxHistory(ADDRESS, "tron", { limit: 50, page: 3 });
+    await provider.getTxHistory(ADDRESS, "tron", { limit: 80, page: 2 });
+
+    const queries = fetch.mock.calls.map(([input]) =>
+      Object.fromEntries(new URL(String(input)).searchParams),
+    );
+    expect(queries).toEqual([
+      expect.objectContaining({ limit: "50", start: "100" }),
+      expect.objectContaining({ limit: "50", start: "50" }),
+    ]);
+    await expect(provider.getTxHistory(ADDRESS, "tron", { limit: 50, page: 201 })).rejects.toThrow(
+      "tronscan history requires a whole page from 1 and page * limit <= 10000",
+    );
+  });
+
   it("keeps unconfirmed transactions pending", async () => {
     stubJSON({
       data: [
