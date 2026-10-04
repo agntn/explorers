@@ -67,6 +67,15 @@ function textResult(lines: readonly (string | null)[]) {
   };
 }
 
+/**
+ * OMP fills every schema property, so a name the model left alone arrives as `""`.
+ * @param value - Provider, chain or token as the host sent it.
+ * @returns {string | undefined} The name, or undefined when it's blank.
+ */
+function optionalName(value: string | undefined): string | undefined {
+  return value === undefined || value.trim() === "" ? undefined : value;
+}
+
 type SelectedProvider = ExplorersModule.ProviderContext & {
   readonly lib: typeof ExplorersModule;
 };
@@ -81,9 +90,10 @@ async function withSelected<T>(
   input?: string | readonly string[],
 ): Promise<T> {
   const lib = await loadLib();
-  const chain = requestedChain === undefined ? undefined : lib.normalizeChain(requestedChain);
+  const chainName = optionalName(requestedChain);
+  const chain = chainName === undefined ? undefined : lib.normalizeChain(chainName);
   return lib.withProvider(
-    preferred,
+    optionalName(preferred),
     chain,
     (selected) => run({ ...selected, lib }),
     capability,
@@ -191,7 +201,9 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
     renderCall(args, _options, _theme) {
       const label = Array.isArray(args.address) ? `${args.address.length} addresses` : args.address;
       return new Text(
-        sanitizeTerminalText(`Balance: ${label} (${args.chain ?? "provider default"})`),
+        sanitizeTerminalText(
+          `Balance: ${label} (${optionalName(args.chain) ?? "provider default"})`,
+        ),
         0,
         0,
       );
@@ -409,7 +421,7 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
     renderCall(args, _options, _theme) {
       return new Text(
         sanitizeTerminalText(
-          `Unspent outputs: ${args.address} (${args.chain ?? "provider default"})`,
+          `Unspent outputs: ${args.address} (${optionalName(args.chain) ?? "provider default"})`,
         ),
         0,
         0,
@@ -509,7 +521,9 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
     approval: "read",
     renderCall(args, _options, _theme) {
       return new Text(
-        sanitizeTerminalText(`Tokens: ${args.address} (${args.chain ?? "provider default"})`),
+        sanitizeTerminalText(
+          `Tokens: ${args.address} (${optionalName(args.chain) ?? "provider default"})`,
+        ),
         0,
         0,
       );
@@ -585,7 +599,7 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
           const address = await resolveAddress(lib.resolveAddresses, params.address, chain, signal);
           const transfers = await provider.getTokenTransfers(address, chain, {
             limit: params.limit ?? 10,
-            token: params.token,
+            token: optionalName(params.token),
           });
           const lines = transfers.map(
             (transfer) =>
@@ -615,7 +629,7 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
     approval: "read",
     renderCall(args, _options, _theme) {
       return new Text(
-        sanitizeTerminalText(`Gas prices: ${args.chain ?? "provider default"}`),
+        sanitizeTerminalText(`Gas prices: ${optionalName(args.chain) ?? "provider default"}`),
         0,
         0,
       );
@@ -661,7 +675,9 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
     approval: "read",
     renderCall(args, _options, _theme) {
       return new Text(
-        sanitizeTerminalText(`Block: #${args.blockNumber} (${args.chain ?? "provider default"})`),
+        sanitizeTerminalText(
+          `Block: #${args.blockNumber} (${optionalName(args.chain) ?? "provider default"})`,
+        ),
         0,
         0,
       );
