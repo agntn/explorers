@@ -697,6 +697,82 @@ console.log(result.content[0].text);
     );
   });
 
+  it("takes a blank provider and chain from OMP as left out", async () => {
+    const address = "bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq";
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify([
+            {
+              txid: "a".repeat(64),
+              vout: 0,
+              value: 1000,
+              status: { confirmed: true, block_height: 1, block_time: 1 },
+            },
+          ]),
+          { headers: { "Content-Type": "application/json" } },
+        ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const tool = requireTool(registerExtensionTools().tools, "explorers_utxos");
+    const run = async (params: Readonly<Record<string, unknown>>) => {
+      const result = parseToolResult(
+        await tool.execute("test", params, undefined, undefined, unusedContext),
+      );
+      return result.content.find((part) => part.type === "text")?.text ?? "";
+    };
+
+    const omitted = await run({ address });
+    const blankProvider = await run({ address, chain: "bitcoin", provider: "" });
+    const blank = await run({ address, chain: "", provider: "" });
+    const whitespace = await run({ address, chain: " ", provider: "\t" });
+
+    expect(omitted).toMatch(/^\[\w+\] 1 unspent outputs for .+ on bitcoin/u);
+    expect(blankProvider).toBe(omitted);
+    expect(blank).toBe(omitted);
+    expect(whitespace).toBe(omitted);
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+
+    type RenderTheme = Parameters<NonNullable<ToolDefinition["renderCall"]>>[2];
+    const rendered = tool
+      .renderCall?.(
+        { address, chain: "" },
+        { expanded: false, isPartial: false },
+        {} as RenderTheme,
+      )
+      .render(120)
+      .join("\n");
+    expect(rendered).toBe(`Unspent outputs: ${address} (provider default)`);
+  });
+
+  it("leaves a blank token out of the transfer query", async () => {
+    const fetchMock = vi.fn<typeof fetch>(
+      async () =>
+        new Response(JSON.stringify({ items: [] }), {
+          headers: { "content-type": "application/json" },
+        }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const tool = requireTool(registerExtensionTools().tools, "explorers_token_transfers");
+
+    await tool.execute(
+      "test",
+      {
+        address: "0x0000000000000000000000000000000000000001",
+        chain: "ethereum",
+        provider: "blockscout",
+        token: "",
+      },
+      undefined,
+      undefined,
+      unusedContext,
+    );
+
+    const [url] = fetchMock.mock.calls[0] ?? [];
+    expect(String(url)).toContain("/token-transfers?type=ERC-20");
+    expect(String(url)).not.toContain("token=");
+  });
+
   it("keeps complete contract identifiers in token holding results", async () => {
     const address = "0x0000000000000000000000000000000000000001";
     const contract = "0x00000000000000000000000000000000000000aa";
