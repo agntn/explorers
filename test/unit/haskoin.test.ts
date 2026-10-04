@@ -20,6 +20,12 @@ const COINBASE = "8608b1b1c20861a264e9988bfd26d585fb022a6a37e194f651b6cd4b7f3a6e
 const PENDING = "5e16dc43aadaba12ef52882ea4e66d1d1a0f2efc57b162646d3e5f0b3abb6eec";
 const BLOCK = "0000000000000000005db098625d01f84f64f1f96787bbce283eb7b9be146723";
 
+/* The CashAddr spec's test vectors, a pay-to-pubkey-hash and a pay-to-script-hash over one hash. */
+const LEGACY_P2PKH = "1BpEi6DfDAUFd7GtittLSdBeYJvcoaVggu";
+const CASHADDR_P2PKH = "bitcoincash:qpm2qsznhks23z7629mms6s4cwef74vcwvy22gdx6a";
+const LEGACY_P2SH = "3CWFddi6m4ndiGyKqzYvsFYagqDLPVMTzC";
+const CASHADDR_P2SH = "bitcoincash:ppm2qsznhks23z7629mms6s4cwef74vcwvn0h829pq";
+
 /* Mainnet transactions from api.haskoin.com/bch with scripts and witnesses dropped. The puzzle
    address received 7319 satoshis in 5297c8e9… and swept them to its funder in 3b32d20a…, which
    also carries an OP_RETURN output. */
@@ -171,16 +177,49 @@ describe("haskoin provider", () => {
     expect(new Haskoin().name).toBe("haskoin");
   });
 
-  it("rejects another chain, a legacy address and a malformed hash before any request", async () => {
+  it("reads a legacy address as its CashAddr twin", async () => {
+    const urls = stubApi(() => ({ confirmed: 0, unconfirmed: 0, received: 0 }));
+    const provider = await create("haskoin");
+
+    await expect(provider.getBalance(LEGACY_P2PKH)).resolves.toMatchObject({
+      address: LEGACY_P2PKH,
+    });
+    await provider.getBalance(LEGACY_P2SH);
+    expect(urls.map((url) => url.pathname)).toEqual([
+      `/bch/address/${encodeURIComponent(CASHADDR_P2PKH)}/balance`,
+      `/bch/address/${encodeURIComponent(CASHADDR_P2SH)}/balance`,
+    ]);
+  });
+
+  it("finds the side of a legacy address in a history Haskoin writes in CashAddr", async () => {
+    stubApi(() => [
+      {
+        ...funding,
+        inputs: [{ ...funding.inputs[0], address: CASHADDR_P2PKH }],
+        outputs: [{ address: PUZZLE, value: 7319, spent: true }],
+      },
+    ]);
+    const provider = await create("haskoin");
+
+    await expect(provider.getTxHistory(LEGACY_P2PKH)).resolves.toMatchObject([
+      { from: CASHADDR_P2PKH, to: PUZZLE, value: "7319" },
+    ]);
+  });
+
+  it("rejects another chain, a non-CashAddr address and a malformed hash before any request", async () => {
     const urls = stubApi(() => ({}));
     const provider = await create("haskoin");
 
     await expect(provider.getBalance(PUZZLE, "bitcoin")).rejects.toBeInstanceOf(
       UnsupportedChainError,
     );
-    await expect(provider.getBalance("1FeexV6bAHb8ybZjqQMjJrcCrHGW9sb6uF")).rejects.toThrow(
-      "Invalid Bitcoin Cash address, expected CashAddr",
-    );
+    for (const address of [
+      `${LEGACY_P2PKH.slice(0, -1)}v`,
+      "bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq",
+    ])
+      await expect(provider.getBalance(address)).rejects.toThrow(
+        "Invalid Bitcoin Cash address, expected CashAddr or legacy",
+      );
     await expect(provider.getTxDetail?.("abc")).rejects.toThrow(
       "Invalid Bitcoin Cash transaction hash",
     );
