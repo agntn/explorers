@@ -40,13 +40,81 @@ function assertChain(chain: ChainKey): void {
   if (chain !== "bitcoincash") throw new UnsupportedChainError(chain, Haskoin.key);
 }
 
+const BASE58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+
+const CASHADDR = "qpzry9x8gf2tvdw0s3jn54khce6mua7l";
+
+const GENERATORS = [0x98f2bc8e61n, 0x79b76d99e2n, 0xf33e5fb3c4n, 0xae2eabe2a8n, 0x1e4f43e470n];
+
+/* Bitcoin Cash kept Bitcoin's base58 form, so a legacy address is any one Bitcoin accepts in it. */
+function isLegacy(address: string): boolean {
+  if (!/^[13]/.test(address)) return false;
+  try {
+    getChain("bitcoin").assertAddress(address);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/* Version byte and 20-byte hash; `isLegacy` already checked the length and the checksum. */
+function legacyPayload(address: string): number[] {
+  let value = 0n;
+  for (const character of address) value = value * 58n + BigInt(BASE58.indexOf(character));
+  const bytes: number[] = [];
+  for (let index = 0; index < 25; index += 1) {
+    bytes.unshift(Number(value & 0xffn));
+    value >>= 8n;
+  }
+  return bytes.slice(0, 21);
+}
+
+function fiveBit(bytes: readonly number[]): number[] {
+  const digits: number[] = [];
+  let buffer = 0;
+  let bits = 0;
+  for (const byte of bytes) {
+    buffer = ((buffer << 8) | byte) & 0xfff;
+    for (bits += 8; bits >= 5; bits -= 5) digits.push((buffer >> (bits - 5)) & 31);
+  }
+  if (bits > 0) digits.push((buffer << (5 - bits)) & 31);
+  return digits;
+}
+
+function polymod(digits: readonly number[]): bigint {
+  let checksum = 1n;
+  for (const digit of digits) {
+    const top = checksum >> 35n;
+    checksum = ((checksum & 0x07ffffffffn) << 5n) ^ BigInt(digit);
+    for (const [bit, generator] of GENERATORS.entries())
+      if ((top >> BigInt(bit)) & 1n) checksum ^= generator;
+  }
+  return checksum ^ 1n;
+}
+
+/* Same hash under CashAddr type 0 (pay-to-pubkey-hash, version 0) or 1 (pay-to-script-hash, 5). */
+function cashAddrOf(legacy: string): string {
+  const [version, ...hash] = legacyPayload(legacy);
+  const payload = fiveBit([version === 5 ? 8 : 0, ...hash]);
+  const prefix = Array.from("bitcoincash", (character) => (character.codePointAt(0) ?? 0) & 31);
+  const checksum = polymod([...prefix, 0, ...payload, 0, 0, 0, 0, 0, 0, 0, 0]);
+  const tail = Array.from({ length: 8 }, (_, index) =>
+    Number((checksum >> BigInt(5 * (7 - index))) & 31n),
+  );
+  return `bitcoincash:${[...payload, ...tail].map((digit) => CASHADDR.charAt(digit)).join("")}`;
+}
+
 /* Haskoin names every address as lowercase CashAddr with the `bitcoincash:` prefix, so the input
    takes the same spelling before it is compared with inputs and outputs. */
 function cashAddress(address: string): string {
+  if (isLegacy(address)) return cashAddrOf(address);
   try {
     getChain("bitcoincash").assertAddress(address);
   } catch {
-    throw new ExplorerError("Invalid Bitcoin Cash address, expected CashAddr", Haskoin.key);
+    throw new ExplorerError(
+      "Invalid Bitcoin Cash address, expected CashAddr or legacy",
+      Haskoin.key,
+    );
   }
   const lower = address.toLowerCase();
   return lower.startsWith("bitcoincash:") ? lower : `bitcoincash:${lower}`;
