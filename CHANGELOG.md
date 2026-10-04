@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.5.10
+
+[compare changes](https://github.com/agntn/explorers/compare/v0.5.9...v0.5.10)
+
+### 🩹 Fixes
+
+- Honour page on cursor history ([#214](https://github.com/agntn/explorers/pull/214))
+- **arweave:** Follow the gateway's new schema ([#215](https://github.com/agntn/explorers/pull/215))
+
+### ❤️ Contributors
+
+- Ori ([@oritwoen](https://github.com/oritwoen))
+- Aeitwoen ([@aeitwoen](https://github.com/aeitwoen))
+
 ## v0.5.9
 
 [compare changes](https://github.com/agntn/explorers/compare/v0.5.7...v0.5.9)
