@@ -240,6 +240,25 @@ describe("HTTP client", () => {
     );
   });
 
+  it.each(["Network connection lost", "Failed to fetch"])(
+    "reads %s with no code as a request that got no response",
+    async (message) => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () => {
+          throw new TypeError(message);
+        }),
+      );
+
+      const error = await getJSON("https://example.test/data", { provider: "mempool" }).catch(
+        (failure: unknown) => failure,
+      );
+
+      expect(error).toBeInstanceOf(TransportError);
+      expect(error).toMatchObject({ reason: message, provider: "mempool" });
+    },
+  );
+
   it("names a timeout behind a request that got no response", async () => {
     vi.stubGlobal(
       "fetch",

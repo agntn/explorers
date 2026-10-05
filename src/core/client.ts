@@ -1,6 +1,6 @@
 /** HTTP client wrapper for Explorers providers */
 
-import { normalizeError, ResponseFailure } from "./errors.ts";
+import { NoResponse, normalizeError, ResponseFailure } from "./errors.ts";
 import { version } from "../version.ts";
 
 let userAgent: string | undefined;
@@ -55,6 +55,11 @@ function parseJSON<T>(text: string | undefined): T {
   }) as T;
 }
 
+interface Received {
+  readonly response: Response;
+  readonly text: string | undefined;
+}
+
 interface Deadline {
   readonly signal: AbortSignal;
   readonly clear: () => void;
@@ -82,6 +87,23 @@ function deadline(options?: ClientRequestOptions): Deadline {
 const BODYLESS_STATUS_CODES: readonly number[] = [101, 204, 205, 304];
 
 /**
+ * Fetch the response and its whole body, or throw {@link NoResponse} around whatever stopped it.
+ *
+ * @param {string} url - The `url` value.
+ * @param {RequestInit} init - The request, signal included.
+ * @returns {Promise<Received>} The response and its body, `undefined` for a status without one.
+ */
+async function receive(url: string, init: RequestInit): Promise<Received> {
+  try {
+    const response = await fetch(url, init);
+    const bodyless = BODYLESS_STATUS_CODES.includes(response.status);
+    return { response, text: bodyless ? undefined : await response.text() };
+  } catch (error) {
+    throw new NoResponse(error);
+  }
+}
+
+/**
  * Send one request and read the body as text, which `parseJSON` needs for its integer source.
  *
  * @param {string} url - The `url` value.
@@ -96,10 +118,7 @@ async function request<T>(
 ): Promise<T> {
   const { signal, clear } = deadline(options);
   try {
-    const response = await fetch(url, { ...init, signal });
-    const text = BODYLESS_STATUS_CODES.includes(response.status)
-      ? undefined
-      : await response.text();
+    const { response, text } = await receive(url, { ...init, signal });
     if (response.status >= 400 && response.status < 600) {
       throw new ResponseFailure(response, text ?? "");
     }

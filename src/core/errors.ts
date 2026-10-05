@@ -263,6 +263,14 @@ export class ResponseFailure extends Error {
   }
 }
 
+/** A request that never got its whole answer, whatever the runtime called the cause. */
+export class NoResponse extends Error {
+  constructor(cause: unknown) {
+    super("no response", { cause });
+    this.name = "NoResponse";
+  }
+}
+
 /** What {@link normalizeError} reads off an error that came with a response. */
 interface ResponseLike {
   readonly statusCode: number;
@@ -274,6 +282,11 @@ interface ResponseLike {
 function responseLike(error: unknown): ResponseLike | undefined {
   if (!(error instanceof Error) || !("statusCode" in error)) return undefined;
   return typeof error.statusCode === "number" ? (error as ResponseLike) : undefined;
+}
+
+/* ofetch wraps a failed request in a `FetchError` without a status. */
+function isOfetchError(error: unknown): boolean {
+  return error instanceof Error && error.name === "FetchError";
 }
 
 function responseUrl(failure: ResponseLike): string | undefined {
@@ -302,6 +315,7 @@ interface TransportCause {
 interface FailureContext {
   readonly cause: TransportCause;
   readonly failure?: ResponseLike;
+  readonly noResponse: boolean;
   readonly lowerMessage: string;
   readonly message: string;
   readonly provider?: string;
@@ -321,6 +335,7 @@ function isAuthenticationFailure(context: FailureContext): boolean {
 /* A request that never got a response has no status. */
 function isTransportFailure(context: FailureContext): boolean {
   if (context.status > 0) return false;
+  if (context.noResponse) return true;
   if (context.cause.code !== undefined) return true;
   const text = `${context.lowerMessage} ${context.cause.reason.toLowerCase()}`;
   return [
@@ -444,12 +459,14 @@ export function normalizeError(
   const message = errorMessage(error);
   const lowerMessage = message.toLowerCase();
   const failure = responseLike(error);
+  const noResponse = error instanceof NoResponse || (failure === undefined && isOfetchError(error));
   const status = errorStatus(failure, message);
   const url = requestUrl ?? (failure ? responseUrl(failure) : undefined);
   const context: FailureContext = {
     cause: transportCause(error),
     failure,
     lowerMessage,
+    noResponse,
     message,
     provider,
     resource: url ?? message,

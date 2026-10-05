@@ -170,6 +170,20 @@ describe("normalizeError", () => {
     expect(out).toBeInstanceOf(RateLimitError);
     expect((out as RateLimitError).retryAfter).toBeUndefined();
   });
+  it("reads an ofetch error without a response from a custom provider as no response", () => {
+    const error = Object.assign(
+      new Error('[GET] "https://x.test": <no response> Failed to fetch'),
+      {
+        name: "FetchError",
+        cause: new TypeError("Failed to fetch"),
+      },
+    );
+
+    const out = normalizeError(error, "custom");
+
+    expect(out).toBeInstanceOf(TransportError);
+    expect(out).toMatchObject({ reason: "Failed to fetch" });
+  });
   it("reads retry-after off a 429 response", () => {
     const error = normalizeError(
       fetchError(429, "https://x.test", { "retry-after": "30" }),
