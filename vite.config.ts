@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url";
 import oxfmt from "@agntn/ox/oxfmt";
 import oxlint from "@agntn/ox/oxlint";
 import { defineConfig } from "vite-plus";
@@ -58,11 +59,18 @@ export default defineConfig({
     ],
     ignorePatterns: ["dist", "coverage", "docs"],
   },
+  /** `docs/tsconfig.json` only points at `nuxt prepare` output, which CI never builds. */
+  tsconfig: "tsconfig.json",
   test: {
     /* Unit tests stub fetch through test/unit/setup.ts. Live roundtrips opt in with EXPLORERS_LIVE=1. */
     include: live ? ["test/live/**/*.test.ts"] : ["test/unit/**/*.test.ts"],
     setupFiles: live ? [] : ["test/unit/setup.ts"],
     ...(live ? { testTimeout: 30_000 } : {}),
+    /** A docs module resolves as the worker bundles it: `#shared`, and the library from `src/`. */
+    alias: {
+      "#shared": fileURLToPath(new URL("docs/shared", import.meta.url)),
+      "@agntn/explorers": fileURLToPath(new URL("src/index.ts", import.meta.url)),
+    },
   },
   /**
    * One bundle, all inputs, so the providers share the core chunks instead of each embedding its
