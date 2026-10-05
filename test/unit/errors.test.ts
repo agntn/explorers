@@ -1,5 +1,4 @@
 import { describe, it, expect } from "vite-plus/test";
-import { FetchError } from "ofetch";
 import {
   ExplorerError,
   HTTPError,
@@ -14,16 +13,18 @@ import {
   normalizeError,
 } from "../../src/core/errors.ts";
 
+/* The fields ofetch's `FetchError` carries, as a custom provider on ofetch would throw it. */
 function fetchError(
   status: number,
   url: string,
   headers?: Readonly<Record<string, string>>,
-): FetchError {
-  const error = new FetchError(`[GET] "${url}": ${status}`);
-  error.statusCode = status;
-  error.request = url;
-  error.response = { status, headers: new Headers(headers) } as FetchError["response"];
-  return error;
+): Error {
+  return Object.assign(new Error(`[GET] "${url}": ${status}`), {
+    name: "FetchError",
+    statusCode: status,
+    request: url,
+    response: { status, headers: new Headers(headers) },
+  });
 }
 
 describe("ExplorerError", () => {
@@ -147,6 +148,41 @@ describe("normalizeError", () => {
     expect(normalizeError(fetchError(404, "https://x.test"), "mempool")).toBeInstanceOf(
       NotFoundError,
     );
+  });
+  it("reads status, body and URL off an ofetch error from a custom provider", () => {
+    const error = Object.assign(fetchError(500, "https://x.test/a"), {
+      data: { message: "backend down" },
+    });
+
+    const out = normalizeError(error, "custom");
+
+    expect(out).toBeInstanceOf(HTTPError);
+    expect(out.message).toBe("HTTP 500 from https://x.test/a: backend down");
+  });
+  it("reads a 429 whose headers are a plain object as a rate limit without a wait", () => {
+    const error = Object.assign(new Error("Too Many Requests"), {
+      statusCode: 429,
+      response: { headers: { "retry-after": "5" } },
+    });
+
+    const out = normalizeError(error, "custom");
+
+    expect(out).toBeInstanceOf(RateLimitError);
+    expect((out as RateLimitError).retryAfter).toBeUndefined();
+  });
+  it("reads an ofetch error without a response from a custom provider as no response", () => {
+    const error = Object.assign(
+      new Error('[GET] "https://x.test": <no response> Failed to fetch'),
+      {
+        name: "FetchError",
+        cause: new TypeError("Failed to fetch"),
+      },
+    );
+
+    const out = normalizeError(error, "custom");
+
+    expect(out).toBeInstanceOf(TransportError);
+    expect(out).toMatchObject({ reason: "Failed to fetch" });
   });
   it("reads retry-after off a 429 response", () => {
     const error = normalizeError(

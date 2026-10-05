@@ -1,7 +1,5 @@
 /** Explorers error hierarchy */
 
-import { FetchError } from "ofetch";
-
 /**
  * Base class for failures surfaced through Explorers.
  *
@@ -250,21 +248,62 @@ export class UnknownProviderError extends ExplorerError {
     this.name = "UnknownProviderError";
   }
 }
-function getFetchErrorUrl(error: FetchError): string | undefined {
-  const request = error.request;
+/** An error status on its way into {@link normalizeError}, shaped like ofetch's `FetchError`. */
+export class ResponseFailure extends Error {
+  public readonly statusCode: number;
+  public readonly data: string;
+  public readonly response: Response;
+
+  constructor(response: Response, body: string) {
+    super(`${response.status} ${response.statusText}`);
+    this.name = "ResponseFailure";
+    this.statusCode = response.status;
+    this.data = body;
+    this.response = response;
+  }
+}
+
+/** A request that never got its whole answer, whatever the runtime called the cause. */
+export class NoResponse extends Error {
+  constructor(cause: unknown) {
+    super("no response", { cause });
+    this.name = "NoResponse";
+  }
+}
+
+/** What {@link normalizeError} reads off an error that came with a response. */
+interface ResponseLike {
+  readonly statusCode: number;
+  readonly data?: unknown;
+  readonly request?: unknown;
+  readonly response?: Readonly<{ headers?: unknown }>;
+}
+
+function responseLike(error: unknown): ResponseLike | undefined {
+  if (!(error instanceof Error) || !("statusCode" in error)) return undefined;
+  return typeof error.statusCode === "number" ? (error as ResponseLike) : undefined;
+}
+
+/* ofetch wraps a failed request in a `FetchError` without a status. */
+function isOfetchError(error: unknown): boolean {
+  return error instanceof Error && error.name === "FetchError";
+}
+
+function responseUrl(failure: ResponseLike): string | undefined {
+  const { request } = failure;
   if (typeof request === "string") return request;
   if (request instanceof URL) return request.href;
   if (typeof Request !== "undefined" && request instanceof Request) return request.url;
   return undefined;
 }
 
-function getFetchErrorBody(error: FetchError): string | undefined {
-  if (typeof error.data === "string") return error.data;
-  if (error.data === undefined) return undefined;
+function responseBody(failure: ResponseLike): string | undefined {
+  if (typeof failure.data === "string") return failure.data;
+  if (failure.data === undefined) return undefined;
   try {
-    return JSON.stringify(error.data);
+    return JSON.stringify(failure.data);
   } catch {
-    return String(error.data);
+    return undefined;
   }
 }
 
@@ -275,7 +314,8 @@ interface TransportCause {
 
 interface FailureContext {
   readonly cause: TransportCause;
-  readonly fetchError?: FetchError;
+  readonly failure?: ResponseLike;
+  readonly noResponse: boolean;
   readonly lowerMessage: string;
   readonly message: string;
   readonly provider?: string;
@@ -292,10 +332,10 @@ function isAuthenticationFailure(context: FailureContext): boolean {
   );
 }
 
-/* A request that never got a response has no status and, from ofetch, no response object. */
+/* A request that never got a response has no status. */
 function isTransportFailure(context: FailureContext): boolean {
   if (context.status > 0) return false;
-  if (context.fetchError) return context.fetchError.response === undefined;
+  if (context.noResponse) return true;
   if (context.cause.code !== undefined) return true;
   const text = `${context.lowerMessage} ${context.cause.reason.toLowerCase()}`;
   return [
@@ -317,9 +357,10 @@ function isRateLimitFailure(context: FailureContext): boolean {
   return context.status === 429 || context.lowerMessage.includes("rate limit");
 }
 
-function retryAfterSeconds(error: FetchError | undefined): number | undefined {
-  const header = error?.response?.headers?.get("retry-after");
-  if (header === null || header === undefined) return undefined;
+function retryAfterSeconds(failure: ResponseLike | undefined): number | undefined {
+  const headers = failure?.response?.headers;
+  const header = headers instanceof Headers ? headers.get("retry-after") : null;
+  if (header === null) return undefined;
   const trimmed = header.trim();
   if (!/^\d+$/.test(trimmed)) return undefined;
   const parsed = Number.parseInt(trimmed, 10);
@@ -335,7 +376,7 @@ function authenticationError(context: FailureContext): AuthError {
 }
 
 function httpError(context: FailureContext): HTTPError {
-  const body = context.fetchError ? getFetchErrorBody(context.fetchError) : undefined;
+  const body = context.failure ? responseBody(context.failure) : undefined;
   return new HTTPError(
     context.status,
     context.url ?? "unknown",
@@ -355,7 +396,7 @@ function classifyFailure(context: FailureContext): ExplorerError | undefined {
   }
   if (isNotFoundFailure(context)) return new NotFoundError(context.resource, context.provider);
   if (isRateLimitFailure(context)) {
-    return new RateLimitError(context.provider ?? "unknown", retryAfterSeconds(context.fetchError));
+    return new RateLimitError(context.provider ?? "unknown", retryAfterSeconds(context.failure));
   }
   if (isAuthenticationFailure(context)) return authenticationError(context);
   return context.status > 0 ? httpError(context) : undefined;
@@ -384,16 +425,16 @@ function transportCause(error: unknown): TransportCause {
   let code: string | undefined;
   let current: unknown = error;
   for (let depth = 0; current instanceof Error && depth < 8; depth += 1) {
-    if (current.message !== "" && !(current instanceof FetchError)) reason = current.message;
+    if (current.message !== "" && current.name !== "FetchError") reason = current.message;
     code = errorCode(current) ?? code;
     current = current.cause ?? (current instanceof AggregateError ? current.errors[0] : undefined);
   }
   return { code, reason };
 }
 
-function errorStatus(error: FetchError | undefined, message: string): number {
+function errorStatus(failure: ResponseLike | undefined, message: string): number {
   const statusMatch = message.match(/HTTP (\d{3})/i);
-  return error?.statusCode ?? Number(statusMatch?.[1] ?? 0);
+  return failure?.statusCode ?? Number(statusMatch?.[1] ?? 0);
 }
 
 /**
@@ -417,14 +458,15 @@ export function normalizeError(
 
   const message = errorMessage(error);
   const lowerMessage = message.toLowerCase();
-  const fetchError = error instanceof FetchError ? error : undefined;
-  const status = errorStatus(fetchError, message);
-  const fetchUrl = fetchError ? getFetchErrorUrl(fetchError) : undefined;
-  const url = requestUrl ?? fetchUrl;
+  const failure = responseLike(error);
+  const noResponse = error instanceof NoResponse || (failure === undefined && isOfetchError(error));
+  const status = errorStatus(failure, message);
+  const url = requestUrl ?? (failure ? responseUrl(failure) : undefined);
   const context: FailureContext = {
     cause: transportCause(error),
-    fetchError,
+    failure,
     lowerMessage,
+    noResponse,
     message,
     provider,
     resource: url ?? message,

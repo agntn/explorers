@@ -25,12 +25,12 @@ export default defineConfig({
                 "Request",
                 "RequestInfo",
                 "RequestInit",
+                "Response",
                 "RegExp",
                 "Uint8Array",
                 "URL",
               ],
             },
-            { from: "package", name: "FetchError", package: "ofetch" },
             {
               from: "package",
               name: ["ExtensionAPI", "ToolDefinition"],

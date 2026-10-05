@@ -16,7 +16,7 @@ const jiti = createJiti(import.meta.url);
 const { builtins } = await jiti.import("../../src/providers/index.ts");
 const { version } = await jiti.import("../../src/version.ts");
 
-/** Mirrors `PROVIDER_DEFAULT_CHAIN` in `src/core/resolve.ts`. That module pulls `ofetch`. */
+/** Mirrors `PROVIDER_DEFAULT_CHAIN` in `src/core/resolve.ts`, which reaches `@agntn/chains`. */
 const PROVIDER_DEFAULT_CHAIN = {
   mempool: "bitcoin",
   blockstream: "bitcoin",
