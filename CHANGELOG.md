@@ -1,5 +1,33 @@
 # Changelog
 
+## v0.6.0
+
+[compare changes](https://github.com/agntn/explorers/compare/v0.5.10...v0.6.0)
+
+### 🚀 Enhancements
+
+- ⚠️  Find the pubkey a spend gave away ([#226](https://github.com/agntn/explorers/pull/226))
+
+### 🩹 Fixes
+
+- **haskoin:** Let legacy addresses through ([#220](https://github.com/agntn/explorers/pull/220))
+- Stop answering every page with page one ([#221](https://github.com/agntn/explorers/pull/221))
+- **omp:** Read blank options as left out ([#222](https://github.com/agntn/explorers/pull/222))
+- **errors:** Stop a trailing key eating the reason ([#225](https://github.com/agntn/explorers/pull/225))
+
+### 💅 Refactors
+
+- Ask explorers without a middleman ([#223](https://github.com/agntn/explorers/pull/223))
+
+#### ⚠️ Breaking Changes
+
+- ⚠️  Find the pubkey a spend gave away ([#226](https://github.com/agntn/explorers/pull/226))
+
+### ❤️ Contributors
+
+- Aeitwoen
+- Ori
+
 ## v0.5.10
 
 [compare changes](https://github.com/agntn/explorers/compare/v0.5.9...v0.5.10)
