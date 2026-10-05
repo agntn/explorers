@@ -141,6 +141,17 @@ function describeUtxos(
   return [header, ...listed.map(describeUtxo)];
 }
 
+/* A null key is two different answers, so the line says which one. */
+function describePubkey(name: string, reveal: Readonly<ExplorersModule.PubkeyReveal>): string {
+  const head = `[${name}] ${reveal.address} on ${reveal.chain}`;
+  if (reveal.pubkey !== null) {
+    const shown = reveal.source === "output" ? "taproot output key, paid in" : "shown by spend";
+    return `${head}: pubkey ${reveal.pubkey} (${shown} ${reveal.txid ?? "unknown"})`;
+  }
+  if (!reveal.spent) return `${head}: no pubkey shown, the address never spent`;
+  return `${head}: spent, but no key read: a script this read doesn't parse, or a spend past the newest 1000 transactions`;
+}
+
 /* The header's count is every holding or output; the suffix appears only when the list stops short of it. */
 function listedCount(listed: number, total: number): string {
   return listed < total ? `, ${listed} listed` : "";
@@ -452,6 +463,44 @@ export default function explorersOmpExtension(pi: ExtensionAPI) {
     address: Type.String({ description: "Contract address or ENS name" }),
     chain: Type.Optional(Type.String({ description: "Chain" })),
     provider: Type.Optional(Type.String({ description: "Provider" })),
+  });
+
+  pi.registerTool({
+    name: "explorers_pubkey",
+    label: "Explorers Pubkey",
+    description:
+      "Tell whether a Bitcoin, Litecoin or Pepecoin address has shown its public key on chain, and name the txid that showed it: a spend from P2PKH, P2WPKH or P2SH-wrapped P2WPKH, or the output paying a taproot address, which is its own key. No key on a spent address means a script it does not parse, or a spend older than the newest 1000 transactions. Use it before a Kangaroo or BSGS search.",
+    parameters: Type.Object({
+      address: Type.String({ description: "Blockchain address" }),
+      chain: Type.Optional(Type.String({ description: "Chain" })),
+      provider: Type.Optional(Type.String({ description: "Provider" })),
+    }),
+    approval: "read",
+    renderCall(args, _options, _theme) {
+      return new Text(
+        sanitizeTerminalText(
+          `Pubkey: ${args.address} (${optionalName(args.chain) ?? "provider default"})`,
+        ),
+        0,
+        0,
+      );
+    },
+    async execute(_toolCallId, params, signal) {
+      return withSelected(
+        params.provider,
+        params.chain,
+        "pubkeys",
+        signal,
+        async ({ chain, lib, name, provider }) => {
+          if (!provider.capabilities.pubkeys || !provider.getPubkey) {
+            throw new lib.UnsupportedOperationError("getPubkey", name);
+          }
+          const address = await resolveAddress(lib.resolveAddresses, params.address, chain, signal);
+          return textResult([describePubkey(name, await provider.getPubkey(address, chain))]);
+        },
+        params.address,
+      );
+    },
   });
 
   pi.registerTool({

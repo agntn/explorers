@@ -5,6 +5,7 @@ import type {
   ContractInfo,
   GasData,
   ProviderCapabilities,
+  PubkeyReveal,
   TokenBalance,
   TokenBalanceOptions,
   TokenTransfer,
@@ -216,6 +217,7 @@ export type ProviderOperation =
   | "getTxHistory"
   | "getTxDetail"
   | "getUtxos"
+  | "getPubkey"
   | "getContractInfo"
   | "getTokenBalances"
   | "getTokenTransfers"
@@ -228,6 +230,7 @@ export const OPERATION_CAPABILITIES = {
   getTxHistory: "txHistory",
   getTxDetail: "txDetail",
   getUtxos: "utxos",
+  getPubkey: "pubkeys",
   getContractInfo: "contractInfo",
   getTokenBalances: "tokenBalances",
   getTokenTransfers: "tokenTransfers",
@@ -270,6 +273,9 @@ export interface Provider {
 
   /** List the unspent outputs an address still controls, on chains that track them. */
   getUtxos?(address: string, chain?: ChainKey): Promise<Utxo[]>;
+
+  /** Find the public key an address has shown on chain, through a spend or a taproot output. */
+  getPubkey?(address: string, chain?: ChainKey): Promise<PubkeyReveal>;
 
   /** Fetch available metadata, ABI, and source for a contract address. */
   getContractInfo?(address: string, chain?: ChainKey): Promise<ContractInfo>;

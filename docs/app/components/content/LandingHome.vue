@@ -95,7 +95,7 @@ const { samples, paused, current, step } = useLandingExplorer();
 
     <LandingFeature
 
-      title="Ten tools, three hosts"
+      title="Eleven tools, three hosts"
       to="/guide/agents"
       link="MCP, Pi and OMP"
       :checks="[
@@ -121,14 +121,14 @@ const { samples, paused, current, step } = useLandingExplorer();
       to="/guide"
       link="Getting started"
       :checks="[
-        'getBalance and getTxHistory on every provider; the other seven only where they are real',
+        'getBalance and getTxHistory on every provider; the other eight only where they are real',
         'ExplorerError, HTTPError, AuthError, RateLimitError, PlanRestrictedError, NotFoundError and three more',
         'API keys are stripped from every URL before an error message exists',
       ]"
       reverse
     >
       <code class="explorers-code">Provider</code> is the abstract base
-      with two required reads and seven optional ones. Concrete classes implement the mappers and
+      with two required reads and eight optional ones. Concrete classes implement the mappers and
       the explorer calls, nothing else leaks upward. A sub path import like
       <code class="explorers-code">@agntn/explorers/providers/mempool</code>
       gives you one backend without the other seventeen in your bundle.

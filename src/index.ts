@@ -7,6 +7,7 @@ export type {
   Transaction,
   Balance,
   Utxo,
+  PubkeyReveal,
   TokenBalance,
   ContractInfo,
   GasData,

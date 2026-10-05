@@ -100,6 +100,7 @@ class DisabledProvider extends Provider {
       txHistory: false,
       txDetail: false,
       utxos: false,
+      pubkeys: false,
       contractInfo: false,
       tokenBalances: false,
       tokenTransfers: false,
@@ -137,6 +138,7 @@ class ContractProvider extends DisabledProvider {
       txHistory: false,
       txDetail: false,
       utxos: false,
+      pubkeys: false,
       contractInfo: true,
       tokenBalances: false,
       tokenTransfers: false,
@@ -177,6 +179,7 @@ class TokenProvider extends DisabledProvider {
       txHistory: false,
       txDetail: false,
       utxos: false,
+      pubkeys: false,
       contractInfo: false,
       tokenBalances: true,
       tokenTransfers: false,
@@ -210,6 +213,41 @@ class BusyTokenProvider extends TokenProvider {
   }
 }
 
+const PUBKEY_ADDRESS = "1GSMG1JC9wtdSwfwApgj2xcmJPAwx7prBe";
+const PUBKEY =
+  "04f4d1bbd91e65e2a019566a17574e97dae908b784b388891848007e4f55d5a4649c73d25fc5ed8fd7227cab0be4e576c0c6404db5aa546286563e4be12bf33559";
+
+/* The address counters, then the same rows for every page of the feed. */
+function stubPubkeyFeed(spent: number, rows: readonly unknown[]): void {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL) =>
+      Response.json(
+        String(input).includes("/txs")
+          ? rows
+          : { chain_stats: { spent_txo_count: spent, tx_count: rows.length } },
+      ),
+    ),
+  );
+}
+
+const PUBKEY_SPEND = {
+  txid: "d".repeat(64),
+  status: { confirmed: true },
+  vin: [
+    {
+      txid: "e".repeat(64),
+      prevout: {
+        scriptpubkey: "76a914a9553269572a317e39f0f518cb87c1a0ee1dbae488ac",
+        scriptpubkey_type: "p2pkh",
+        scriptpubkey_address: PUBKEY_ADDRESS,
+      },
+      scriptsig_asm: `OP_PUSHBYTES_71 30440220 OP_PUSHBYTES_65 ${PUBKEY}`,
+    },
+  ],
+  vout: [],
+};
+
 describe("Explorers MCP server", () => {
   it("keeps the unconfirmed balance delta in MCP JSON", async () => {
     vi.stubGlobal(
@@ -234,6 +272,29 @@ describe("Explorers MCP server", () => {
     expect(JSON.parse(text)).toMatchObject({
       provider: "mempool",
       data: { balance: "8000", unconfirmed: "-6000" },
+    });
+  });
+
+  it("tells which spend showed an address's pubkey through MCP", async () => {
+    stubPubkeyFeed(1, [PUBKEY_SPEND]);
+    const client = await connectTestClient();
+    const result = parseToolResult(
+      await client.callTool({
+        name: "explorers_pubkey",
+        arguments: { address: PUBKEY_ADDRESS, chain: "bitcoin" },
+      }),
+    );
+    expect(result.isError).toBe(false);
+    expect(JSON.parse(result.content[0]?.text ?? "null")).toEqual({
+      provider: "mempool",
+      data: {
+        address: PUBKEY_ADDRESS,
+        chain: "bitcoin",
+        pubkey: PUBKEY,
+        source: "spend",
+        txid: "d".repeat(64),
+        spent: true,
+      },
     });
   });
 
@@ -706,6 +767,7 @@ describe("Explorers MCP server", () => {
       "explorers_tx_history",
       "explorers_tx_detail",
       "explorers_utxos",
+      "explorers_pubkey",
       "explorers_contract",
       "explorers_tokens",
       "explorers_token_transfers",
@@ -1053,6 +1115,14 @@ describe("Explorers MCP server", () => {
     {
       tool: "explorers_utxos",
       operation: "getUtxos",
+      arguments: {
+        address: "0x0000000000000000000000000000000000000001",
+        provider: DisabledProvider.key,
+      },
+    },
+    {
+      tool: "explorers_pubkey",
+      operation: "getPubkey",
       arguments: {
         address: "0x0000000000000000000000000000000000000001",
         provider: DisabledProvider.key,

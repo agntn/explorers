@@ -62,6 +62,7 @@ const main = defineCommand({
     balance: () => import("./commands/balance.ts").then((m) => m.default),
     tx: () => import("./commands/tx.ts").then((m) => m.default),
     utxos: () => import("./commands/utxos.ts").then((m) => m.default),
+    pubkey: () => import("./commands/pubkey.ts").then((m) => m.default),
     contract: () => import("./commands/contract.ts").then((m) => m.default),
     tokens: () => import("./commands/tokens.ts").then((m) => m.default),
     transfers: () => import("./commands/transfers.ts").then((m) => m.default),

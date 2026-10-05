@@ -77,6 +77,42 @@ function textMatching(expected: RegExp): unknown {
 // SAFETY: the tested execute functions do not read ExtensionContext.
 const unusedContext = {} as ExtensionContext;
 
+const PUBKEY_ADDRESS = "1GSMG1JC9wtdSwfwApgj2xcmJPAwx7prBe";
+const PUBKEY =
+  "04f4d1bbd91e65e2a019566a17574e97dae908b784b388891848007e4f55d5a4649c73d25fc5ed8fd7227cab0be4e576c0c6404db5aa546286563e4be12bf33559";
+
+/* The address counters, then the same rows for every page of the feed. */
+function stubPubkeyFeed(spent: number, rows: readonly unknown[]): void {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL) =>
+      Response.json(
+        String(input).includes("/txs")
+          ? rows
+          : { chain_stats: { spent_txo_count: spent, tx_count: rows.length } },
+      ),
+    ),
+  );
+}
+
+const PUBKEY_SPEND = {
+  txid: "d".repeat(64),
+  status: { confirmed: true },
+  vin: [
+    {
+      txid: "e".repeat(64),
+      prevout: {
+        scriptpubkey: "76a914a9553269572a317e39f0f518cb87c1a0ee1dbae488ac",
+        scriptpubkey_type: "p2pkh",
+        scriptpubkey_address: PUBKEY_ADDRESS,
+      },
+      scriptsig_asm: `OP_PUSHBYTES_71 30440220 OP_PUSHBYTES_65 ${PUBKEY}`,
+    },
+  ],
+  vout: [],
+};
+const PUBKEY_FUNDING = { txid: "f".repeat(64), status: { confirmed: true }, vin: [], vout: [] };
+
 describe("explorers Pi extension", () => {
   afterEach(() => {
     vi.useRealTimers();
@@ -98,6 +134,7 @@ describe("explorers Pi extension", () => {
       "explorers_tx_history",
       "explorers_tx_detail",
       "explorers_utxos",
+      "explorers_pubkey",
       "explorers_contract",
       "explorers_tokens",
       "explorers_token_transfers",
@@ -279,7 +316,7 @@ describe("explorers Pi extension", () => {
     ]);
     const text = result.content[0]?.text ?? "";
     expect(text).toContain(
-      "\n  mempool: balances, txHistory, txDetail, utxos, gasData, blockInfo; chains: bitcoin, litecoin, pepecoin; endpoint: https://mempool.space\n",
+      "\n  mempool: balances, txHistory, txDetail, utxos, pubkeys, gasData, blockInfo; chains: bitcoin, litecoin, pepecoin; endpoint: https://mempool.space\n",
     );
     expect(text).toContain("\n  aptos: no supported explorer operations; chains: aptos\n");
     expect(raw).toMatchObject({
@@ -763,6 +800,42 @@ describe("explorers Pi extension", () => {
     );
   });
 
+  it.each([
+    [
+      "names the spend that showed a pubkey",
+      1,
+      [PUBKEY_SPEND],
+      `[mempool] ${PUBKEY_ADDRESS} on bitcoin: pubkey ${PUBKEY} (shown by spend ${"d".repeat(64)})`,
+    ],
+    [
+      "says an address that never spent shows no pubkey",
+      0,
+      [PUBKEY_FUNDING],
+      `[mempool] ${PUBKEY_ADDRESS} on bitcoin: no pubkey shown, the address never spent`,
+    ],
+    [
+      "keeps a spent address without a readable key apart from one that never spent",
+      1,
+      [PUBKEY_FUNDING],
+      `[mempool] ${PUBKEY_ADDRESS} on bitcoin: spent, but no key read: a script this read doesn't parse, or a spend past the newest 1000 transactions`,
+    ],
+  ])("%s", async (_name, spent, rows, expected) => {
+    stubPubkeyFeed(spent, rows);
+    const tool = requireTool(registerExtensionTools(), "explorers_pubkey");
+
+    const result = parseToolResult(
+      await tool.execute(
+        "test",
+        { address: PUBKEY_ADDRESS, chain: "bitcoin", provider: "mempool" },
+        undefined,
+        undefined,
+        unusedContext,
+      ),
+    );
+
+    expect(result.content.find((part) => part.type === "text")?.text).toBe(expected);
+  });
+
   it("lists fifty unspent outputs unless limit says otherwise and counts every one", async () => {
     const address = "bc1qexample";
     const txidOf = (index: number) => index.toString(16).padStart(64, "0");
@@ -818,6 +891,7 @@ describe("explorers Pi extension", () => {
   it.each([
     ["explorers_tx_detail", { hash: "0xdead", provider: "aptos" }, "getTxDetail"],
     ["explorers_utxos", { address: "0x1", provider: "aptos" }, "getUtxos"],
+    ["explorers_pubkey", { address: "0x1", provider: "aptos" }, "getPubkey"],
     ["explorers_contract", { address: "0x1", provider: "aptos" }, "getContractInfo"],
     ["explorers_tokens", { address: "0x1", provider: "aptos" }, "getTokenBalances"],
     ["explorers_token_transfers", { address: "0x1", provider: "aptos" }, "getTokenTransfers"],

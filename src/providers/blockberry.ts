@@ -108,6 +108,7 @@ export class Blockberry extends Provider {
       txHistory: true,
       txDetail: false,
       utxos: false,
+      pubkeys: false,
       contractInfo: false,
       tokenBalances: false,
       tokenTransfers: false,

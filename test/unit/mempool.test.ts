@@ -431,6 +431,54 @@ describe("mempool provider", () => {
     ]);
   });
 
+  it("follows Peppool's cursor to the spend that showed a Pepecoin key", async () => {
+    const pubkey = "03262517f597dce849e7d62f2e8048b543c599ef88e4c3789a9cfd7f1b9ab8bd5f";
+    const firstPage = Array.from({ length: 25 }, (_, index) => historyTransaction(index));
+    const cursor = firstPage.at(-1)!.txid;
+    const spend = {
+      ...historyTransaction(25),
+      vin: [
+        {
+          txid: "e".repeat(64),
+          prevout: {
+            scriptpubkey: "76a914",
+            scriptpubkey_type: "p2pkh",
+            scriptpubkey_address: KNOWN_PEP,
+          },
+          scriptsig_asm: `OP_PUSHBYTES_71 304402207fe21f2ef8320b628cf810c276824ec345cd4859fbfcd000d86c0b787d098cf602207e4e5bded22f3f47f1e2cac211bde9fd780c33fe5055193458d15a472a65b47601 OP_PUSHBYTES_33 ${pubkey}`,
+        },
+      ],
+    };
+    const fetch = vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+      const body = url.endsWith(`/txs?after_txid=${cursor}`)
+        ? [spend]
+        : url.endsWith("/txs")
+          ? firstPage
+          : { chain_stats: { spent_txo_count: 2, tx_count: 3 } };
+      return new Response(JSON.stringify(body), {
+        headers: { "Content-Type": "application/json" },
+      });
+    });
+    vi.stubGlobal("fetch", fetch);
+
+    const reveal = await provider.getPubkey!(KNOWN_PEP, "pepecoin");
+
+    expect(reveal).toEqual({
+      address: KNOWN_PEP,
+      chain: "pepecoin",
+      pubkey,
+      source: "spend",
+      txid: spend.txid,
+      spent: true,
+    });
+    expect(fetch.mock.calls.map(([input]) => String(input))).toEqual([
+      `https://peppool.space/api/address/${KNOWN_PEP}`,
+      `https://peppool.space/api/address/${KNOWN_PEP}/txs`,
+      `https://peppool.space/api/address/${KNOWN_PEP}/txs?after_txid=${cursor}`,
+    ]);
+  });
+
   it("reads the message an OP_RETURN output carries", async () => {
     stubTxDetail([
       { scriptpubkey: "0014c30f5f3fccac11feca2fd0322b607c9d73995fde", value: 2_000 },

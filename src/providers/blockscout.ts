@@ -271,6 +271,7 @@ export class Blockscout extends Provider {
       txHistory: true,
       txDetail: true,
       utxos: false,
+      pubkeys: false,
       contractInfo: true,
       tokenBalances: true,
       tokenTransfers: true,

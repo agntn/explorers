@@ -302,6 +302,7 @@ export class Haskoin extends Provider {
       txHistory: true,
       txDetail: true,
       utxos: true,
+      pubkeys: false,
       contractInfo: false,
       tokenBalances: false,
       tokenTransfers: false,

@@ -4,6 +4,7 @@ const SUBCOMMANDS = [
   "balance",
   "tx",
   "utxos",
+  "pubkey",
   "contract",
   "tokens",
   "transfers",

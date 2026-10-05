@@ -15,6 +15,7 @@ describe("aptos provider", () => {
       txHistory: false,
       txDetail: false,
       utxos: false,
+      pubkeys: false,
       contractInfo: false,
       tokenBalances: false,
       tokenTransfers: false,

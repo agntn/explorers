@@ -83,6 +83,22 @@ export interface Transaction {
   raw?: Record<string, unknown>;
 }
 
+/** Where an address has shown its public key on chain, if anywhere */
+export interface PubkeyReveal {
+  /** Address */
+  address: string;
+  /** Chain */
+  chain: ChainKey;
+  /** Hex key: compressed, uncompressed or a 32-byte taproot output key; null when none showed */
+  pubkey: string | null;
+  /** `spend` for a key in a spending input, `output` when a taproot address is the key itself */
+  source: "spend" | "output" | null;
+  /** The spend that showed the key, or the transaction paying the taproot address */
+  txid: string | null;
+  /** Whether the address spent; `true` beside a null key means the read missed how */
+  spent: boolean;
+}
+
 /** Unspent output an address still controls */
 export interface Utxo {
   /** Transaction that created the output */
@@ -230,6 +246,8 @@ export interface ProviderCapabilities {
   txDetail: boolean;
   /** Can list the unspent outputs of an address */
   utxos: boolean;
+  /** Can tell whether an address has shown its public key */
+  pubkeys: boolean;
   /** Can get contract info (ABI, source) */
   contractInfo: boolean;
   /** Can get token holdings for address */

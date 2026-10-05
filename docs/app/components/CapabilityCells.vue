@@ -63,7 +63,8 @@ const cells = computed(() =>
   color: color-mix(in srgb, var(--ui-text-dimmed) 70%, var(--ui-bg));
   box-shadow: inset 0 0 0 1px var(--ui-border-muted);
 }
-@container (width < 19rem) {
+/* Ten cells at 2rem with 3px gaps need 347px; narrower rows shrink them to stay on one line. */
+@container (width < 21.7rem) {
   .capability-cell {
     min-width: 0;
     padding-inline: 2px;

@@ -36,6 +36,7 @@ describe("CLI loading", () => {
     "balance",
     "tx",
     "utxos",
+    "pubkey",
     "contract",
     "tokens",
     "transfers",
@@ -69,6 +70,7 @@ ${offline}
     ["balance", "address"],
     ["tx", "address"],
     ["utxos", "address"],
+    ["pubkey", "address"],
     ["contract", "address"],
     ["tokens", "address"],
     ["transfers", "address"],
@@ -101,7 +103,7 @@ ${offline}
     expect(result.status, result.stderr).toBe(0);
     expect(result.stdout).toContain("Registered providers (18)");
     expect(result.stdout).toContain(
-      "mempool: balances, txHistory, txDetail, utxos, gasData, blockInfo; chains: bitcoin, litecoin, pepecoin",
+      "mempool: balances, txHistory, txDetail, utxos, pubkeys, gasData, blockInfo; chains: bitcoin, litecoin, pepecoin",
     );
     expect(result.stdout).toContain("etherscan: balances, txHistory");
     expect(result.stdout).not.toContain("requires API key");
@@ -115,6 +117,10 @@ ${offline}
     [
       ["utxos", "bc1qexample", "--provider", "mempool"],
       "b".repeat(64) + ":0  0.00001  [block 1000]",
+    ],
+    [
+      ["pubkey", "bc1qexample", "--provider", "mempool"],
+      "No pubkey shown: the address never spent",
     ],
   ] as const)("executes reads after loading the backend: %j", (args, expected) => {
     const result = runCLI(
@@ -132,8 +138,8 @@ globalThis.fetch = async (input) => {
     { txid: "b".repeat(64), vout: 0, value: 1000, status: { confirmed: true, block_height: 1000 } },
   ]);
   if (url.endsWith("/address/bc1qexample")) return Response.json({
-    chain_stats: { funded_txo_sum: 1000, spent_txo_sum: 0, tx_count: 0 },
-    mempool_stats: { funded_txo_sum: 0, spent_txo_sum: 600, tx_count: 1 },
+    chain_stats: { funded_txo_sum: 1000, spent_txo_sum: 0, spent_txo_count: 0, tx_count: 0 },
+    mempool_stats: { funded_txo_sum: 0, spent_txo_sum: 600, spent_txo_count: 0, tx_count: 1 },
   });
   throw new Error("Unexpected network request: " + url);
 };
