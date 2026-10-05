@@ -132,6 +132,7 @@ function capabilityFlags(declared: readonly ProviderCapability[]): ProviderCapab
     txHistory: supports("txHistory"),
     txDetail: supports("txDetail"),
     utxos: supports("utxos"),
+    pubkeys: supports("pubkeys"),
     contractInfo: supports("contractInfo"),
     tokenBalances: supports("tokenBalances"),
     tokenTransfers: supports("tokenTransfers"),

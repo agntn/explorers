@@ -24,6 +24,7 @@ export class Aptos extends Provider {
       txHistory: false,
       txDetail: false,
       utxos: false,
+      pubkeys: false,
       contractInfo: false,
       tokenBalances: false,
       tokenTransfers: false,

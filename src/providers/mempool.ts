@@ -20,6 +20,7 @@ import type {
   TxStatus,
   TokenTransfer,
   OpReturnPayload,
+  PubkeyReveal,
   Utxo,
 } from "../core/types.ts";
 import { Provider } from "../core/provider.ts";
@@ -31,10 +32,15 @@ import { assertSafePathSegment } from "../core/path-safety.ts";
 import {
   ESPLORA_HISTORY_ROWS,
   getEsploraAddressHistory,
+  getEsploraPubkey,
   getEsploraUtxos,
   selectEsploraRecipientOutput,
 } from "../core/esplora.ts";
-import type { EsploraUnspentOutput } from "../core/esplora.ts";
+import type {
+  EsploraAddressStats,
+  EsploraKeyTransaction,
+  EsploraUnspentOutput,
+} from "../core/esplora.ts";
 
 const DEFAULT_BASE = "https://mempool.space";
 
@@ -43,6 +49,9 @@ const CHAIN_BASES: Partial<Record<ChainKey, string>> = {
   litecoin: "https://litecoinspace.org",
   pepecoin: "https://peppool.space",
 };
+
+/** Peppool allows 15 requests a minute: a key search there reads the counters and ten pages. */
+const PEPPOOL_KEY_ROWS = 250;
 
 /** Fee rates come back in the chain's smallest unit per virtual byte. */
 const FEE_UNITS: Partial<Record<ChainKey, GasUnit>> = {
@@ -411,6 +420,7 @@ export class Mempool extends Provider {
       txHistory: true,
       txDetail: true,
       utxos: true,
+      pubkeys: true,
       contractInfo: false,
       tokenBalances: false,
       tokenTransfers: false,
@@ -478,6 +488,18 @@ export class Mempool extends Provider {
   override async getUtxos(address: string, chain?: ChainKey): Promise<Utxo[]> {
     const c = chain ?? this.defaultChain;
     return getEsploraUtxos(address, async (path) => this.api<EsploraUnspentOutput[]>(c, path));
+  }
+
+  override async getPubkey(address: string, chain?: ChainKey): Promise<PubkeyReveal> {
+    const c = chain ?? this.defaultChain;
+    const reveal = await getEsploraPubkey(
+      address,
+      async () => this.api<EsploraAddressStats>(c, `/api/address/${encodeURIComponent(address)}`),
+      async (path) => this.api<EsploraKeyTransaction[]>(c, path),
+      c === "pepecoin" ? peppoolHistoryPath : undefined,
+      c === "pepecoin" ? PEPPOOL_KEY_ROWS : undefined,
+    );
+    return { ...reveal, chain: c };
   }
 
   override async getTxDetail(hash: string, chain?: ChainKey): Promise<Transaction> {

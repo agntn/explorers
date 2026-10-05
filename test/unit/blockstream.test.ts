@@ -34,6 +34,7 @@ describe("blockstream provider", () => {
       txHistory: true,
       txDetail: true,
       utxos: true,
+      pubkeys: true,
       contractInfo: false,
       tokenBalances: false,
       tokenTransfers: false,

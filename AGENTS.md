@@ -6,26 +6,26 @@ Unified block explorer provider library. Normalizes balances, tx history, contra
 
 ## Providers
 
-| Provider     | Auth                    | Chains                                                                           | Capabilities                                                |
-| ------------ | ----------------------- | -------------------------------------------------------------------------------- | ----------------------------------------------------------- |
-| etherscan    | API key (free: 5 req/s) | eth, base, arbitrum, optimism, polygon, bsc, avalanche, gnosis, linea, bera      | Full: balances, tx, transfers, contract, tokens, gas, block |
-| blockscout   | none                    | eth, base, arbitrum, optimism, polygon, gnosis, linea, scroll, zksync, avalanche | Full: balances, tx, transfers, contract, tokens, gas, block |
-| blockchair   | optional key            | bitcoin, bitcoincash, litecoin, dogecoin, eth, ecash, zcash                      | balances, tx, block                                         |
-| mempool      | none                    | bitcoin, litecoin, pepecoin                                                      | balances, tx, utxos; gas and block on Bitcoin and Litecoin  |
-| blockstream  | none                    | bitcoin                                                                          | balances, tx detail/history, utxos, block                   |
-| solscan      | `SOLSCAN_API_KEY`       | solana                                                                           | balances, tx detail/history, block                          |
-| helius       | `HELIUS_API_KEY`        | solana                                                                           | tx detail/history, tokens; no balance endpoint              |
-| ton          | none                    | ton                                                                              | balances, tx                                                |
-| tronscan     | `TRONSCAN_API_KEY`      | tron                                                                             | balances, tx detail/history, block                          |
-| aptos        | none                    | aptos                                                                            | none; required methods throw                                |
-| blockberry   | `BLOCKBERRY_API_KEY`    | sui                                                                              | balances, tx history                                        |
-| koios        | none                    | cardano                                                                          | balances, tx detail/history, tokens                         |
-| arweave      | none                    | arweave                                                                          | balances, tx detail/history, block                          |
-| dcrdata      | none                    | decred                                                                           | balances, tx detail/history, block                          |
-| horizon      | none                    | stellar                                                                          | balances, tx detail/history, transfers, tokens, gas, block  |
-| whatsonchain | optional key            | bitcoinsv                                                                        | balances, tx detail/history, utxos, block                   |
-| blockbook    | none                    | bitcoingold                                                                      | balances, tx detail/history, utxos, block                   |
-| haskoin      | none                    | bitcoincash                                                                      | balances, tx detail/history, utxos, block                   |
+| Provider     | Auth                    | Chains                                                                           | Capabilities                                                       |
+| ------------ | ----------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| etherscan    | API key (free: 5 req/s) | eth, base, arbitrum, optimism, polygon, bsc, avalanche, gnosis, linea, bera      | Full: balances, tx, transfers, contract, tokens, gas, block        |
+| blockscout   | none                    | eth, base, arbitrum, optimism, polygon, gnosis, linea, scroll, zksync, avalanche | Full: balances, tx, transfers, contract, tokens, gas, block        |
+| blockchair   | optional key            | bitcoin, bitcoincash, litecoin, dogecoin, eth, ecash, zcash                      | balances, tx, block                                                |
+| mempool      | none                    | bitcoin, litecoin, pepecoin                                                      | balances, tx, utxos, pubkey; gas and block on Bitcoin and Litecoin |
+| blockstream  | none                    | bitcoin                                                                          | balances, tx detail/history, utxos, pubkey, block                  |
+| solscan      | `SOLSCAN_API_KEY`       | solana                                                                           | balances, tx detail/history, block                                 |
+| helius       | `HELIUS_API_KEY`        | solana                                                                           | tx detail/history, tokens; no balance endpoint                     |
+| ton          | none                    | ton                                                                              | balances, tx                                                       |
+| tronscan     | `TRONSCAN_API_KEY`      | tron                                                                             | balances, tx detail/history, block                                 |
+| aptos        | none                    | aptos                                                                            | none; required methods throw                                       |
+| blockberry   | `BLOCKBERRY_API_KEY`    | sui                                                                              | balances, tx history                                               |
+| koios        | none                    | cardano                                                                          | balances, tx detail/history, tokens                                |
+| arweave      | none                    | arweave                                                                          | balances, tx detail/history, block                                 |
+| dcrdata      | none                    | decred                                                                           | balances, tx detail/history, block                                 |
+| horizon      | none                    | stellar                                                                          | balances, tx detail/history, transfers, tokens, gas, block         |
+| whatsonchain | optional key            | bitcoinsv                                                                        | balances, tx detail/history, utxos, block                          |
+| blockbook    | none                    | bitcoingold                                                                      | balances, tx detail/history, utxos, block                          |
+| haskoin      | none                    | bitcoincash                                                                      | balances, tx detail/history, utxos, block                          |
 
 ## Conventions
 
@@ -36,6 +36,7 @@ Unified block explorer provider library. Normalizes balances, tx history, contra
 - Provider backends are explorer/indexer APIs, including documented gateway APIs. Judge support by the service and response contract, not REST versus GraphQL: a gateway may expose REST routes shared with nodes. Do not silently switch to another node to fill a missing capability. Unsupported operations stay absent; required methods without a supported service contract throw `UnsupportedOperationError`.
 - `Transaction.to` is `null` whenever the explorer names no recipient, not only on a contract creation: Solscan, Helius and Blockberry never name one, and an Arweave data upload keeps the documented `""`. Etherscan and Blockscout put the deployed address in `createdContract`, and the CLI, Pi and OMP renderers print a sender, a recipient or a created contract only when the record has one, a `?` in place of a missing sender or recipient in a history line. `Transaction.from` stays a string and is `""` when the explorer names no sender, as on Blockchair UTXO dashboards
 - Bitcoin, Litecoin and Pepecoin transactions from `mempool` carry their OP_RETURN pushes in `Transaction.opReturn`; each payload keeps its raw `hex` and gets a `text` reading only when the bytes are printable UTF-8
+- `mempool` and `blockstream` answer `getPubkey` from the Esplora address feed in `core/esplora.ts`: the counters of `/api/address/:address` first, so an address without transactions costs one request and one that never spent stops after the first page, then the feed newest first until an input spending from the address carries a key (last scriptSig push for P2PKH, `witness[1]` for P2WPKH and P2SH-wrapped P2WPKH) or a taproot output names it, at most `ESPLORA_HISTORY_ROWS` rows, `PEPPOOL_KEY_ROWS` (250) on Pepecoin, where Peppool allows 15 requests a minute and answers 429 with a `Retry-After` near a minute. Consensus already ties such a key to the address, so nothing hashes it again. `pubkey: null` with `spent: true` means a script the reader leaves alone or a spend past that window
 - `mempool` and `blockstream` list unspent outputs through Esplora `/api/address/:address/utxo`, `whatsonchain` through `/address/:address/unspent/all`, `blockbook` through `/api/v2/utxo/:address`, `haskoin` through `/address/:address/unspent`. A `Utxo` row keeps `txid`, `vout`, `value` as a base-unit string and the funding block, `null` while the output waits in the mempool. Providers without such an endpoint keep `utxos: false` and no `getUtxos` method
 - CLI default subcommand: `balance` (for address-like input) or `providers` (no input)
 - Error hierarchy: `ExplorerError` → `HTTPError`, `TransportError`, `AuthError`, `RateLimitError`, `PlanRestrictedError`, `NotFoundError`, `UnsupportedChainError`, `UnsupportedOperationError`, `UnknownProviderError`, `AddressChainMismatchError`
@@ -53,12 +54,12 @@ Unified block explorer provider library. Normalizes balances, tx history, contra
 - `src/core/ens.ts` — ENS resolution (public APIs, no keccak dependency)
 - `src/core/input.ts` — User input classification (address/txhash/ens)
 - `src/providers/*.ts` — One file per provider, each exporting its class, listed in `builtins` and built as its own bundle entry
-- `src/commands/*.ts` - CLI subcommands (balance, tx, utxos, contract, tokens, transfers, gas, block, providers)
+- `src/commands/*.ts` - CLI subcommands (balance, tx, utxos, pubkey, contract, tokens, transfers, gas, block, providers)
 - `src/cli.ts` - Citty CLI entry point. Inside a checkout, the built `dist/cli.mjs` loads the `mcp` command from `src/`, like the Pi and OMP extensions, so a local MCP server needs only a restart after a change. The npm package ships no `src/` and runs the bundle, and so does a copy under `node_modules`, where Node does not strip types. `EXPLORERS_DIST=1` forces the bundle. A closed stdout or stderr (`| head -1`) ends the process through an `EPIPE` listener and keeps the exit code. A change to `src/cli.ts` itself still needs `pnpm build`
 
 ## CLI subcommands
 
-`balance`, `tx`, `utxos`, `contract`, `tokens`, `transfers`, `gas`, `block`, `providers` - all support `-c` (chain), `-p` (provider). `tx` accepts `-m history|detail` to resolve ambiguous hash/address formats. `transfers` accepts `-t` to limit results to one token contract. `tokens` lists fifty holdings unless `-n` says otherwise, a hundred at most, and its first line counts every one. `utxos` cuts its outputs the same way, and its header still counts every output and sums the confirmed ones. `tx`, `balance`, `tokens` and `transfers` support ENS.
+`balance`, `tx`, `utxos`, `pubkey`, `contract`, `tokens`, `transfers`, `gas`, `block`, `providers` - all support `-c` (chain), `-p` (provider). `tx` accepts `-m history|detail` to resolve ambiguous hash/address formats. `transfers` accepts `-t` to limit results to one token contract. `tokens` lists fifty holdings unless `-n` says otherwise, a hundred at most, and its first line counts every one. `utxos` cuts its outputs the same way, and its header still counts every output and sums the confirmed ones. `tx`, `balance`, `tokens` and `transfers` support ENS.
 
 ## Constraints
 
@@ -102,7 +103,7 @@ graph TB
 - **CLI Layer** (`cli.ts`, `commands/*.ts`): citty-based CLI, lazy-loads subcommands via dynamic `import()`. `cli-args.ts` normalizes bare address input to `balance` subcommand.
 - **Core Layer** (`core/*.ts`): Domain types, provider registry (built lazily from the barrel list), HTTP client (native `fetch`, 15s timeout), ENS resolution (public APIs), input classification, error hierarchy.
 - **Provider Layer** (`providers/*.ts`): 18 providers. Each file defines API types, helper mappers and a concrete `Provider` subclass with a static registry key, exports that class, and ships as its own bundle so `create()` can import it alone.
-- **Pi Extension** (`packages/pi/extensions/explorers.ts`): Exposes 10 tools to Pi coding agent, matching the MCP server's tool set. Lazy-loads live `src/` from a checkout and the relative `dist/` module from an installed package, without self-importing the package by name. `packages/omp/extensions/explorers.ts` registers the same ten for OMP.
+- **Pi Extension** (`packages/pi/extensions/explorers.ts`): Exposes 11 tools to Pi coding agent, matching the MCP server's tool set. Lazy-loads live `src/` from a checkout and the relative `dist/` module from an installed package, without self-importing the package by name. `packages/omp/extensions/explorers.ts` registers the same eleven for OMP.
 
 ### Provider categories
 
@@ -120,7 +121,7 @@ graph TB
 - **Nothing runs on import**: library modules evaluate to declarations only. Derived values wait for their first use, such as `entries()` in the registry, `decoder()` in mempool and `agent()` in the HTTP client. `dist/cli.mjs` is the one bundle that runs on load, because it starts the CLI, and `sideEffects` in `package.json` says so.
 - **Measuring that claim**: after `pnpm build`, `node scripts/side-effects.ts` bundles a bare import of every entry with each module treated as side-effectful, so the `sideEffects` field cannot hide anything, and prints what survives tree shaking, bare imports of external packages left out. Every entry except `dist/cli.mjs` prints 0 B.
 - **String-only values**: All wei/satoshi/native amounts are strings (`Balance.balance`, `TokenBalance.balance`). The HTTP boundary preserves unsafe JSON integers as strings; `formatWei()` converts amounts for display.
-- **Optional methods**: `getTxDetail`, `getUtxos`, `getContractInfo`, `getTokenBalances`, `getTokenTransfers`, `getGasData`, and `getBlockInfo` are optional on `Provider`. Always check both the `capabilities` getter and method presence before calling.
+- **Optional methods**: `getTxDetail`, `getUtxos`, `getPubkey`, `getContractInfo`, `getTokenBalances`, `getTokenTransfers`, `getGasData`, and `getBlockInfo` are optional on `Provider`. Always check both the `capabilities` getter and method presence before calling.
 - **Dynamic CLI imports**: Each subcommand is lazily loaded via `() => import('./commands/X.ts').then(m => m.default)`. Citty loads command declarations for help, so runtime core imports belong inside `run()` or execution helpers.
 - **Chain normalization**: `normalizeChain()` delegates to `getChain()` from `@agntn/chains` and returns the canonical `ChainKey`. Aliases and display names both resolve (`ethereum→eth`, `btc→bitcoin`, `arb→arbitrum`). Missing input defaults to `eth`; unknown names and the empty string throw.
 - **Chain from the address**: without an explicit chain, `withProvider()` takes the chain `inferChain()` reads off the address when `identify()` from `@agntn/chains` finds exactly one, or when a provider serves only one of the chains it finds. A legacy Bitcoin address fits Bitcoin SV too and reads as Bitcoin, the chain `FORK_OF` in `core/input.ts` names as the owner of that format, unless the explicit provider serves only Bitcoin SV; EVM addresses, ENS names and unknown formats keep the defaults. `resolveInput()` throws `AddressChainMismatchError` before any request only when the requested chain rejects the address and every chain that accepts it belongs to another family: shared formats such as Bitcoin P2SH on Litecoin and forms the validators miss, such as raw TON or hex TRON, still reach the provider

@@ -426,6 +426,7 @@ export class Horizon extends Provider {
       txHistory: true,
       txDetail: true,
       utxos: false,
+      pubkeys: false,
       contractInfo: false,
       tokenBalances: true,
       tokenTransfers: true,

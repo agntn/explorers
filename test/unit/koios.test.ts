@@ -89,6 +89,7 @@ describe("koios provider", () => {
       txHistory: true,
       txDetail: true,
       utxos: false,
+      pubkeys: false,
       contractInfo: false,
       tokenBalances: true,
       tokenTransfers: false,

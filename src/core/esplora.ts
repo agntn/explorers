@@ -1,6 +1,6 @@
 import { assertSafePathSegment } from "./path-safety.ts";
 import { formatWei, toTimestamp } from "./types.ts";
-import type { Utxo } from "./types.ts";
+import type { PubkeyReveal, Utxo } from "./types.ts";
 
 const CHAIN_PAGE_SIZE = 25;
 
@@ -98,6 +98,29 @@ export function selectEsploraRecipientOutput(
   };
 }
 
+/* Yield the address feed page by page, newest first, following the cursor of confirmed rows. */
+async function* esploraHistoryPages<T extends EsploraAddressTransaction>(
+  address: string,
+  fetchPage: (path: string) => Promise<T[]>,
+  nextPagePath: (encodedAddress: string, encodedCursor: string) => string,
+): AsyncGenerator<T[]> {
+  assertSafePathSegment(address, "address");
+  const encodedAddress = encodeURIComponent(address);
+  const firstPage = await fetchPage(`/api/address/${encodedAddress}/txs`);
+  yield firstPage;
+  let cursor = firstPage.findLast((transaction) => transaction.status.confirmed)?.txid;
+
+  while (cursor !== undefined) {
+    const page = await fetchPage(nextPagePath(encodedAddress, encodeURIComponent(cursor)));
+    const nextCursor = page.at(-1)?.txid;
+    if (nextCursor === undefined || nextCursor === cursor) return;
+
+    yield page;
+    if (page.length < CHAIN_PAGE_SIZE) return;
+    cursor = nextCursor;
+  }
+}
+
 /**
  * Fetch one page of an Esplora address feed, walking the confirmed-chain cursor past earlier rows.
  *
@@ -115,21 +138,156 @@ export async function getEsploraAddressHistory<T extends EsploraAddressTransacti
   nextPagePath: (encodedAddress: string, encodedCursor: string) => string = confirmedHistoryPath,
 ): Promise<T[]> {
   const limit = window.offset + window.limit;
-  assertSafePathSegment(address, "address");
-  const encodedAddress = encodeURIComponent(address);
-  const firstPage = await fetchPage(`/api/address/${encodedAddress}/txs`);
-  const transactions = firstPage.slice(0, limit);
-  let cursor = firstPage.findLast((transaction) => transaction.status.confirmed)?.txid;
+  const transactions: T[] = [];
 
-  while (transactions.length < limit && cursor !== undefined) {
-    const page = await fetchPage(nextPagePath(encodedAddress, encodeURIComponent(cursor)));
-    const nextCursor = page.at(-1)?.txid;
-    if (nextCursor === undefined || nextCursor === cursor) break;
-
+  for await (const page of esploraHistoryPages(address, fetchPage, nextPagePath)) {
     transactions.push(...page.slice(0, limit - transactions.length));
-    if (page.length < CHAIN_PAGE_SIZE) break;
-    cursor = nextCursor;
+    if (transactions.length >= limit) break;
   }
 
   return transactions.slice(window.offset);
+}
+
+/** A compressed or uncompressed secp256k1 key as hex. */
+const SEC_PUBKEY = /^(?:0[23][0-9a-f]{64}|04[0-9a-f]{128})$/i;
+
+/** A segwit v1 output script, whose 32-byte program is the taproot output key. */
+const TAPROOT_SCRIPT = /^5120([0-9a-f]{64})$/i;
+
+/** A segwit address of the chains served here, whose feed rows spell it in lowercase. */
+const SEGWIT_ADDRESS = /^(?:bc|tb|bcrt|ltc|tltc|rltc)1/i;
+
+/** The redeem script of P2SH-wrapped P2WPKH, which leaves the key in the witness. */
+const NESTED_P2WPKH = /^OP_0 OP_PUSHBYTES_20 [0-9a-f]{40}$/i;
+
+interface EsploraKeyOutput {
+  readonly scriptpubkey: string;
+  readonly scriptpubkey_type: string;
+  readonly scriptpubkey_address?: string;
+}
+
+interface EsploraKeyInput {
+  readonly txid: string;
+  readonly prevout: EsploraKeyOutput | null;
+  readonly scriptsig_asm?: string;
+  readonly inner_redeemscript_asm?: string;
+  readonly witness?: readonly string[];
+}
+
+/** An address feed row with the scripts a key can hide in. */
+export interface EsploraKeyTransaction {
+  readonly txid: string;
+  readonly status: { readonly confirmed: boolean };
+  readonly vin: readonly EsploraKeyInput[];
+  readonly vout: readonly EsploraKeyOutput[];
+}
+
+/** The spend counters of `/api/address/:address`. */
+export interface EsploraAddressStats {
+  readonly chain_stats: { readonly spent_txo_count: number; readonly tx_count: number };
+  readonly mempool_stats?: { readonly spent_txo_count: number; readonly tx_count: number };
+}
+
+type KeySighting = Pick<PubkeyReveal, "pubkey" | "source" | "txid">;
+
+/* BIP 173 allows a segwit address in capitals, while every feed row spells it in lowercase. */
+function feedForm(address: string): string {
+  return SEGWIT_ADDRESS.test(address) ? address.toLowerCase() : address;
+}
+
+function secKey(candidate: string | undefined): string | undefined {
+  return candidate !== undefined && SEC_PUBKEY.test(candidate)
+    ? candidate.toLowerCase()
+    : undefined;
+}
+
+function taprootKey(scriptpubkey: string): string | undefined {
+  return TAPROOT_SCRIPT.exec(scriptpubkey)?.[1]?.toLowerCase();
+}
+
+/* Consensus ties the key to the address: a spend whose key hashed elsewhere never confirmed. */
+function spentKey(input: Readonly<EsploraKeyInput>, type: string): string | undefined {
+  if (type === "p2pkh") return secKey(input.scriptsig_asm?.split(" ").at(-1));
+  if (type === "v0_p2wpkh") return secKey(input.witness?.[1]);
+  if (type === "p2sh" && NESTED_P2WPKH.test(input.inner_redeemscript_asm ?? "")) {
+    return secKey(input.witness?.[1]);
+  }
+  return undefined;
+}
+
+function inputSighting(input: Readonly<EsploraKeyInput>, txid: string): KeySighting | undefined {
+  const prevout = input.prevout;
+  if (prevout === null) return undefined;
+
+  const outputKey = taprootKey(prevout.scriptpubkey);
+  if (prevout.scriptpubkey_type === "v1_p2tr" && outputKey !== undefined) {
+    return { pubkey: outputKey, source: "output", txid: input.txid };
+  }
+  const pubkey = spentKey(input, prevout.scriptpubkey_type);
+  return pubkey === undefined ? undefined : { pubkey, source: "spend", txid };
+}
+
+function sighting(
+  transaction: Readonly<EsploraKeyTransaction>,
+  address: string,
+): KeySighting | undefined {
+  for (const input of transaction.vin) {
+    if (input.prevout?.scriptpubkey_address !== address) continue;
+    const found = inputSighting(input, transaction.txid);
+    if (found !== undefined) return found;
+  }
+
+  for (const output of transaction.vout) {
+    if (output.scriptpubkey_address !== address || output.scriptpubkey_type !== "v1_p2tr") continue;
+    const pubkey = taprootKey(output.scriptpubkey);
+    if (pubkey !== undefined) return { pubkey, source: "output", txid: transaction.txid };
+  }
+
+  return undefined;
+}
+
+function countOf(
+  stats: Readonly<EsploraAddressStats>,
+  field: "spent_txo_count" | "tx_count",
+): number {
+  return stats.chain_stats[field] + (stats.mempool_stats?.[field] ?? 0);
+}
+
+/**
+ * Find the key an address has shown, newest row first, within `maxRows` rows of its feed.
+ * Without a spend only a taproot output can show one, and every row pays it, so one page does.
+ *
+ * @param {string} address - The `address` value.
+ * @param {() => Promise<EsploraAddressStats>} fetchStats - Read `/api/address/:address`.
+ * @param {(path: string) => Promise<T[]>} fetchPage - Read one feed path.
+ * @param {(encodedAddress: string, encodedCursor: string) => string} nextPagePath - Build the
+ *   provider-specific confirmed-history cursor path.
+ * @param {number} maxRows - Feed rows to walk before giving up.
+ * @returns {Promise<Omit<PubkeyReveal, "chain">>} The key and where it showed.
+ */
+export async function getEsploraPubkey<T extends EsploraKeyTransaction>(
+  address: string,
+  fetchStats: () => Promise<EsploraAddressStats>,
+  fetchPage: (path: string) => Promise<T[]>,
+  nextPagePath: (encodedAddress: string, encodedCursor: string) => string = confirmedHistoryPath,
+  maxRows = ESPLORA_HISTORY_ROWS,
+): Promise<Omit<PubkeyReveal, "chain">> {
+  assertSafePathSegment(address, "address");
+  const stats = await fetchStats();
+  const spent = countOf(stats, "spent_txo_count") > 0;
+  const none = { address, pubkey: null, source: null, txid: null, spent };
+  if (countOf(stats, "tx_count") === 0) return none;
+
+  const feedAddress = feedForm(address);
+  let rows = 0;
+  for await (const page of esploraHistoryPages(address, fetchPage, nextPagePath)) {
+    for (const transaction of page) {
+      const found = sighting(transaction, feedAddress);
+      if (found !== undefined) return { address, ...found, spent };
+    }
+    rows += page.length;
+    if (!spent || rows >= maxRows) break;
+  }
+
+  return none;
 }

@@ -16,16 +16,22 @@ import { formatWei, historyPage } from "../core/types.ts";
 import {
   ESPLORA_HISTORY_ROWS,
   getEsploraAddressHistory,
+  getEsploraPubkey,
   getEsploraUtxos,
   selectEsploraRecipientOutput,
 } from "../core/esplora.ts";
-import type { EsploraUnspentOutput } from "../core/esplora.ts";
+import type {
+  EsploraAddressStats,
+  EsploraKeyTransaction,
+  EsploraUnspentOutput,
+} from "../core/esplora.ts";
 import type {
   Balance,
   BlockInfo,
   ChainKey,
   ProviderCapabilities,
   ProviderConfig,
+  PubkeyReveal,
   TokenTransfer,
   Transaction,
   TxHistoryOptions,
@@ -161,6 +167,7 @@ export class Blockstream extends Provider {
       txHistory: true,
       txDetail: true,
       utxos: true,
+      pubkeys: true,
       contractInfo: false,
       tokenBalances: false,
       tokenTransfers: false,
@@ -221,6 +228,17 @@ export class Blockstream extends Provider {
     return getEsploraUtxos(address, async (path) =>
       this.api<EsploraUnspentOutput[]>(selectedChain, path),
     );
+  }
+
+  override async getPubkey(address: string, chain?: ChainKey): Promise<PubkeyReveal> {
+    const selectedChain = chain ?? this.defaultChain;
+    const reveal = await getEsploraPubkey(
+      address,
+      async () =>
+        this.api<EsploraAddressStats>(selectedChain, `/api/address/${encodeURIComponent(address)}`),
+      async (path) => this.api<EsploraKeyTransaction[]>(selectedChain, path),
+    );
+    return { ...reveal, chain: selectedChain };
   }
 
   override async getTxDetail(hash: string, chain?: ChainKey): Promise<Transaction> {

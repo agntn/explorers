@@ -329,6 +329,7 @@ export class Etherscan extends Provider {
       txHistory: true,
       txDetail: true,
       utxos: false,
+      pubkeys: false,
       contractInfo: true,
       tokenBalances: true,
       tokenTransfers: true,
