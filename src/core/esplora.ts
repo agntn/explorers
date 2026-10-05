@@ -190,8 +190,13 @@ export interface EsploraAddressStats {
 
 type KeySighting = Pick<PubkeyReveal, "pubkey" | "source" | "txid">;
 
-/* BIP 173 allows a segwit address in capitals, while every feed row spells it in lowercase. */
-function feedForm(address: string): string {
+/**
+ * Spell an address like the feed: BIP 173 takes segwit in capitals, the rows write lowercase.
+ *
+ * @param {string} address - The `address` value.
+ * @returns {string} The form to compare with `scriptpubkey_address`.
+ */
+export function esploraFeedAddress(address: string): string {
   return SEGWIT_ADDRESS.test(address) ? address.toLowerCase() : address;
 }
 
@@ -278,7 +283,7 @@ export async function getEsploraPubkey<T extends EsploraKeyTransaction>(
   const none = { address, pubkey: null, source: null, txid: null, spent };
   if (countOf(stats, "tx_count") === 0) return none;
 
-  const feedAddress = feedForm(address);
+  const feedAddress = esploraFeedAddress(address);
   let rows = 0;
   for await (const page of esploraHistoryPages(address, fetchPage, nextPagePath)) {
     for (const transaction of page) {

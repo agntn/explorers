@@ -31,6 +31,7 @@ import { formatWei, historyPage } from "../core/types.ts";
 import { assertSafePathSegment } from "../core/path-safety.ts";
 import {
   ESPLORA_HISTORY_ROWS,
+  esploraFeedAddress,
   getEsploraAddressHistory,
   getEsploraPubkey,
   getEsploraUtxos,
@@ -347,11 +348,12 @@ function mempoolAddressTotals(
   raw: Readonly<MempoolAddressTx>,
   address: string,
 ): { readonly input: bigint; readonly output: bigint } {
+  const feedAddress = esploraFeedAddress(address);
   const input = raw.vin
-    .filter((item) => item.prevout?.scriptpubkey_address === address)
+    .filter((item) => item.prevout?.scriptpubkey_address === feedAddress)
     .reduce((sum, item) => sum + BigInt(item.prevout?.value ?? 0), 0n);
   const output = raw.vout
-    .filter((item) => item.scriptpubkey_address === address)
+    .filter((item) => item.scriptpubkey_address === feedAddress)
     .reduce((sum, item) => sum + BigInt(item.value), 0n);
   return { input, output };
 }
@@ -360,11 +362,11 @@ function mempoolSendingParties(
   raw: Readonly<MempoolAddressTx>,
   address: string,
 ): { readonly from: string; readonly to: string } {
-  const sender = raw.vin.find((item) => item.prevout?.scriptpubkey_address === address);
-  const recipient = selectEsploraRecipientOutput(raw.vout, address);
+  const feedAddress = esploraFeedAddress(address);
+  const recipient = selectEsploraRecipientOutput(raw.vout, feedAddress).address;
   return {
-    from: sender?.prevout?.scriptpubkey_address ?? address,
-    to: recipient.address ?? address,
+    from: address,
+    to: recipient === null || recipient === feedAddress ? address : recipient,
   };
 }
 
