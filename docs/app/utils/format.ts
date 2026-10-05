@@ -63,8 +63,8 @@ export function trimDecimals(value: string, places: number): string {
 
 /**
  * An integer string in the smallest unit as a decimal, the way the library's `formatWei()` does
- * it. A copy on purpose: the library entry pulls `ofetch` and `@agntn/chains` into the browser
- * bundle, and the page only ever needs this one shift.
+ * it. A copy on purpose: the library entry pulls `@agntn/chains` into the browser bundle, and the
+ * page only ever needs this one shift.
  */
 export function formatUnits(value: string, decimals: number): string {
   if (!/^-?\d+$/u.test(value)) return value;

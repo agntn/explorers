@@ -1,5 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
-import { ExplorerError, HTTPError, NotFoundError, TransportError } from "../../src/core/errors.ts";
+import {
+  AuthError,
+  ExplorerError,
+  HTTPError,
+  NotFoundError,
+  RateLimitError,
+  TransportError,
+} from "../../src/core/errors.ts";
 import { getJSON, postJSON } from "../../src/core/client.ts";
 
 afterEach(() => {
@@ -347,4 +354,82 @@ describe("HTTP client", () => {
       });
     },
   );
+  it("sends a POST body as JSON with the Explorers headers", async () => {
+    const fetch = vi.fn<typeof globalThis.fetch>(async () => Response.json({ ok: true }));
+    vi.stubGlobal("fetch", fetch);
+
+    await postJSON("https://example.test/data", { query: "value" }, { headers: { "X-Key": "k" } });
+
+    const init = fetch.mock.calls[0]?.[1];
+    const headers = new Headers(init?.headers);
+    expect(init?.method).toBe("POST");
+    expect(init?.body).toBe('{"query":"value"}');
+    expect(headers.get("Content-Type")).toBe("application/json");
+    expect(headers.get("Accept")).toBe("application/json");
+    expect(headers.get("User-Agent")).toMatch(/^explorers\//);
+    expect(headers.get("X-Key")).toBe("k");
+  });
+
+  it.each([204, 205])("answers a %i response with nothing", async (status) => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(null, { status })),
+    );
+
+    await expect(getJSON("https://example.test/data")).resolves.toBeUndefined();
+  });
+
+  it("copies Retry-After from a 429 response", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () => new Response("slow down", { status: 429, headers: { "Retry-After": "30" } }),
+      ),
+    );
+
+    const error = await getJSON("https://example.test/data", { provider: "mempool" }).catch(
+      (failure: unknown) => failure,
+    );
+
+    expect(error).toBeInstanceOf(RateLimitError);
+    expect(error).toMatchObject({ retryAfter: 30, provider: "mempool" });
+  });
+
+  it("reads a 401 response as a refused key without echoing it", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response("bad key", { status: 401 })),
+    );
+
+    const error = await getJSON("https://example.test/data?apikey=secret", {
+      provider: "etherscan",
+    }).catch((failure: unknown) => failure);
+
+    expect(error).toBeInstanceOf(AuthError);
+    expect((error as Error).message).toBe(
+      "Authentication failed for etherscan: HTTP 401 from https://example.test/data?apikey=REDACTED",
+    );
+  });
+
+  it("times out a request that carries no signal of its own", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        (_input: string | URL | Request, init?: RequestInit) =>
+          new Promise<Response>((_resolve, reject) => {
+            init?.signal?.addEventListener("abort", () => reject(init.signal?.reason), {
+              once: true,
+            });
+          }),
+      ),
+    );
+
+    const error = await getJSON("https://example.test/data", {
+      provider: "mempool",
+      timeout: 20,
+    }).catch((failure: unknown) => failure);
+
+    expect(error).toBeInstanceOf(TransportError);
+    expect(error).toMatchObject({ code: "TimeoutError", provider: "mempool" });
+  });
 });

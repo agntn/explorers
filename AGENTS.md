@@ -40,7 +40,7 @@ Unified block explorer provider library. Normalizes balances, tx history, contra
 - CLI default subcommand: `balance` (for address-like input) or `providers` (no input)
 - Error hierarchy: `ExplorerError` → `HTTPError`, `TransportError`, `AuthError`, `RateLimitError`, `PlanRestrictedError`, `NotFoundError`, `UnsupportedChainError`, `UnsupportedOperationError`, `UnknownProviderError`, `AddressChainMismatchError`
 - `withProvider()` ends an `UnsupportedChainError` or `UnsupportedOperationError` from the provider it ran with `; try <providers>` (those the registry says serve that chain and read) or `; no provider serves this read on <chain>`; a chain refusal from a read without a capability names only who serves the chain (`; solscan, helius serve solana`), and `UnknownProviderError` lists the registered names, because MCP, Pi, OMP and the CLI show only the message. A thrown operation outside `OPERATION_CAPABILITIES` in `core/provider.ts` keeps its bare message
-- HTTP client uses `ofetch` with a 15s default timeout and preserves out-of-range JSON integers as strings. `ofetch` drops `timeout` when it also gets a `signal`, so a request with a signal carries the timeout inside it
+- HTTP client runs on native `fetch` with a 15s default timeout and reads every body as text, so out-of-range JSON integers survive as strings. The timeout is a plain timer cleared once the body is in, which fake timers can move, and a caller's signal joins it through `AbortSignal.any`. A 400 to 599 answer becomes a `ResponseFailure` carrying the fields of ofetch's `FetchError`, so `normalizeError` reads it and a custom provider's own ofetch error the same way
 
 ## Key files
 
@@ -49,7 +49,7 @@ Unified block explorer provider library. Normalizes balances, tx history, contra
 - `src/core/errors.ts` - ExplorerError hierarchy + normalizeError. HTTP 429 copies `Retry-After` onto `RateLimitError.retryAfter`. A request with no response becomes `TransportError` with the reason and code of its innermost cause, never an `HTTPError` with status 0. An `HTTPError` message ends with the reason from the response body (plain text, or the first `reason`, `detail`, `message`, `error` or `title` field of JSON, at the top or one level down), one line of at most 200 characters without control bytes, because every surface shows only the message; `HTTPError.reason` holds that reason alone
 - `src/core/registry.ts` - Provider registry built from `builtins` on first use; `create()` is async and imports one provider (register, create, providers, listProviders, has). `listProviders()` describes every provider from metadata and backs the `providers` command and `explorers_providers` on MCP, Pi and OMP
 - `src/core/resolve.ts` - Auto-select built-in providers by env vars and chain, with one fallback after no answer, a 5xx, or a rate or plan limit that survived retries on that backend
-- `src/core/client.ts` — HTTP client wrapper (ofetch)
+- `src/core/client.ts` - HTTP client wrapper over native `fetch`
 - `src/core/ens.ts` — ENS resolution (public APIs, no keccak dependency)
 - `src/core/input.ts` — User input classification (address/txhash/ens)
 - `src/providers/*.ts` — One file per provider, each exporting its class, listed in `builtins` and built as its own bundle entry
@@ -100,7 +100,7 @@ graph TB
 ### Layer breakdown
 
 - **CLI Layer** (`cli.ts`, `commands/*.ts`): citty-based CLI, lazy-loads subcommands via dynamic `import()`. `cli-args.ts` normalizes bare address input to `balance` subcommand.
-- **Core Layer** (`core/*.ts`): Domain types, provider registry (built lazily from the barrel list), HTTP client (ofetch, 15s timeout), ENS resolution (public APIs), input classification, error hierarchy.
+- **Core Layer** (`core/*.ts`): Domain types, provider registry (built lazily from the barrel list), HTTP client (native `fetch`, 15s timeout), ENS resolution (public APIs), input classification, error hierarchy.
 - **Provider Layer** (`providers/*.ts`): 18 providers. Each file defines API types, helper mappers and a concrete `Provider` subclass with a static registry key, exports that class, and ships as its own bundle so `create()` can import it alone.
 - **Pi Extension** (`packages/pi/extensions/explorers.ts`): Exposes 10 tools to Pi coding agent, matching the MCP server's tool set. Lazy-loads live `src/` from a checkout and the relative `dist/` module from an installed package, without self-importing the package by name. `packages/omp/extensions/explorers.ts` registers the same ten for OMP.
 
@@ -148,7 +148,6 @@ graph TB
 - `@agntn/chains`: canonical chain registry. `ChainKey` for keys, `getChain()` for alias resolution, `create(key)` for per-chain metadata like symbol and chain ID. Stays external to the bundle, so a consumer and this library share one registry instead of two.
 - `citty`: CLI framework
 - `consola`: Logging
-- `ofetch`: HTTP client
 - `vite-plus`: lint, format, tests and packing from one `vite.config.ts`; `vp pack` (tsdown) builds the bundle and `vp test` runs Vitest 5. Test files import from `vite-plus/test`
 
 ## Build & Scripts

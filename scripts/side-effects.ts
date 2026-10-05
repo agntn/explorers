@@ -42,7 +42,6 @@ try {
             /^@modelcontextprotocol\//u,
             /^citty/u,
             /^consola/u,
-            /^ofetch/u,
             /^zod/u,
           ],
           treeshake: { moduleSideEffects: true },

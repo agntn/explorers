@@ -15,25 +15,7 @@ import { create } from "@agntn/chains";
 const jiti = createJiti(import.meta.url);
 const { builtins } = await jiti.import("../../src/providers/index.ts");
 const { version } = await jiti.import("../../src/version.ts");
-
-/** Mirrors `PROVIDER_DEFAULT_CHAIN` in `src/core/resolve.ts`. That module pulls `ofetch`. */
-const PROVIDER_DEFAULT_CHAIN = {
-  mempool: "bitcoin",
-  blockstream: "bitcoin",
-  solscan: "solana",
-  helius: "solana",
-  ton: "ton",
-  tronscan: "tron",
-  aptos: "aptos",
-  blockberry: "sui",
-  koios: "cardano",
-  arweave: "arweave",
-  dcrdata: "decred",
-  horizon: "stellar",
-  whatsonchain: "bitcoinsv",
-  blockbook: "bitcoingold",
-  haskoin: "bitcoincash",
-};
+const { PROVIDER_DEFAULT_CHAIN } = await jiti.import("../../src/core/resolve.ts");
 
 const out = fileURLToPath(new URL("../app/data/explorers.json", import.meta.url));
 

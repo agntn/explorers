@@ -52,7 +52,7 @@ import { registerHooks } from "node:module";
 const backends = [];
 registerHooks({ load(url, context, nextLoad) {
   if (url.includes("/src/core/") || url.includes("/src/providers/") ||
-      url.includes("/ofetch/") || url.includes("/@agntn/chains/") ||
+      url.includes("/@agntn/chains/") ||
       url.includes("/@modelcontextprotocol/sdk/")) backends.push(url);
   return nextLoad(url, context);
 }});

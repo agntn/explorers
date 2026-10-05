@@ -1,7 +1,6 @@
 /** HTTP client wrapper for Explorers providers */
 
-import { ofetch } from "ofetch";
-import { normalizeError } from "./errors.ts";
+import { normalizeError, ResponseFailure } from "./errors.ts";
 import { version } from "../version.ts";
 
 let userAgent: string | undefined;
@@ -56,11 +55,60 @@ function parseJSON<T>(text: string | undefined): T {
   }) as T;
 }
 
-/* ofetch drops its timeout when a signal is passed, so the timeout rides on the signal. */
-function cancellation(options?: ClientRequestOptions): { timeout?: number; signal?: AbortSignal } {
-  const timeout = options?.timeout ?? 15_000;
-  if (options?.signal === undefined) return { timeout };
-  return { signal: AbortSignal.any([options.signal, AbortSignal.timeout(timeout)]) };
+interface Deadline {
+  readonly signal: AbortSignal;
+  readonly clear: () => void;
+}
+
+/**
+ * Abort after `timeout`, body included, or on the caller's signal, on a timer fake timers can move.
+ *
+ * @param {ClientRequestOptions} options - Request metadata and cancellation.
+ * @returns {Deadline} The signal for `fetch` and the call that disarms the timer.
+ */
+function deadline(options?: ClientRequestOptions): Deadline {
+  const controller = new AbortController();
+  const timer = setTimeout(() => {
+    controller.abort(new DOMException("The operation was aborted due to timeout", "TimeoutError"));
+  }, options?.timeout ?? 15_000);
+  const signal =
+    options?.signal === undefined
+      ? controller.signal
+      : AbortSignal.any([options.signal, controller.signal]);
+  return { signal, clear: () => clearTimeout(timer) };
+}
+
+/* Statuses whose response carries no body by definition. */
+const BODYLESS_STATUS_CODES: readonly number[] = [101, 204, 205, 304];
+
+/**
+ * Send one request and read the body as text, which `parseJSON` needs for its integer source.
+ *
+ * @param {string} url - The `url` value.
+ * @param {RequestInit} init - Method, headers and body of the request.
+ * @param {ClientRequestOptions} options - Request metadata and cancellation.
+ * @returns {Promise<T>} The parsed body, `undefined` for a status without one.
+ */
+async function request<T>(
+  url: string,
+  init: RequestInit,
+  options?: ClientRequestOptions,
+): Promise<T> {
+  const { signal, clear } = deadline(options);
+  try {
+    const response = await fetch(url, { ...init, signal });
+    const text = BODYLESS_STATUS_CODES.includes(response.status)
+      ? undefined
+      : await response.text();
+    if (response.status >= 400 && response.status < 600) {
+      throw new ResponseFailure(response, text ?? "");
+    }
+    return parseJSON<T>(text);
+  } catch (error) {
+    throw normalizeError(error, options?.provider, url);
+  } finally {
+    clear();
+  }
 }
 
 /**
@@ -73,22 +121,14 @@ function cancellation(options?: ClientRequestOptions): { timeout?: number; signa
  * @returns {Promise<T>} The resulting value.
  */
 export async function getJSON<T>(url: string, options?: ClientRequestOptions): Promise<T> {
-  try {
-    const response = await ofetch.raw<string, "text">(url, {
+  return request<T>(
+    url,
+    {
       method: "GET",
-      headers: {
-        Accept: "application/json",
-        "User-Agent": agent(),
-        ...options?.headers,
-      },
-      ...cancellation(options),
-      retry: false,
-      responseType: "text",
-    });
-    return parseJSON<T>(response._data);
-  } catch (error) {
-    throw normalizeError(error, options?.provider, url);
-  }
+      headers: { Accept: "application/json", "User-Agent": agent(), ...options?.headers },
+    },
+    options,
+  );
 }
 
 export async function postJSON<T>(
@@ -96,8 +136,9 @@ export async function postJSON<T>(
   body: unknown,
   options?: ClientRequestOptions,
 ): Promise<T> {
-  try {
-    const response = await ofetch.raw<string, "text">(url, {
+  return request<T>(
+    url,
+    {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -106,14 +147,9 @@ export async function postJSON<T>(
         ...options?.headers,
       },
       body: JSON.stringify(body),
-      ...cancellation(options),
-      retry: false,
-      responseType: "text",
-    });
-    return parseJSON<T>(response._data);
-  } catch (error) {
-    throw normalizeError(error, options?.provider, url);
-  }
+    },
+    options,
+  );
 }
 
 /**
