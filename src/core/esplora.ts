@@ -154,6 +154,9 @@ const SEC_PUBKEY = /^(?:0[23][0-9a-f]{64}|04[0-9a-f]{128})$/i;
 /** A segwit v1 output script, whose 32-byte program is the taproot output key. */
 const TAPROOT_SCRIPT = /^5120([0-9a-f]{64})$/i;
 
+/** A segwit address of the chains served here, whose feed rows spell it in lowercase. */
+const SEGWIT_ADDRESS = /^(?:bc|tb|bcrt|ltc|tltc|rltc)1/i;
+
 /** The redeem script of P2SH-wrapped P2WPKH, which leaves the key in the witness. */
 const NESTED_P2WPKH = /^OP_0 OP_PUSHBYTES_20 [0-9a-f]{40}$/i;
 
@@ -268,10 +271,11 @@ export async function getEsploraPubkey<T extends EsploraKeyTransaction>(
   const none = { address, pubkey: null, source: null, txid: null, spent };
   if (countOf(stats, "tx_count") === 0) return none;
 
+  const feedAddress = SEGWIT_ADDRESS.test(address) ? address.toLowerCase() : address;
   let rows = 0;
   for await (const page of esploraHistoryPages(address, fetchPage, nextPagePath)) {
     for (const transaction of page) {
-      const found = sighting(transaction, address);
+      const found = sighting(transaction, feedAddress);
       if (found !== undefined) return { address, ...found, spent };
     }
     rows += page.length;

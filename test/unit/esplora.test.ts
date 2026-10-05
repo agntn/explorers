@@ -249,6 +249,20 @@ describe("Esplora pubkey", () => {
     expect(reveal).toMatchObject({ pubkey, source: "spend", txid: keyRow(1).txid });
   });
 
+  it.each([
+    ["a P2WPKH spend", P2WPKH_INPUT.prevout.scriptpubkey_address, [keyRow(1, [P2WPKH_INPUT])]],
+    ["a taproot output", TAPROOT, [keyRow(1, [], [TAPROOT_OUTPUT])]],
+  ])("matches %s to an address written in capitals", async (_case, address, rows) => {
+    const reveal = await getEsploraPubkey(
+      address.toUpperCase(),
+      stats(1, 1),
+      vi.fn(async () => rows),
+    );
+
+    expect(reveal.pubkey).not.toBeNull();
+    expect(reveal.address).toBe(address.toUpperCase());
+  });
+
   it("reads a taproot output key from the first page of an address that never spent", async () => {
     const fetchPage = vi.fn(async () => [keyRow(7, [], [TAPROOT_OUTPUT])]);
 
