@@ -141,7 +141,7 @@ graph TB
 
 ## Test coverage gaps
 
-**Covered** (43 test files): provider base/registry, provider resolution, HTTP client, path safety, amount formatting, errors, input classification, chain normalization, CLI argument routing, extension integration, the built bin's `mcp` source switch and its start through the shebang, plus all eighteen providers. `test/unit/cli-bin.test.ts` runs `dist/cli.mjs`, so it needs `pnpm build` first, as CI does, and stops before any test when a source file, `package.json`, the lockfile or `vite.config.ts` is newer than that bundle.
+**Covered** (44 test files): provider base/registry, provider resolution, HTTP client, path safety, amount formatting, errors, input classification, chain normalization, CLI argument routing, extension integration, the built bin's `mcp` source switch and its start through the shebang, the docs worker's rate limit key, plus all eighteen providers. `test/unit/docs-rate-limit.test.ts` loads `docs/server/utils/query.ts` through the `#shared` and `@agntn/explorers` aliases in `vite.config.ts`, with `ohash` mocked, because CI installs the root alone. `test/unit/cli-bin.test.ts` runs `dist/cli.mjs`, so it needs `pnpm build` first, as CI does, and stops before any test when a source file, `package.json`, the lockfile or `vite.config.ts` is newer than that bundle.
 **CLI coverage**: help without backend imports, errors for unknown chains, provider listing, capability refusals with their provider hint, and mocked balance, transaction and token reads. Successful contract, transfer, gas, and block command execution remains untested.
 **Test style**: Focused unit tests for local contracts and mocked explorer API responses. Live roundtrips belong in `test/live` and run only through `pnpm test:live`.
 
