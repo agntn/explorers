@@ -389,6 +389,19 @@ describe("HTTP client", () => {
     expect(headers.get("X-Key")).toBe("k");
   });
 
+  it("keeps a body JSON can't serialize inside the error hierarchy", async () => {
+    const error = await postJSON(
+      "https://example.test/data",
+      { value: 1n },
+      {
+        provider: "koios",
+      },
+    ).catch((failure: unknown) => failure);
+
+    expect(error).toBeInstanceOf(ExplorerError);
+    expect(error).toMatchObject({ provider: "koios" });
+  });
+
   it.each([204, 205])("answers a %i response with nothing", async (status) => {
     vi.stubGlobal(
       "fetch",

@@ -55,6 +55,13 @@ function parseJSON<T>(text: string | undefined): T {
   }) as T;
 }
 
+/* The JSON body stays a value until `request` serializes it inside its error boundary. */
+interface Outgoing {
+  readonly method: "GET" | "POST";
+  readonly headers: Readonly<Record<string, string>>;
+  readonly json?: unknown;
+}
+
 interface Received {
   readonly response: Response;
   readonly text: string | undefined;
@@ -107,18 +114,20 @@ async function receive(url: string, init: RequestInit): Promise<Received> {
  * Send one request and read the body as text, which `parseJSON` needs for its integer source.
  *
  * @param {string} url - The `url` value.
- * @param {RequestInit} init - Method, headers and body of the request.
+ * @param {Outgoing} outgoing - Method, headers and the value to send as JSON.
  * @param {ClientRequestOptions} options - Request metadata and cancellation.
  * @returns {Promise<T>} The parsed body, `undefined` for a status without one.
  */
 async function request<T>(
   url: string,
-  init: RequestInit,
+  outgoing: Outgoing,
   options?: ClientRequestOptions,
 ): Promise<T> {
   const { signal, clear } = deadline(options);
   try {
-    const { response, text } = await receive(url, { ...init, signal });
+    const { method, headers, json } = outgoing;
+    const body = json === undefined ? undefined : JSON.stringify(json);
+    const { response, text } = await receive(url, { method, headers, body, signal });
     if (response.status >= 400 && response.status < 600) {
       throw new ResponseFailure(response, text ?? "");
     }
@@ -165,7 +174,7 @@ export async function postJSON<T>(
         "User-Agent": agent(),
         ...options?.headers,
       },
-      body: JSON.stringify(body),
+      json: body,
     },
     options,
   );
