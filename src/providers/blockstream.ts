@@ -15,6 +15,7 @@ import { normalizeBaseUrl } from "../core/client.ts";
 import { formatWei, historyPage } from "../core/types.ts";
 import {
   ESPLORA_HISTORY_ROWS,
+  esploraFeedAddress,
   getEsploraAddressHistory,
   getEsploraPubkey,
   getEsploraUtxos,
@@ -96,11 +97,12 @@ function addressTotals(
   raw: Readonly<EsploraAddressTx>,
   address: string,
 ): { in: number; out: number } {
+  const feedAddress = esploraFeedAddress(address);
   const totalIn = raw.vin
-    .filter((input) => input.prevout?.scriptpubkey_address === address)
+    .filter((input) => input.prevout?.scriptpubkey_address === feedAddress)
     .reduce((sum, input) => sum + (input.prevout?.value ?? 0), 0);
   const totalOut = raw.vout
-    .filter((output) => output.scriptpubkey_address === address)
+    .filter((output) => output.scriptpubkey_address === feedAddress)
     .reduce((sum, output) => sum + output.value, 0);
   return { in: totalIn, out: totalOut };
 }
@@ -109,11 +111,11 @@ function sendingAddressParties(
   raw: Readonly<EsploraAddressTx>,
   address: string,
 ): { readonly from: string; readonly to: string } {
-  const recipient = selectEsploraRecipientOutput(raw.vout, address);
-  const sender = raw.vin.find((input) => input.prevout?.scriptpubkey_address === address);
+  const feedAddress = esploraFeedAddress(address);
+  const recipient = selectEsploraRecipientOutput(raw.vout, feedAddress).address;
   return {
-    from: sender?.prevout?.scriptpubkey_address ?? address,
-    to: recipient.address ?? address,
+    from: address,
+    to: recipient === null || recipient === feedAddress ? address : recipient,
   };
 }
 
