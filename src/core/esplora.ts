@@ -190,6 +190,11 @@ export interface EsploraAddressStats {
 
 type KeySighting = Pick<PubkeyReveal, "pubkey" | "source" | "txid">;
 
+/* BIP 173 allows a segwit address in capitals, while every feed row spells it in lowercase. */
+function feedForm(address: string): string {
+  return SEGWIT_ADDRESS.test(address) ? address.toLowerCase() : address;
+}
+
 function secKey(candidate: string | undefined): string | undefined {
   return candidate !== undefined && SEC_PUBKEY.test(candidate)
     ? candidate.toLowerCase()
@@ -249,7 +254,7 @@ function countOf(
 }
 
 /**
- * Find the key an address has shown, newest row first, within `ESPLORA_HISTORY_ROWS` rows.
+ * Find the key an address has shown, newest row first, within `maxRows` rows of its feed.
  * Without a spend only a taproot output can show one, and every row pays it, so one page does.
  *
  * @param {string} address - The `address` value.
@@ -257,6 +262,7 @@ function countOf(
  * @param {(path: string) => Promise<T[]>} fetchPage - Read one feed path.
  * @param {(encodedAddress: string, encodedCursor: string) => string} nextPagePath - Build the
  *   provider-specific confirmed-history cursor path.
+ * @param {number} maxRows - Feed rows to walk before giving up.
  * @returns {Promise<Omit<PubkeyReveal, "chain">>} The key and where it showed.
  */
 export async function getEsploraPubkey<T extends EsploraKeyTransaction>(
@@ -264,6 +270,7 @@ export async function getEsploraPubkey<T extends EsploraKeyTransaction>(
   fetchStats: () => Promise<EsploraAddressStats>,
   fetchPage: (path: string) => Promise<T[]>,
   nextPagePath: (encodedAddress: string, encodedCursor: string) => string = confirmedHistoryPath,
+  maxRows = ESPLORA_HISTORY_ROWS,
 ): Promise<Omit<PubkeyReveal, "chain">> {
   assertSafePathSegment(address, "address");
   const stats = await fetchStats();
@@ -271,7 +278,7 @@ export async function getEsploraPubkey<T extends EsploraKeyTransaction>(
   const none = { address, pubkey: null, source: null, txid: null, spent };
   if (countOf(stats, "tx_count") === 0) return none;
 
-  const feedAddress = SEGWIT_ADDRESS.test(address) ? address.toLowerCase() : address;
+  const feedAddress = feedForm(address);
   let rows = 0;
   for await (const page of esploraHistoryPages(address, fetchPage, nextPagePath)) {
     for (const transaction of page) {
@@ -279,7 +286,7 @@ export async function getEsploraPubkey<T extends EsploraKeyTransaction>(
       if (found !== undefined) return { address, ...found, spent };
     }
     rows += page.length;
-    if (!spent || rows >= ESPLORA_HISTORY_ROWS) break;
+    if (!spent || rows >= maxRows) break;
   }
 
   return none;

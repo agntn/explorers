@@ -50,6 +50,9 @@ const CHAIN_BASES: Partial<Record<ChainKey, string>> = {
   pepecoin: "https://peppool.space",
 };
 
+/** Peppool allows 15 requests a minute: a key search there reads the counters and ten pages. */
+const PEPPOOL_KEY_ROWS = 250;
+
 /** Fee rates come back in the chain's smallest unit per virtual byte. */
 const FEE_UNITS: Partial<Record<ChainKey, GasUnit>> = {
   bitcoin: "sat/vB",
@@ -494,6 +497,7 @@ export class Mempool extends Provider {
       async () => this.api<EsploraAddressStats>(c, `/api/address/${encodeURIComponent(address)}`),
       async (path) => this.api<EsploraKeyTransaction[]>(c, path),
       c === "pepecoin" ? peppoolHistoryPath : undefined,
+      c === "pepecoin" ? PEPPOOL_KEY_ROWS : undefined,
     );
     return { ...reveal, chain: c };
   }

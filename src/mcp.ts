@@ -261,7 +261,7 @@ export function createMcpServer(): McpServer {
     "explorers_pubkey",
     {
       description:
-        "Tell whether a Bitcoin, Litecoin or Pepecoin address has shown its public key on chain. pubkey comes back as hex with the txid that showed it: source spend for an input spending from the address (P2PKH, P2WPKH, P2SH-wrapped P2WPKH), source output for a taproot address, which is its own key. A null pubkey beside spent true means a script this read does not parse, or a spend older than the newest 1000 transactions.",
+        "Tell whether a Bitcoin, Litecoin or Pepecoin address has shown its public key on chain. pubkey comes back as hex with the txid that showed it: source spend for an input spending from the address (P2PKH, P2WPKH, P2SH-wrapped P2WPKH), source output for a taproot address, which is its own key. A null pubkey beside spent true means a script this read does not parse, or a spend older than the newest 1000 transactions, 250 on Pepecoin where Peppool allows 15 requests a minute.",
       inputSchema: { address: z.string().min(1), ...providerInput },
       annotations: { readOnlyHint: true },
     },

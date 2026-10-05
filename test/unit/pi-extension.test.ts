@@ -817,7 +817,7 @@ describe("explorers Pi extension", () => {
       "keeps a spent address without a readable key apart from one that never spent",
       1,
       [PUBKEY_FUNDING],
-      `[mempool] ${PUBKEY_ADDRESS} on bitcoin: spent, but no key read: a script this read doesn't parse, or a spend past the newest 1000 transactions`,
+      `[mempool] ${PUBKEY_ADDRESS} on bitcoin: spent, but no key read: a script this read doesn't parse, or a spend older than the history it reads (1000 transactions, 250 on Pepecoin)`,
     ],
   ])("%s", async (_name, spent, rows, expected) => {
     stubPubkeyFeed(spent, rows);

@@ -161,7 +161,7 @@ function describePubkey(name: string, reveal: Readonly<ExplorersModule.PubkeyRev
     return `${head}: pubkey ${reveal.pubkey} (${shown} ${reveal.txid ?? "unknown"})`;
   }
   if (!reveal.spent) return `${head}: no pubkey shown, the address never spent`;
-  return `${head}: spent, but no key read: a script this read doesn't parse, or a spend past the newest 1000 transactions`;
+  return `${head}: spent, but no key read: a script this read doesn't parse, or a spend older than the history it reads (1000 transactions, 250 on Pepecoin)`;
 }
 
 /* The header's count is every holding or output; the suffix appears only when the list stops short of it. */
@@ -481,7 +481,7 @@ export default function explorersExtension(pi: ExtensionAPI) {
     promptGuidelines: [
       "Use explorers_pubkey with a Bitcoin, Litecoin or Pepecoin address to read the public key a spend or a taproot output put on chain.",
       "explorers_pubkey names the txid that showed the key: a spend from P2PKH, P2WPKH or P2SH-wrapped P2WPKH, or the output paying a taproot address, which is its own key.",
-      "explorers_pubkey with no key and a spent address means a script it doesn't parse, or a spend older than the newest 1000 transactions; an address that never spent shows no key in its own history.",
+      "explorers_pubkey with no key and a spent address means a script it doesn't parse, or a spend older than the newest 1000 transactions, 250 on Pepecoin where Peppool allows 15 requests a minute; an address that never spent shows no key in its own history.",
     ],
     parameters: Type.Object({
       address: Type.String({ description: "Blockchain address" }),

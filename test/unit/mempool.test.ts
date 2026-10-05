@@ -479,6 +479,27 @@ describe("mempool provider", () => {
     ]);
   });
 
+  it("keeps a Pepecoin key search inside Peppool's 15 requests a minute", async () => {
+    let row = 0;
+    const fetch = vi.fn(async (input: string | URL | Request) => {
+      const body = String(input).includes("/txs")
+        ? Array.from({ length: 25 }, () => {
+            row += 1;
+            return historyTransaction(row);
+          })
+        : { chain_stats: { spent_txo_count: 1, tx_count: 5000 } };
+      return new Response(JSON.stringify(body), {
+        headers: { "Content-Type": "application/json" },
+      });
+    });
+    vi.stubGlobal("fetch", fetch);
+
+    const reveal = await provider.getPubkey!(KNOWN_PEP, "pepecoin");
+
+    expect(reveal).toMatchObject({ pubkey: null, spent: true });
+    expect(fetch.mock.calls.length).toBeLessThan(15);
+  });
+
   it("reads the message an OP_RETURN output carries", async () => {
     stubTxDetail([
       { scriptpubkey: "0014c30f5f3fccac11feca2fd0322b607c9d73995fde", value: 2_000 },

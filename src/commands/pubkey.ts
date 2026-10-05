@@ -16,7 +16,7 @@ function renderPubkey(providerName: string, reveal: Readonly<PubkeyReveal>): voi
     return;
   }
   print("  Spent, but no key read: a script this read does not parse,");
-  print("  or a spend past the newest 1000 transactions");
+  print("  or a spend older than the history it reads (1000 transactions, 250 on Pepecoin)");
 }
 
 export default defineCommand({
