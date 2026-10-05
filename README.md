@@ -194,7 +194,7 @@ omp install @agntn/explorers
 }
 ```
 
-Ten read-only tools, `explorers_balance` through `explorers_providers`, the same ten on all three. The heavy stuff, `raw` records and contract ABIs, stays out of the answer until a call asks for it. Your context window will thank you. [Agents guide](https://explorers.agntn.dev/guide/agents).
+Eleven read-only tools, `explorers_balance` through `explorers_providers`, the same eleven on all three. Got your own transport? `createMcpServer()` lives in `@agntn/explorers/mcp`. The heavy stuff, `raw` records and contract ABIs, stays out of the answer until a call asks for it. Your context window will thank you. [Agents guide](https://explorers.agntn.dev/guide/agents).
 
 ## 🚫 What this does not do
 

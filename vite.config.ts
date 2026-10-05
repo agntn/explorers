@@ -82,6 +82,7 @@ export default defineConfig({
     entry: {
       index: "src/index.ts",
       cli: "src/cli.ts",
+      mcp: "src/mcp.ts",
       "providers/etherscan": "src/providers/etherscan.ts",
       "providers/blockscout": "src/providers/blockscout.ts",
       "providers/blockchair": "src/providers/blockchair.ts",
