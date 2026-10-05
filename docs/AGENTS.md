@@ -79,6 +79,7 @@ Resolution traps, both caused by the repo root being a pnpm workspace:
 
 - `seo.schema` in `app/app.config.ts` emits the landing JSON-LD: `WebSite`, the agntn `Organization` as publisher, and a free `SoftwareApplication` with `sameAs` on GitHub and npm. Docs pages get `Article` plus `BreadcrumbList` from Docus on their own; the explorer pages call `useSeo` and `defineOgImage` themselves.
 - The Docus sitemap reads content collections only. `server/routes/sitemap.xml.ts` wraps it and appends the pages listed in `PAGES`; a new static page under `app/pages/` goes there too or it is invisible to crawlers. Entity pages stay out.
+- A page that moved keeps its old address as a `redirect` rule with `prerender: false` in `nuxt.config.ts`. Without the flag the crawler may pick the address up, Nitro writes a refresh page for it, and Workers serves that file as a 200 before the worker can send the 301. Curl, link checkers and agents then land on a blank page.
 - Docus links `/favicon.ico` without shipping one. `public/favicon.svg` is the source, the PNGs and the `.ico` are cut from it with ImageMagick, `app.head` in `nuxt.config.ts` links them with the manifest and theme colours.
 
 ## OG images
