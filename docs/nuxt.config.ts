@@ -180,9 +180,9 @@ export default defineNuxtConfig({
   mcp: {
     enabled: false,
   },
-  /** The chain matrix moved under Providers; old links keep working. */
+  /** The chain matrix moved under Providers. Prerendered, its 301 turns into a blank 200 page. */
   routeRules: {
-    "/chains": { redirect: { to: "/providers/chains", statusCode: 301 } },
+    "/chains": { redirect: { to: "/providers/chains", statusCode: 301 }, prerender: false },
   },
   nitro: {
     preset: "cloudflare_module",
