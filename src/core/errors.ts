@@ -91,7 +91,8 @@ function responseReason(body: string | undefined): string | undefined {
  * HTTP failure with a redacted request URL in its message and a redacted response body.
  *
  * The message ends with the reason the server gave, when the body names one, so every surface that
- * shows only the message still says why the request failed.
+ * shows only the message still says why the request failed. The reason is redacted on its own and
+ * joined afterwards, so a key closing the URL can't swallow it.
  */
 export class HTTPError extends ExplorerError {
   public readonly statusCode: number;
@@ -112,9 +113,12 @@ export class HTTPError extends ExplorerError {
     const status = `HTTP ${statusCode} from ${url}`;
     const reason = responseReason(body);
     const quoted = reason === undefined || reason === status ? undefined : reason;
-    super(quoted === undefined ? status : `${status}: ${quoted}`, provider);
+    super(status, provider);
     this.statusCode = statusCode;
-    if (quoted !== undefined) this.reason = sanitizeUrl(quoted);
+    if (quoted !== undefined) {
+      this.reason = sanitizeUrl(quoted);
+      this.message = `${this.message}: ${this.reason}`;
+    }
     if (body !== undefined) this.body = sanitizeUrl(body);
     this.rawUrl = sanitizeUrl(url);
     Object.defineProperty(this, "rawUrl", { enumerable: false });

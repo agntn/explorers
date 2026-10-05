@@ -443,6 +443,22 @@ describe("HTTP client", () => {
     );
   });
 
+  it("keeps the server's reason when the key is the last query param", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response("Invalid address format", { status: 400 })),
+    );
+
+    const error = await getJSON("https://example.test/v2/api?module=account&apikey=secret", {
+      provider: "etherscan",
+    }).catch((failure: unknown) => failure);
+
+    expect(error).toBeInstanceOf(HTTPError);
+    expect((error as Error).message).toBe(
+      "HTTP 400 from https://example.test/v2/api?module=account&apikey=REDACTED: Invalid address format",
+    );
+  });
+
   it("times out a request that carries no signal of its own", async () => {
     vi.stubGlobal(
       "fetch",

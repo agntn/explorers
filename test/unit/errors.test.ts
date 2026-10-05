@@ -83,6 +83,29 @@ describe("ExplorerError", () => {
     const e = new HTTPError(400, "https://x", `${"a".repeat(198)}${"\u{1F600}".repeat(5)}`);
     expect(e.message).toBe(`HTTP 400 from https://x: ${"a".repeat(198)}\u{1F600}…`);
   });
+  it("HTTPError keeps the reason after a key in the last query param", () => {
+    const e = new HTTPError(400, "https://x/api?module=account&apikey=secret", "Invalid address");
+    expect(e.message).toBe(
+      "HTTP 400 from https://x/api?module=account&apikey=REDACTED: Invalid address",
+    );
+  });
+  it("HTTPError keeps the reason after a key in a middle query param", () => {
+    const e = new HTTPError(400, "https://x/api?apikey=secret&module=account", "Invalid address");
+    expect(e.message).toBe(
+      "HTTP 400 from https://x/api?apikey=REDACTED&module=account: Invalid address",
+    );
+  });
+  it("HTTPError redacts a reason that echoes a URL with a trailing key", () => {
+    const e = new HTTPError(
+      400,
+      "https://x?apikey=secret",
+      "Bad request to https://x?apikey=secret",
+    );
+    expect(e.message).toBe(
+      "HTTP 400 from https://x?apikey=REDACTED: Bad request to https://x?apikey=REDACTED",
+    );
+    expect(e.message).not.toContain("secret");
+  });
   it("HTTPError redacts keys in a quoted reason", () => {
     const e = new HTTPError(400, "https://x", "Bad request to https://x?apikey=secret");
     expect(e.message).toBe("HTTP 400 from https://x: Bad request to https://x?apikey=REDACTED");
