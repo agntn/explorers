@@ -12,32 +12,40 @@ import { clampMaxResults, normalizeChain } from "./core/types.ts";
 import type { ContractInfo, Transaction } from "./core/types.ts";
 import { version } from "./version.ts";
 
-const providerInput = {
-  chain: z.string().trim().min(1).optional().describe("Chain name or alias"),
-  provider: z.string().trim().min(1).optional().describe("Explorer provider key"),
-};
-const rawInput = {
-  raw: z
-    .boolean()
-    .optional()
-    .describe(
-      "Include the provider's own transaction record as raw, for fields the normalized shape leaves out, such as every input and output of a Bitcoin transaction. Defaults to false.",
-    ),
-};
 /** Holdings one tokens call lists unless asked for more; a busy wallet holds thousands. */
 const TOKEN_HOLDINGS_LIMIT = 50;
 /** Outputs one utxos call lists unless asked for more; a dusted address holds thousands. */
 const UNSPENT_OUTPUTS_LIMIT = 50;
-const contractPayloadInput = {
-  abi: z
-    .boolean()
-    .optional()
-    .describe("Include the ABI of a verified contract as a JSON string. Defaults to false."),
-  sourceCode: z
-    .boolean()
-    .optional()
-    .describe("Include the source code of a verified contract. Defaults to false."),
-};
+/**
+ * Build the shared tool fields per server, so importing `/mcp` constructs no schema.
+ *
+ * @returns {object} The provider, raw and contract payload fields.
+ */
+function inputFields() {
+  const providerInput = {
+    chain: z.string().trim().min(1).optional().describe("Chain name or alias"),
+    provider: z.string().trim().min(1).optional().describe("Explorer provider key"),
+  };
+  const rawInput = {
+    raw: z
+      .boolean()
+      .optional()
+      .describe(
+        "Include the provider's own transaction record as raw, for fields the normalized shape leaves out, such as every input and output of a Bitcoin transaction. Defaults to false.",
+      ),
+  };
+  const contractPayloadInput = {
+    abi: z
+      .boolean()
+      .optional()
+      .describe("Include the ABI of a verified contract as a JSON string. Defaults to false."),
+    sourceCode: z
+      .boolean()
+      .optional()
+      .describe("Include the source code of a verified contract. Defaults to false."),
+  };
+  return { providerInput, rawInput, contractPayloadInput };
+}
 
 function withSelectedProvider<T>(
   providerName: string | undefined,
@@ -117,6 +125,7 @@ function requireOperation<K extends ProviderOperation>(
  */
 export function createMcpServer(): McpServer {
   const server = new McpServer({ name: "explorers", version });
+  const { providerInput, rawInput, contractPayloadInput } = inputFields();
 
   server.registerTool(
     "explorers_providers",
