@@ -17,6 +17,7 @@ const dist = process.argv[2]
 const entries = [
   "index.mjs",
   "cli.mjs",
+  "mcp.mjs",
   ...readdirSync(join(dist, "providers"))
     .filter((file) => file.endsWith(".mjs"))
     .map((file) => `providers/${file}`),

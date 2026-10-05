@@ -111,9 +111,9 @@ function requireOperation<K extends ProviderOperation>(
 }
 
 /**
- * Create an MCP server exposing the normalized explorer operations.
+ * Create the MCP server over the explorer operations, exported as `@agntn/explorers/mcp`.
  *
- * @returns {McpServer} The resulting value.
+ * @returns {McpServer} A server with no transport yet, ready for `connect()`.
  */
 export function createMcpServer(): McpServer {
   const server = new McpServer({ name: "explorers", version });

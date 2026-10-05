@@ -120,6 +120,43 @@ describe("explorers mcp from the built bin", () => {
   });
 });
 
+/* A host with its own transport registers through the root and reads back through `/mcp`. */
+const embedMcp = `
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
+const { Provider, register } = await import("@agntn/explorers");
+const { createMcpServer } = await import("@agntn/explorers/mcp");
+class Probe extends Provider {
+  static key = "probe";
+  get capabilities() { return {}; }
+}
+register(Probe, { chains: ["eth"], capabilities: [] });
+const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
+const client = new Client({ name: "host", version: "1.0.0" });
+await Promise.all([createMcpServer().connect(serverSide), client.connect(clientSide)]);
+const { content } = await client.callTool({ name: "explorers_providers", arguments: {} });
+console.log(JSON.stringify({
+  entry: import.meta.resolve("@agntn/explorers/mcp"),
+  providers: JSON.parse(content[0].text).map((provider) => provider.name),
+}));
+await client.close();
+`;
+
+describe("@agntn/explorers/mcp from the built package", () => {
+  it("hands createMcpServer to a host, sharing the registry with the root entry", async () => {
+    const { stdout } = await execFileAsync(
+      process.execPath,
+      ["--input-type=module", "--eval", embedMcp],
+      { cwd: root, encoding: "utf8", timeout: 20_000 },
+    );
+    const { entry, providers } = JSON.parse(stdout) as { entry: string; providers: string[] };
+
+    expect(entry).toBe(pathToFileURL(resolve(root, "dist/mcp.mjs")).href);
+    expect(providers).toContain("probe");
+    expect(providers).toContain("mempool");
+  });
+});
+
 describe("explorers as an installed executable", () => {
   it("starts through its shebang, the way npm and npx run a linked bin", async () => {
     const copy = copyPackage(tmpdir(), []);

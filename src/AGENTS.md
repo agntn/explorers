@@ -7,6 +7,7 @@ src/
   index.ts          — Library entry: re-exports types, utilities, registry
   cli.ts            — CLI entry: citty main, lazy subcommand imports
   cli-args.ts       — Arg normalization (bare address → balance subcommand)
+  mcp.ts            - MCP server: createMcpServer(), the @agntn/explorers/mcp entry
   version.ts        — Single version string
   core/             — Domain layer (types, registry, errors, HTTP, ENS, input)
   providers/        — Provider implementations (one file per provider)
