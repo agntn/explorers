@@ -258,6 +258,14 @@ export interface ProviderCapabilities {
   gasData: boolean;
   /** Can get block info */
   blockInfo: boolean;
+  /** Can filter tx history by tags. Optional, so older providers still compile */
+  txHistoryTags?: boolean;
+}
+
+/** One tag a transaction must carry: this name with any of these values */
+export interface TagFilter {
+  readonly name: string;
+  readonly values: readonly string[];
 }
 
 /** Options for tx history */
@@ -272,10 +280,12 @@ export interface TxHistoryOptions {
   limit?: number;
   /** Page number (1-indexed) */
   page?: number;
+  /** Tags every transaction must carry, read where `capabilities.txHistoryTags` is set */
+  tags?: readonly TagFilter[];
 }
 
 /** Options for token transfer history */
-export interface TokenTransferOptions extends TxHistoryOptions {
+export interface TokenTransferOptions extends Omit<TxHistoryOptions, "tags"> {
   /** Only include transfers of this token contract */
   token?: string;
 }

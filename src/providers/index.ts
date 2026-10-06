@@ -141,7 +141,7 @@ export const builtins: readonly ProviderEntry[] = [
   {
     key: "arweave",
     chains: ["arweave"],
-    capabilities: ["balances", "txHistory", "txDetail", "blockInfo"],
+    capabilities: ["balances", "txHistory", "txDetail", "blockInfo", "txHistoryTags"],
     defaultURL: ARWEAVE_GATEWAY_URL,
     load: () => import("./arweave.ts").then((m) => m.Arweave),
   },

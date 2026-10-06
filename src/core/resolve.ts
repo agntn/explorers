@@ -215,7 +215,8 @@ export interface ProviderContext {
 /* The registry knows who serves the read, so a refusal names them instead of leaving the caller to
    try providers one by one, and says so when nobody does. A chain refusal from a read that named no
    capability can only name who serves the chain. Only a refusal from the provider that ran, about
-   the chain it ran on, gets the hint; an operation the registry cannot map gets none. */
+   the chain it ran on, gets the hint; an operation the registry cannot map gets none, unless it
+   names the capability the read was selected by, as `txHistoryTags` does for tag filters. */
 function suggestProviders(
   /* oxlint-disable-next-line typescript/prefer-readonly-parameter-types */
   error: UnsupportedChainError | UnsupportedOperationError,
@@ -228,8 +229,9 @@ function suggestProviders(
   let needed = capability;
   if (error instanceof UnsupportedOperationError) {
     const operation = error.operation;
-    if (!Object.hasOwn(OPERATION_CAPABILITIES, operation)) return;
-    needed = OPERATION_CAPABILITIES[operation as keyof typeof OPERATION_CAPABILITIES];
+    if (Object.hasOwn(OPERATION_CAPABILITIES, operation))
+      needed = OPERATION_CAPABILITIES[operation as keyof typeof OPERATION_CAPABILITIES];
+    else if (operation !== capability) return;
   }
   const others = rankProviders(chain, "primary", needed).filter((other) => other !== name);
   error.message += hint(others, chain, needed !== undefined);

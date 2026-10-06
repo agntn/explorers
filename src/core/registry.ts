@@ -123,7 +123,8 @@ export function providers(): string[] {
 
 /*
  * Expand a declared capability list into the boolean map `Provider.capabilities` returns. The
- * literal keeps the two shapes in step: a flag added to `ProviderCapabilities` fails to compile here.
+ * literal keeps the two shapes in step: a required flag added to `ProviderCapabilities` fails to
+ * compile here. An optional flag shows up only where a provider declares it, as its class does.
  */
 function capabilityFlags(declared: readonly ProviderCapability[]): ProviderCapabilities {
   const supports = (capability: ProviderCapability) => declared.includes(capability);
@@ -138,6 +139,7 @@ function capabilityFlags(declared: readonly ProviderCapability[]): ProviderCapab
     tokenTransfers: supports("tokenTransfers"),
     gasData: supports("gasData"),
     blockInfo: supports("blockInfo"),
+    ...(supports("txHistoryTags") ? { txHistoryTags: true } : {}),
   };
 }
 
