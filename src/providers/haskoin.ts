@@ -11,6 +11,7 @@
 import { getChain } from "@agntn/chains";
 import { z } from "zod";
 import { Provider } from "../core/provider.ts";
+import { collectOpReturns } from "../core/script.ts";
 import { buildQuery, normalizeBaseUrl } from "../core/client.ts";
 import { ExplorerError, HTTPError, NotFoundError, UnsupportedChainError } from "../core/errors.ts";
 import { clampMaxResults, formatWei, toTimestamp } from "../core/types.ts";
@@ -163,7 +164,13 @@ function transactionSchema() {
         value: amount().nullish(),
       }),
     ),
-    outputs: z.array(z.looseObject({ address: z.string().nullish(), value: amount() })),
+    outputs: z.array(
+      z.looseObject({
+        address: z.string().nullish(),
+        pkscript: z.string().optional(),
+        value: amount(),
+      }),
+    ),
     block: blockSchema(),
     deleted: z.boolean(),
     time: z.number().int().nonnegative(),
@@ -175,6 +182,7 @@ interface HaskoinEndpoint {
 }
 
 interface HaskoinOutput extends HaskoinEndpoint {
+  readonly pkscript?: string;
   readonly value: bigint;
 }
 
@@ -246,6 +254,7 @@ function mapTransaction(tx: HaskoinTransaction, raw: unknown, address?: string):
     status: tx.deleted ? "failed" : height === null ? "pending" : "success",
     isContractInteraction: false,
     tokenTransfers: [],
+    opReturn: collectOpReturns(tx.outputs.map((output) => output.pkscript)),
     raw: raw as Record<string, unknown>,
   };
 }

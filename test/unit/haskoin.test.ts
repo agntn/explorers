@@ -451,4 +451,19 @@ describe("haskoin provider", () => {
     await expect(provider.getBlockInfo?.(99_999_999)).rejects.toBeInstanceOf(NotFoundError);
     await expect(provider.getBlockInfo?.(-1)).rejects.toThrow("Invalid Bitcoin Cash block height");
   });
+
+  it("decodes the pushes of an OP_RETURN output into opReturn", async () => {
+    /* Output script of 2cfde833…7aa3 on Bitcoin Cash, as api.haskoin.com sent it. */
+    const hash = "24b3998ca2826be70d7f0ec96cfac802c38430e584bebac2ef15b2c32fe5daf5";
+    stubApi(() => ({
+      ...sweep,
+      outputs: [{ ...sweep.outputs[0], pkscript: `6a0446555a0020${hash}` }, sweep.outputs[1]],
+    }));
+    const provider = await create("haskoin");
+
+    const transaction = await provider.getTxDetail?.(SWEEP);
+
+    expect(transaction?.opReturn).toEqual([{ hex: "46555a00" }, { hex: hash }]);
+    expect(transaction?.to).toBe(FUNDER);
+  });
 });

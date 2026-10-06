@@ -24,7 +24,7 @@ Docs and a live explorer: [explorers.agntn.dev](https://explorers.agntn.dev).
 - 🏷️ **ENS just works.** `vitalik.eth` wherever an Ethereum address would go, no extra dependency.
 - 🎯 **Picks a provider for you and tells you which.** Keys first, keyless next, Blockscout when nobody else wants the chain. `-p` if you know better.
 - 📦 **Loads only what you use.** One bundle per provider, `create()` pulls in exactly one.
-- 💸 **Bitcoin gets treated like Bitcoin.** Pending activity in `unconfirmed`, the spendable set from `getUtxos()`, OP_RETURN decoded when it's text. And `getPubkey()` finds the key a spend already gave away.
+- 💸 **Bitcoin gets treated like Bitcoin.** Pending activity in `unconfirmed`, the spendable set from `getUtxos()`, OP_RETURN and inscriptions decoded when they're text. And `getPubkey()` finds the key a spend already gave away.
 
 ## 📦 Install
 
@@ -86,7 +86,7 @@ explorers providers
 
 How does `tx` know if you gave it a hash or an address? It looks at the shape. When the shape lies, like on Arweave where addresses and transaction IDs look identical, `-m history` or `-m detail` settles it.
 
-Bitcoin, Litecoin and Pepecoin transactions come with their OP_RETURN decoded, hex always, text when it's actually text. The one every tutorial quotes:
+Anything from the Bitcoin family comes with its OP_RETURN decoded, hex always, text when it's actually text. The one every tutorial quotes:
 
 ```bash
 explorers tx 8bae12b5f4c088d940733dcd1455efc6a3a69cf9340e17a981286d3778615684 -c btc
@@ -102,6 +102,8 @@ explorers tx 8bae12b5f4c088d940733dcd1455efc6a3a69cf9340e17a981286d3778615684 -c
   Fee: 20000 base units
   OP_RETURN: charley loves heidi
 ```
+
+Ordinals inscriptions show up too, on one transaction from Mempool or Blockstream. They're read straight from the witness. No indexer, no inscription numbers, just the bytes.
 
 And does an address still hide its public key? The one that paid 10,000 BTC for two pizzas doesn't:
 

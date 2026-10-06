@@ -239,4 +239,31 @@ describe("tx command", () => {
     );
     expect(fetch).not.toHaveBeenCalled();
   });
+
+  it("prints an inscription with its body indented and a large one as a note", async () => {
+    const hash = "a".repeat(64);
+    const envelope = (body: string) => `0063036f726401010a746578742f706c61696e00${body}68`;
+    const text = Buffer.from("one\ntwo", "utf8");
+    const tapscript = `20${"22".repeat(32)}ac${envelope(`0${text.length}${text.toString("hex")}`)}${envelope(`4d0110${"61".repeat(4097)}`)}`;
+    stubJSON({
+      txid: hash,
+      vin: [{ prevout: null, witness: ["aa".repeat(64), tapscript, `c0${"11".repeat(32)}`] }],
+      vout: [{ scriptpubkey_address: "bc1qrecipient", value: 2_000 }],
+      fee: 1_000,
+      status: { confirmed: true, block_height: 1, block_time: 1 },
+    });
+    const log = spyOnOutput();
+
+    await txCommand.run?.({
+      args: { _: [], target: hash, limit: "10", provider: "mempool", chain: "bitcoin" },
+    });
+
+    expect(log.mock.calls.map(([line]) => String(line)).slice(-5)).toEqual([
+      "  Inscription: text/plain, 7 bytes (input 0)",
+      "    one",
+      "    two",
+      "  Inscription: text/plain, 4097 bytes (input 0)",
+      "    body too big to print, read it from the witness",
+    ]);
+  });
 });

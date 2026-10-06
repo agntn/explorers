@@ -12,6 +12,7 @@
 import { getChain } from "@agntn/chains";
 import { z } from "zod";
 import { Provider } from "../core/provider.ts";
+import { collectOpReturns } from "../core/script.ts";
 import { buildQuery, normalizeBaseUrl } from "../core/client.ts";
 import { ExplorerError, HTTPError, NotFoundError, UnsupportedChainError } from "../core/errors.ts";
 import { clampMaxResults, formatWei, toTimestamp } from "../core/types.ts";
@@ -74,6 +75,7 @@ function outputSchema() {
   return z.looseObject({
     n: z.number().int().nonnegative(),
     value: amount(),
+    hex: z.string().optional(),
     addresses: z.array(z.string()).optional(),
     isAddress: z.boolean().optional(),
   });
@@ -99,6 +101,7 @@ interface BlockbookEndpoint {
 interface BlockbookOutput extends BlockbookEndpoint {
   readonly n: number;
   readonly value: string;
+  readonly hex?: string;
 }
 
 interface BlockbookTransaction {
@@ -167,6 +170,7 @@ function mapTransaction(tx: BlockbookTransaction, address?: string): Transaction
     status: confirmed ? "success" : "pending",
     isContractInteraction: false,
     tokenTransfers: [],
+    opReturn: collectOpReturns(tx.vout.map((output) => output.hex)),
     raw: tx as unknown as Record<string, unknown>,
   };
 }

@@ -221,7 +221,7 @@ export function createMcpServer(): McpServer {
     "explorers_tx_detail",
     {
       description:
-        "Get one normalized transaction by hash, with OP_RETURN messages when the provider is mempool",
+        "Get one normalized transaction by hash, with OP_RETURN messages on the Bitcoin family and Ordinals inscriptions from mempool and blockstream",
       inputSchema: { hash: z.string().min(1), ...providerInput, ...rawInput },
       annotations: { readOnlyHint: true },
     },

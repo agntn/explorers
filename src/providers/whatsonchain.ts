@@ -14,6 +14,7 @@
 import { getChain } from "@agntn/chains";
 import { z } from "zod";
 import { Provider } from "../core/provider.ts";
+import { collectOpReturns } from "../core/script.ts";
 import { buildQuery, normalizeBaseUrl } from "../core/client.ts";
 import { ExplorerError, NotFoundError, UnsupportedChainError } from "../core/errors.ts";
 import { clampMaxResults, formatWei, toTimestamp } from "../core/types.ts";
@@ -258,6 +259,7 @@ function mapTransaction(tx: WocTransaction, parents: Known, address?: string): T
     ...(fee === undefined ? {} : { fee }),
     isContractInteraction: false,
     tokenTransfers: [],
+    opReturn: collectOpReturns(tx.vout.map((output) => output.scriptPubKey.hex)),
     raw: tx as unknown as Record<string, unknown>,
   };
 }

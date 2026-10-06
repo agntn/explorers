@@ -411,4 +411,27 @@ describe("whatsonchain provider", () => {
     });
     expect(String(fetch.mock.calls[0]?.[0])).toBe(`${BASE}/block/height/968000`);
   });
+
+  it("decodes an OP_FALSE OP_RETURN output into opReturn", async () => {
+    /* The opening of output 0 of d13af0cc…fbbf on Bitcoin SV: a protocol tag, then a flag byte. */
+    const data = {
+      value: 0,
+      n: 1,
+      scriptPubKey: { hex: "006a094345525449484153480101", type: "nulldata" },
+    };
+    stubApi((url, body) =>
+      url.pathname.endsWith("/txs")
+        ? bulk([PARENT])(body)
+        : { ...child, vout: [child.vout[0], data, child.vout[2]] },
+    );
+    const provider = await create("whatsonchain");
+
+    const transaction = await provider.getTxDetail?.(CHILD);
+
+    expect(transaction?.opReturn).toEqual([
+      { hex: "434552544948415348", text: "CERTIHASH" },
+      { hex: "01" },
+    ]);
+    expect(transaction?.to).toBe(RECIPIENT);
+  });
 });

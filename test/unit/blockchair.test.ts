@@ -686,4 +686,35 @@ describe("blockchair provider", () => {
 
     expect(read).toEqual({ name: "mempool", balance: "5" });
   });
+
+  it("decodes the OP_RETURN of a Bitcoin transaction from its output scripts", async () => {
+    /* The genesis puzzle announcement, in the shape of a 2021 Wayback capture of this endpoint. */
+    const hash = "b691de3657880d9a1eabd2783b1a9fa8c5313ced338495bf10e85727012d7a77";
+    stubJSON({
+      data: {
+        [hash]: {
+          transaction: { block_id: 963629, hash, time: "2026-08-22 19:45:38", fee: 250 },
+          outputs: [
+            { index: 0, value: 5000, type: "witness_v0_scripthash", script_hex: "0020" },
+            {
+              index: 1,
+              value: 0,
+              type: "nulldata",
+              script_hex:
+                "6a4cfc49206d616465206120426974636f696e2070757a7a6c65207573696e6720696e666f726d6174696f6e20636f6e7461696e656420696e207468652067656e6573697320626c6f636b2063726561746564206279205361746f73686920746f2067656e6572617465207468652077616c6c65742e0a0a54686520656e74726f70792069732065787472656d656c79206c6f772e2049206469646e2774206576656e206e65656420746f206261636b20616e797468696e672075702e2045766572797468696e672049206e65656465642077617320616c726561647920696e207468652067656e6573697320626c6f636b2e0a0a476f6f64206c75636b21",
+            },
+          ],
+        },
+      },
+      context: { code: 200, state: 964000 },
+    });
+    const provider = await create("blockchair");
+
+    const transaction = await provider.getTxDetail(hash, "bitcoin");
+
+    expect(transaction.opReturn).toHaveLength(1);
+    expect(transaction.opReturn?.[0]?.text).toMatch(
+      /^I made a Bitcoin puzzle using information contained in the genesis block/,
+    );
+  });
 });

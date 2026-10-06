@@ -56,6 +56,26 @@ function describeOpReturn(payload: Readonly<ExplorersModule.OpReturnPayload>): s
   return [`OP_RETURN: ${first}`, ...rest.map((line) => `  ${line}`)];
 }
 
+/* What an inscription declares and how big it is, the part after its label. */
+function inscriptionHead(inscription: Readonly<ExplorersModule.Inscription>): string {
+  const encoding = inscription.contentEncoding ? `, ${inscription.contentEncoding}` : "";
+  return `${inscription.contentType ?? "no content type"}, ${inscription.size} bytes${encoding} (input ${inscription.input})`;
+}
+
+/* An inscription body as indented lines, or a note when it was too big to carry. */
+function inscriptionBody(inscription: Readonly<ExplorersModule.Inscription>): string[] {
+  const body = inscription.text ?? inscription.hex;
+  if (body === undefined) {
+    return inscription.size > 0 ? ["  body too big to print, read it from the witness"] : [];
+  }
+  return body.split("\n").map((line) => `  ${line}`);
+}
+
+/* One inscription as result lines, indented below its label like an OP_RETURN message. */
+function describeInscription(inscription: Readonly<ExplorersModule.Inscription>): string[] {
+  return [`Inscription: ${inscriptionHead(inscription)}`, ...inscriptionBody(inscription)];
+}
+
 /* The sender, recipient and deployed contract lines, each only when the explorer names it. */
 function describeParties(
   tx: Readonly<Pick<ExplorersModule.Transaction, "createdContract" | "from" | "to">>,
@@ -312,7 +332,7 @@ export default function explorersExtension(pi: ExtensionAPI) {
     promptGuidelines: [
       "Use explorers_tx_detail with a chain-native transaction hash and optionally a chain.",
       "explorers_tx_detail returns fees, status, method, and token-transfer count.",
-      "explorers_tx_detail reads OP_RETURN messages through the mempool provider, so ask for it by name when a Bitcoin transaction carries one.",
+      "explorers_tx_detail reads OP_RETURN messages on the whole Bitcoin family, and Ordinals inscriptions from mempool and blockstream.",
     ],
     parameters: Type.Object({
       hash: Type.String({ description: "Transaction hash" }),
@@ -342,6 +362,7 @@ export default function explorersExtension(pi: ExtensionAPI) {
             tx.functionName ? `Method: ${tx.functionName}` : null,
             tx.tokenTransfers.length > 0 ? `Token transfers: ${tx.tokenTransfers.length}` : null,
             ...(tx.opReturn ?? []).flatMap(describeOpReturn),
+            ...(tx.inscriptions ?? []).flatMap(describeInscription),
           ];
           return {
             content: [{ type: "text", text: joinLines(parts) }],
@@ -405,6 +426,12 @@ export default function explorersExtension(pi: ExtensionAPI) {
           );
         }
         lines.push(...opReturnLines());
+        for (const inscription of tx.inscriptions ?? []) {
+          lines.push(
+            `${theme.fg("muted", "Inscription")} ${sanitizeTerminalText(inscriptionHead(inscription))}`,
+            ...inscriptionBody(inscription).map(sanitizeTerminalText),
+          );
+        }
         return lines;
       };
       const lines = [

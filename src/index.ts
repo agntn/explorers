@@ -4,6 +4,7 @@ export type {
   TxStatus,
   TokenTransfer,
   OpReturnPayload,
+  Inscription,
   Transaction,
   Balance,
   Utxo,

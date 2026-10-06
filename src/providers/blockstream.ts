@@ -11,6 +11,7 @@ import { create as createChain } from "@agntn/chains";
 import { NotFoundError, UnsupportedChainError } from "../core/errors.ts";
 import { assertSafePathSegment } from "../core/path-safety.ts";
 import { Provider } from "../core/provider.ts";
+import { collectInscriptions, collectOpReturns } from "../core/script.ts";
 import { normalizeBaseUrl } from "../core/client.ts";
 import { formatWei, historyPage } from "../core/types.ts";
 import {
@@ -60,8 +61,10 @@ interface EsploraAddressTx {
       readonly scriptpubkey_address?: string;
       readonly value: number;
     } | null;
+    readonly witness?: readonly string[];
   }>;
   readonly vout: ReadonlyArray<{
+    readonly scriptpubkey?: string;
     readonly scriptpubkey_address?: string;
     readonly scriptpubkey_type: string;
     readonly value: number;
@@ -147,6 +150,7 @@ function mapAddressTx(raw: Readonly<EsploraAddressTx>, address: string): Transac
     status: (raw.status.confirmed ? "success" : "pending") as TxStatus,
     isContractInteraction: false,
     tokenTransfers: [] as TokenTransfer[],
+    opReturn: collectOpReturns(raw.vout.map((output) => output.scriptpubkey)),
     raw: raw as unknown as Record<string, unknown>,
   };
 }
@@ -264,6 +268,8 @@ export class Blockstream extends Provider {
       status: (transaction.status.confirmed ? "success" : "pending") as TxStatus,
       isContractInteraction: false,
       tokenTransfers: [],
+      opReturn: collectOpReturns(transaction.vout.map((output) => output.scriptpubkey)),
+      inscriptions: collectInscriptions(transaction.vin.map((input) => input.witness)),
       raw: transaction as unknown as Record<string, unknown>,
     };
   }

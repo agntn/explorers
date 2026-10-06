@@ -1,6 +1,7 @@
 /** Mempool provider tests with stubbed responses for Bitcoin, Litecoin and Pepecoin. */
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { create } from "../../src/core/registry.ts";
+import { HTML_INSCRIPTION } from "./inscription-witnesses.ts";
 
 // A known Bitcoin address with history
 const KNOWN_BTC = "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh";
@@ -778,5 +779,35 @@ describe("mempool provider", () => {
 
   it("getBalance throws for a chain mempool does not serve", async () => {
     await expect(provider.getBalance(KNOWN_BTC, "ethereum")).rejects.toThrow();
+  });
+
+  it("reads the inscription a reveal carries in its witness", async () => {
+    stubJSON({
+      txid: "114c5c87c4d0a7facb2b4bf515a4ad385182c076a5cfcc2982bf2df103ec0fff",
+      vin: [{ prevout: null, witness: HTML_INSCRIPTION }],
+      vout: [{ scriptpubkey_address: KNOWN_BTC, value: 9_705 }],
+      fee: 295,
+      status: { confirmed: true, block_height: 771_717, block_time: 1_673_602_516 },
+    });
+
+    const tx = await provider.getTxDetail!(
+      "114c5c87c4d0a7facb2b4bf515a4ad385182c076a5cfcc2982bf2df103ec0fff",
+      "bitcoin",
+    );
+
+    expect(tx.inscriptions).toHaveLength(1);
+    expect(tx.inscriptions?.[0]).toMatchObject({
+      input: 0,
+      contentType: "text/html;charset=utf-8",
+      size: 625,
+    });
+  });
+
+  it("leaves inscriptions out of a transaction without an envelope", async () => {
+    stubTxDetail([{ scriptpubkey_address: KNOWN_BTC, value: 2_000 }]);
+
+    const tx = await provider.getTxDetail!("a".repeat(64), "bitcoin");
+
+    expect(tx.inscriptions).toBeUndefined();
   });
 });

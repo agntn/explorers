@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import { create } from "../../src/core/registry.ts";
+import { FIRST_INSCRIPTION } from "./inscription-witnesses.ts";
 
 const ADDRESS = "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh";
 const TXID = "a".repeat(64);
@@ -334,5 +335,65 @@ describe("blockstream provider", () => {
       provider: "blockstream",
     });
     expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("reads the OP_RETURN message and the inscription of transaction detail", async () => {
+    /* Inscription 0's reveal witness beside the genesis puzzle OP_RETURN, one transaction. */
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        jsonResponse({
+          txid: TXID,
+          vin: [
+            {
+              prevout: { scriptpubkey_address: ADDRESS, value: 42_883 },
+              witness: FIRST_INSCRIPTION,
+            },
+          ],
+          vout: [
+            { scriptpubkey: "0014" + "11".repeat(20), scriptpubkey_address: ADDRESS, value: 5_000 },
+            {
+              scriptpubkey:
+                "6a4cfc49206d616465206120426974636f696e2070757a7a6c65207573696e6720696e666f726d6174696f6e20636f6e7461696e656420696e207468652067656e6573697320626c6f636b2063726561746564206279205361746f73686920746f2067656e6572617465207468652077616c6c65742e0a0a54686520656e74726f70792069732065787472656d656c79206c6f772e2049206469646e2774206576656e206e65656420746f206261636b20616e797468696e672075702e2045766572797468696e672049206e65656465642077617320616c726561647920696e207468652067656e6573697320626c6f636b2e0a0a476f6f64206c75636b21",
+              scriptpubkey_type: "op_return",
+              value: 0,
+            },
+          ],
+          fee: 250,
+          status: { confirmed: true, block_height: 963_629, block_time: 1_787_427_938 },
+        }),
+      ),
+    );
+
+    const provider = await create("blockstream");
+    const transaction = await provider.getTxDetail!(TXID, "bitcoin");
+
+    expect(transaction.opReturn?.[0]?.text).toMatch(/^I made a Bitcoin puzzle/);
+    expect(transaction.inscriptions?.[0]).toMatchObject({
+      input: 0,
+      contentType: "image/png",
+      size: 793,
+    });
+  });
+
+  it("reads OP_RETURN messages in address history", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        jsonResponse([
+          {
+            ...historyTransaction(1),
+            vin: [{ prevout: { scriptpubkey_address: ADDRESS, value: 5_000 } }],
+            vout: [{ scriptpubkey: "6a0548656c6c6f", scriptpubkey_type: "op_return", value: 0 }],
+          },
+        ]),
+      ),
+    );
+
+    const provider = await create("blockstream");
+    const [transaction] = await provider.getTxHistory(ADDRESS, "bitcoin", { limit: 1 });
+
+    expect(transaction?.opReturn).toEqual([{ hex: "48656c6c6f", text: "Hello" }]);
+    expect(transaction?.inscriptions).toBeUndefined();
   });
 });
