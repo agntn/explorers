@@ -43,6 +43,22 @@ export interface OpReturnPayload {
   text?: string;
 }
 
+/** One Ordinals inscription revealed in an input witness */
+export interface Inscription {
+  /** Index of the input whose witness carries the envelope */
+  input: number;
+  /** MIME type the envelope declares, when it is one printable line */
+  contentType?: string;
+  /** Content encoding such as `br`, set when the body is compressed */
+  contentEncoding?: string;
+  /** Body length in bytes */
+  size: number;
+  /** Body as lowercase hex, left out when it is empty or runs past 4096 bytes */
+  hex?: string;
+  /** UTF-8 reading of the body, present only when it is printable text within the same cap */
+  text?: string;
+}
+
 /** Normalized transaction */
 export interface Transaction {
   /** Transaction hash */
@@ -79,6 +95,8 @@ export interface Transaction {
   tokenTransfers: TokenTransfer[];
   /** Data pushed by the OP_RETURN outputs, on chains that carry them */
   opReturn?: OpReturnPayload[];
+  /** Ordinals inscriptions in the input witnesses, read on transaction detail from Esplora */
+  inscriptions?: Inscription[];
   /** Raw provider data */
   raw?: Record<string, unknown>;
 }

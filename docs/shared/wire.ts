@@ -2,7 +2,15 @@
  * The shapes the docs worker answers with. `shared/` is visible to both `app/` and `server/`, so
  * the routes build these and the page reads them from one declaration.
  */
-import type { Balance, BlockInfo, GasData, TokenBalance, TokenTransfer, Utxo } from "@agntn/explorers";
+import type {
+  Balance,
+  BlockInfo,
+  GasData,
+  Inscription,
+  TokenBalance,
+  TokenTransfer,
+  Utxo,
+} from "@agntn/explorers";
 
 export type Status = "success" | "failed" | "pending";
 
@@ -25,6 +33,7 @@ export interface WireTransaction {
   isContractInteraction: boolean;
   tokenTransfers: Omit<TokenTransfer, "txHash">[];
   opReturn?: { hex: string; text?: string }[];
+  inscriptions?: Inscription[];
 }
 
 /** `ContractInfo` with the ABI and the source measured instead of shipped. */

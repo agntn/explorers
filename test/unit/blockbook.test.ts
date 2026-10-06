@@ -374,4 +374,18 @@ describe("blockbook provider", () => {
     });
     expect(urls[0]!.href).toBe(`${BASE}/block/966000`);
   });
+
+  it("decodes the witness commitment of a block reward into opReturn", async () => {
+    /* Output 1 of a Bitcoin Gold coinbase at height 969910, script as btgexplorer.com sent it. */
+    const commitment = "aa21a9ede2f61c3f71d1defd3fa999dfa36953755c690689799962b48bebd836974e8cf9";
+    stubApi(() => ({
+      ...coinbase,
+      vout: [coinbase.vout[0], { ...coinbase.vout[1], hex: `6a24${commitment}` }],
+    }));
+    const provider = await create("blockbook");
+
+    const transaction = await provider.getTxDetail?.(COINBASE);
+
+    expect(transaction?.opReturn).toEqual([{ hex: commitment }]);
+  });
 });

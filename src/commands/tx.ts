@@ -1,6 +1,6 @@
 /** Transaction operations — history or detail (supports ENS) */
 import { defineCommand } from "citty";
-import type { ChainKey, Transaction } from "../core/types.ts";
+import type { ChainKey, Inscription, Transaction } from "../core/types.ts";
 import {
   failCommand,
   parsePositiveInteger,
@@ -34,6 +34,29 @@ function renderOpReturns(transaction: Transaction): void {
   }
 }
 
+/* What an inscription declares and how big it is, the part after its label. */
+function inscriptionHead(inscription: Readonly<Inscription>): string {
+  const encoding = inscription.contentEncoding ? `, ${inscription.contentEncoding}` : "";
+  return `${inscription.contentType ?? "no content type"}, ${inscription.size} bytes${encoding} (input ${inscription.input})`;
+}
+
+/* An inscription body as lines, or a note when it was too big to carry. */
+function inscriptionBody(inscription: Readonly<Inscription>): string[] {
+  const body = inscription.text ?? inscription.hex;
+  if (body === undefined) {
+    return inscription.size > 0 ? ["body too big to print, read it from the witness"] : [];
+  }
+  return body.split("\n");
+}
+
+/* oxlint-disable-next-line typescript/prefer-readonly-parameter-types */
+function renderInscriptions(transaction: Transaction): void {
+  for (const inscription of transaction.inscriptions ?? []) {
+    print(`  Inscription: ${inscriptionHead(inscription)}`);
+    for (const line of inscriptionBody(inscription)) print(`    ${line}`);
+  }
+}
+
 /* oxlint-disable-next-line typescript/prefer-readonly-parameter-types */
 function renderTransaction(providerName: string, transaction: Transaction): void {
   print(`[${providerName}] Tx ${transaction.hash}`);
@@ -49,6 +72,7 @@ function renderTransaction(providerName: string, transaction: Transaction): void
     print(`  Token transfers: ${transaction.tokenTransfers.length}`);
   }
   renderOpReturns(transaction);
+  renderInscriptions(transaction);
 }
 
 /* oxlint-disable-next-line typescript/prefer-readonly-parameter-types */

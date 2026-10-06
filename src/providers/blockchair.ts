@@ -16,6 +16,7 @@ import type {
   BlockInfo,
 } from "../core/types.ts";
 import { Provider } from "../core/provider.ts";
+import { collectOpReturns } from "../core/script.ts";
 import {
   AuthError,
   HTTPError,
@@ -113,6 +114,8 @@ interface BlockchairTxData {
     readonly failed?: boolean;
     readonly input_hex?: string;
   };
+  /** Outputs of a UTXO transaction; account chains leave the list out. */
+  readonly outputs?: ReadonlyArray<{ readonly script_hex?: string }>;
 }
 
 interface BlockchairBlockData {
@@ -181,6 +184,7 @@ function isBlockchairContractCall(
 function mapTransactionData(
   data: Readonly<BlockchairTxData["transaction"]>,
   chain: ChainKey,
+  outputs: BlockchairTxData["outputs"] = [],
 ): Transaction {
   const decimals = UTXO_DECIMALS[chain];
   const value = transactionValue(data, decimals);
@@ -198,6 +202,7 @@ function mapTransactionData(
     status: blockchairStatus(data),
     isContractInteraction: isBlockchairContractCall(data, decimals),
     tokenTransfers: [],
+    opReturn: collectOpReturns(outputs.map((output) => output.script_hex)),
     raw: data as unknown as Record<string, unknown>,
   };
 }
@@ -342,7 +347,7 @@ export class Blockchair extends Provider {
 
     const entry = firstRecord(res.data);
     if (!entry) throw new NotFoundError(`Transaction ${hash}`, "blockchair");
-    return mapTransactionData(entry.transaction, c);
+    return mapTransactionData(entry.transaction, c, entry.outputs);
   }
 
   override async getBlockInfo(blockNumber: number, chain?: ChainKey): Promise<BlockInfo> {

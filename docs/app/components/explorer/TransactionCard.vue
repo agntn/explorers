@@ -33,6 +33,27 @@ const gasPriceText = computed(() => {
     : groupDigits(price);
 });
 
+/** Longest body shown inline; a 4 kB hex blob is a wall, not a reading. */
+const BODY_CHARS = 280;
+
+/** One row per inscription: the body as far as it fits, then what it is and how big. */
+const inscriptions = computed(() =>
+  (transaction.value.inscriptions ?? []).map((inscription, index) => {
+    const chars = Array.from(inscription.text ?? inscription.hex ?? "");
+    const kind = [inscription.contentType ?? "no content type", inscription.contentEncoding]
+      .filter(Boolean)
+      .join(", ");
+    const binary = inscription.text === undefined && inscription.hex ? ", binary" : "";
+    return {
+      key: `${inscription.input}-${index}`,
+      input: inscription.input,
+      body: chars.length > BODY_CHARS ? `${chars.slice(0, BODY_CHARS).join("")}…` : chars.join(""),
+      meta: `${kind}, ${groupDigits(String(inscription.size))} bytes${binary}`,
+      tooBig: inscription.hex === undefined && inscription.size > 0,
+    };
+  }),
+);
+
 const { copied, copy } = useCopied();
 </script>
 
@@ -91,6 +112,12 @@ const { copied, copy } = useCopied();
               color="neutral"
               variant="outline"
               label="OP_RETURN"
+            />
+            <UBadge
+              v-if="inscriptions.length"
+              color="neutral"
+              variant="outline"
+              label="inscription"
             />
           </p>
         </div>
@@ -274,6 +301,28 @@ const { copied, copy } = useCopied();
             <template v-else
               >{{ payload.hex }}
               <span class="explorers-dim">· binary, no text reading</span></template
+            >
+          </dd>
+        </div>
+      </dl>
+    </div>
+
+    <div v-if="inscriptions.length" class="explorers-band">
+      <p class="console-label console-rule-title">
+        <span>Inscriptions <span aria-hidden="true">[ read off the witness, no indexer ]</span></span>
+        <span class="console-mark" aria-hidden="true" />
+      </p>
+      <dl class="explorers-facts">
+        <div v-for="row in inscriptions" :key="row.key">
+          <dt>Input {{ row.input }}</dt>
+          <dd>
+            <template v-if="row.tooBig"
+              ><span class="explorers-dim"
+                >{{ row.meta }}, too big for this page. The witness still has every byte.</span
+              ></template
+            >
+            <template v-else
+              >{{ row.body }} <span class="explorers-dim">· {{ row.meta }}</span></template
             >
           </dd>
         </div>
