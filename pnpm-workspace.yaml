@@ -13,3 +13,6 @@ peerDependencyRules:
     - vite
   allowedVersions:
     vite: "*"
+
+minimumReleaseAgeExclude:
+  - "@agntn/*"
