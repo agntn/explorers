@@ -15,6 +15,10 @@ import { create } from "@agntn/chains";
 const jiti = createJiti(import.meta.url);
 const { builtins } = await jiti.import("../../src/providers/index.ts");
 const { version } = await jiti.import("../../src/version.ts");
+const { OPERATION_CAPABILITIES } = await jiti.import("../../src/core/provider.ts");
+
+/** The site draws one column per operation, so an option flag such as `txHistoryTags` stays out. */
+const OPERATIONS = new Set(Object.values(OPERATION_CAPABILITIES));
 
 /** Mirrors `PROVIDER_DEFAULT_CHAIN` in `src/core/resolve.ts`, which reaches `@agntn/chains`. */
 const PROVIDER_DEFAULT_CHAIN = {
@@ -40,7 +44,7 @@ const out = fileURLToPath(new URL("../app/data/explorers.json", import.meta.url)
 const providers = builtins.map((entry) => ({
   key: entry.key,
   chains: [...entry.chains],
-  capabilities: [...(entry.capabilities ?? [])],
+  capabilities: (entry.capabilities ?? []).filter((capability) => OPERATIONS.has(capability)),
   defaultURL: entry.defaultURL ?? null,
   defaultChain: PROVIDER_DEFAULT_CHAIN[entry.key] ?? "ethereum",
 }));

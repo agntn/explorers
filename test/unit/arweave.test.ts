@@ -59,9 +59,12 @@ describe("Arweave gateway", () => {
       tokenTransfers: false,
       gasData: false,
       blockInfo: true,
+      txHistoryTags: true,
     });
     expect(supportsCapability("arweave", "balances")).toBe(true);
     expect(supportsCapability("arweave", "blockInfo")).toBe(true);
+    expect(supportsCapability("arweave", "txHistoryTags")).toBe(true);
+    expect(supportsCapability("mempool", "txHistoryTags")).toBe(false);
     expect(provider.getTokenBalances).toBeUndefined();
     await expect(withProvider("arweave", undefined, async ({ chain }) => chain)).resolves.toBe(
       "arweave",
@@ -288,6 +291,46 @@ describe("Arweave gateway", () => {
     });
     const txs = await new Arweave().getTxHistory(ADDRESS, "arweave", { startBlock: 10 });
     expect(txs.map((tx) => tx.hash)).toEqual([HASH]);
+  });
+
+  it("sends tag filters to both directions as the TagFilter list the gateway takes", async () => {
+    const tags = [
+      { name: "Content-Type", values: ["text/plain", "text/markdown"] },
+      { name: "App-Name", values: ["ArDrive-Web"] },
+    ];
+    const sent: unknown[] = [];
+    vi.stubGlobal("fetch", async (_input: RequestInfo | URL, init?: RequestInit) => {
+      const request = JSON.parse(String(init?.body)) as {
+        query: string;
+        variables: Record<string, unknown>;
+      };
+      if (!request.query.includes("$tags: [TagFilter!]") || !request.query.includes("tags: $tags"))
+        return new Response('Unknown argument "tags"', { status: 400 });
+      sent.push(request.variables.tags);
+      return json(connection([transaction()]));
+    });
+    const txs = await new Arweave().getTxHistory(ADDRESS, "arweave", { tags });
+    expect(txs.map((tx) => tx.hash)).toEqual([HASH]);
+    expect(sent).toEqual([tags, tags]);
+  });
+
+  it("reads an empty tag list as no filter, the way the gateway does", async () => {
+    const fetch = stub(connection([]));
+    await expect(new Arweave().getTxHistory(ADDRESS, "arweave", { tags: [] })).resolves.toEqual([]);
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it.each([
+    [{ name: "", values: ["text/plain"] }],
+    [{ name: "Content-Type", values: [] }],
+    [{ name: "Content-Type" }],
+    [{ name: "Content-Type", values: ["text/plain"], op: "NEQ" }],
+  ])("refuses a malformed tag filter before I/O", async (filter) => {
+    const fetch = stub({});
+    await expect(
+      new Arweave().getTxHistory(ADDRESS, "arweave", { tags: [filter as never] }),
+    ).rejects.toThrow("Arweave tag filters need a name and at least one value each");
+    expect(fetch).not.toHaveBeenCalled();
   });
 
   it("walks each direction's cursor even when the API returns a short page", async () => {

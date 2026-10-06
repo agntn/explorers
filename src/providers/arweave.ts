@@ -112,6 +112,19 @@ function assertBlockBounds(options: Readonly<TxHistoryOptions>): void {
   }
 }
 
+/* The gateway answers an empty tag name or value list with no rows, like an empty history. */
+function assertTagFilters(options: Readonly<TxHistoryOptions>): void {
+  const filters = z
+    .array(z.object({ name: z.string().min(1), values: z.array(z.string()).min(1) }).strict())
+    .optional();
+  if (!filters.safeParse(options.tags).success) {
+    throw new ExplorerError(
+      "Arweave tag filters need a name and at least one value each, as { name, values }",
+      Arweave.key,
+    );
+  }
+}
+
 /** Arweave balances and blocks from gateway REST, transactions from its GraphQL index. */
 export class Arweave extends Provider {
   static readonly key = "arweave";
@@ -136,6 +149,7 @@ export class Arweave extends Provider {
       tokenTransfers: false,
       gasData: false,
       blockInfo: true,
+      txHistoryTags: true,
     };
   }
 
@@ -236,7 +250,7 @@ export class Arweave extends Provider {
    * @param {string} address - Address to match.
    * @param {"owners" | "recipients"} direction - Indexed address field.
    * @param {number} count - Number of rows needed before merging.
-   * @param {Readonly<TxHistoryOptions>} options - Order and block bounds.
+   * @param {Readonly<TxHistoryOptions>} options - Order, block bounds and tag filters.
    * @returns {Promise<IndexedTransaction[]>} Rows from one direction.
    */
   private async historyDirection(
@@ -250,8 +264,8 @@ export class Arweave extends Provider {
     let after: string | undefined;
     while (result.length < count) {
       const { transactions } = await this.query(
-        `query ($addresses: [String!]!, $first: Int!, $after: String, $sort: SortOrder!, $block: BlockFilter) {
-          transactions(${direction}: $addresses, first: $first, after: $after, sort: $sort, block: $block) {
+        `query ($addresses: [String!]!, $first: Int!, $after: String, $sort: SortOrder!, $block: BlockFilter, $tags: [TagFilter!]) {
+          transactions(${direction}: $addresses, first: $first, after: $after, sort: $sort, block: $block, tags: $tags) {
             pageInfo { hasNextPage } edges { cursor node { ${TX_FIELDS} } }
           }
         }`,
@@ -261,6 +275,7 @@ export class Arweave extends Provider {
           after,
           sort: options.sort === "asc" ? "HEIGHT_ASC" : "HEIGHT_DESC",
           block: { min: options.startBlock, max: options.endBlock },
+          tags: options.tags,
         },
         z.object({
           transactions: z.object({
@@ -290,6 +305,7 @@ export class Arweave extends Provider {
     assertChain(chain);
     assertIdentifier(address);
     const { count, offset, limit } = historyWindow(options);
+    assertTagFilters(options);
     const [sent, received] = await Promise.all([
       this.historyDirection(address, "owners", count, options),
       this.historyDirection(address, "recipients", count, options),

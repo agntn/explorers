@@ -15,6 +15,7 @@ export type {
   BlockInfo,
   ProviderCapabilities,
   TxHistoryOptions,
+  TagFilter,
   TokenBalanceOptions,
   TokenTransferOptions,
   ProviderConfig,

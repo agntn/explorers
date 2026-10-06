@@ -184,27 +184,37 @@ export function createMcpServer(): McpServer {
         sort: z.enum(["asc", "desc"]).optional(),
         limit: z.number().int().positive().max(100).optional(),
         page: z.number().int().positive().optional(),
+        tags: z
+          .array(z.object({ name: z.string().min(1), values: z.array(z.string()).min(1) }).strict())
+          .optional()
+          .describe(
+            'Keep only transactions carrying these tags, e.g. [{ "name": "Content-Type", "values": ["text/plain"] }]. A tag matches any of its values, and every tag must match. Arweave only, other providers refuse it.',
+          ),
         ...rawInput,
       },
       annotations: { readOnlyHint: true },
     },
-    async ({ address, chain, provider, raw, ...options }, { signal }) =>
-      withSelectedProvider(
+    async ({ address, chain, provider, raw, ...options }, { signal }) => {
+      const filtered = options.tags !== undefined && options.tags.length > 0;
+      return withProvider(
         provider,
-        chain,
-        "getTxHistory",
-        signal,
+        chain === undefined ? undefined : normalizeChain(chain),
         async (selected) => {
-          const resolvedAddress = await addressForChain(address, selected.chain, signal);
           const getTxHistory = requireOperation(selected.provider, "getTxHistory");
+          if (filtered && selected.provider.capabilities.txHistoryTags !== true)
+            throw new UnsupportedOperationError("txHistoryTags", selected.name);
+          const resolvedAddress = await addressForChain(address, selected.chain, signal);
           const transactions = await getTxHistory(resolvedAddress, selected.chain, options);
           return providerResult(
             selected.name,
             transactions.map((transaction) => trimTransaction(transaction, raw)),
           );
         },
+        filtered ? "txHistoryTags" : "txHistory",
         address,
-      ),
+        signal,
+      );
+    },
   );
 
   server.registerTool(

@@ -817,6 +817,82 @@ describe("Explorers MCP server", () => {
     ]);
   });
 
+  it("filters Arweave history by tags through MCP", async () => {
+    const address = "FPjbN_btYKzcf8QASjs30v5C0FPv7XpwKXENBW8dqVw";
+    const tags = [{ name: "Content-Type", values: ["text/plain"] }];
+    const sent: unknown[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+        const request = JSON.parse(String(init?.body)) as { variables: { tags?: unknown } };
+        sent.push(request.variables.tags);
+        return new Response(
+          JSON.stringify({
+            data: { transactions: { pageInfo: { hasNextPage: false }, edges: [] } },
+          }),
+        );
+      }),
+    );
+    const client = await connectTestClient();
+    const result = parseToolResult(
+      await client.callTool({
+        name: "explorers_tx_history",
+        arguments: { address, chain: "arweave", tags },
+      }),
+    );
+    expect(result.isError).toBe(false);
+    expect(JSON.parse(result.content[0]?.text ?? "null")).toEqual({
+      provider: "arweave",
+      data: [],
+    });
+    expect(sent).toEqual([tags, tags]);
+  });
+
+  it.each([
+    [{ chain: "bitcoin" }, /not supported by \w+; no provider serves this read on bitcoin$/],
+    [{ chain: "arweave", provider: "mempool" }, /not supported by mempool; try arweave$/],
+  ])("refuses tag filters where the provider cannot apply them", async (route, message) => {
+    const fetch = vi.fn();
+    vi.stubGlobal("fetch", fetch);
+    const client = await connectTestClient();
+    const result = parseToolResult(
+      await client.callTool({
+        name: "explorers_tx_history",
+        arguments: {
+          address: "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa",
+          tags: [{ name: "Content-Type", values: ["text/plain"] }],
+          ...route,
+        },
+      }),
+    );
+    expect(result.isError).toBe(true);
+    expect(result.content).toEqual([
+      { type: "text", text: textContaining('Operation "txHistoryTags"') },
+    ]);
+    expect(result.content[0]?.text).toMatch(message);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("treats an empty tag list as no filter on any chain", async () => {
+    const hash = "4b064b5a6255ed94bb9c4347e370c5ad034db4d0550e5bd6775cbed65015ebe3";
+    const tx = { txid: hash, blockheight: 1000, confirmations: 1, vin: [], vout: [] };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () => new Response(JSON.stringify({ totalItems: 1, from: 0, to: 1, items: [tx] })),
+      ),
+    );
+    const client = await connectTestClient();
+    const result = parseToolResult(
+      await client.callTool({
+        name: "explorers_tx_history",
+        arguments: { address: "Dcur2mcGjmENx4DhNqDctW5wJCVyT3Qeqkx", chain: "dcr", tags: [] },
+      }),
+    );
+    expect(result.isError).toBe(false);
+    expect(JSON.parse(result.content[0]?.text ?? "null")).toMatchObject({ provider: "dcrdata" });
+  });
+
   it.each(["", "   "])(
     "rejects an empty-like provider instead of selecting a default",
     async (provider) => {
