@@ -20,5 +20,5 @@
     "declarationMap": true,
     "sourceMap": true
   },
-  "include": ["src", "packages/pi/extensions", "packages/omp/extensions"]
+  "include": ["src", "packages/pi/extensions", "packages/omp/extensions", "build.config.ts"]
 }

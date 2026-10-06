@@ -202,7 +202,7 @@ Nodes. No RPC, no `eth_call`, no fullnode anything, that's not this package. Als
 
 ## 🧩 Adding a provider
 
-Want a nineteenth? A class extending `Provider`, an entry in `builtins`, a line in `vite.config.ts`, and there's a test that notices when you skip one. Walkthrough: [Custom providers](https://explorers.agntn.dev/guide/custom).
+Want a nineteenth? A class extending `Provider` and an entry in `builtins`, and there's a test that notices when you skip one. The build finds the file on its own now, so that's one less line to forget. Walkthrough: [Custom providers](https://explorers.agntn.dev/guide/custom).
 
 ## 🛠️ Development
 
@@ -213,7 +213,7 @@ pnpm lint
 pnpm typecheck   # builds first, the OMP extension imports dist/
 pnpm test:run
 pnpm test:live    # public explorer roundtrips, not CI
-pnpm build       # vp pack, one bundle per provider
+pnpm build       # obuild, one file per provider
 ```
 
 ## 📄 License

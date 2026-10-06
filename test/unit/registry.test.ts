@@ -11,11 +11,12 @@ import {
 } from "../../src/core/registry.ts";
 import type { ProviderCapability } from "../../src/core/provider.ts";
 import { builtins } from "../../src/providers/index.ts";
-import config from "../../vite.config.ts";
+import config from "../../build.config.ts";
 
 const providerDir = fileURLToPath(new URL("../../src/providers/", import.meta.url));
-const packEntries: unknown =
-  config.pack && !Array.isArray(config.pack) ? config.pack.entry : undefined;
+const buildInputs = config.entries?.flatMap((entry) =>
+  typeof entry !== "string" && entry.type === "bundle" ? [entry.input].flat() : [],
+);
 
 const modules = readdirSync(providerDir).filter(
   (file) => file.endsWith(".ts") && file !== "index.ts",
@@ -176,9 +177,8 @@ describe("built-in provider registry", () => {
   });
 
   it("builds every provider module as its own bundle entry", () => {
-    for (const file of modules) {
-      const name = file.slice(0, -".ts".length);
-      expect(packEntries).toHaveProperty([`providers/${name}`], `src/providers/${file}`);
-    }
+    expect(buildInputs).toEqual(
+      expect.arrayContaining(modules.map((file) => `./src/providers/${file}`)),
+    );
   });
 });

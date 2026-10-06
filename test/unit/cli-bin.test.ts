@@ -63,7 +63,7 @@ function newerThanBuild(): string | undefined {
     ...globSync("src/**/*.ts", { cwd: root }),
     "package.json",
     "pnpm-lock.yaml",
-    "vite.config.ts",
+    "build.config.ts",
   ];
   return inputs.find((input) => statSync(resolve(root, input)).mtimeMs > built);
 }

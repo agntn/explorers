@@ -72,45 +72,4 @@ export default defineConfig({
       "@agntn/explorers": fileURLToPath(new URL("src/index.ts", import.meta.url)),
     },
   },
-  /**
-   * One bundle, all inputs, so the providers share the core chunks instead of each embedding its
-   * own copy. Every provider is its own input, so `create()` imports one `dist/providers/<key>.mjs`
-   * that the `./providers/*` export also serves. Chunks keep stable names under `_chunks`, as
-   * obuild wrote them.
-   */
-  pack: {
-    entry: {
-      index: "src/index.ts",
-      cli: "src/cli.ts",
-      mcp: "src/mcp.ts",
-      "providers/etherscan": "src/providers/etherscan.ts",
-      "providers/blockscout": "src/providers/blockscout.ts",
-      "providers/blockchair": "src/providers/blockchair.ts",
-      "providers/mempool": "src/providers/mempool.ts",
-      "providers/blockstream": "src/providers/blockstream.ts",
-      "providers/solscan": "src/providers/solscan.ts",
-      "providers/helius": "src/providers/helius.ts",
-      "providers/ton": "src/providers/ton.ts",
-      "providers/tronscan": "src/providers/tronscan.ts",
-      "providers/aptos": "src/providers/aptos.ts",
-      "providers/blockberry": "src/providers/blockberry.ts",
-      "providers/koios": "src/providers/koios.ts",
-      "providers/arweave": "src/providers/arweave.ts",
-      "providers/dcrdata": "src/providers/dcrdata.ts",
-      "providers/horizon": "src/providers/horizon.ts",
-      "providers/whatsonchain": "src/providers/whatsonchain.ts",
-      "providers/blockbook": "src/providers/blockbook.ts",
-      "providers/haskoin": "src/providers/haskoin.ts",
-    },
-    dts: true,
-    format: "esm",
-    platform: "node",
-    sourcemap: true,
-    hash: false,
-    outputOptions: {
-      chunkFileNames: "_chunks/[name].mjs",
-      /* JSDoc ships once, in the declarations; the runtime files keep only legal and annotation comments. */
-      comments: { jsdoc: false },
-    },
-  },
 });
