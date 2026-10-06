@@ -9,8 +9,8 @@ import type { Inscription, OpReturnPayload } from "./types.ts";
 /** A data carrier opens with OP_RETURN, or with OP_FALSE OP_RETURN as Bitcoin SV writes it. */
 const OP_RETURN_SCRIPT = /^(?:00)?6a/i;
 
-/** The bytes `OP_FALSE OP_IF OP_PUSHBYTES_3 "ord"` that open an inscription envelope. */
-const ENVELOPE_MARK = "0063036f7264";
+/** The protocol tag `ord` as hex; a tapscript without these bytes holds no envelope. */
+const PROTOCOL_ID = "6f7264";
 
 /** Largest inscription body handed out as hex and text; bigger ones keep their size only. */
 const MAX_INSCRIPTION_BYTES = 4096;
@@ -231,13 +231,18 @@ function envelopePushes(
   return undefined;
 }
 
-/* Where each envelope's pushes start: right after `OP_FALSE OP_IF "ord"`. */
+/* An empty push, OP_IF, then a push of `ord`, matched by value as ord does, not by encoding. */
+function opensEnvelope(steps: readonly Instruction[], at: number): boolean {
+  const [flag, branch, protocol] = [steps[at], steps[at + 1], steps[at + 2]];
+  if (flag?.data?.length !== 0 || branch?.opcode !== OP_IF) return false;
+  return protocol?.data !== undefined && toHex(protocol.data) === PROTOCOL_ID;
+}
+
+/* Where each envelope's pushes start: right after its opening marker. */
 function envelopeStarts(steps: readonly Instruction[]): number[] {
   const starts: number[] = [];
   for (let i = 0; i + 2 < steps.length; i += 1) {
-    const [flag, branch, protocol] = [steps[i], steps[i + 1], steps[i + 2]];
-    if (flag?.opcode !== OP_0 || branch?.opcode !== OP_IF || !protocol?.data) continue;
-    if (toHex(protocol.data) === "6f7264") starts.push(i + 3);
+    if (opensEnvelope(steps, i)) starts.push(i + 3);
   }
   return starts;
 }
@@ -293,7 +298,7 @@ function readEnvelope(pushes: readonly Uint8Array[], input: number): Inscription
 /* Every envelope in one input's tapscript, in script order. */
 function inputInscriptions(witness: readonly string[], input: number): Inscription[] {
   const scriptHex = tapscript(witness);
-  if (!scriptHex?.toLowerCase().includes(ENVELOPE_MARK)) return [];
+  if (!scriptHex?.toLowerCase().includes(PROTOCOL_ID)) return [];
   const script = hexToBytes(scriptHex);
   if (!script) return [];
 

@@ -146,6 +146,23 @@ describe("collectInscriptions", () => {
     ]);
   });
 
+  it("reads an envelope written with longer push encodings than it needs", () => {
+    const witness = scriptPath(
+      "4c00",
+      "63",
+      "4c036f7264",
+      "0101",
+      "4c0a746578742f706c61696e",
+      "4c00",
+      "026869",
+      "68",
+    );
+
+    expect(collectInscriptions([witness])).toEqual([
+      { input: 0, contentType: "text/plain", size: 2, hex: "6869", text: "hi" },
+    ]);
+  });
+
   it("drops an envelope another opcode breaks into", () => {
     const witness = scriptPath("0063036f7264", "00", "026869", "ac", "68");
 
