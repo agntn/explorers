@@ -56,7 +56,7 @@ Unified block explorer provider library. Normalizes balances, tx history, contra
 - `src/core/input.ts` — User input classification (address/txhash/ens)
 - `src/providers/*.ts` — One file per provider, each exporting its class, listed in `builtins` and built as its own bundle entry
 - `src/commands/*.ts` - CLI subcommands (balance, tx, utxos, pubkey, contract, tokens, transfers, gas, block, providers)
-- `src/mcp.ts` - `createMcpServer()`, which `explorers mcp` puts on stdio and `@agntn/explorers/mcp` exports for a host with its own transport. It is its own `pack.entry`, so it shares chunks and the registry with `dist/index.mjs`
+- `src/mcp.ts` - `createMcpServer()`, which `explorers mcp` puts on stdio and `@agntn/explorers/mcp` exports for a host with its own transport. It is its own input in `build.config.ts`, so it shares chunks and the registry with `dist/index.mjs`
 - `src/cli.ts` - Citty CLI entry point. Inside a checkout, the built `dist/cli.mjs` loads the `mcp` command from `src/`, like the Pi and OMP extensions, so a local MCP server needs only a restart after a change. The npm package ships no `src/` and runs the bundle, and so does a copy under `node_modules`, where Node does not strip types. `EXPLORERS_DIST=1` forces the bundle. A closed stdout or stderr (`| head -1`) ends the process through an `EPIPE` listener and keeps the exit code. A change to `src/cli.ts` itself still needs `pnpm build`
 
 ## CLI subcommands
@@ -142,7 +142,7 @@ graph TB
 
 ## Test coverage gaps
 
-**Covered** (44 test files): provider base/registry, provider resolution, HTTP client, path safety, amount formatting, errors, input classification, chain normalization, CLI argument routing, extension integration, the built bin's `mcp` source switch and its start through the shebang, `@agntn/explorers/mcp` imported by package name, the docs worker's rate limit key, plus all eighteen providers. `test/unit/docs-rate-limit.test.ts` loads `docs/server/utils/query.ts` through the `#shared` and `@agntn/explorers` aliases in `vite.config.ts`, with `ohash` mocked, because CI installs the root alone. `test/unit/cli-bin.test.ts` runs `dist/cli.mjs`, so it needs `pnpm build` first, as CI does, and stops before any test when a source file, `package.json`, the lockfile or `vite.config.ts` is newer than that bundle.
+**Covered** (44 test files): provider base/registry, provider resolution, HTTP client, path safety, amount formatting, errors, input classification, chain normalization, CLI argument routing, extension integration, the built bin's `mcp` source switch and its start through the shebang, `@agntn/explorers/mcp` imported by package name, the docs worker's rate limit key, plus all eighteen providers. `test/unit/docs-rate-limit.test.ts` loads `docs/server/utils/query.ts` through the `#shared` and `@agntn/explorers` aliases in `vite.config.ts`, with `ohash` mocked, because CI installs the root alone. `test/unit/cli-bin.test.ts` runs `dist/cli.mjs`, so it needs `pnpm build` first, as CI does, and stops before any test when a source file, `package.json`, the lockfile or `build.config.ts` is newer than that bundle.
 **CLI coverage**: help without backend imports, errors for unknown chains, provider listing, capability refusals with their provider hint, and mocked balance, transaction and token reads. Successful contract, transfer, gas, and block command execution remains untested.
 **Test style**: Focused unit tests for local contracts and mocked explorer API responses. Live roundtrips belong in `test/live` and run only through `pnpm test:live`.
 
@@ -151,13 +151,14 @@ graph TB
 - `@agntn/chains`: canonical chain registry. `ChainKey` for keys, `getChain()` for alias resolution, `create(key)` for per-chain metadata like symbol and chain ID. Stays external to the bundle, so a consumer and this library share one registry instead of two.
 - `citty`: CLI framework
 - `consola`: Logging
-- `vite-plus`: lint, format, tests and packing from one `vite.config.ts`; `vp pack` (tsdown) builds the bundle and `vp test` runs Vitest 5. Test files import from `vite-plus/test`
+- `obuild`: builds the bundle from `build.config.ts`, with one input per file in `src/providers/` read off the disk
+- `vite-plus`: lint, format and tests from one `vite.config.ts`; `vp test` runs Vitest 5. Test files import from `vite-plus/test`
 
 ## Build & Scripts
 
 ```bash
-pnpm build          # vp pack → dist/
-pnpm dev            # vp pack --watch
+pnpm build          # obuild → dist/
+pnpm dev            # obuild --stub
 pnpm typecheck      # build, then tsc --noEmit
 pnpm lint           # vp lint, then vp fmt --check; CHANGELOG.md stays out of the formatter
 pnpm test           # vp test watch (unit, offline)
