@@ -1,5 +1,30 @@
 # Changelog
 
+## v0.6.1
+
+[compare changes](https://github.com/agntn/explorers/compare/v0.6.0...v0.6.1)
+
+### 🚀 Enhancements
+
+- Ask Arweave only for the tagged posts ([#235](https://github.com/agntn/explorers/pull/235))
+
+### 🩹 Fixes
+
+- Read a segwit address the same in capitals ([#228](https://github.com/agntn/explorers/pull/228))
+- **docs:** Count a whole IPv6 /64 as one visitor ([#229](https://github.com/agntn/explorers/pull/229))
+- **mcp:** Let a host bring its own transport ([#232](https://github.com/agntn/explorers/pull/232))
+- **docs:** Stop baking /chains into a blank page ([#233](https://github.com/agntn/explorers/pull/233))
+
+### 📦 Build
+
+- Let obuild find the providers ([#236](https://github.com/agntn/explorers/pull/236))
+- Skip the release age for `@agntn/*` ([#237](https://github.com/agntn/explorers/pull/237))
+
+### ❤️ Contributors
+
+- Ori ([@oritwoen](https://github.com/oritwoen))
+- Aeitwoen ([@aeitwoen](https://github.com/aeitwoen))
+
 ## v0.6.0
 
 [compare changes](https://github.com/agntn/explorers/compare/v0.5.10...v0.6.0)
