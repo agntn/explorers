@@ -88,6 +88,12 @@ describe("collectInscriptions", () => {
     ]);
   });
 
+  it("reads a key path spend with an annex as no tapscript at all", () => {
+    const [, tapscriptWithEnvelope] = scriptPath("0063036f7264", "00", "026869", "68");
+
+    expect(collectInscriptions([[tapscriptWithEnvelope ?? "", "50aa"]])).toBeUndefined();
+  });
+
   it("takes OP_1 as the content type tag and keeps the encoding", () => {
     const witness = scriptPath(
       "0063036f7264",

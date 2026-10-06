@@ -209,11 +209,11 @@ export function collectOpReturns(
   return payloads.length > 0 ? payloads : undefined;
 }
 
-/* The tapscript of a script path spend: second from the end, or third when an annex comes last. */
+/* The leaf script as rust-bitcoin's `tapscript()` finds it for ord: no control block check. */
 function tapscript(witness: readonly string[]): string | undefined {
   const last = witness.at(-1);
   if (last === undefined || witness.length < 2) return undefined;
-  if (witness.length >= 3 && last.startsWith(ANNEX_TAG)) return witness.at(-3);
+  if (last.startsWith(ANNEX_TAG)) return witness.length >= 3 ? witness.at(-3) : undefined;
   return witness.at(-2);
 }
 
