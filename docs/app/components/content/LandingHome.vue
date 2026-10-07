@@ -131,7 +131,7 @@ const { samples, paused, current, step } = useLandingExplorer();
       with two required reads and eight optional ones. Concrete classes implement the mappers and
       the explorer calls, nothing else leaks upward. A sub path import like
       <code class="explorers-code">@agntn/explorers/providers/mempool</code>
-      gives you one backend without the other seventeen in your bundle.
+      gives you one backend without the other eighteen in your bundle.
       <template #visual>
         <LandingRotatingCode :sample="current" />
       </template>

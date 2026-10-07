@@ -37,6 +37,7 @@ const PROVIDER_DEFAULT_CHAIN = {
   whatsonchain: "bitcoinsv",
   blockbook: "bitcoingold",
   haskoin: "bitcoincash",
+  ecash: "ecash",
 };
 
 const out = fileURLToPath(new URL("../app/data/explorers.json", import.meta.url));

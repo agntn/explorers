@@ -35,7 +35,7 @@ const { copied, copy } = useCopied();
         <span>v{{ version }}</span>
       </p>
 
-      <h1 class="hero-title">Eighteen explorers. <span>One shape.</span></h1>
+      <h1 class="hero-title">Nineteen explorers. <span>One shape.</span></h1>
       <p class="hero-lead">
         Etherscan, Blockscout, Mempool, Solscan, Koios, dcrdata and the rest behind one TypeScript
         contract. Balances, transactions, unspent outputs, tokens, contracts, gas and blocks as
