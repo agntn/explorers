@@ -307,6 +307,22 @@ describe("koios provider", () => {
     ]);
   });
 
+  it("reads a name written in capital hex digits", async () => {
+    stubJSON([
+      {
+        policy_id: "aa",
+        asset_name: "4E49474854",
+        fingerprint: "asset1caps",
+        decimals: 0,
+        quantity: "1",
+      },
+    ]);
+
+    await expect(provider.getTokenBalances!(ADDRESS, "cardano")).resolves.toMatchObject([
+      { symbol: "NIGHT", contract: "aa4E49474854" },
+    ]);
+  });
+
   it("falls back to the fingerprint when the name is not printable text", async () => {
     stubJSON([
       /** A right-to-left override, which reorders whatever the CLI prints after it. */
@@ -345,6 +361,8 @@ describe("koios provider", () => {
       { policy_id: "cc", asset_name: null, fingerprint: "asset1bare", decimals: 0, quantity: "7" },
       /** Half a byte at the end: reading on would name the asset after a fragment of itself. */
       { policy_id: "dd", asset_name: "414", fingerprint: "asset1odd", decimals: 0, quantity: "3" },
+      /** A letter past `f`, read as no name rather than as half of one. */
+      { policy_id: "de", asset_name: "4g", fingerprint: "asset1junk", decimals: 0, quantity: "2" },
     ]);
 
     await expect(provider.getTokenBalances!(ADDRESS, "cardano")).resolves.toMatchObject([
@@ -354,6 +372,7 @@ describe("koios provider", () => {
       { symbol: "asset1raw", balance: "0" },
       { symbol: "asset1bare", contract: "cc" },
       { symbol: "asset1odd", contract: "dd414" },
+      { symbol: "asset1junk", contract: "de4g" },
     ]);
   });
 

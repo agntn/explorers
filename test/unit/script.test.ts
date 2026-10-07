@@ -42,6 +42,10 @@ describe("collectOpReturns", () => {
       { hex: "62", text: "b" },
     ]);
   });
+
+  it("reads capital hex digits and skips a script that is not hex", () => {
+    expect(collectOpReturns(["6A014A", "6a01zz", "6a014"])).toEqual([{ hex: "4a", text: "J" }]);
+  });
 });
 
 describe("collectInscriptions", () => {
@@ -171,6 +175,12 @@ describe("collectInscriptions", () => {
 
   it("drops an envelope another opcode breaks into", () => {
     const witness = scriptPath("0063036f7264", "00", "026869", "ac", "68");
+
+    expect(collectInscriptions([witness])).toBeUndefined();
+  });
+
+  it("reads nothing from a tapscript that stops being hex", () => {
+    const witness = scriptPath("0063036f7264", "00", "026869", "68", "zz");
 
     expect(collectInscriptions([witness])).toBeUndefined();
   });
