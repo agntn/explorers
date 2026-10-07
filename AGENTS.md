@@ -171,4 +171,4 @@ pnpm test:live      # public explorer roundtrips, not CI
 pnpm release        # build, test, changelog, tag, push; CI publishes the tag
 ```
 
-Every pull request and push to `main` runs lint, typecheck, build and `pnpm test:run` on Node 24 and 26 through `.github/workflows/test.yml`; `autofix.yml` commits what `pnpm fmt` changes back to the pull request branch.
+Every pull request and push to `main` runs lint, typecheck, build and `pnpm test:run` on Node 26 through `.github/workflows/test.yml`; `autofix.yml` commits what `pnpm fmt` changes back to the pull request branch.

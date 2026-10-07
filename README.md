@@ -32,7 +32,7 @@ Docs and a live explorer: [explorers.agntn.dev](https://explorers.agntn.dev).
 pnpm add @agntn/explorers
 ```
 
-Node.js 24 or newer.
+Node.js 26 or newer.
 
 ## 🚀 First call
 
