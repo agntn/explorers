@@ -81,17 +81,11 @@ function isPrintable(text: string): boolean {
 }
 
 function hexToBytes(hex: string): Uint8Array | undefined {
-  if (hex.length % 2 !== 0 || !/^[0-9a-f]*$/i.test(hex)) return undefined;
-
-  const bytes = new Uint8Array(hex.length / 2);
-  for (let i = 0; i < bytes.length; i += 1) {
-    bytes[i] = Number.parseInt(hex.slice(i * 2, i * 2 + 2), 16);
+  try {
+    return Uint8Array.fromHex(hex);
+  } catch {
+    return undefined;
   }
-  return bytes;
-}
-
-function toHex(bytes: Uint8Array): string {
-  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 /* Read a payload as text, leaving binary carriers (Runes, Omni, hashes) without a text reading. */
@@ -105,7 +99,7 @@ function decodeText(payload: Uint8Array): string | undefined {
 }
 
 function toPayload(bytes: Uint8Array): OpReturnPayload {
-  return { hex: toHex(bytes), text: decodeText(bytes) };
+  return { hex: bytes.toHex(), text: decodeText(bytes) };
 }
 
 /* Read a little-endian push length. Callers check first that all `width` bytes are there. */
@@ -235,7 +229,7 @@ function envelopePushes(
 function opensEnvelope(steps: readonly Instruction[], at: number): boolean {
   const [flag, branch, protocol] = [steps[at], steps[at + 1], steps[at + 2]];
   if (flag?.data?.length !== 0 || branch?.opcode !== OP_IF) return false;
-  return protocol?.data !== undefined && toHex(protocol.data) === PROTOCOL_ID;
+  return protocol?.data !== undefined && protocol.data.toHex() === PROTOCOL_ID;
 }
 
 /* Where each envelope's pushes start: right after its opening marker. */
@@ -258,7 +252,7 @@ function bodyReading(chunks: readonly Uint8Array[]): Pick<Inscription, "size" | 
     offset += chunk.length;
   }
   const text = decodeText(body);
-  return { size, hex: toHex(body), ...(text === undefined ? {} : { text }) };
+  return { size, hex: body.toHex(), ...(text === undefined ? {} : { text }) };
 }
 
 /* A field value as one printable line; a MIME type with a tab or a line break is no MIME type. */
@@ -272,7 +266,7 @@ function fieldText(fields: readonly Uint8Array[], tag: string): string | undefin
   for (let i = 0; i + 1 < fields.length; i += 2) {
     const key = fields[i];
     const value = fields[i + 1];
-    if (key && value && toHex(key) === tag) return fieldLine(value);
+    if (key && value && key.toHex() === tag) return fieldLine(value);
   }
   return undefined;
 }

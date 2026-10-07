@@ -99,10 +99,9 @@ function decoder(): TextDecoder {
 
 /* Read an asset name as text. A minter picks those bytes, so anything invisible stays unread. */
 function decodeAssetName(hex: string | null): string | undefined {
-  if (!hex || !/^(?:[0-9a-fA-F]{2})+$/.test(hex)) return undefined;
-  const bytes = Uint8Array.from(hex.match(/../g) ?? [], (byte) => Number.parseInt(byte, 16));
+  if (!hex) return undefined;
   try {
-    const text = decoder().decode(bytes);
+    const text = decoder().decode(Uint8Array.fromHex(hex));
     return UNPRINTABLE.test(text) ? undefined : text;
   } catch {
     return undefined;
