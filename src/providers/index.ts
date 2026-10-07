@@ -188,4 +188,11 @@ export const builtins: readonly ProviderEntry[] = [
     defaultURL: "https://api.haskoin.com/bch",
     load: () => import("./haskoin.ts").then((m) => m.Haskoin),
   },
+  {
+    key: "ecash",
+    chains: ["ecash"],
+    capabilities: ["txHistory", "blockInfo"],
+    defaultURL: "https://explorer.e.cash",
+    load: () => import("./ecash.ts").then((m) => m.ECash),
+  },
 ] satisfies readonly BuiltinProviderEntry[];

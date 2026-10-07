@@ -208,6 +208,12 @@ const PRESENTATION: Record<string, ProviderPresentation> = {
     envVars: [],
     blurb: "Bitcoin Cash through Haskoin Store at api.haskoin.com. Satoshis, unspent outputs, fees and senders straight from each transaction, no key.",
   },
+  ecash: {
+    label: "eCash Explorer",
+    icon: "i-lucide-receipt-text",
+    envVars: [],
+    blurb: "eCash history and blocks from explorer.e.cash, a whole page in one request and no key. The balance hides in HTML, so Blockchair keeps that one.",
+  },
 };
 
 export interface ProviderInfo extends ProviderSnapshot, ProviderPresentation {

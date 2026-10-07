@@ -5,7 +5,7 @@
 [![license](https://npmx.dev/api/registry/badge/license/@agntn/explorers)](https://npmx.dev/package/@agntn/explorers)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/agntn/explorers)
 
-🔭 Eighteen block explorers, 30 chains, one shape. You ask for a balance, you get a balance. Same object on Ethereum, Bitcoin, Solana, Cardano or Stellar, from your terminal, your TypeScript or your agent, and nobody has to know what Insight is.
+🔭 Nineteen block explorers, 30 chains, one shape. You ask for a balance, you get a balance. Same object on Ethereum, Bitcoin, Solana, Cardano or Stellar, from your terminal, your TypeScript or your agent, and nobody has to know what Insight is.
 
 ## Why?
 
@@ -17,7 +17,7 @@ Docs and a live explorer: [explorers.agntn.dev](https://explorers.agntn.dev).
 
 ## ✨ Features
 
-- 🧩 **Eighteen backends, one contract.** Etherscan, Blockscout, Blockchair, Mempool, Blockstream, Solscan, Helius, TONAPI, TRONSCAN, Aptos, Blockberry, Koios, Arweave, dcrdata, Horizon, WhatsOnChain, Blockbook and Haskoin, and from your side they all look the same.
+- 🧩 **Nineteen backends, one contract.** Etherscan, Blockscout, Blockchair, Mempool, Blockstream, Solscan, Helius, TONAPI, TRONSCAN, Aptos, Blockberry, Koios, Arweave, dcrdata, Horizon, WhatsOnChain, Blockbook, Haskoin and eCash Explorer, and from your side they all look the same.
 - ⛓️ **30 chains.** Ethereum, Base, Arbitrum, Optimism, Polygon, BSC, Avalanche, Gnosis, Linea, Berachain, zkSync, Scroll, Bitcoin, Bitcoin Cash, Bitcoin SV, Bitcoin Gold, Litecoin, Dogecoin, Pepecoin, eCash, Zcash, Solana, TON, TRON, Aptos, Sui, Cardano, Arweave, Decred and Stellar.
 - 🔢 **Amounts stay exact.** Strings in the smallest unit. Your 0.1 ETH is `100000000000000000` and it stays that way.
 - 🖥️ **CLI, library, MCP, Pi and OMP.** Whatever you're holding, same commands, same objects.
@@ -177,8 +177,9 @@ That's most of it, really. `create()` loads one provider and nothing else. `with
 | **whatsonchain** | Optional `WHATSONCHAIN_API_KEY` | bitcoinsv                                                                             | balances, tx detail/history, utxos, block                                |
 | **blockbook**    | None                            | bitcoingold                                                                           | balances, tx detail/history, utxos, block                                |
 | **haskoin**      | None                            | bitcoincash                                                                           | balances, tx detail/history, utxos, block                                |
+| **ecash**        | None                            | ecash                                                                                 | tx history, block                                                        |
 
-Aptos is in the table so you don't ask why it's not in the table. Aptos Explorer has no documented account or history API, so it's registered, does nothing and throws `UnsupportedOperationError` if you insist. Bitcoin SV kept Bitcoin's `1...` addresses, so one of those still reads as Bitcoin until you say `-c bsv` or `-p whatsonchain`. The rest, with their quirks: [Providers](https://explorers.agntn.dev/providers).
+Aptos is in the table so you don't ask why it's not in the table. Aptos Explorer has no documented account or history API, so it's registered, does nothing and throws `UnsupportedOperationError` if you insist. Bitcoin SV kept Bitcoin's `1...` addresses, so one of those still reads as Bitcoin until you say `-c bsv` or `-p whatsonchain`. eCash Explorer serves its balance only as HTML, so eCash balances still go to Blockchair, while history no longer burns a Blockchair request per transaction. The rest, with their quirks: [Providers](https://explorers.agntn.dev/providers).
 
 ## 🤖 Agents
 
@@ -204,7 +205,7 @@ Nodes. No RPC, no `eth_call`, no fullnode anything, that's not this package. Als
 
 ## 🧩 Adding a provider
 
-Want a nineteenth? A class extending `Provider` and an entry in `builtins`, and there's a test that notices when you skip one. The build finds the file on its own now, so that's one less line to forget. Walkthrough: [Custom providers](https://explorers.agntn.dev/guide/custom).
+Want a twentieth? A class extending `Provider` and an entry in `builtins`, and there's a test that notices when you skip one. The build finds the file on its own now, so that's one less line to forget. Walkthrough: [Custom providers](https://explorers.agntn.dev/guide/custom).
 
 ## 🛠️ Development
 

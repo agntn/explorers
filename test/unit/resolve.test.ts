@@ -126,7 +126,10 @@ describe("resolveProvider", () => {
     vi.stubEnv("BLOCKBERRY_API_KEY", "");
 
     expect(resolveProvider(undefined, "solana")).toBe("solscan");
-    expect(resolveProvider(undefined, "ecash")).toBe("blockchair");
+    expect(resolveProvider(undefined, "ecash")).toBe("ecash");
+    expect(resolveProvider(undefined, "ecash", "txHistory")).toBe("ecash");
+    expect(resolveProvider(undefined, "ecash", "blockInfo")).toBe("ecash");
+    expect(resolveProvider(undefined, "ecash", "balances")).toBe("blockchair");
     expect(resolveProvider(undefined, "bitcoincash")).toBe("haskoin");
     expect(resolveProvider(undefined, "zcash")).toBe("blockchair");
     expect(resolveProvider(undefined, "dogecoin")).toBe("blockchair");
@@ -470,6 +473,40 @@ describe("withProvider", () => {
 
     expect(tried).toEqual(["blockchair", "haskoin"]);
     expect(name).toBe("haskoin");
+  });
+
+  it("reads eCash history on the keyless explorer and leaves balances to Blockchair", async () => {
+    useNoProviderCredentials();
+    const tried: string[] = [];
+    const record = async ({ name }: Readonly<{ name: string }>) => {
+      tried.push(name);
+      return name;
+    };
+
+    await withProvider(undefined, "ecash", record, "txHistory");
+    await withProvider(undefined, "ecash", record, "balances");
+
+    expect(tried).toEqual(["ecash", "blockchair"]);
+  });
+
+  it("retries eCash history on the keyless explorer when a keyed Blockchair is blocked", async () => {
+    useNoProviderCredentials();
+    vi.stubEnv("BLOCKCHAIR_API_KEY", "configured");
+    const tried: string[] = [];
+
+    const name = await withProvider(
+      undefined,
+      "ecash",
+      async ({ name }) => {
+        tried.push(name);
+        if (name === "blockchair") throw new RateLimitError(name);
+        return name;
+      },
+      "txHistory",
+    );
+
+    expect(tried).toEqual(["blockchair", "ecash"]);
+    expect(name).toBe("ecash");
   });
 
   it("uses a provider with optional credentials after the keyless default", async () => {

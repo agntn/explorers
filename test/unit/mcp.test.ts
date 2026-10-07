@@ -522,6 +522,41 @@ describe("Explorers MCP server", () => {
     });
   });
 
+  it("reads eCash history through explorer.e.cash without a Blockchair key", async () => {
+    vi.stubEnv("BLOCKCHAIR_API_KEY", "");
+    const address = "ecash:qq5r308v2mkh6x5mkqpr6wytszz6f9r7qcnfttev0z";
+    const hash = "655732f46089de026cd29fc2dbdc017226d88510e8e0ac56162e68a8365938d2";
+    const fetch = vi.fn<typeof globalThis.fetch>(async () =>
+      Response.json({
+        data: [
+          {
+            txHash: hash,
+            blockHeight: 967_331,
+            timestamp: 1_789_722_478,
+            isCoinbase: false,
+            stats: { satsInput: 35_403, satsOutput: 34_936, deltaSats: -35_403 },
+          },
+        ],
+      }),
+    );
+    vi.stubGlobal("fetch", fetch);
+    const client = await connectTestClient();
+    const history = parseToolResult(
+      await client.callTool({
+        name: "explorers_tx_history",
+        arguments: { address, limit: 1, raw: true },
+      }),
+    );
+    expect(history.isError).toBe(false);
+    expect(JSON.parse(history.content[0]?.text ?? "null")).toMatchObject({
+      provider: "ecash",
+      data: [{ hash, from: address, to: null, value: "34936", fee: "467", raw: { txHash: hash } }],
+    });
+    expect(String(fetch.mock.calls[0]?.[0])).toBe(
+      `https://explorer.e.cash/api/address/${encodeURIComponent(address)}/transactions?page=0&take=1`,
+    );
+  });
+
   it("reads Bitcoin Cash through Haskoin without a Blockchair key", async () => {
     vi.stubEnv("BLOCKCHAIR_API_KEY", "");
     const address = "bitcoincash:qzstp4swtxg40rkn0j769vta3vkwyw4jj5fmdl2vtm";
