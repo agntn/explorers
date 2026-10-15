@@ -20,8 +20,8 @@
   },
   "files": [
     "dist",
-    "packages/pi/extensions",
-    "packages/omp/extensions"
+    "extensions/pi",
+    "extensions/omp"
   ],
   "type": "module",
   "sideEffects": [
@@ -107,12 +107,12 @@
   "packageManager": "pnpm@10.33.4",
   "omp": {
     "extensions": [
-      "./packages/omp/extensions/explorers.ts"
+      "./extensions/omp/explorers.ts"
     ]
   },
   "pi": {
     "extensions": [
-      "./packages/pi/extensions/*.ts"
+      "./extensions/pi/*.ts"
     ],
     "image": "https://explorers.agntn.dev/image.png"
   }
