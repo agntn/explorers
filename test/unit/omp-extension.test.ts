@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import * as TypeBox from "@oh-my-pi/omptype/typebox";
 import type { ExtensionAPI, ExtensionContext, ToolDefinition } from "@oh-my-pi/pi-coding-agent";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
-import explorersOmpExtension from "../../packages/omp/extensions/explorers.ts";
+import explorersOmpExtension from "../../extensions/omp/explorers.ts";
 import type { Transaction } from "../../src/core/types.ts";
 import { builtins } from "../../src/providers/index.ts";
 
@@ -151,14 +151,14 @@ describe("explorers OMP extension", () => {
 
     try {
       const packageRoot = join(root, "package");
-      const extensionDir = join(packageRoot, "packages/omp/extensions");
+      const extensionDir = join(packageRoot, "extensions/omp");
       writeFileSync(join(root, "package.json"), '{"type":"module"}\n');
       const installedPackageDir = join(packageRoot, "node_modules/@agntn/explorers");
       mkdirSync(extensionDir, { recursive: true });
       mkdirSync(join(packageRoot, "dist"), { recursive: true });
       mkdirSync(installedPackageDir, { recursive: true });
       copyFileSync(
-        fileURLToPath(new URL("../../packages/omp/extensions/explorers.ts", import.meta.url)),
+        fileURLToPath(new URL("../../extensions/omp/explorers.ts", import.meta.url)),
         join(extensionDir, "explorers.ts"),
       );
       writeFileSync(
@@ -176,7 +176,7 @@ describe("explorers OMP extension", () => {
       const probePath = join(root, "probe.ts");
       writeFileSync(
         probePath,
-        `import extension from "./package/packages/omp/extensions/explorers.ts";
+        `import extension from "./package/extensions/omp/explorers.ts";
 const tools = new Map<string, any>();
 extension({
   pi: { Text: class {} },

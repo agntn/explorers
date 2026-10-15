@@ -2,12 +2,12 @@
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import type { AgentToolResult, ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import type * as ExplorersModule from "../../../src/index.ts";
+import type * as ExplorersModule from "../../src/index.ts";
 import { Text } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
 
-const sourceModuleUrl = new URL("../../../src/index.ts", import.meta.url);
-const distributionModuleUrl = new URL("../../../dist/index.mjs", import.meta.url);
+const sourceModuleUrl = new URL("../../src/index.ts", import.meta.url);
+const distributionModuleUrl = new URL("../../dist/index.mjs", import.meta.url);
 let explorersModulePromise: Promise<typeof ExplorersModule> | undefined;
 
 /**

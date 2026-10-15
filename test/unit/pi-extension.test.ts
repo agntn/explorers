@@ -6,9 +6,7 @@ import type {
 } from "@earendil-works/pi-coding-agent";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import { Value } from "typebox/value";
-import explorersExtension, {
-  resolveExplorersModuleUrl,
-} from "../../packages/pi/extensions/explorers.ts";
+import explorersExtension, { resolveExplorersModuleUrl } from "../../extensions/pi/explorers.ts";
 import type { Transaction } from "../../src/core/types.ts";
 import { builtins } from "../../src/providers/index.ts";
 

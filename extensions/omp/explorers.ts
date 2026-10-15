@@ -2,9 +2,9 @@
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import type { ExtensionAPI } from "@oh-my-pi/pi-coding-agent";
-import type * as ExplorersModule from "../../../src/index.ts";
+import type * as ExplorersModule from "../../src/index.ts";
 
-const sourceModulePath = fileURLToPath(new URL("../../../src/index.ts", import.meta.url));
+const sourceModulePath = fileURLToPath(new URL("../../src/index.ts", import.meta.url));
 let explorersModulePromise: Promise<typeof ExplorersModule> | undefined;
 
 /* Load current source in development and the sibling build in distributions. */
@@ -12,8 +12,8 @@ function loadLib(): Promise<typeof ExplorersModule> {
   if (explorersModulePromise) return explorersModulePromise;
 
   const loaded: Promise<typeof ExplorersModule> = existsSync(sourceModulePath)
-    ? import("../../../src/index.ts")
-    : (import("../../../dist/index.mjs") as unknown as Promise<typeof ExplorersModule>);
+    ? import("../../src/index.ts")
+    : (import("../../dist/index.mjs") as unknown as Promise<typeof ExplorersModule>);
   explorersModulePromise = loaded;
   return loaded;
 }
