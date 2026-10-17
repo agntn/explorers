@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@agntn/chains':
-        specifier: 0.3.11
-        version: 0.3.11(zod@4.5.4)
+        specifier: 0.3.12
+        version: 0.3.12(zod@4.5.4)
       better-sqlite3:
         specifier: 12.11.1
         version: 12.11.1
@@ -45,8 +45,8 @@ importers:
 
 packages:
 
-  '@agntn/chains@0.3.11':
-    resolution: {integrity: sha512-1sKzM4QugGwUK1bPU9C9Hk61Mz02bSOdibJFYh9YMsFJUJsc6tzrDsW+QPB7i74U+L4foT0VSDjFBjL1CPhQWw==}
+  '@agntn/chains@0.3.12':
+    resolution: {integrity: sha512-hZJwJm8OIceTvtI7BkhFC2jqKcwD6DyLWGRqWQ3axtartgMOPWfs8+B71RNsgqsOT1coi1f9VCgJv4neTQ6VXA==}
     engines: {node: '>=24'}
     hasBin: true
     peerDependencies:
@@ -1533,16 +1533,6 @@ packages:
     resolution: {integrity: sha512-JjTIaXZp9WzhUHpElrqPnl1AzBi/rvRs065F71+aTmlqvTMVkdbjZ8vfFl4nRlgJy+TPBw69ZK4pwFdmOAt4aA==}
     peerDependencies:
       rollup: ^1.20.0 || ^2.0.0 || ^3.0.0 || ^4.0.0
-
-  '@modelcontextprotocol/sdk@1.30.0':
-    resolution: {integrity: sha512-xKd8OIzlqNzcqcNumGAa6g+PW2kjD5vrpcKOnfldAUPP3j7lnqMPwlTXQm8gF+UwH72z0lqaRbjr9hqGz0eITA==}
-    engines: {node: '>=18'}
-    peerDependencies:
-      '@cfworker/json-schema': ^4.1.1
-      zod: ^3.25 || ^4.0
-    peerDependenciesMeta:
-      '@cfworker/json-schema':
-        optional: true
 
   '@modelcontextprotocol/sdk@1.30.1':
     resolution: {integrity: sha512-H2HxLvC3HDNybePJaLdSrU1hhUK5iQw+WvV1b01myFyI7sdVGe1u/IPTE5D9fGCiJDVtgMV/lmFkQXLmQyIFYA==}
@@ -7356,7 +7346,7 @@ packages:
 
 snapshots:
 
-  '@agntn/chains@0.3.11(zod@4.5.4)':
+  '@agntn/chains@0.3.12(zod@4.5.4)':
     dependencies:
       '@modelcontextprotocol/sdk': 1.30.1(zod@4.5.4)
       citty: 0.2.2
@@ -8518,28 +8508,6 @@ snapshots:
       json5: 2.2.3
       rollup: 4.63.1
 
-  '@modelcontextprotocol/sdk@1.30.0(zod@4.5.4)':
-    dependencies:
-      '@hono/node-server': 2.1.1(hono@4.13.5)
-      ajv: 8.20.0
-      ajv-formats: 3.0.1(ajv@8.20.0)
-      content-type: 1.0.5
-      cors: 2.8.6
-      cross-spawn: 7.0.6
-      eventsource: 3.0.7
-      eventsource-parser: 3.1.1
-      express: 5.2.1
-      express-rate-limit: 8.7.0(express@5.2.1)
-      hono: 4.13.5
-      jose: 6.2.11
-      json-schema-typed: 8.0.2
-      pkce-challenge: 5.0.1
-      raw-body: 3.0.2
-      zod: 4.5.4
-      zod-to-json-schema: 3.25.2(zod@4.5.4)
-    transitivePeerDependencies:
-      - supports-color
-
   '@modelcontextprotocol/sdk@1.30.1(zod@4.5.4)':
     dependencies:
       '@hono/node-server': 2.1.1(hono@4.13.5)
@@ -9368,7 +9336,7 @@ snapshots:
 
   '@nuxtjs/mcp-toolkit@0.19.0(@vue/compiler-sfc@3.5.42)(h3@1.15.11)(magic-string@1.2.3)(magicast@0.5.4)(oxc-parser@0.143.0)(rolldown@1.2.7)(rollup@4.63.1)(unplugin@3.3.0(esbuild@0.28.2)(rolldown@1.2.7)(rollup@4.63.1)(vite@8.2.2(@types/node@26.4.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.0)))(vite@8.2.2(@types/node@26.4.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.0))(vue@3.5.42(typescript@5.9.3))(zod@4.5.4)':
     dependencies:
-      '@modelcontextprotocol/sdk': 1.30.0(zod@4.5.4)
+      '@modelcontextprotocol/sdk': 1.30.1(zod@4.5.4)
       '@nuxt/kit': 4.5.2(magic-string@1.2.3)(magicast@0.5.4)(oxc-parser@0.143.0)(rolldown@1.2.7)(unplugin@3.3.0(esbuild@0.28.2)(rolldown@1.2.7)(rollup@4.63.1)(vite@8.2.2(@types/node@26.4.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.0)))
       '@vitejs/plugin-vue': 6.0.8(vite@8.2.2(@types/node@26.4.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.0))(vue@3.5.42(typescript@5.9.3))
       h3: 1.15.11
