@@ -171,11 +171,23 @@ const PRESENTATION: Record<string, ProviderPresentation> = {
     envVars: [],
     blurb: "Cardano over PostgREST. Balances, history, details and native token holdings, keyless, a little slow on busy addresses.",
   },
+  turbo: {
+    label: "Turbo",
+    icon: "i-lucide-rocket",
+    envVars: [],
+    blurb: "Arweave through the AR.IO gateway with the index that still remembers 2019. First pick for Arweave, no key.",
+  },
+  ario: {
+    label: "ar.io",
+    icon: "i-lucide-satellite-dish",
+    envVars: [],
+    blurb: "Arweave through ar-io.dev, the AR.IO team's own gateway. Catches the reads Turbo drops, and some old uploads Turbo never saw.",
+  },
   arweave: {
-    label: "Arweave gateway",
+    label: "arweave.net",
     icon: "i-lucide-archive",
     envVars: [],
-    blurb: "Wallet and block REST plus the GraphQL index of a gateway. Winstons, no gas, and history that stays on one gateway.",
+    blurb: "Arweave through arweave.net. Fresh data items, a GraphQL index that forgot 2019, and the last of three gateways in line.",
   },
   dcrdata: {
     label: "dcrdata",

@@ -40,15 +40,15 @@ function transactionSchema() {
 
 type IndexedTransaction = z.infer<ReturnType<typeof transactionSchema>>;
 
-function assertChain(chain: ChainKey): void {
-  if (chain !== "arweave") throw new UnsupportedChainError(chain, Arweave.key);
+function assertChain(chain: ChainKey, provider: string): void {
+  if (chain !== "arweave") throw new UnsupportedChainError(chain, provider);
 }
 
-function assertIdentifier(value: string): void {
+function assertIdentifier(value: string, provider: string): void {
   if (!/^[A-Za-z0-9_-]{43}$/.test(value)) {
     throw new ExplorerError(
       "Expected an Arweave address or transaction ID with 43 characters",
-      Arweave.key,
+      provider,
     );
   }
 }
@@ -81,25 +81,25 @@ function validInteger(value: number, min: number, max: number): boolean {
   return Number.isSafeInteger(value) && value >= min && value <= max;
 }
 
-function historyWindow(options: Readonly<TxHistoryOptions>) {
+function historyWindow(options: Readonly<TxHistoryOptions>, provider: string) {
   const limit = options.limit ?? 100;
   const page = options.page ?? 1;
   if (!validInteger(limit, 1, 100) || !validInteger(page, 1, Math.floor(MAX_WINDOW / limit))) {
     throw new ExplorerError(
       "Arweave history requires limit from 1 to 100 and page * limit <= 1000",
-      Arweave.key,
+      provider,
     );
   }
-  assertBlockBounds(options);
+  assertBlockBounds(options, provider);
   return { limit, count: page * limit, offset: (page - 1) * limit };
 }
 
-function assertBlockBounds(options: Readonly<TxHistoryOptions>): void {
+function assertBlockBounds(options: Readonly<TxHistoryOptions>, provider: string): void {
   for (const height of [options.startBlock, options.endBlock]) {
     if (height !== undefined && !validInteger(height, 0, 2_147_483_647)) {
       throw new ExplorerError(
         "Arweave block bounds must be nonnegative GraphQL Int values",
-        Arweave.key,
+        provider,
       );
     }
   }
@@ -108,32 +108,33 @@ function assertBlockBounds(options: Readonly<TxHistoryOptions>): void {
     options.endBlock !== undefined &&
     options.startBlock > options.endBlock
   ) {
-    throw new ExplorerError("Arweave startBlock must not exceed endBlock", Arweave.key);
+    throw new ExplorerError("Arweave startBlock must not exceed endBlock", provider);
   }
 }
 
 /* The gateway answers an empty tag name or value list with no rows, like an empty history. */
-function assertTagFilters(options: Readonly<TxHistoryOptions>): void {
+function assertTagFilters(options: Readonly<TxHistoryOptions>, provider: string): void {
   const filters = z
     .array(z.object({ name: z.string().min(1), values: z.array(z.string()).min(1) }).strict())
     .optional();
   if (!filters.safeParse(options.tags).success) {
     throw new ExplorerError(
       "Arweave tag filters need a name and at least one value each, as { name, values }",
-      Arweave.key,
+      provider,
     );
   }
 }
 
-/** Arweave balances and blocks from gateway REST, transactions from its GraphQL index. */
+/** arweave.net: balances and blocks over gateway REST, transactions from its GraphQL index. */
 export class Arweave extends Provider {
-  static readonly key = "arweave";
+  static readonly key: string = "arweave";
+  protected static readonly gateway: string = ARWEAVE_GATEWAY_URL;
   private readonly base: string;
   private readonly endpoint: string;
 
   constructor(config: Readonly<ProviderConfig> = {}) {
     super(config);
-    this.base = normalizeBaseUrl(config.baseUrl ?? ARWEAVE_GATEWAY_URL);
+    this.base = normalizeBaseUrl(config.baseUrl ?? (this.constructor as typeof Arweave).gateway);
     this.endpoint = `${this.base}/graphql`;
   }
 
@@ -154,8 +155,8 @@ export class Arweave extends Provider {
   }
 
   async getBalance(address: string, chain: ChainKey = "arweave"): Promise<Balance> {
-    assertChain(chain);
-    assertIdentifier(address);
+    assertChain(chain, this.name);
+    assertIdentifier(address, this.name);
     const raw = await this.getJSON<unknown>(`${this.base}/wallet/${address}/balance`);
     /** Integers served as text pass through the shared lossless JSON parser. */
     const parsed = z
@@ -179,7 +180,7 @@ export class Arweave extends Provider {
     blockNumber: number,
     chain: ChainKey = "arweave",
   ): Promise<BlockInfo> {
-    assertChain(chain);
+    assertChain(chain, this.name);
     if (!validInteger(blockNumber, 0, Number.MAX_SAFE_INTEGER))
       throw new ExplorerError("Arweave block number must be a nonnegative safe integer", this.name);
     const raw = await this.getJSON<unknown>(`${this.base}/block/height/${blockNumber}`);
@@ -234,8 +235,8 @@ export class Arweave extends Provider {
   }
 
   override async getTxDetail(hash: string, chain: ChainKey = "arweave"): Promise<Transaction> {
-    assertChain(chain);
-    assertIdentifier(hash);
+    assertChain(chain, this.name);
+    assertIdentifier(hash, this.name);
     const { transaction } = await this.query(
       `query ($id: ID!) { transaction(id: $id) { ${TX_FIELDS} } }`,
       { id: hash },
@@ -302,10 +303,10 @@ export class Arweave extends Provider {
     chain: ChainKey = "arweave",
     options: Readonly<TxHistoryOptions> = {},
   ): Promise<Transaction[]> {
-    assertChain(chain);
-    assertIdentifier(address);
-    const { count, offset, limit } = historyWindow(options);
-    assertTagFilters(options);
+    assertChain(chain, this.name);
+    assertIdentifier(address, this.name);
+    const { count, offset, limit } = historyWindow(options, this.name);
+    assertTagFilters(options, this.name);
     const [sent, received] = await Promise.all([
       this.historyDirection(address, "owners", count, options),
       this.historyDirection(address, "recipients", count, options),

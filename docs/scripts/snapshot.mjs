@@ -31,6 +31,8 @@ const PROVIDER_DEFAULT_CHAIN = {
   aptos: "aptos",
   blockberry: "sui",
   koios: "cardano",
+  turbo: "arweave",
+  ario: "arweave",
   arweave: "arweave",
   dcrdata: "decred",
   horizon: "stellar",

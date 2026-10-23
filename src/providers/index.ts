@@ -1,7 +1,13 @@
 /** Built-in providers: registry metadata plus a loader for the implementation */
 
 import type { ProviderCapability, ProviderEntry } from "../core/provider.ts";
-import { ARWEAVE_GATEWAY_URL, DCRDATA_INSIGHT_URL, HORIZON_URL } from "../core/endpoints.ts";
+import {
+  ARIO_GATEWAY_URL,
+  ARWEAVE_GATEWAY_URL,
+  DCRDATA_INSIGHT_URL,
+  HORIZON_URL,
+  TURBO_GATEWAY_URL,
+} from "../core/endpoints.ts";
 
 type BuiltinProviderEntry = ProviderEntry & {
   capabilities: readonly ProviderCapability[];
@@ -137,6 +143,20 @@ export const builtins: readonly ProviderEntry[] = [
     capabilities: ["balances", "txHistory", "txDetail", "tokenBalances"],
     defaultURL: "https://api.koios.rest/api/v1",
     load: () => import("./koios.ts").then((m) => m.Koios),
+  },
+  {
+    key: "turbo",
+    chains: ["arweave"],
+    capabilities: ["balances", "txHistory", "txDetail", "blockInfo", "txHistoryTags"],
+    defaultURL: TURBO_GATEWAY_URL,
+    load: () => import("./turbo.ts").then((m) => m.Turbo),
+  },
+  {
+    key: "ario",
+    chains: ["arweave"],
+    capabilities: ["balances", "txHistory", "txDetail", "blockInfo", "txHistoryTags"],
+    defaultURL: ARIO_GATEWAY_URL,
+    load: () => import("./ario.ts").then((m) => m.Ario),
   },
   {
     key: "arweave",

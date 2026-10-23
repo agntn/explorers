@@ -877,7 +877,7 @@ describe("Explorers MCP server", () => {
     );
     expect(result.isError).toBe(false);
     expect(JSON.parse(result.content[0]?.text ?? "null")).toEqual({
-      provider: "arweave",
+      provider: "turbo",
       data: [],
     });
     expect(sent).toEqual([tags, tags]);
@@ -885,7 +885,10 @@ describe("Explorers MCP server", () => {
 
   it.each([
     [{ chain: "bitcoin" }, /not supported by \w+; no provider serves this read on bitcoin$/],
-    [{ chain: "arweave", provider: "mempool" }, /not supported by mempool; try arweave$/],
+    [
+      { chain: "arweave", provider: "mempool" },
+      /not supported by mempool; try turbo, ario, arweave$/,
+    ],
   ])("refuses tag filters where the provider cannot apply them", async (route, message) => {
     const fetch = vi.fn();
     vi.stubGlobal("fetch", fetch);

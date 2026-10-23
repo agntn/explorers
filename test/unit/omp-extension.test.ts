@@ -379,12 +379,12 @@ console.log(result.content[0].text);
       ),
     );
     expect(block.isError).toBe(false);
-    expect(block.content[0]?.text).toContain("[arweave] Block #42 on arweave");
+    expect(block.content[0]?.text).toContain("[turbo] Block #42 on arweave");
     expect(block.content[0]?.text).toContain("Hash: block-hash");
     expect(block.content[0]?.text).toContain("Transactions: 2");
     expect(fetch.mock.calls.map(([url]) => String(url))).toEqual([
-      `https://arweave.net/wallet/${address}/balance`,
-      "https://arweave.net/block/height/42",
+      `https://turbo-gateway.com/wallet/${address}/balance`,
+      "https://turbo-gateway.com/block/height/42",
     ]);
   });
 

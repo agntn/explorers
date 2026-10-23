@@ -1,6 +1,6 @@
 {
   "version": "0.6.1",
-  "generatedAt": "2026-10-07T09:08:39.891Z",
+  "generatedAt": "2026-10-23T21:26:05.553Z",
   "providers": [
     {
       "key": "etherscan",
@@ -198,6 +198,34 @@
       ],
       "defaultURL": "https://api.koios.rest/api/v1",
       "defaultChain": "cardano"
+    },
+    {
+      "key": "turbo",
+      "chains": [
+        "arweave"
+      ],
+      "capabilities": [
+        "balances",
+        "txHistory",
+        "txDetail",
+        "blockInfo"
+      ],
+      "defaultURL": "https://turbo-gateway.com",
+      "defaultChain": "arweave"
+    },
+    {
+      "key": "ario",
+      "chains": [
+        "arweave"
+      ],
+      "capabilities": [
+        "balances",
+        "txHistory",
+        "txDetail",
+        "blockInfo"
+      ],
+      "defaultURL": "https://ar-io.dev",
+      "defaultChain": "arweave"
     },
     {
       "key": "arweave",
@@ -575,6 +603,8 @@
       "type": "arweave",
       "explorer": "https://viewblock.io/arweave",
       "providers": [
+        "turbo",
+        "ario",
         "arweave"
       ]
     },
