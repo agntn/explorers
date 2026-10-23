@@ -5,7 +5,7 @@
 [![license](https://npmx.dev/api/registry/badge/license/@agntn/explorers)](https://npmx.dev/package/@agntn/explorers)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/agntn/explorers)
 
-🔭 Nineteen block explorers, 30 chains, one shape. You ask for a balance, you get a balance. Same object on Ethereum, Bitcoin, Solana, Cardano or Stellar, from your terminal, your TypeScript or your agent, and nobody has to know what Insight is.
+🔭 Twenty-one block explorers, 30 chains, one shape. You ask for a balance, you get a balance. Same object on Ethereum, Bitcoin, Solana, Cardano or Stellar, from your terminal, your TypeScript or your agent, and nobody has to know what Insight is.
 
 ## Why?
 
@@ -17,7 +17,7 @@ Docs and a live explorer: [explorers.agntn.dev](https://explorers.agntn.dev).
 
 ## ✨ Features
 
-- 🧩 **Nineteen backends, one contract.** Etherscan, Blockscout, Blockchair, Mempool, Blockstream, Solscan, Helius, TONAPI, TRONSCAN, Aptos, Blockberry, Koios, Arweave, dcrdata, Horizon, WhatsOnChain, Blockbook, Haskoin and eCash Explorer, and from your side they all look the same.
+- 🧩 **Twenty-one backends, one contract.** Etherscan, Blockscout, Blockchair, Mempool, Blockstream, Solscan, Helius, TONAPI, TRONSCAN, Aptos, Blockberry, Koios, Turbo, ar.io, arweave.net, dcrdata, Horizon, WhatsOnChain, Blockbook, Haskoin and eCash Explorer, and from your side they all look the same.
 - ⛓️ **30 chains.** Ethereum, Base, Arbitrum, Optimism, Polygon, BSC, Avalanche, Gnosis, Linea, Berachain, zkSync, Scroll, Bitcoin, Bitcoin Cash, Bitcoin SV, Bitcoin Gold, Litecoin, Dogecoin, Pepecoin, eCash, Zcash, Solana, TON, TRON, Aptos, Sui, Cardano, Arweave, Decred and Stellar.
 - 🔢 **Amounts stay exact.** Strings in the smallest unit. Your 0.1 ETH is `100000000000000000` and it stays that way.
 - 🖥️ **CLI, library, MCP, Pi and OMP.** Whatever you're holding, same commands, same objects.
@@ -171,6 +171,8 @@ That's most of it, really. `create()` loads one provider and nothing else. `with
 | **aptos**        | None                            | aptos                                                                                 | no supported explorer operations                                         |
 | **blockberry**   | `BLOCKBERRY_API_KEY`            | sui                                                                                   | balances, tx history                                                     |
 | **koios**        | None                            | cardano                                                                               | balances, tx detail/history, tokens                                      |
+| **turbo**        | None                            | arweave                                                                               | balances, tx detail/history, block                                       |
+| **ario**         | None                            | arweave                                                                               | balances, tx detail/history, block                                       |
 | **arweave**      | None                            | arweave                                                                               | balances, tx detail/history, block                                       |
 | **dcrdata**      | None                            | decred                                                                                | balances, tx detail/history, block                                       |
 | **horizon**      | None                            | stellar                                                                               | balances, tx detail/history, transfers, tokens, gas, block               |
@@ -179,7 +181,13 @@ That's most of it, really. `create()` loads one provider and nothing else. `with
 | **haskoin**      | None                            | bitcoincash                                                                           | balances, tx detail/history, utxos, block                                |
 | **ecash**        | None                            | ecash                                                                                 | tx history, block                                                        |
 
-Aptos is in the table so you don't ask why it's not in the table. Aptos Explorer has no documented account or history API, so it's registered, does nothing and throws `UnsupportedOperationError` if you insist. Bitcoin SV kept Bitcoin's `1...` addresses, so one of those still reads as Bitcoin until you say `-c bsv` or `-p whatsonchain`. eCash Explorer serves its balance only as HTML, so eCash balances still go to Blockchair, while history no longer burns a Blockchair request per transaction. The rest, with their quirks: [Providers](https://explorers.agntn.dev/providers).
+Aptos is in the table so you don't ask why it's not in the table. Aptos Explorer has no documented account or history API. So it's registered, does nothing and throws `UnsupportedOperationError` if you insist.
+
+Bitcoin SV kept Bitcoin's `1...` addresses, so one of those still reads as Bitcoin. Want Bitcoin SV? Say `-c bsv` or `-p whatsonchain`. eCash Explorer serves its balance only as HTML, so eCash balances still go to Blockchair. History no longer burns a Blockchair request per transaction, though.
+
+Why three Arweave gateways? Because none of them remembers everything. Turbo goes first, its index still has 2019. ar-io.dev takes over when Turbo falls over. arweave.net waits for `-p arweave`.
+
+The rest, with their quirks: [Providers](https://explorers.agntn.dev/providers).
 
 ## 🤖 Agents
 

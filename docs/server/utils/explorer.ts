@@ -79,6 +79,8 @@ const PAGED_HISTORY = new Set([
   "tronscan",
   "blockberry",
   "koios",
+  "turbo",
+  "ario",
   "arweave",
   "dcrdata",
   "horizon",
