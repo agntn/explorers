@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import {
   AuthError,
+  BlockedError,
   HTTPError,
   NotFoundError,
   PlanRestrictedError,
@@ -313,6 +314,7 @@ describe("withProvider", () => {
   it.each([
     ["no response", new TransportError("connect ETIMEDOUT", undefined, "ETIMEDOUT", "mempool")],
     ["a 5xx", new HTTPError(503, "https://mempool.space/api/address/x", undefined, "mempool")],
+    ["a Cloudflare challenge", new BlockedError("mempool", "HTTP 403 is a Cloudflare challenge")],
   ])("falls back when the primary gives %s", async (_label, primaryError) => {
     useNoProviderCredentials();
     const tried: string[] = [];

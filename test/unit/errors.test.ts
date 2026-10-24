@@ -3,6 +3,7 @@ import {
   ExplorerError,
   HTTPError,
   AuthError,
+  BlockedError,
   RateLimitError,
   PlanRestrictedError,
   NotFoundError,
@@ -206,6 +207,25 @@ describe("normalizeError", () => {
 
     expect(out).toBeInstanceOf(TransportError);
     expect(out).toMatchObject({ reason: "Failed to fetch" });
+  });
+  it("reads a Cloudflare challenge as a block, not a missing key", () => {
+    const out = normalizeError(
+      fetchError(403, "https://base.blockscout.com/api/v2/addresses/x", {
+        "cf-mitigated": "challenge",
+      }),
+      "blockscout",
+    );
+
+    expect(out).toBeInstanceOf(BlockedError);
+    expect(out).toMatchObject({ name: "BlockedError", provider: "blockscout" });
+    expect(out.message).toBe(
+      "Blocked by blockscout: HTTP 403 from https://base.blockscout.com/api/v2/addresses/x is a Cloudflare challenge page, which no API key gets past",
+    );
+  });
+  it("keeps a 403 without the challenge header an authentication failure", () => {
+    const out = normalizeError(fetchError(403, "https://x.test", {}), "blockscout");
+
+    expect(out).toBeInstanceOf(AuthError);
   });
   it("reads retry-after off a 429 response", () => {
     const error = normalizeError(

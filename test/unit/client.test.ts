@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import {
   AuthError,
+  BlockedError,
   ExplorerError,
   HTTPError,
   NotFoundError,
@@ -174,6 +175,23 @@ describe("HTTP client", () => {
 
     expect(reason).toMatch(/^first line x+…$/);
     expect(reason).toHaveLength(200);
+  });
+
+  it("classifies a Cloudflare challenge page as blocked", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response("<!DOCTYPE html><html><head><title>Just a moment...</title></head></html>", {
+            status: 403,
+            headers: { "Content-Type": "text/html; charset=UTF-8", "cf-mitigated": "challenge" },
+          }),
+      ),
+    );
+
+    await expect(
+      getJSON("https://base.blockscout.com/api/v2/addresses/x", { provider: "blockscout" }),
+    ).rejects.toMatchObject({ name: BlockedError.name, provider: "blockscout" });
   });
 
   it("classifies a plain-text 404 response as not found", async () => {

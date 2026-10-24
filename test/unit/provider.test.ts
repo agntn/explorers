@@ -1,5 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
-import { HTTPError, Provider, RateLimitError, create, register } from "../../src/index.ts";
+import {
+  BlockedError,
+  HTTPError,
+  Provider,
+  RateLimitError,
+  create,
+  register,
+} from "../../src/index.ts";
 import type { ProviderCapabilities, ProviderConfig } from "../../src/index.ts";
 
 class Custom extends Provider {
@@ -240,6 +247,22 @@ describe("provider rate limit retry", () => {
     await vi.runAllTimersAsync();
     await pending;
     expect(fetch).toHaveBeenCalledTimes(3);
+  });
+
+  it("does not retry a Cloudflare challenge", async () => {
+    const fetch = vi.fn(
+      async () =>
+        new Response("<!DOCTYPE html><html><head><title>Just a moment...</title></head></html>", {
+          status: 403,
+          headers: { "Content-Type": "text/html", "cf-mitigated": "challenge" },
+        }),
+    );
+    vi.stubGlobal("fetch", fetch);
+
+    await expect(new Custom({}).request("https://example.test/data")).rejects.toBeInstanceOf(
+      BlockedError,
+    );
+    expect(fetch).toHaveBeenCalledOnce();
   });
 
   it("does not retry a server failure", async () => {
