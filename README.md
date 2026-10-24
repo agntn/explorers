@@ -225,7 +225,10 @@ pnpm typecheck   # builds first, the OMP extension imports dist/
 pnpm test:run
 pnpm test:live    # public explorer roundtrips, not CI
 pnpm build       # obuild, one file per provider
+pnpm docs        # the site on localhost:3000
 ```
+
+One `pnpm install` and that's it, no second trip into `docs/`. Versions live in the catalogs of `pnpm-workspace.yaml`, so bumping `zod` is one line and the library and the site move together.
 
 ## 📄 License
 

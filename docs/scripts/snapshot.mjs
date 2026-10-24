@@ -5,7 +5,8 @@
  * serves, its capabilities, its default endpoint and the chain metadata are copied here once. The
  * build script runs it first, so the committed file cannot go stale in production; the committed
  * copy is what `pnpm dev` and the diff show. It loads `src/` through jiti so Workers Builds, which
- * never produces `dist/`, can still refresh the file.
+ * never produces `dist/`, can still refresh the file; the library's own imports resolve from the
+ * root `node_modules`, which the workspace install fills there too.
  */
 import { writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -16,31 +17,10 @@ const jiti = createJiti(import.meta.url);
 const { builtins } = await jiti.import("../../src/providers/index.ts");
 const { version } = await jiti.import("../../src/version.ts");
 const { OPERATION_CAPABILITIES } = await jiti.import("../../src/core/provider.ts");
+const { PROVIDER_DEFAULT_CHAIN } = await jiti.import("../../src/core/resolve.ts");
 
 /** The site draws one column per operation, so an option flag such as `txHistoryTags` stays out. */
 const OPERATIONS = new Set(Object.values(OPERATION_CAPABILITIES));
-
-/** Mirrors `PROVIDER_DEFAULT_CHAIN` in `src/core/resolve.ts`, which reaches `@agntn/chains`. */
-const PROVIDER_DEFAULT_CHAIN = {
-  mempool: "bitcoin",
-  blockstream: "bitcoin",
-  solscan: "solana",
-  helius: "solana",
-  ton: "ton",
-  tronscan: "tron",
-  aptos: "aptos",
-  blockberry: "sui",
-  koios: "cardano",
-  turbo: "arweave",
-  ario: "arweave",
-  arweave: "arweave",
-  dcrdata: "decred",
-  horizon: "stellar",
-  whatsonchain: "bitcoinsv",
-  blockbook: "bitcoingold",
-  haskoin: "bitcoincash",
-  ecash: "ecash",
-};
 
 const out = fileURLToPath(new URL("../app/data/explorers.json", import.meta.url));
 
