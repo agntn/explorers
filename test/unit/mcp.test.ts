@@ -522,6 +522,26 @@ describe("Explorers MCP server", () => {
     });
   });
 
+  it("reads an XRP balance through XRPSCAN from the address alone", async () => {
+    const address = "rDsbeomae4FXwgQTJp9Rs64Qg9vDiTCdBv";
+    const fetch = vi.fn<typeof globalThis.fetch>(async () =>
+      Response.json({ Account: address, Balance: "21522872904801" }),
+    );
+    vi.stubGlobal("fetch", fetch);
+    const client = await connectTestClient();
+    const balance = parseToolResult(
+      await client.callTool({ name: "explorers_balance", arguments: { address } }),
+    );
+    expect(balance.isError).toBe(false);
+    expect(JSON.parse(balance.content[0]?.text ?? "null")).toMatchObject({
+      provider: "xrpscan",
+      data: { chain: "xrpl", balance: "21522872904801", balanceFormatted: "21522872.904801" },
+    });
+    expect(String(fetch.mock.calls[0]?.[0])).toBe(
+      `https://api.xrpscan.com/api/v1/account/${address}`,
+    );
+  });
+
   it("reads eCash history through explorer.e.cash without a Blockchair key", async () => {
     vi.stubEnv("BLOCKCHAIR_API_KEY", "");
     const address = "ecash:qq5r308v2mkh6x5mkqpr6wytszz6f9r7qcnfttev0z";

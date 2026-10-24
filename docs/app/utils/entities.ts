@@ -7,7 +7,7 @@ export { isIdentifier };
 export type EntityKind = "address" | "tx" | "block";
 
 /** Chains whose transaction hashes are plain hex, as `HEX_HASH_CHAINS` lists them in the library. */
-const HEX_HASH_CHAINS = new Set(["bitcoin", "bitcoincash", "bitcoinsv", "bitcoingold", "litecoin", "dogecoin", "pepecoin", "ecash", "zcash", "tron", "cardano", "decred", "stellar"]);
+const HEX_HASH_CHAINS = new Set(["bitcoin", "bitcoincash", "bitcoinsv", "bitcoingold", "litecoin", "dogecoin", "pepecoin", "ecash", "zcash", "tron", "cardano", "decred", "stellar", "xrpl"]);
 
 /**
  * Mirrors `classifyInput` in `src/core/input.ts`, plus a block number for input that's all digits.
@@ -74,6 +74,7 @@ const EXTERNAL: Record<string, ExternalPattern> = {
   arweave: { address: "/address/{id}", tx: "/tx/{id}", block: "/block/{id}" },
   decred: { address: "/address/{id}", tx: "/tx/{id}", block: "/block/{id}" },
   stellar: { address: "/account/{id}", tx: "/tx/{id}", block: "/ledger/{id}" },
+  xrpl: { address: "/accounts/{id}", tx: "/transactions/{id}", block: "/ledgers/{id}" },
 };
 
 /** The same entity on the chain's own explorer, or null when the pattern is unknown. */
