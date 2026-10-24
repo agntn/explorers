@@ -1,6 +1,6 @@
 {
   "version": "0.6.1",
-  "generatedAt": "2026-10-23T21:26:05.553Z",
+  "generatedAt": "2026-10-24T15:52:33.708Z",
   "providers": [
     {
       "key": "etherscan",
@@ -328,6 +328,21 @@
       ],
       "defaultURL": "https://explorer.e.cash",
       "defaultChain": "ecash"
+    },
+    {
+      "key": "xrpscan",
+      "chains": [
+        "xrpl"
+      ],
+      "capabilities": [
+        "balances",
+        "txHistory",
+        "txDetail",
+        "tokenBalances",
+        "blockInfo"
+      ],
+      "defaultURL": "https://api.xrpscan.com/api/v1",
+      "defaultChain": "xrpl"
     }
   ],
   "chains": [
@@ -646,6 +661,16 @@
       "explorer": "https://btgexplorer.com",
       "providers": [
         "blockbook"
+      ]
+    },
+    {
+      "key": "xrpl",
+      "name": "XRP Ledger",
+      "symbol": "XRP",
+      "type": "xrpl",
+      "explorer": "https://livenet.xrpl.org",
+      "providers": [
+        "xrpscan"
       ]
     }
   ]

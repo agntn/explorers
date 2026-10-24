@@ -215,4 +215,11 @@ export const builtins: readonly ProviderEntry[] = [
     defaultURL: "https://explorer.e.cash",
     load: () => import("./ecash.ts").then((m) => m.ECash),
   },
+  {
+    key: "xrpscan",
+    chains: ["xrpl"],
+    capabilities: ["balances", "txHistory", "txDetail", "tokenBalances", "blockInfo"],
+    defaultURL: "https://api.xrpscan.com/api/v1",
+    load: () => import("./xrpscan.ts").then((m) => m.XRPScan),
+  },
 ] satisfies readonly BuiltinProviderEntry[];

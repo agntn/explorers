@@ -19,7 +19,7 @@ export default defineNuxtConfig({
     domain: "https://explorers.agntn.dev",
     title: "@agntn/explorers",
     description:
-      "Twenty-one block explorer APIs behind one TypeScript contract: balances, transactions, token transfers, contracts, tokens, gas and blocks on 30 chains. Library, CLI and agent tools.",
+      "Twenty-two block explorer APIs behind one TypeScript contract: balances, transactions, token transfers, contracts, tokens, gas and blocks on 31 chains. Library, CLI and agent tools.",
     sections: [
       {
         title: "Tools",
@@ -28,7 +28,7 @@ export default defineNuxtConfig({
           {
             title: "Explorer",
             description:
-              "Search an address, an ENS name, a transaction hash or a block number on any of the 30 chains and open its page.",
+              "Search an address, an ENS name, a transaction hash or a block number on any of the 31 chains and open its page.",
             href: "https://explorers.agntn.dev/explorer",
           },
           {
@@ -51,7 +51,7 @@ export default defineNuxtConfig({
   /** Docus pages define their own OG images; the alt text is the one thing they leave unset. */
   ogImage: {
     defaults: {
-      alt: "@agntn/explorers: twenty-one block explorer APIs, one shape",
+      alt: "@agntn/explorers: twenty-two block explorer APIs, one shape",
     },
   },
   icon: {
@@ -107,6 +107,7 @@ export default defineNuxtConfig({
         "lucide:sunrise",
         "lucide:terminal",
         "lucide:triangle-alert",
+        "lucide:waves",
         "lucide:wallet",
         "lucide:x",
         "lucide:zap",
@@ -138,6 +139,7 @@ export default defineNuxtConfig({
         "token:trx",
         "token:xec",
         "token:xlm",
+        "token:xrp",
         "token:zec",
         "token:zksync",
         "vscode-icons:file-type-js",
