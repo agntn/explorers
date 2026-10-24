@@ -1,7 +1,7 @@
 /** Tell whether an address has shown its public key on chain */
 import { defineCommand } from "citty";
 import type { PubkeyReveal } from "../core/types.ts";
-import { print, refuseOperation, reportCommandError, withSelectedProvider } from "./shared.ts";
+import { loadOperation, print, reportCommandError, withSelectedProvider } from "./shared.ts";
 
 function renderPubkey(providerName: string, reveal: Readonly<PubkeyReveal>): void {
   print(`[${providerName}] ${reveal.address} on ${reveal.chain}`);
@@ -49,10 +49,7 @@ export default defineCommand({
         args.provider as string | undefined,
         "pubkeys",
         async (selected) => {
-          const getPubkey = selected.provider.getPubkey?.bind(selected.provider);
-          if (!selected.provider.capabilities.pubkeys || !getPubkey) {
-            return refuseOperation("getPubkey", selected.name);
-          }
+          const getPubkey = await loadOperation(selected.provider, "getPubkey");
           const { address } = await resolveInput(args.address as string, selected.chain);
           renderPubkey(selected.name, await getPubkey(address, selected.chain));
         },

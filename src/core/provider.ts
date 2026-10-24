@@ -17,7 +17,7 @@ import type {
 import { getJSON, postJSON } from "./client.ts";
 import type { ClientRequestOptions } from "./client.ts";
 import type { ProviderConfig } from "./types.ts";
-import { RateLimitError } from "./errors.ts";
+import { RateLimitError, UnsupportedOperationError } from "./errors.ts";
 
 const RATE_LIMIT_RETRIES = 2;
 const RATE_LIMIT_BASE_DELAY_MS = 1000;
@@ -237,6 +237,26 @@ export const OPERATION_CAPABILITIES = {
   getGasData: "gasData",
   getBlockInfo: "blockInfo",
 } as const satisfies Record<ProviderOperation, ProviderCapability>;
+
+/**
+ * An optional read bound to its provider, refused when the flag or the method is missing.
+ *
+ * @param {Provider} provider - The provider that should run the operation.
+ * @param {K} operation - The provider method to look up.
+ * @returns {NonNullable<Provider[K]>} The method, bound to `provider`.
+ * @throws {UnsupportedOperationError} When the flag is false or the method is missing.
+ */
+export function requireOperation<K extends ProviderOperation>(
+  /* oxlint-disable-next-line typescript/prefer-readonly-parameter-types */
+  provider: Provider,
+  operation: K,
+): NonNullable<Provider[K]> {
+  const method = provider[operation];
+  if (!provider.capabilities[OPERATION_CAPABILITIES[operation]] || typeof method !== "function") {
+    throw new UnsupportedOperationError(operation, provider.name);
+  }
+  return method.bind(provider) as NonNullable<Provider[K]>;
+}
 
 /** What the registry answers about a provider without loading its module. */
 export interface ProviderMeta {

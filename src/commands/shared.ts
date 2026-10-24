@@ -25,19 +25,19 @@ export async function withSelectedProvider<T>(
 }
 
 /**
- * Refuse a read the selected provider lacks. The refusal travels as `UnsupportedOperationError`
- * through `withProvider()`, which appends the providers that do serve the read, so the command
- * prints the same hint MCP, Pi and OMP give.
+ * `requireOperation()` loaded on demand; its refusal picks up the same `; try …` hint MCP gives.
  *
- * @param {ProviderOperation} operation - The optional method the provider does not offer.
- * @param {string} provider - The provider that ran.
+ * @param {Provider} provider - The provider that ran.
+ * @param {K} operation - The optional method the read needs.
+ * @returns {Promise<NonNullable<Provider[K]>>} The method, bound to `provider`.
  */
-export async function refuseOperation(
-  operation: ProviderOperation,
-  provider: string,
-): Promise<never> {
-  const { UnsupportedOperationError } = await import("../core/errors.ts");
-  throw new UnsupportedOperationError(operation, provider);
+export async function loadOperation<K extends ProviderOperation>(
+  /* oxlint-disable-next-line typescript/prefer-readonly-parameter-types */
+  provider: Provider,
+  operation: K,
+): Promise<NonNullable<Provider[K]>> {
+  const { requireOperation } = await import("../core/provider.ts");
+  return requireOperation(provider, operation);
 }
 
 export function failCommand(message: string): never {

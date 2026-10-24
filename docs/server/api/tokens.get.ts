@@ -1,4 +1,4 @@
-import { resolveAddresses } from "@agntn/explorers";
+import { requireOperation, resolveAddresses } from "@agntn/explorers";
 import type { TokensAnswer } from "#shared/wire";
 
 /** `getTokenBalances()` with `nonZeroOnly`, cut to `LIMITS.tokens` rows; `total` says how many there were. */
@@ -13,7 +13,7 @@ export default defineEventHandler((event): Promise<TokensAnswer> => {
     preferred: readProvider(query),
     params: { input },
     run: async (selected) => {
-      const getTokenBalances = requireOperation(selected, "tokenBalances", "getTokenBalances");
+      const getTokenBalances = requireOperation(selected.provider, "getTokenBalances");
       const [address = input] = await resolveAddresses(input, selected.chain);
       const tokens = await getTokenBalances(address, selected.chain, { nonZeroOnly: true });
       return { input, total: tokens.length, items: tokens.slice(0, LIMITS.tokens) };

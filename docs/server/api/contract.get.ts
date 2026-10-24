@@ -1,4 +1,4 @@
-import { resolveAddresses } from "@agntn/explorers";
+import { requireOperation, resolveAddresses } from "@agntn/explorers";
 import type { ContractAnswer } from "#shared/wire";
 
 /** `getContractInfo()` with the ABI and the source measured instead of shipped. */
@@ -13,7 +13,7 @@ export default defineEventHandler((event): Promise<ContractAnswer> => {
     preferred: readProvider(query),
     params: { input },
     run: async (selected) => {
-      const getContractInfo = requireOperation(selected, "contractInfo", "getContractInfo");
+      const getContractInfo = requireOperation(selected.provider, "getContractInfo");
       const [address = input] = await resolveAddresses(input, selected.chain);
       return { input, contract: slimContract(await getContractInfo(address, selected.chain)) };
     },

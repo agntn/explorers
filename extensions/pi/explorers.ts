@@ -349,10 +349,8 @@ export default function explorersExtension(pi: ExtensionAPI) {
         "txDetail",
         signal,
         async ({ chain, lib, name, provider }) => {
-          if (!provider.capabilities.txDetail || !provider.getTxDetail) {
-            throw new lib.UnsupportedOperationError("getTxDetail", name);
-          }
-          const tx = await provider.getTxDetail(params.hash, chain);
+          const getTxDetail = lib.requireOperation(provider, "getTxDetail");
+          const tx = await getTxDetail(params.hash, chain);
           const parts = [
             `[${name}] Tx ${tx.hash}`,
             `Block: ${tx.blockNumber} | Status: ${tx.status}`,
@@ -485,11 +483,9 @@ export default function explorersExtension(pi: ExtensionAPI) {
         "utxos",
         signal,
         async ({ chain, lib, name, provider }) => {
-          if (!provider.capabilities.utxos || !provider.getUtxos) {
-            throw new lib.UnsupportedOperationError("getUtxos", name);
-          }
+          const getUtxos = lib.requireOperation(provider, "getUtxos");
           const address = await resolveAddress(lib.resolveAddresses, params.address, chain, signal);
-          const utxos = await provider.getUtxos(address, chain);
+          const utxos = await getUtxos(address, chain);
           return textResult(
             describeUtxos(name, address, chain, utxos, lib.clampMaxResults(params.limit ?? 50)),
           );
@@ -529,11 +525,9 @@ export default function explorersExtension(pi: ExtensionAPI) {
         "pubkeys",
         signal,
         async ({ chain, lib, name, provider }) => {
-          if (!provider.capabilities.pubkeys || !provider.getPubkey) {
-            throw new lib.UnsupportedOperationError("getPubkey", name);
-          }
+          const getPubkey = lib.requireOperation(provider, "getPubkey");
           const address = await resolveAddress(lib.resolveAddresses, params.address, chain, signal);
-          return textResult([describePubkey(name, await provider.getPubkey(address, chain))]);
+          return textResult([describePubkey(name, await getPubkey(address, chain))]);
         },
         params.address,
       );
@@ -564,11 +558,9 @@ export default function explorersExtension(pi: ExtensionAPI) {
         "contractInfo",
         signal,
         async ({ chain, lib, name, provider }) => {
-          if (!provider.capabilities.contractInfo || !provider.getContractInfo) {
-            throw new lib.UnsupportedOperationError("getContractInfo", name);
-          }
+          const getContractInfo = lib.requireOperation(provider, "getContractInfo");
           const address = await resolveAddress(lib.resolveAddresses, params.address, chain, signal);
-          const info = await provider.getContractInfo(address, chain);
+          const info = await getContractInfo(address, chain);
           const parts = [
             `[${name}] Contract ${info.address}`,
             `Verified: ${info.isVerified}`,
@@ -626,11 +618,9 @@ export default function explorersExtension(pi: ExtensionAPI) {
         "tokenBalances",
         signal,
         async ({ chain, lib, name, provider }) => {
-          if (!provider.capabilities.tokenBalances || !provider.getTokenBalances) {
-            throw new lib.UnsupportedOperationError("getTokenBalances", name);
-          }
+          const getTokenBalances = lib.requireOperation(provider, "getTokenBalances");
           const address = await resolveAddress(lib.resolveAddresses, params.address, chain, signal);
-          const holdings = await provider.getTokenBalances(address, chain, {
+          const holdings = await getTokenBalances(address, chain, {
             nonZeroOnly: params.nonZeroOnly ?? true,
           });
           const tokens = holdings.slice(0, lib.clampMaxResults(params.limit ?? 50));
@@ -687,11 +677,9 @@ export default function explorersExtension(pi: ExtensionAPI) {
         "tokenTransfers",
         signal,
         async ({ chain, lib, name, provider }) => {
-          if (!provider.capabilities.tokenTransfers || !provider.getTokenTransfers) {
-            throw new lib.UnsupportedOperationError("getTokenTransfers", name);
-          }
+          const getTokenTransfers = lib.requireOperation(provider, "getTokenTransfers");
           const address = await resolveAddress(lib.resolveAddresses, params.address, chain, signal);
-          const transfers = await provider.getTokenTransfers(address, chain, {
+          const transfers = await getTokenTransfers(address, chain, {
             limit: params.limit ?? 10,
             token: params.token,
           });
@@ -736,11 +724,8 @@ export default function explorersExtension(pi: ExtensionAPI) {
         "gasData",
         signal,
         async ({ chain, lib, name, provider }) => {
-          const caps = provider.capabilities;
-          if (!caps.gasData || !provider.getGasData) {
-            throw new lib.UnsupportedOperationError("getGasData", name);
-          }
-          const gas = await provider.getGasData(chain);
+          const getGasData = lib.requireOperation(provider, "getGasData");
+          const gas = await getGasData(chain);
           const parts = [
             `[${name}] Gas on ${gas.chain}:`,
             gas.safeGasPrice ? `  Safe: ${gas.safeGasPrice} ${gas.unit}` : null,
@@ -785,10 +770,8 @@ export default function explorersExtension(pi: ExtensionAPI) {
         "blockInfo",
         signal,
         async ({ chain, lib, name, provider }) => {
-          if (!provider.capabilities.blockInfo || !provider.getBlockInfo) {
-            throw new lib.UnsupportedOperationError("getBlockInfo", name);
-          }
-          const block = await provider.getBlockInfo(params.blockNumber, chain);
+          const getBlockInfo = lib.requireOperation(provider, "getBlockInfo");
+          const block = await getBlockInfo(params.blockNumber, chain);
           const parts = [
             `[${name}] Block #${block.number} on ${chain}`,
             `Hash: ${block.hash}`,

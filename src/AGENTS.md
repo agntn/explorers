@@ -33,5 +33,5 @@ src/
 
 - Adding a new provider without matching chains and capabilities in `builtins`
 - Computing a static class field or module constant with a call at load time instead of a lazy helper
-- Calling optional methods without checking both `capabilities` and method presence
+- Calling optional methods without `requireOperation()`, which checks both `capabilities` and method presence
 - Using `process.exit()` in library code (only in commands)

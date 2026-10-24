@@ -1,4 +1,4 @@
-import { resolveAddresses } from "@agntn/explorers";
+import { requireOperation, resolveAddresses } from "@agntn/explorers";
 import { isIdentifier } from "#shared/identifier";
 import type { TransfersAnswer } from "#shared/wire";
 
@@ -20,7 +20,7 @@ export default defineEventHandler((event): Promise<TransfersAnswer> => {
     preferred: readProvider(query),
     params: { input, token, limit, page },
     run: async (selected) => {
-      const getTokenTransfers = requireOperation(selected, "tokenTransfers", "getTokenTransfers");
+      const getTokenTransfers = requireOperation(selected.provider, "getTokenTransfers");
       const [address = input] = await resolveAddresses(input, selected.chain);
       const transfers = await getTokenTransfers(address, selected.chain, { limit, page, token });
       return {

@@ -2,9 +2,9 @@
 import { defineCommand } from "citty";
 import type { BlockInfo } from "../core/types.ts";
 import {
+  loadOperation,
   parseNonNegativeInteger,
   print,
-  refuseOperation,
   reportCommandError,
   withSelectedProvider,
 } from "./shared.ts";
@@ -52,10 +52,7 @@ export default defineCommand({
             args.number as string,
             "Invalid block number",
           );
-          const getBlockInfo = selected.provider.getBlockInfo?.bind(selected.provider);
-          if (!selected.provider.capabilities.blockInfo || !getBlockInfo) {
-            return refuseOperation("getBlockInfo", selected.name);
-          }
+          const getBlockInfo = await loadOperation(selected.provider, "getBlockInfo");
           const block = await getBlockInfo(blockNumber, selected.chain);
           renderBlock(selected.name, block);
         },
