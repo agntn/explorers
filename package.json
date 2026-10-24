@@ -49,7 +49,8 @@
   "scripts": {
     "build": "obuild",
     "dev": "obuild --stub",
-    "docs": "pnpm --dir docs dev",
+    "docs": "pnpm --filter docs dev",
+    "docs:build": "pnpm --filter docs build",
     "fmt": "vp lint --fix && vp fmt",
     "lint": "vp lint && vp fmt --check",
     "typecheck": "pnpm build && tsc --noEmit",
@@ -60,24 +61,24 @@
     "release": "pnpm build && pnpm test:run && changelogen --release --push"
   },
   "dependencies": {
-    "@agntn/chains": "0.3.11",
-    "@modelcontextprotocol/sdk": "1.30.1",
-    "citty": "0.2.2",
-    "consola": "3.4.2",
-    "zod": "4.4.3"
+    "@agntn/chains": "catalog:deps",
+    "@modelcontextprotocol/sdk": "catalog:deps",
+    "citty": "catalog:deps",
+    "consola": "catalog:deps",
+    "zod": "catalog:deps"
   },
   "devDependencies": {
-    "@agntn/ox": "0.1.0",
-    "@earendil-works/pi-coding-agent": "latest",
-    "@earendil-works/pi-tui": "latest",
-    "@oh-my-pi/omptype": "17.4.2",
-    "@oh-my-pi/pi-coding-agent": "17.4.2",
-    "@types/node": "latest",
-    "changelogen": "0.6.2",
-    "obuild": "0.4.43",
-    "tsx": "4.22.5",
-    "typebox": "1.3.34",
-    "typescript": "6.0.3",
+    "@agntn/ox": "catalog:dev",
+    "@earendil-works/pi-coding-agent": "catalog:dev",
+    "@earendil-works/pi-tui": "catalog:dev",
+    "@oh-my-pi/omptype": "catalog:dev",
+    "@oh-my-pi/pi-coding-agent": "catalog:dev",
+    "@types/node": "catalog:dev",
+    "changelogen": "catalog:dev",
+    "obuild": "catalog:dev",
+    "tsx": "catalog:dev",
+    "typebox": "catalog:dev",
+    "typescript": "catalog:dev",
     "vite": "catalog:",
     "vite-plus": "catalog:"
   },
@@ -104,7 +105,7 @@
   "engines": {
     "node": ">=26"
   },
-  "packageManager": "pnpm@10.33.4",
+  "packageManager": "pnpm@12.15.0",
   "omp": {
     "extensions": [
       "./extensions/omp/explorers.ts"

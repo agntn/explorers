@@ -35,7 +35,7 @@ docs/
 ## Commands
 
 ```bash
-pnpm install          # from docs/; the repo root needs neither an install nor a build
+pnpm install          # here or at the root, either one installs the whole workspace
 pnpm snapshot         # regenerate app/data/explorers.json from ../src
 pnpm fixtures         # record the landing samples again (network, keyless providers only)
 pnpm dev              # http://localhost:3000
@@ -48,17 +48,14 @@ Deployment: Nitro preset `cloudflare_module`. Node.js comes from `.node-version`
 
 Explorer keys are Worker secrets, never vars: `wrangler secret put ETHERSCAN_API_KEY`, `SOLSCAN_API_KEY`, `HELIUS_API_KEY`, `TRONSCAN_API_KEY`, `BLOCKBERRY_API_KEY`, optionally `BLOCKCHAIR_API_KEY` and `WHATSONCHAIN_API_KEY`. With `nodejs_compat` the runtime exposes them on `process.env`, which is where the library's `resolveProvider()` reads them. A provider without its key shows `configured: false` in `/api/providers` and a read that lands on it answers 503; Blockchair's and WhatsOnChain's keys are optional, so both stay `configured` without one. Without `ETHERSCAN_API_KEY` every EVM read goes through Blockscout, which is fine for a demo.
 
-`@agntn/explorers` is an alias in `nuxt.config.ts` for `../src/index.ts`. Vite and Nitro bundle the checkout's sources into the worker, so `dist/` and the root `node_modules` are never touched. That is what Workers Builds needs: it installs `docs/` alone, and the earlier `file:..` dependency copied the parent at install time, before anything had built `dist/`, so the deploy failed to resolve the import. `src/index.ts` imports `@agntn/chains`, so it sits in `docs/package.json`. A new bare import there resolves upwards from `../src`, into a root `node_modules` the deploy never installs, so it needs an entry here too. The CLI, MCP and tool entries stay out of the alias.
+`@agntn/explorers` is an alias in `nuxt.config.ts` for `../src/index.ts`. Vite and Nitro bundle the checkout's sources into the worker, so `dist/` is never touched, and an earlier `file:..` dependency died exactly there: it copied the parent before anything had built `dist/`. Workers Builds runs with root directory `docs`, and its `pnpm install` there installs the whole workspace from the root lockfile, root `node_modules` included. So a bare import in `../src` resolves from the root, on the deploy as on your machine, and a new one needs nothing here. The CLI, MCP and tool entries stay out of the alias.
 
-Resolution traps, both caused by the repo root being a pnpm workspace:
-
-- `pnpm-workspace.yaml` sets `shamefullyHoist: true`. Without it `docs/node_modules` holds only direct dependencies, Node walks up to the root `node_modules`, and the server bundle can get a second copy of Vue.
-- `nuxt.config.ts` pins `workspaceDir` to `docs/` and disables devtools and telemetry, which would otherwise be resolved from the root.
+`docs/` is a plain member of the root workspace, without hoisting, so it lists every package it imports, types included: `@nuxt/content`, `@nuxt/ui`, `@vueuse/core` and `shiki` sit in `devDependencies` for their imports in `app/`, `h3` and `ohash` in `dependencies` for `server/`. Versions come from the `deps` and `dev` catalogs in the root `pnpm-workspace.yaml`, one entry for the library and the site alike, so `zod`, `@agntn/chains` and Vue stay one copy each. A second `zod@4.*` key under `packages:` in `pnpm-lock.yaml` means the two sides split again, and `pnpm dedupe` folds it back.
 
 ## The snapshot
 
 - `app/data/explorers.json` is the single source for every provider, chain, capability and endpoint on the site. `scripts/snapshot.mjs` maps `builtins` from `../src` and the chain metadata from `@agntn/chains` to plain objects, keeping only the capabilities `OPERATION_CAPABILITIES` names, so an option flag such as `txHistoryTags` never becomes a column; the build script runs it first, so a stale file cannot ship, but the committed copy is what `pnpm dev` and the diff show. A provider added to the library shows up in the grid, the sidebar, the matrix and the explorer by itself; it needs one entry in `PRESENTATION` in `app/utils/providers.ts` (label, icon, env vars, blurb) and a page in `content/2.providers/`, and the utils throw at import if the entry is missing.
-- Four things the snapshot doesn't import from the live library are mirrored by hand, each with a comment naming its source: default chains (`PROVIDER_DEFAULT_CHAIN` in `src/core/resolve.ts`, copied in `scripts/snapshot.mjs` because that module reaches `@agntn/chains` through `src/core/input.ts`, a bare import Workers Builds can't resolve from `src/`), the environment variables per provider (`ENV_MAP` and `OPTIONAL_CREDENTIAL_PROVIDERS` in `src/core/resolve.ts`) and the native decimals per chain (what each provider passes to `formatWei()`) in `app/utils/providers.ts`, and which providers read `TxHistoryOptions.page` (`PAGED_HISTORY` and `PAGED_TRANSFERS` in `server/utils/explorer.ts`, from `options.page` in `src/providers/`). Change any of them in the library, change them here.
+- Three things the snapshot doesn't import from the live library are mirrored by hand, each with a comment naming its source: the environment variables per provider (`ENV_MAP` and `OPTIONAL_CREDENTIAL_PROVIDERS` in `src/core/resolve.ts`) and the native decimals per chain (what each provider passes to `formatWei()`) in `app/utils/providers.ts`, and which providers read `TxHistoryOptions.page` (`PAGED_HISTORY` and `PAGED_TRANSFERS` in `server/utils/explorer.ts`, from `options.page` in `src/providers/`). Change any of them in the library, change them here.
 - `classify` in `app/utils/entities.ts` is a port of `classifyInput` in `src/core/input.ts`, plus digits for a block number. `GasBoard` keeps a `NO_FEES` set for chains a provider advertises but cannot serve (Pepecoin on Mempool), because capabilities are declared by the provider, not by the chain.
 
 ## Live data

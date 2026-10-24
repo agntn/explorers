@@ -1,8 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
-/** Stands in for `ohash` when `docs/` has no install, as in CI. Tests compare keys only. */
-vi.mock("ohash", () => ({ hash: (value: unknown) => `h:${String(value)}` }));
-
 const { assertRateLimit } = await import("../../docs/server/utils/query.ts");
 
 interface FakeEvent {

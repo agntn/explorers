@@ -12,20 +12,26 @@
     "deploy": "pnpm build && wrangler deploy"
   },
   "dependencies": {
-    "@agntn/chains": "0.3.11",
-    "better-sqlite3": "12.11.1",
-    "docus": "5.13.0",
-    "jiti": "2.7.0",
-    "nuxt": "4.5.2",
-    "zod": "4.5.4"
+    "@agntn/chains": "catalog:deps",
+    "better-sqlite3": "catalog:deps",
+    "docus": "catalog:deps",
+    "h3": "catalog:deps",
+    "jiti": "catalog:deps",
+    "nuxt": "catalog:deps",
+    "ohash": "catalog:deps",
+    "zod": "catalog:deps"
   },
   "devDependencies": {
-    "@iconify-json/lucide": "1.2.139",
-    "@iconify-json/simple-icons": "1.2.98",
-    "@iconify-json/token": "1.2.42",
-    "@iconify-json/vscode-icons": "1.2.84",
-    "typescript": "6.0.3",
-    "wrangler": "4.128.0"
+    "@iconify-json/lucide": "catalog:dev",
+    "@iconify-json/simple-icons": "catalog:dev",
+    "@iconify-json/token": "catalog:dev",
+    "@iconify-json/vscode-icons": "catalog:dev",
+    "@nuxt/content": "catalog:dev",
+    "@nuxt/ui": "catalog:dev",
+    "@vueuse/core": "catalog:dev",
+    "shiki": "catalog:dev",
+    "typescript": "catalog:dev",
+    "wrangler": "catalog:dev"
   },
-  "packageManager": "pnpm@11.3.0"
+  "packageManager": "pnpm@12.15.0"
 }
