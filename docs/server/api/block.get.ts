@@ -1,3 +1,4 @@
+import { requireOperation } from "@agntn/explorers";
 import type { BlockAnswer } from "#shared/wire";
 
 /** `getBlockInfo()` for one block number. */
@@ -15,7 +16,7 @@ export default defineEventHandler((event): Promise<BlockAnswer> => {
     preferred: readProvider(query),
     params: { number },
     run: async (selected) => {
-      const getBlockInfo = requireOperation(selected, "blockInfo", "getBlockInfo");
+      const getBlockInfo = requireOperation(selected.provider, "getBlockInfo");
       return { number, block: await getBlockInfo(number, selected.chain) };
     },
   });

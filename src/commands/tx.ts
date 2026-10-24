@@ -3,9 +3,9 @@ import { defineCommand } from "citty";
 import type { ChainKey, Inscription, Transaction } from "../core/types.ts";
 import {
   failCommand,
+  loadOperation,
   parsePositiveInteger,
   print,
-  refuseOperation,
   reportCommandError,
   withSelectedProvider,
 } from "./shared.ts";
@@ -77,10 +77,7 @@ function renderTransaction(providerName: string, transaction: Transaction): void
 
 /* oxlint-disable-next-line typescript/prefer-readonly-parameter-types */
 async function runDetail(selected: SelectedProvider, target: string): Promise<void> {
-  const getTxDetail = selected.provider.getTxDetail?.bind(selected.provider);
-  if (!selected.provider.capabilities.txDetail || !getTxDetail) {
-    return refuseOperation("getTxDetail", selected.name);
-  }
+  const getTxDetail = await loadOperation(selected.provider, "getTxDetail");
   const transaction = await getTxDetail(target, selected.chain);
   renderTransaction(selected.name, transaction);
 }

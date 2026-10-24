@@ -1,12 +1,10 @@
 import type { H3Event } from "h3";
 import {
-  UnsupportedOperationError,
   has,
   normalizeChain,
   providers,
   withProvider,
   type ChainKey,
-  type Provider,
   type ProviderCapability,
   type ProviderContext,
 } from "@agntn/explorers";
@@ -100,25 +98,6 @@ export function pagesHistory(provider: string): boolean {
 
 export function pagesTransfers(provider: string): boolean {
   return PAGED_TRANSFERS.has(provider);
-}
-
-type OptionalOperation = {
-  [K in keyof Provider]-?: Provider[K] extends ((...args: never[]) => unknown) | undefined
-    ? K
-    : never;
-}[keyof Provider];
-
-/** The bound optional method, or the same `UnsupportedOperationError` the library throws for a flag that is false. */
-export function requireOperation<K extends OptionalOperation>(
-  selected: ProviderContext,
-  capability: ProviderCapability,
-  operation: K,
-): NonNullable<Provider[K]> {
-  const method = selected.provider[operation];
-  if (!selected.provider.capabilities[capability] || typeof method !== "function") {
-    throw new UnsupportedOperationError(operation, selected.name);
-  }
-  return method.bind(selected.provider) as NonNullable<Provider[K]>;
 }
 
 interface ReadOptions<T> {

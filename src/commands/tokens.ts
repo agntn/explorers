@@ -1,7 +1,7 @@
 /** List fungible token holdings (supports ENS) */
 import { defineCommand } from "citty";
 import consola from "consola";
-import { parsePositiveInteger, print, refuseOperation, withSelectedProvider } from "./shared.ts";
+import { loadOperation, parsePositiveInteger, print, withSelectedProvider } from "./shared.ts";
 
 export default defineCommand({
   meta: {
@@ -45,12 +45,9 @@ export default defineCommand({
         args.provider as string | undefined,
         "tokenBalances",
         async ({ chain, name, provider }) => {
-          const caps = provider.capabilities;
-          if (!caps.tokenBalances || !provider.getTokenBalances) {
-            return refuseOperation("getTokenBalances", name);
-          }
+          const getTokenBalances = await loadOperation(provider, "getTokenBalances");
           const { address } = await resolveInput(args.address as string, chain);
-          const holdings = await provider.getTokenBalances(address, chain, { nonZeroOnly: true });
+          const holdings = await getTokenBalances(address, chain, { nonZeroOnly: true });
           const tokens = holdings.slice(0, limit);
           const listed = tokens.length < holdings.length ? `, ${tokens.length} listed` : "";
           print(`[${name}] ${holdings.length} tokens for ${address} on ${chain}${listed}`);

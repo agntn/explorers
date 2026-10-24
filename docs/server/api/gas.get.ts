@@ -1,3 +1,4 @@
+import { requireOperation } from "@agntn/explorers";
 import type { GasAnswer } from "#shared/wire";
 
 /** `getGasData()` in the provider's own unit. */
@@ -11,7 +12,7 @@ export default defineEventHandler((event): Promise<GasAnswer> => {
     preferred: readProvider(query),
     params: {},
     run: async (selected) => {
-      const getGasData = requireOperation(selected, "gasData", "getGasData");
+      const getGasData = requireOperation(selected.provider, "getGasData");
       return { gas: await getGasData(selected.chain) };
     },
   });

@@ -21,12 +21,13 @@ export type {
   TokenTransferOptions,
   ProviderConfig,
 } from "./core/types.ts";
-export { Provider } from "./core/provider.ts";
+export { Provider, requireOperation } from "./core/provider.ts";
 export type {
   ProviderCapability,
   ProviderConstructor,
   ProviderEntry,
   ProviderMeta,
+  ProviderOperation,
 } from "./core/provider.ts";
 export { builtins } from "./providers/index.ts";
 export { clampMaxResults, formatWei, hexToWei, normalizeChain } from "./core/types.ts";

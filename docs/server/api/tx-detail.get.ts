@@ -1,3 +1,4 @@
+import { requireOperation } from "@agntn/explorers";
 import type { DetailAnswer } from "#shared/wire";
 
 /** One `Transaction` as `getTxDetail()` returns it, `raw` dropped. */
@@ -12,7 +13,7 @@ export default defineEventHandler((event): Promise<DetailAnswer> => {
     preferred: readProvider(query),
     params: { hash },
     run: async (selected) => {
-      const getTxDetail = requireOperation(selected, "txDetail", "getTxDetail");
+      const getTxDetail = requireOperation(selected.provider, "getTxDetail");
       return { hash, transaction: slimTransaction(await getTxDetail(hash, selected.chain)) };
     },
   });

@@ -2,9 +2,9 @@
 import { defineCommand } from "citty";
 import type { Utxo } from "../core/types.ts";
 import {
+  loadOperation,
   parsePositiveInteger,
   print,
-  refuseOperation,
   reportCommandError,
   withSelectedProvider,
 } from "./shared.ts";
@@ -74,10 +74,7 @@ export default defineCommand({
         args.provider as string | undefined,
         "utxos",
         async (selected) => {
-          const getUtxos = selected.provider.getUtxos?.bind(selected.provider);
-          if (!selected.provider.capabilities.utxos || !getUtxos) {
-            return refuseOperation("getUtxos", selected.name);
-          }
+          const getUtxos = await loadOperation(selected.provider, "getUtxos");
           const { address } = await resolveInput(args.address as string, selected.chain);
           const utxos = await getUtxos(address, selected.chain);
           renderUtxos(selected.name, address, selected.chain, utxos, limit);

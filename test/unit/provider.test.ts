@@ -4,10 +4,12 @@ import {
   HTTPError,
   Provider,
   RateLimitError,
+  UnsupportedOperationError,
   create,
   register,
 } from "../../src/index.ts";
 import type { ProviderCapabilities, ProviderConfig } from "../../src/index.ts";
+import { requireOperation } from "../../src/core/provider.ts";
 
 class Custom extends Provider {
   static readonly key = "abstract-provider-test";
@@ -47,6 +49,21 @@ class Custom extends Provider {
 
   post(url: string, body: unknown): Promise<Record<string, unknown>> {
     return this.postJSON(url, body);
+  }
+}
+
+/* Declares `blockInfo` and `txDetail`, but has `getBlockInfo` and `getGasData`. */
+class Gated extends Custom {
+  override get capabilities(): ProviderCapabilities {
+    return { ...super.capabilities, blockInfo: true, txDetail: true };
+  }
+
+  getBlockInfo(): Promise<never> {
+    return Promise.reject(new Error(`block from ${this.name}`));
+  }
+
+  getGasData(): Promise<never> {
+    return Promise.reject(new Error("not used"));
   }
 }
 
@@ -125,6 +142,23 @@ describe("abstract provider registry", () => {
 
     await rejection;
     expect(fetch).toHaveBeenCalledOnce();
+  });
+});
+
+describe("requireOperation", () => {
+  it("hands back a declared method bound to its provider", async () => {
+    const getBlockInfo = requireOperation(new Gated({}), "getBlockInfo");
+    await expect(getBlockInfo(1)).rejects.toThrow("block from abstract-provider-test");
+  });
+
+  it("refuses a method whose capability the provider does not declare", () => {
+    expect(() => requireOperation(new Gated({}), "getGasData")).toThrow(UnsupportedOperationError);
+  });
+
+  it("refuses a declared capability whose method is missing", () => {
+    expect(() => requireOperation(new Gated({}), "getTxDetail")).toThrow(
+      'Operation "getTxDetail" not supported by abstract-provider-test',
+    );
   });
 });
 

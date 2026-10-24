@@ -3,8 +3,8 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { UnsupportedOperationError } from "./core/errors.ts";
 import { resolveAddresses, resolveInput } from "./core/input.ts";
-import { OPERATION_CAPABILITIES } from "./core/provider.ts";
-import type { Provider, ProviderOperation } from "./core/provider.ts";
+import { OPERATION_CAPABILITIES, requireOperation } from "./core/provider.ts";
+import type { ProviderOperation } from "./core/provider.ts";
 import { listProviders } from "./core/registry.ts";
 import { withProvider } from "./core/resolve.ts";
 import type { ProviderContext } from "./core/resolve.ts";
@@ -104,18 +104,6 @@ async function addressForChain(
   signal: AbortSignal,
 ) {
   return (await resolveInput(address, chain, signal)).address;
-}
-
-function requireOperation<K extends ProviderOperation>(
-  /* oxlint-disable-next-line typescript/prefer-readonly-parameter-types */
-  provider: Provider,
-  operation: K,
-): NonNullable<Provider[K]> {
-  const method = provider[operation];
-  if (!provider.capabilities[OPERATION_CAPABILITIES[operation]] || typeof method !== "function") {
-    throw new UnsupportedOperationError(operation, provider.name);
-  }
-  return method.bind(provider) as NonNullable<Provider[K]>;
 }
 
 /**
