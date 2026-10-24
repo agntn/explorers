@@ -62,22 +62,21 @@
   },
   "dependencies": {
     "@agntn/chains": "catalog:deps",
-    "@modelcontextprotocol/sdk": "catalog:deps",
-    "citty": "catalog:deps",
-    "consola": "catalog:deps",
+    "@agntn/tools": "catalog:deps",
+    "@modelcontextprotocol/server": "catalog:deps",
     "zod": "catalog:deps"
   },
   "devDependencies": {
     "@agntn/ox": "catalog:dev",
     "@earendil-works/pi-coding-agent": "catalog:dev",
     "@earendil-works/pi-tui": "catalog:dev",
+    "@modelcontextprotocol/client": "catalog:dev",
     "@oh-my-pi/omptype": "catalog:dev",
     "@oh-my-pi/pi-coding-agent": "catalog:dev",
     "@types/node": "catalog:dev",
     "changelogen": "catalog:dev",
     "obuild": "catalog:dev",
     "tsx": "catalog:dev",
-    "typebox": "catalog:dev",
     "typescript": "catalog:dev",
     "vite": "catalog:",
     "vite-plus": "catalog:"
@@ -85,8 +84,7 @@
   "peerDependencies": {
     "@earendil-works/pi-coding-agent": "*",
     "@earendil-works/pi-tui": "*",
-    "@oh-my-pi/pi-coding-agent": "*",
-    "typebox": "*"
+    "@oh-my-pi/pi-coding-agent": ">=18.0.0 <19"
   },
   "peerDependenciesMeta": {
     "@earendil-works/pi-coding-agent": {
@@ -96,9 +94,6 @@
       "optional": true
     },
     "@oh-my-pi/pi-coding-agent": {
-      "optional": true
-    },
-    "typebox": {
       "optional": true
     }
   },

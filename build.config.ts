@@ -11,7 +11,14 @@ export default defineBuildConfig({
     {
       /** One bundle, so the providers share the core chunks instead of each carrying its own copy. */
       type: "bundle",
-      input: ["./src/index.ts", "./src/cli.ts", "./src/mcp.ts", ...providerInputs],
+      input: [
+        "./src/index.ts",
+        "./src/cli.ts",
+        "./src/mcp.ts",
+        "./src/tools.ts",
+        "./src/tool-operations.ts",
+        ...providerInputs,
+      ],
       /** Declaration maps would point at a src/ the tarball doesn't carry. */
       dts: { sourcemap: false },
     },

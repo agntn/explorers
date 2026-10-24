@@ -122,8 +122,7 @@ describe("explorers mcp from the built bin", () => {
 
 /* A host with its own transport registers through the root and reads back through `/mcp`. */
 const embedMcp = `
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
+import { Client, InMemoryTransport } from "@modelcontextprotocol/client";
 const { Provider, register } = await import("@agntn/explorers");
 const { createMcpServer } = await import("@agntn/explorers/mcp");
 class Probe extends Provider {
