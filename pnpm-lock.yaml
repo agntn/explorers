@@ -43,6 +43,9 @@ catalogs:
     ohash:
       specifier: 2.0.12
       version: 2.0.12
+    ufo:
+      specifier: 1.6.4
+      version: 1.6.4
     zod:
       specifier: 4.5.4
       version: 4.5.4
@@ -194,6 +197,9 @@ importers:
       ohash:
         specifier: catalog:deps
         version: 2.0.12
+      ufo:
+        specifier: catalog:deps
+        version: 1.6.4
       zod:
         specifier: catalog:deps
         version: 4.5.4

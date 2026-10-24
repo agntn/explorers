@@ -19,6 +19,7 @@
     "jiti": "catalog:deps",
     "nuxt": "catalog:deps",
     "ohash": "catalog:deps",
+    "ufo": "catalog:deps",
     "zod": "catalog:deps"
   },
   "devDependencies": {

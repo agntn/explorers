@@ -28,6 +28,7 @@ catalogs:
     jiti: 2.7.0
     nuxt: 4.5.2
     ohash: 2.0.12
+    ufo: 1.6.4
     zod: 4.5.4
   dev:
     "@agntn/ox": 0.1.0
