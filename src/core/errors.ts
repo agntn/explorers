@@ -187,6 +187,14 @@ export class RateLimitError extends ExplorerError {
   }
 }
 
+/** The explorer's bot protection turned this client away, and no API key gets past it. */
+export class BlockedError extends ExplorerError {
+  constructor(provider: string, detail?: string) {
+    super(`Blocked by ${provider}${detail ? `: ${detail}` : ""}`, provider);
+    this.name = "BlockedError";
+  }
+}
+
 /** Provider credentials are valid, but the current plan does not cover the requested read. */
 export class PlanRestrictedError extends ExplorerError {
   constructor(provider: string, detail?: string) {
@@ -361,6 +369,25 @@ function isRateLimitFailure(context: FailureContext): boolean {
   return context.status === 429 || context.lowerMessage.includes("rate limit");
 }
 
+/**
+ * Cloudflare marks every challenge page with `cf-mitigated: challenge`, whatever its status.
+ *
+ * @param {FailureContext} context - The failure being classified.
+ * @returns {boolean} Whether the response is a challenge page.
+ */
+function isChallenge(context: FailureContext): boolean {
+  const headers = context.failure?.response?.headers;
+  return headers instanceof Headers && headers.get("cf-mitigated") === "challenge";
+}
+
+function challengeError(context: FailureContext): BlockedError {
+  const status = `HTTP ${context.status} from ${context.url ?? "unknown"}`;
+  return new BlockedError(
+    context.provider ?? "unknown",
+    `${status} is a Cloudflare challenge page, which no API key gets past`,
+  );
+}
+
 function retryAfterSeconds(failure: ResponseLike | undefined): number | undefined {
   const headers = failure?.response?.headers;
   const header = headers instanceof Headers ? headers.get("retry-after") : null;
@@ -398,6 +425,7 @@ function classifyFailure(context: FailureContext): ExplorerError | undefined {
       context.provider,
     );
   }
+  if (isChallenge(context)) return challengeError(context);
   if (isNotFoundFailure(context)) return new NotFoundError(context.resource, context.provider);
   if (isRateLimitFailure(context)) {
     return new RateLimitError(context.provider ?? "unknown", retryAfterSeconds(context.failure));

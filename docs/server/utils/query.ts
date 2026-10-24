@@ -3,6 +3,7 @@ import { hash } from "ohash";
 import {
   AddressChainMismatchError,
   AuthError,
+  BlockedError,
   ExplorerError,
   HTTPError,
   NotFoundError,
@@ -155,6 +156,12 @@ export function toHttpError(error: unknown): never {
     throw createError({
       statusCode: 503,
       statusMessage: `${error.provider} wants an API key for this read and the docs worker has none`,
+    });
+  }
+  if (error instanceof BlockedError) {
+    throw createError({
+      statusCode: 503,
+      statusMessage: `${error.provider} turned the docs worker away at its bot check`,
     });
   }
   if (error instanceof PlanRestrictedError) {

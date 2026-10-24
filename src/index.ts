@@ -36,6 +36,7 @@ export {
   TransportError,
   AuthError,
   RateLimitError,
+  BlockedError,
   PlanRestrictedError,
   NotFoundError,
   UnsupportedChainError,

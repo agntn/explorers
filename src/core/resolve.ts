@@ -3,6 +3,7 @@
 import { create, providers, has, supportsCapability, supportsChain } from "./registry.ts";
 import {
   AuthError,
+  BlockedError,
   HTTPError,
   PlanRestrictedError,
   RateLimitError,
@@ -260,11 +261,12 @@ function preservesPrimaryError(error: unknown): boolean {
   );
 }
 
-/* Failures another backend may not share: limits, no response, or a server error. A caller's
-   abort is a decision, not an outage, so it never moves the read. */
+/* Failures another backend may not share: limits, a bot wall, no response, or a server error. A
+   caller's abort is a decision, not an outage, so it never moves the read. */
 function isTransientFailure(error: unknown): boolean {
   return (
     error instanceof RateLimitError ||
+    error instanceof BlockedError ||
     error instanceof PlanRestrictedError ||
     (error instanceof TransportError && error.code !== "AbortError") ||
     (error instanceof HTTPError && error.statusCode >= 500)

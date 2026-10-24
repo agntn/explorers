@@ -122,7 +122,7 @@ const { samples, paused, current, step } = useLandingExplorer();
       link="Getting started"
       :checks="[
         'getBalance and getTxHistory on every provider; the other eight only where they are real',
-        'ExplorerError, HTTPError, AuthError, RateLimitError, PlanRestrictedError, NotFoundError and three more',
+        'ExplorerError, HTTPError, AuthError, RateLimitError, PlanRestrictedError, NotFoundError and six more',
         'API keys are stripped from every URL before an error message exists',
       ]"
       reverse
