@@ -1,16 +1,18 @@
 import { fileURLToPath } from "node:url";
+import { validateInput } from "@agntn/tools";
 import type {
   ExtensionAPI,
-  ExtensionContext,
+  ExtensionToolContext,
   ToolDefinition,
 } from "@earendil-works/pi-coding-agent";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
-import { Value } from "typebox/value";
 import explorersExtension, { resolveExplorersModuleUrl } from "../../extensions/pi/explorers.ts";
 import type { Transaction } from "../../src/core/types.ts";
-import { builtins } from "../../src/providers/index.ts";
+import "../../src/providers/index.ts";
+import { explorersTools } from "../../src/tools.ts";
 
-function registerExtensionTools(): Map<string, ToolDefinition> {
+/* Registers the extension against a host that only keeps the tools it is handed. */
+async function registerExtensionTools(): Promise<Map<string, ToolDefinition>> {
   const tools = new Map<string, ToolDefinition>();
   const api = {
     registerTool(tool: ToolDefinition) {
@@ -19,372 +21,162 @@ function registerExtensionTools(): Map<string, ToolDefinition> {
   };
 
   // SAFETY: the extension only calls registerTool during registration; the fake implements that exact seam.
-  explorersExtension(api as unknown as ExtensionAPI);
+  await explorersExtension(api as unknown as ExtensionAPI);
   return tools;
 }
 
+/* The one method of a tool map a lookup reads. */
 interface ToolLookup {
   readonly get: (name: string) => ToolDefinition | undefined;
 }
 
+/* One registered tool, or a failed test naming the one that's missing. */
 function requireTool(tools: ToolLookup, name: string): ToolDefinition {
   const tool = tools.get(name);
   if (!tool) throw new Error(`Tool not registered: ${name}`);
   return tool;
 }
 
-interface ToolContentView {
-  readonly type: string;
-  readonly text?: string;
+/* The shared definition behind a registered tool, for checks of its schema. */
+function definition(name: string) {
+  const tool = explorersTools().find((candidate) => candidate.name === name);
+  if (!tool) throw new Error(`No definition: ${name}`);
+  return tool;
 }
 
-interface ToolResultView {
-  readonly content: readonly ToolContentView[];
-  readonly isError: boolean;
-}
-
-function isUnknownArray(value: unknown): value is unknown[] {
-  return Array.isArray(value);
-}
-
-function parseToolResult(value: unknown): ToolResultView {
-  if (typeof value !== "object" || value === null || !("content" in value)) {
-    throw new TypeError("Tool returned no content array");
-  }
-  const contentValue = value.content;
-  if (!isUnknownArray(contentValue)) throw new TypeError("Tool content is not an array");
-
-  const content = contentValue.map((part): ToolContentView => {
-    if (typeof part !== "object" || part === null || !("type" in part)) {
-      throw new TypeError("Tool content item has no type");
-    }
-    const type = part.type;
-    const text = "text" in part ? part.text : undefined;
-    if (typeof type !== "string" || (text !== undefined && typeof text !== "string")) {
-      throw new TypeError("Tool content item has an invalid shape");
-    }
-    return { type, text };
-  });
-  return { content, isError: "isError" in value && value.isError === true };
-}
-
-function textMatching(expected: RegExp): unknown {
-  return expect.stringMatching(expected);
+/* The text and details a tool call returned. */
+function textOf(result: unknown): string {
+  const content = (result as { content: Array<{ text?: string }> }).content;
+  return content[0]?.text ?? "";
 }
 
 // SAFETY: the tested execute functions do not read ExtensionContext.
-const unusedContext = {} as ExtensionContext;
+const unusedContext = {} as ExtensionToolContext;
 
-const PUBKEY_ADDRESS = "1GSMG1JC9wtdSwfwApgj2xcmJPAwx7prBe";
-const PUBKEY =
-  "04f4d1bbd91e65e2a019566a17574e97dae908b784b388891848007e4f55d5a4649c73d25fc5ed8fd7227cab0be4e576c0c6404db5aa546286563e4be12bf33559";
+type RenderTheme = Parameters<NonNullable<ToolDefinition["renderCall"]>>[1];
 
-/* The address counters, then the same rows for every page of the feed. */
-function stubPubkeyFeed(spent: number, rows: readonly unknown[]): void {
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(async (input: RequestInfo | URL) =>
-      Response.json(
-        String(input).includes("/txs")
-          ? rows
-          : { chain_stats: { spent_txo_count: spent, tx_count: rows.length } },
-      ),
-    ),
-  );
-}
+/* A theme that draws text as it is, so a test reads exactly what the renderer composed. */
+const plainTheme = {
+  fg: (_color: string, text: string) => text,
+  bold: (text: string) => text,
+} as unknown as RenderTheme;
 
-const PUBKEY_SPEND = {
-  txid: "d".repeat(64),
-  status: { confirmed: true },
-  vin: [
-    {
-      txid: "e".repeat(64),
-      prevout: {
-        scriptpubkey: "76a914a9553269572a317e39f0f518cb87c1a0ee1dbae488ac",
-        scriptpubkey_type: "p2pkh",
-        scriptpubkey_address: PUBKEY_ADDRESS,
-      },
-      scriptsig_asm: `OP_PUSHBYTES_71 30440220 OP_PUSHBYTES_65 ${PUBKEY}`,
-    },
-  ],
-  vout: [],
-};
-const PUBKEY_FUNDING = { txid: "f".repeat(64), status: { confirmed: true }, vin: [], vout: [] };
+const TOOL_NAMES = [
+  "explorers_providers",
+  "explorers_balance",
+  "explorers_tx_history",
+  "explorers_tx_detail",
+  "explorers_utxos",
+  "explorers_pubkey",
+  "explorers_contract",
+  "explorers_tokens",
+  "explorers_token_transfers",
+  "explorers_gas",
+  "explorers_block",
+];
 
 describe("explorers Pi extension", () => {
   afterEach(() => {
-    vi.useRealTimers();
     vi.unstubAllEnvs();
     vi.unstubAllGlobals();
   });
 
   it("loads live source instead of a missing or stale build in a checkout", () => {
     expect(fileURLToPath(resolveExplorersModuleUrl())).toBe(
-      fileURLToPath(new URL("../../src/index.ts", import.meta.url)),
+      fileURLToPath(new URL("../../src/tools.ts", import.meta.url)),
     );
   });
 
-  it("registers the complete tool set", () => {
-    const tools = registerExtensionTools();
+  it("registers the shared definitions, each under its title and schema", async () => {
+    const tools = await registerExtensionTools();
 
-    expect([...tools.keys()]).toEqual([
-      "explorers_balance",
-      "explorers_tx_history",
-      "explorers_tx_detail",
-      "explorers_utxos",
-      "explorers_pubkey",
-      "explorers_contract",
-      "explorers_tokens",
-      "explorers_token_transfers",
-      "explorers_gas",
-      "explorers_block",
-      "explorers_providers",
-    ]);
-  });
-
-  it("names each tool in every prompt guideline", () => {
-    const tools = registerExtensionTools();
-
+    expect([...tools.keys()]).toEqual(TOOL_NAMES);
     for (const tool of tools.values()) {
-      expect(tool.promptGuidelines).not.toHaveLength(0);
-      for (const guideline of tool.promptGuidelines ?? []) {
-        expect(guideline).toContain(tool.name);
-      }
+      expect(tool.label).toBe(definition(tool.name).title);
+      expect(tool.parameters).toBe(definition(tool.name).input);
     }
   });
 
-  it("declares an integer transaction-history limit from 1 through 100", () => {
-    const tool = requireTool(registerExtensionTools(), "explorers_tx_history");
+  it("names each tool in every prompt guideline", async () => {
+    for (const tool of (await registerExtensionTools()).values()) {
+      expect(tool.promptGuidelines).not.toHaveLength(0);
+      for (const guideline of tool.promptGuidelines ?? []) expect(guideline).toContain(tool.name);
+    }
+  });
 
-    expect(Value.Check(tool.parameters, { address: "address", limit: 1 })).toBe(true);
-    expect(Value.Check(tool.parameters, { address: "address", limit: 100 })).toBe(true);
-    expect(Value.Check(tool.parameters, { address: "address", limit: 0 })).toBe(false);
-    expect(Value.Check(tool.parameters, { address: "address", limit: 101 })).toBe(false);
-    expect(Value.Check(tool.parameters, { address: "address", limit: 1.5 })).toBe(false);
+  it("declares an integer history limit up to 100, with 0 as the default OMP fills in", () => {
+    const tool = definition("explorers_tx_history");
+    const takes = (limit: unknown) => validateInput(tool, { address: "address", limit }).ok;
+
+    expect([0, 1, 100].map(takes)).toEqual([true, true, true]);
+    expect([101, 1.5, -1].map(takes)).toEqual([false, false, false]);
   });
 
   it("declares a non-negative integer block number", () => {
-    const tool = requireTool(registerExtensionTools(), "explorers_block");
+    const tool = definition("explorers_block");
+    const takes = (blockNumber: unknown) => validateInput(tool, { blockNumber }).ok;
 
-    expect(Value.Check(tool.parameters, { blockNumber: 0 })).toBe(true);
-    expect(Value.Check(tool.parameters, { blockNumber: 21000000 })).toBe(true);
-    expect(Value.Check(tool.parameters, { blockNumber: -1 })).toBe(false);
-    expect(Value.Check(tool.parameters, { blockNumber: 1.5 })).toBe(false);
-    expect(Value.Check(tool.parameters, { blockNumber: "1" })).toBe(false);
+    expect([0, 21_000_000].map(takes)).toEqual([true, true]);
+    expect([-1, 1.5, "1"].map(takes)).toEqual([false, false, false]);
   });
 
-  it("removes terminal control sequences from rendered arguments", () => {
-    const tool = requireTool(registerExtensionTools(), "explorers_balance");
-    const renderCall = tool.renderCall;
-    if (!renderCall) throw new Error("explorers_balance has no call renderer");
+  it("takes no blank address, chain or provider", () => {
+    const tool = definition("explorers_balance");
+    const takes = (args: Readonly<Record<string, unknown>>) => validateInput(tool, args).ok;
 
-    type RenderCall = NonNullable<ToolDefinition["renderCall"]>;
-    type RenderTheme = Parameters<RenderCall>[1];
+    expect(takes({ address: ["a1", "a2"] })).toBe(true);
+    expect(takes({ address: "  0xabc  " })).toBe(true);
+    for (const address of ["", "   ", [], [""], ["   "]]) expect(takes({ address })).toBe(false);
+    expect(takes({ address: "a", chain: "" })).toBe(false);
+    expect(takes({ address: "a", provider: " " })).toBe(false);
+  });
+
+  it("draws the call under its title with the controls stripped from the arguments", async () => {
+    const tool = requireTool(await registerExtensionTools(), "explorers_balance");
     const attack = "safe\u001B]52;c;SGVsbG8=\u0007address";
-    const rendered = renderCall({ address: attack }, {} as RenderTheme)
-      .render(120)
+
+    const rendered = tool
+      .renderCall?.({ address: attack, chain: "btc" }, plainTheme, {} as never)
+      .render(200)
       .join("\n");
 
-    expect(rendered).toContain("safe]52;c;SGVsbG8=address");
+    expect(rendered).toContain("Get Balance safe");
+    expect(rendered).toContain("address chain=btc");
     /* oxlint-disable-next-line no-control-regex */
     expect(rendered).not.toMatch(/[\u0000-\u0008\u000B-\u001F\u007F-\u009F]/u);
   });
 
-  it("reads Decred atoms through automatic provider selection", async () => {
-    const address = "Dcur2mcGjmENx4DhNqDctW5wJCVyT3Qeqkx";
+  it("hands the model compact JSON and the terminal one line per balance", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn(
-        async () =>
-          new Response(
-            JSON.stringify({
-              addrStr: address,
-              balanceSat: 100000001,
-              unconfirmedBalanceSat: -1,
-              totalReceivedSat: 100000001,
-              totalSentSat: 0,
-            }),
-          ),
+      vi.fn(async () =>
+        Response.json({
+          chain_stats: { funded_txo_sum: 10_000, spent_txo_sum: 2000 },
+          mempool_stats: { funded_txo_sum: 0, spent_txo_sum: 6000 },
+        }),
       ),
     );
-    const tool = requireTool(registerExtensionTools(), "explorers_balance");
-    const result = parseToolResult(
-      await tool.execute("test", { address, chain: "dcr" }, undefined, undefined, unusedContext),
-    );
-    expect(result.isError).toBe(false);
-    expect(result.content[0]?.text).toContain(
-      `[dcrdata] decred balance for ${address}: 1.00000001 DCR (100000001 base units;`,
-    );
-    expect(result.content[0]?.text).toContain("; unconfirmed delta -1 base units");
-  });
+    const tool = requireTool(await registerExtensionTools(), "explorers_balance");
 
-  it("reads a legacy address as Bitcoin SV when the call names WhatsOnChain", async () => {
-    const address = "1FeexV6bAHb8ybZjqQMjJrcCrHGW9sb6uF";
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (input: RequestInfo | URL) =>
-        Response.json(
-          String(input).endsWith("/unconfirmed/balance")
-            ? { address, unconfirmed: 0, error: "" }
-            : { address, confirmed: 7995818934401, error: "" },
-        ),
-      ),
+    const result = await tool.execute(
+      "test",
+      { address: "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh", provider: "mempool" },
+      undefined,
+      undefined,
+      unusedContext,
     );
-    const balance = requireTool(registerExtensionTools(), "explorers_balance");
-    const result = parseToolResult(
-      await balance.execute(
-        "test",
-        { address, provider: "whatsonchain" },
-        undefined,
-        undefined,
-        unusedContext,
-      ),
-    );
-    expect(result.isError).toBe(false);
-    expect(result.content[0]?.text).toContain(
-      `[whatsonchain] bitcoinsv balance for ${address}: 79958.18934401 BSV (7995818934401 base units`,
-    );
-  });
+    const rendered = tool
+      .renderResult?.(result, { expanded: false, isPartial: false }, plainTheme, {} as never)
+      .render(400)
+      .join("\n");
 
-  it("reads Stellar stroops and trustlines through automatic provider selection", async () => {
-    const address = "GAHK7EEG2WWHVKDNT4CEQFZGKF2LGDSW2IVM4S5DP42RBW3K6BTODB4A";
-    const issuer = "GDM4RQUQQUVSKQA7S6EM7XBZP3FCGH4Q7CL6TABQ7B2BEJ5ERARM2M5M";
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(
-        async () =>
-          new Response(
-            JSON.stringify({
-              id: address,
-              balances: [
-                {
-                  balance: "1234.5000001",
-                  asset_type: "credit_alphanum4",
-                  asset_code: "VELO",
-                  asset_issuer: issuer,
-                },
-                { balance: "12.8193804", asset_type: "native" },
-              ],
-            }),
-          ),
-      ),
-    );
-    const balance = requireTool(registerExtensionTools(), "explorers_balance");
-    const result = parseToolResult(
-      await balance.execute("test", { address, chain: "xlm" }, undefined, undefined, unusedContext),
-    );
-    expect(result.isError).toBe(false);
-    expect(result.content[0]?.text).toContain(
-      `[horizon] stellar balance for ${address}: 12.8193804 XLM (128193804 base units;`,
-    );
-    const tokens = requireTool(registerExtensionTools(), "explorers_tokens");
-    const holdings = parseToolResult(
-      await tokens.execute(
-        "test",
-        { address, chain: "stellar" },
-        undefined,
-        undefined,
-        unusedContext,
-      ),
-    );
-    expect(holdings.isError).toBe(false);
-    expect(holdings.content.find((part) => part.type === "text")?.text).toBe(
-      `[horizon] 1 tokens for ${address} on stellar:\n  VELO: 1234.5000001  [VELO:${issuer}]`,
-    );
-  });
-
-  it("lists provider chains, capabilities, and endpoints without network access", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => {
-        throw new Error("Unexpected network request");
-      }),
-    );
-    const tool = requireTool(registerExtensionTools(), "explorers_providers");
-
-    const raw = await tool.execute("test", {}, undefined, undefined, unusedContext);
-    const result = parseToolResult(raw);
-
-    expect(result.isError).toBe(false);
-    expect(result.content).toEqual([
-      {
-        type: "text",
-        text: textMatching(/^Registered providers \(\d+\):\n  etherscan: balances, txHistory/),
-      },
-    ]);
-    const text = result.content[0]?.text ?? "";
-    expect(text).toContain(
-      "\n  mempool: balances, txHistory, txDetail, utxos, pubkeys, gasData, blockInfo; chains: bitcoin, litecoin, pepecoin; endpoint: https://mempool.space\n",
-    );
-    expect(text).toContain("\n  aptos: no supported explorer operations; chains: aptos\n");
-    expect(raw).toMatchObject({
-      details: {
-        providers: builtins.map((entry): unknown =>
-          expect.objectContaining({ name: entry.key, chains: entry.chains }),
-        ),
-      },
+    expect(JSON.parse(textOf(result))).toMatchObject({
+      provider: "mempool",
+      data: { balance: "8000", unconfirmed: "-6000" },
     });
+    expect(rendered).toContain("0.00008 BTC (8000 base units");
+    expect(rendered).toContain("unconfirmed delta -6000 base units");
   });
-
-  it("reports when a balance was fetched and whether its block is known", async () => {
-    vi.useFakeTimers();
-    vi.setSystemTime("2026-08-28T12:34:56.789Z");
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(
-        async () =>
-          new Response(JSON.stringify({ coin_balance: "1000000000000000000" }), {
-            headers: { "Content-Type": "application/json" },
-          }),
-      ),
-    );
-    const tool = requireTool(registerExtensionTools(), "explorers_balance");
-
-    const result = parseToolResult(
-      await tool.execute(
-        "test",
-        { address: "0x0000000000000000000000000000000000000001", provider: "blockscout" },
-        undefined,
-        undefined,
-        unusedContext,
-      ),
-    );
-
-    expect(result.content).toEqual([
-      {
-        type: "text",
-        text: "[blockscout] ethereum balance for 0x0000000000000000000000000000000000000001: 1 ETH (1000000000000000000 base units; fetched 2026-08-28T12:34:56.789Z; block unknown)",
-      },
-    ]);
-  });
-
-  it.each([0, -6000])(
-    "shows an unconfirmed delta of %s separately from confirmed balance",
-    async (delta) => {
-      vi.stubGlobal(
-        "fetch",
-        vi.fn(async () =>
-          Response.json({
-            chain_stats: { funded_txo_sum: 10000, spent_txo_sum: 2000 },
-            mempool_stats: { funded_txo_sum: 0, spent_txo_sum: -delta },
-          }),
-        ),
-      );
-      const tool = requireTool(registerExtensionTools(), "explorers_balance");
-      const result = parseToolResult(
-        await tool.execute(
-          "test",
-          { address: "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh", provider: "mempool" },
-          undefined,
-          undefined,
-          unusedContext,
-        ),
-      );
-      expect(result.isError).toBe(false);
-      expect(result.content[0]?.text).toContain("0.00008 BTC (8000 base units");
-      expect(result.content[0]?.text).toContain(`unconfirmed delta ${delta} base units`);
-    },
-  );
 
   it("aborts the explorer request when the host cancels the tool", async () => {
     const signals: AbortSignal[] = [];
@@ -400,9 +192,10 @@ describe("explorers Pi extension", () => {
           }),
       ),
     );
+    const tool = requireTool(await registerExtensionTools(), "explorers_balance");
     const controller = new AbortController();
 
-    const execution = requireTool(registerExtensionTools(), "explorers_balance")
+    const call = tool
       .execute(
         "test",
         { address: "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh", chain: "bitcoin" },
@@ -414,972 +207,118 @@ describe("explorers Pi extension", () => {
     await vi.waitFor(() => expect(signals).toHaveLength(1));
     controller.abort();
 
-    expect(await execution).toMatchObject({ code: "AbortError", provider: "mempool" });
+    await call;
+    expect(signals[0]?.aborted).toBe(true);
   });
 
-  it("routes Arweave balance and block tools through gateway REST", async () => {
-    const address = "FPjbN_btYKzcf8QASjs30v5C0FPv7XpwKXENBW8dqVw";
-    const fetch = vi.fn(async (input: RequestInfo | URL) => {
-      const url = String(input);
-      if (url.endsWith("/balance")) return new Response("9007199254740993");
-      return new Response(
-        JSON.stringify({
-          height: 42,
-          indep_hash: "block-hash",
-          previous_block: "parent-hash",
-          timestamp: 1528491598,
-          reward_addr: "miner",
-          txs: ["a", "b"],
-        }),
-      );
-    });
+  it("fails with the providers that serve the read when the chosen one can't", async () => {
+    vi.stubEnv("SOLSCAN_API_KEY", "");
+    vi.stubEnv("HELIUS_API_KEY", "configured");
+    const fetch = vi.fn();
     vi.stubGlobal("fetch", fetch);
-    const tools = registerExtensionTools();
-    const balance = parseToolResult(
-      await requireTool(tools, "explorers_balance").execute(
-        "test",
-        { address, chain: "arweave" },
-        undefined,
-        undefined,
-        unusedContext,
-      ),
+    const tool = requireTool(await registerExtensionTools(), "explorers_gas");
+
+    await expect(
+      tool.execute("test", { chain: "solana" }, undefined, undefined, unusedContext),
+    ).rejects.toThrow(
+      'Operation "getGasData" not supported by helius; no provider serves this read on solana',
     );
-    expect(balance.isError).toBe(false);
-    expect(balance.content[0]?.text).toContain(
-      "9007.199254740993 AR (9007199254740993 base units;",
-    );
-    expect(balance.content[0]?.text).toContain("block unknown");
-    const block = parseToolResult(
-      await requireTool(tools, "explorers_block").execute(
-        "test",
-        { blockNumber: 42, chain: "arweave" },
-        undefined,
-        undefined,
-        unusedContext,
-      ),
-    );
-    expect(block.isError).toBe(false);
-    expect(block.content[0]?.text).toContain("[turbo] Block #42 on arweave");
-    expect(block.content[0]?.text).toContain("Hash: block-hash");
-    expect(block.content[0]?.text).toContain("Transactions: 2");
-    expect(fetch.mock.calls.map(([url]) => String(url))).toEqual([
-      `https://turbo-gateway.com/wallet/${address}/balance`,
-      "https://turbo-gateway.com/block/height/42",
-    ]);
-  });
-
-  it("resolves ENS for transaction, contract, and token lookups", async () => {
-    const resolved = `0x${"a".repeat(40)}`;
-    const explorerUrls: string[] = [];
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (input: RequestInfo | URL) => {
-        const url = String(input);
-        if (url.includes("ensideas")) {
-          return new Response(JSON.stringify({ address: resolved }), {
-            headers: { "content-type": "application/json" },
-          });
-        }
-        explorerUrls.push(url);
-        const payload = url.endsWith("token-balances")
-          ? []
-          : url.includes("/smart-contracts/")
-            ? { is_verified: false }
-            : { items: [] };
-        return new Response(JSON.stringify(payload), {
-          headers: { "content-type": "application/json" },
-        });
-      }),
-    );
-    const tools = registerExtensionTools();
-
-    for (const name of [
-      "explorers_tx_history",
-      "explorers_contract",
-      "explorers_tokens",
-      "explorers_token_transfers",
-    ]) {
-      const tool = requireTool(tools, name);
-      await tool.execute(
-        "test",
-        { address: "vitalik.eth", chain: "ethereum", provider: "blockscout" },
-        undefined,
-        undefined,
-        unusedContext,
-      );
-    }
-
-    expect(explorerUrls).toHaveLength(4);
-    for (const url of explorerUrls) expect(url).toContain(resolved);
-  });
-
-  it("falls back to Blockscout when Etherscan rate limits token transfers", async () => {
-    const address = "0x0000000000000000000000000000000000000001";
-    const hash = `0x${"a".repeat(64)}`;
-    vi.stubEnv("ETHERSCAN_API_KEY", "configured");
-    vi.stubEnv("BLOCKCHAIR_API_KEY", "");
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (input: RequestInfo | URL) => {
-        const payload = String(input).includes("etherscan.io")
-          ? { status: "0", message: "NOTOK", result: "Max rate limit reached" }
-          : {
-              items: [
-                {
-                  token: {
-                    address_hash: "0x0000000000000000000000000000000000000002",
-                    symbol: "TKN",
-                    decimals: "0",
-                    type: "ERC-20",
-                  },
-                  from: { hash: "0x0000000000000000000000000000000000000003" },
-                  to: { hash: address },
-                  total: { value: "1" },
-                  transaction_hash: hash,
-                  block_number: 1,
-                  timestamp: "2026-08-31T00:00:00.000Z",
-                },
-              ],
-            };
-        return new Response(JSON.stringify(payload), {
-          headers: { "content-type": "application/json" },
-        });
-      }),
-    );
-    const tool = requireTool(registerExtensionTools(), "explorers_token_transfers");
-
-    const result = parseToolResult(
-      await tool.execute(
-        "test",
-        { address, chain: "ethereum", limit: 1 },
-        undefined,
-        undefined,
-        unusedContext,
-      ),
-    );
-
-    expect(result.content).toEqual([
-      {
-        type: "text",
-        text: textMatching(/^\[blockscout\] 1 token transfers[\s\S]*1 TKN$/),
-      },
-    ]);
-  }, 10_000);
-
-  it("keeps complete identifiers in transaction history results", async () => {
-    const address = "bc1qsenderaddress";
-    const recipient = "bc1qrecipientaddress";
-    const hash = "a".repeat(64);
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(
-        async () =>
-          new Response(
-            JSON.stringify([
-              {
-                txid: hash,
-                vin: [{ prevout: { scriptpubkey_address: address, value: 100_000 } }],
-                vout: [{ scriptpubkey_address: recipient, value: 99_000 }],
-                fee: 1_000,
-                status: { confirmed: true, block_height: 1, block_time: 1 },
-              },
-            ]),
-            { headers: { "Content-Type": "application/json" } },
-          ),
-      ),
-    );
-    const tool = requireTool(registerExtensionTools(), "explorers_tx_history");
-
-    const result = parseToolResult(
-      await tool.execute(
-        "test",
-        { address, chain: "bitcoin", provider: "mempool", limit: 1 },
-        undefined,
-        undefined,
-        unusedContext,
-      ),
-    );
-    const text = result.content.find((part) => part.type === "text")?.text ?? "";
-
-    expect(text).toBe(
-      `[mempool] 1 transactions on bitcoin:\n${hash} ${address}→${recipient} 0.00099 [success]`,
-    );
-  });
-
-  it("keeps complete identifiers in token transfer results", async () => {
-    const address = "0x0000000000000000000000000000000000000001";
-    const sender = "0x0000000000000000000000000000000000000003";
-    const hash = `0x${"a".repeat(64)}`;
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(
-        async () =>
-          new Response(
-            JSON.stringify({
-              items: [
-                {
-                  token: {
-                    address_hash: "0x0000000000000000000000000000000000000002",
-                    symbol: "TKN",
-                    decimals: "0",
-                    type: "ERC-20",
-                  },
-                  from: { hash: sender },
-                  to: { hash: address },
-                  total: { value: "1" },
-                  transaction_hash: hash,
-                  block_number: 1,
-                  timestamp: "2026-08-31T00:00:00.000Z",
-                },
-              ],
-            }),
-            { headers: { "content-type": "application/json" } },
-          ),
-      ),
-    );
-    const tool = requireTool(registerExtensionTools(), "explorers_token_transfers");
-
-    const result = parseToolResult(
-      await tool.execute(
-        "test",
-        { address, chain: "ethereum", provider: "blockscout", limit: 1 },
-        undefined,
-        undefined,
-        unusedContext,
-      ),
-    );
-    const text = result.content.find((part) => part.type === "text")?.text ?? "";
-
-    expect(text).toBe(
-      `[blockscout] 1 token transfers for ${address} on ethereum:\n  ${hash} ${sender}→${address} 1 TKN`,
-    );
-  });
-
-  it("keeps complete contract identifiers in token holding results", async () => {
-    const address = "0x0000000000000000000000000000000000000001";
-    const contract = "0x00000000000000000000000000000000000000aa";
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(
-        async () =>
-          new Response(
-            JSON.stringify([
-              {
-                token: {
-                  address_hash: contract,
-                  symbol: "TKN",
-                  decimals: "0",
-                  type: "ERC-20",
-                },
-                value: "1",
-              },
-            ]),
-            { headers: { "content-type": "application/json" } },
-          ),
-      ),
-    );
-    const tool = requireTool(registerExtensionTools(), "explorers_tokens");
-
-    const result = parseToolResult(
-      await tool.execute(
-        "test",
-        { address, chain: "ethereum", provider: "blockscout" },
-        undefined,
-        undefined,
-        unusedContext,
-      ),
-    );
-    const text = result.content.find((part) => part.type === "text")?.text ?? "";
-
-    expect(text).toBe(`[blockscout] 1 tokens for ${address} on ethereum:\n  TKN: 1  [${contract}]`);
-  });
-
-  it("declares an integer token holdings limit from 1 through 100", () => {
-    const tool = requireTool(registerExtensionTools(), "explorers_tokens");
-
-    expect(Value.Check(tool.parameters, { address: "address", limit: 1 })).toBe(true);
-    expect(Value.Check(tool.parameters, { address: "address", limit: 100 })).toBe(true);
-    expect(Value.Check(tool.parameters, { address: "address", limit: 0 })).toBe(false);
-    expect(Value.Check(tool.parameters, { address: "address", limit: 101 })).toBe(false);
-    expect(Value.Check(tool.parameters, { address: "address", limit: 1.5 })).toBe(false);
-  });
-
-  it("lists fifty holdings unless limit says otherwise and counts every one", async () => {
-    const address = "0x0000000000000000000000000000000000000001";
-    const contractOf = (index: number) => `0x${(index + 16).toString(16).padStart(40, "0")}`;
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(
-        async () =>
-          new Response(
-            JSON.stringify(
-              Array.from({ length: 60 }, (_, index) => ({
-                token: {
-                  address_hash: contractOf(index),
-                  symbol: `T${index}`,
-                  decimals: "0",
-                  type: "ERC-20",
-                },
-                value: "1",
-              })),
-            ),
-            { headers: { "content-type": "application/json" } },
-          ),
-      ),
-    );
-    const tool = requireTool(registerExtensionTools(), "explorers_tokens");
-    const readLines = async (params: Readonly<Record<string, unknown>>) => {
-      const result = parseToolResult(
-        await tool.execute(
-          "test",
-          { address, chain: "ethereum", provider: "blockscout", ...params },
-          undefined,
-          undefined,
-          unusedContext,
-        ),
-      );
-      return (result.content.find((part) => part.type === "text")?.text ?? "").split("\n");
-    };
-
-    const listed = await readLines({});
-    expect(listed).toHaveLength(51);
-    expect(listed[0]).toBe(`[blockscout] 60 tokens for ${address} on ethereum, 50 listed:`);
-    expect(listed[1]).toBe(`  T0: 1  [${contractOf(0)}]`);
-    expect(listed[50]).toBe(`  T49: 1  [${contractOf(49)}]`);
-    expect(await readLines({ limit: 2 })).toEqual([
-      `[blockscout] 60 tokens for ${address} on ethereum, 2 listed:`,
-      `  T0: 1  [${contractOf(0)}]`,
-      `  T1: 1  [${contractOf(1)}]`,
-    ]);
-    const all = await readLines({ limit: 100 });
-    expect(all).toHaveLength(61);
-    expect(all[0]).toBe(`[blockscout] 60 tokens for ${address} on ethereum:`);
-  });
-
-  it("lists unspent outputs as outpoints with their confirmation state", async () => {
-    const address = "bc1qexample";
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(
-        async () =>
-          new Response(
-            JSON.stringify([
-              {
-                txid: "a".repeat(64),
-                vout: 1,
-                value: 100_000,
-                status: { confirmed: true, block_height: 947_507, block_time: 1 },
-              },
-              { txid: "c".repeat(64), vout: 0, value: 546, status: { confirmed: false } },
-            ]),
-            { headers: { "Content-Type": "application/json" } },
-          ),
-      ),
-    );
-    const tool = requireTool(registerExtensionTools(), "explorers_utxos");
-
-    const result = parseToolResult(
-      await tool.execute(
-        "test",
-        { address, chain: "bitcoin", provider: "mempool" },
-        undefined,
-        undefined,
-        unusedContext,
-      ),
-    );
-    const text = result.content.find((part) => part.type === "text")?.text ?? "";
-
-    expect(text).toBe(
-      [
-        `[mempool] 2 unspent outputs for ${address} on bitcoin, 100000 base units confirmed, 1 pending:`,
-        `  ${"a".repeat(64)}:1  0.001 (100000 base units)  [block 947507]`,
-        `  ${"c".repeat(64)}:0  0.00000546 (546 base units)  [pending]`,
-      ].join("\n"),
-    );
-  });
-
-  it.each([
-    [
-      "names the spend that showed a pubkey",
-      1,
-      [PUBKEY_SPEND],
-      `[mempool] ${PUBKEY_ADDRESS} on bitcoin: pubkey ${PUBKEY} (shown by spend ${"d".repeat(64)})`,
-    ],
-    [
-      "says an address that never spent shows no pubkey",
-      0,
-      [PUBKEY_FUNDING],
-      `[mempool] ${PUBKEY_ADDRESS} on bitcoin: no pubkey shown, the address never spent`,
-    ],
-    [
-      "keeps a spent address without a readable key apart from one that never spent",
-      1,
-      [PUBKEY_FUNDING],
-      `[mempool] ${PUBKEY_ADDRESS} on bitcoin: spent, but no key read: a script this read doesn't parse, or a spend older than the history it reads (1000 transactions, 250 on Pepecoin)`,
-    ],
-  ])("%s", async (_name, spent, rows, expected) => {
-    stubPubkeyFeed(spent, rows);
-    const tool = requireTool(registerExtensionTools(), "explorers_pubkey");
-
-    const result = parseToolResult(
-      await tool.execute(
-        "test",
-        { address: PUBKEY_ADDRESS, chain: "bitcoin", provider: "mempool" },
-        undefined,
-        undefined,
-        unusedContext,
-      ),
-    );
-
-    expect(result.content.find((part) => part.type === "text")?.text).toBe(expected);
+    expect(fetch).not.toHaveBeenCalled();
   });
 
   it("lists fifty unspent outputs unless limit says otherwise and counts every one", async () => {
-    const address = "bc1qexample";
     const txidOf = (index: number) => index.toString(16).padStart(64, "0");
     vi.stubGlobal(
       "fetch",
-      vi.fn(
-        async () =>
-          new Response(
-            JSON.stringify(
-              Array.from({ length: 60 }, (_, index) => ({
-                txid: txidOf(index),
-                vout: 0,
-                value: 1000 + index,
-                status:
-                  index === 59
-                    ? { confirmed: false }
-                    : { confirmed: true, block_height: 947_507, block_time: 1 },
-              })),
-            ),
-            { headers: { "Content-Type": "application/json" } },
-          ),
-      ),
-    );
-    const tool = requireTool(registerExtensionTools(), "explorers_utxos");
-    const readLines = async (params: Readonly<Record<string, unknown>>) => {
-      const result = parseToolResult(
-        await tool.execute(
-          "test",
-          { address, chain: "bitcoin", provider: "mempool", ...params },
-          undefined,
-          undefined,
-          unusedContext,
+      vi.fn(async () =>
+        Response.json(
+          Array.from({ length: 60 }, (_, index) => ({
+            txid: txidOf(index),
+            vout: 0,
+            value: 1000,
+            status: { confirmed: true, block_height: 947_507 },
+          })),
         ),
-      );
-      return (result.content.find((part) => part.type === "text")?.text ?? "").split("\n");
-    };
-    const header = `[mempool] 60 unspent outputs for ${address} on bitcoin, 60711 base units confirmed, 1 pending`;
-
-    const listed = await readLines({});
-    expect(listed).toHaveLength(51);
-    expect(listed[0]).toBe(`${header}, 50 listed:`);
-    expect(listed[50]).toBe(`  ${txidOf(49)}:0  0.00001049 (1049 base units)  [block 947507]`);
-    expect(await readLines({ limit: 1 })).toEqual([
-      `${header}, 1 listed:`,
-      `  ${txidOf(0)}:0  0.00001 (1000 base units)  [block 947507]`,
-    ]);
-    const all = await readLines({ limit: 100 });
-    expect(all).toHaveLength(61);
-    expect(all[0]).toBe(`${header}:`);
-    expect(all[60]).toBe(`  ${txidOf(59)}:0  0.00001059 (1059 base units)  [pending]`);
-  });
-
-  it.each([
-    ["explorers_tx_detail", { hash: "0xdead", provider: "aptos" }, "getTxDetail"],
-    ["explorers_utxos", { address: "0x1", provider: "aptos" }, "getUtxos"],
-    ["explorers_pubkey", { address: "0x1", provider: "aptos" }, "getPubkey"],
-    ["explorers_contract", { address: "0x1", provider: "aptos" }, "getContractInfo"],
-    ["explorers_tokens", { address: "0x1", provider: "aptos" }, "getTokenBalances"],
-    ["explorers_token_transfers", { address: "0x1", provider: "aptos" }, "getTokenTransfers"],
-    ["explorers_gas", { provider: "aptos" }, "getGasData"],
-    ["explorers_block", { blockNumber: 1, provider: "aptos" }, "getBlockInfo"],
-  ])("reports unsupported %s execution as an error", async (name, params, operation) => {
-    const tool = requireTool(registerExtensionTools(), name);
-
-    await expect(
-      tool.execute("test", params, undefined, undefined, unusedContext),
-    ).rejects.toMatchObject({
-      name: "UnsupportedOperationError",
-      message: `Operation "${operation}" not supported by aptos; no provider serves this read on aptos`,
-      provider: "aptos",
-    });
-  });
-
-  it("keeps a token symbol that breaks the line inside its own result line", async () => {
-    const address = "0x0000000000000000000000000000000000000001";
-    const symbol = `TKN\nBalance: forged${String.fromCodePoint(0x2028)}Value: forged`;
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(
-        async () =>
-          new Response(
-            JSON.stringify([
-              {
-                token: {
-                  address_hash: "0x00000000000000000000000000000000000000aa",
-                  symbol,
-                  decimals: "0",
-                  type: "ERC-20",
-                },
-                value: "1",
-              },
-            ]),
-            { headers: { "content-type": "application/json" } },
+      ),
+    );
+    const tool = requireTool(await registerExtensionTools(), "explorers_utxos");
+    const read = async (limit?: number) =>
+      JSON.parse(
+        textOf(
+          await tool.execute(
+            "test",
+            { address: "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh", provider: "mempool", limit },
+            undefined,
+            undefined,
+            unusedContext,
           ),
-      ),
-    );
-    const tool = requireTool(registerExtensionTools(), "explorers_tokens");
+        ),
+      ) as { total: number; data: unknown[] };
 
-    const result = parseToolResult(
-      await tool.execute(
-        "test",
-        { address, chain: "ethereum", provider: "blockscout" },
-        undefined,
-        undefined,
-        unusedContext,
-      ),
-    );
-    const text = result.content.find((part) => part.type === "text")?.text ?? "";
-
-    expect(text.split("\n")).toEqual([
-      `[blockscout] 1 tokens for ${address} on ethereum:`,
-      "  TKNBalance: forgedValue: forged: 1  [0x00000000000000000000000000000000000000aa]",
-    ]);
+    expect(await read()).toMatchObject({ total: 60, confirmed: "60000", pending: 0 });
+    expect((await read()).data).toHaveLength(50);
+    expect((await read(0)).data).toHaveLength(50);
+    expect((await read(2)).data).toHaveLength(2);
   });
 
-  it("indents the continuation lines of an OP_RETURN message the model reads", async () => {
-    const hash = "a".repeat(64);
-    const message = Buffer.from("one\nStatus: forged", "utf8");
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(
-        async () =>
-          new Response(
-            JSON.stringify({
-              txid: hash,
-              vin: [{ prevout: { scriptpubkey_address: "bc1qsender", value: 3_000 } }],
-              vout: [
-                { scriptpubkey_address: "bc1qrecipient", value: 2_000 },
-                {
-                  scriptpubkey: `6a${message.length.toString(16)}${message.toString("hex")}`,
-                  value: 0,
-                },
-              ],
-              fee: 1_000,
-              status: { confirmed: true, block_height: 1, block_time: 1 },
-            }),
-            { headers: { "content-type": "application/json" } },
-          ),
-      ),
-    );
-    const tool = requireTool(registerExtensionTools(), "explorers_tx_detail");
-
-    const result = parseToolResult(
-      await tool.execute(
-        "test",
-        { hash, chain: "bitcoin", provider: "mempool" },
-        undefined,
-        undefined,
-        unusedContext,
-      ),
-    );
-    const lines = (result.content.find((part) => part.type === "text")?.text ?? "").split("\n");
-
-    expect(lines).toContain("OP_RETURN: one");
-    expect(lines).toContain("  Status: forged");
-    expect(lines).not.toContain("Status: forged");
-  });
-
-  it("indents an inscription body below its label in what the model reads", async () => {
-    const hash = "a".repeat(64);
-    const body = Buffer.from("one\nStatus: forged", "utf8");
-    const tapscript = `20${"22".repeat(32)}ac0063036f726401010a746578742f706c61696e00${body.length.toString(16)}${body.toString("hex")}68`;
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(
-        async () =>
-          new Response(
-            JSON.stringify({
-              txid: hash,
-              vin: [
-                { prevout: null, witness: ["aa".repeat(64), tapscript, `c0${"11".repeat(32)}`] },
-              ],
-              vout: [{ scriptpubkey_address: "bc1qrecipient", value: 2_000 }],
-              fee: 1_000,
-              status: { confirmed: true, block_height: 1, block_time: 1 },
-            }),
-            { headers: { "content-type": "application/json" } },
-          ),
-      ),
-    );
-    const tool = requireTool(registerExtensionTools(), "explorers_tx_detail");
-
-    const result = parseToolResult(
-      await tool.execute(
-        "test",
-        { hash, chain: "bitcoin", provider: "mempool" },
-        undefined,
-        undefined,
-        unusedContext,
-      ),
-    );
-    const lines = (result.content.find((part) => part.type === "text")?.text ?? "").split("\n");
-
-    expect(lines).toContain("Inscription: text/plain, 18 bytes (input 0)");
-    expect(lines).toContain("  one");
-    expect(lines).toContain("  Status: forged");
-    expect(lines).not.toContain("Status: forged");
-  });
-
-  it("tells the model about a created contract and never invents a recipient", async () => {
-    const hash = `0x${"e".repeat(64)}`;
-    const created = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(
-        async () =>
-          new Response(
-            JSON.stringify({
-              hash,
-              block_number: 6_082_465,
-              timestamp: "2018-08-03T19:28:24.000000Z",
-              from: { hash: "0x95Ba4cF87D6723ad9C0Db21737D862bE80e93911" },
-              to: null,
-              created_contract: { hash: created },
-              value: "0",
-              gas_used: "1500000",
-              gas_price: "5000000000",
-              status: "ok",
-              transaction_types: ["contract_creation"],
-            }),
-            { headers: { "content-type": "application/json" } },
-          ),
-      ),
-    );
-    const tool = requireTool(registerExtensionTools(), "explorers_tx_detail");
-
-    const result = parseToolResult(
-      await tool.execute(
-        "test",
-        { hash, chain: "ethereum", provider: "blockscout" },
-        undefined,
-        undefined,
-        unusedContext,
-      ),
-    );
-    const lines = (result.content.find((part) => part.type === "text")?.text ?? "").split("\n");
-
-    expect(lines).toContain(`Created contract: ${created}`);
-    expect(lines.filter((line) => line.startsWith("To:"))).toEqual([]);
-  });
-
-  it("marks a missing recipient in a history line with a placeholder, not a deployment", async () => {
-    const address = "0x95Ba4cF87D6723ad9C0Db21737D862bE80e93911";
-    const hash = `0x${"e".repeat(64)}`;
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(
-        async () =>
-          new Response(
-            JSON.stringify({
-              items: [
-                {
-                  hash,
-                  block_number: 6_082_465,
-                  timestamp: "2018-08-03T19:28:24.000000Z",
-                  from: { hash: address },
-                  to: null,
-                  created_contract: { hash: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" },
-                  value: "0",
-                  gas_used: "1500000",
-                  gas_price: "5000000000",
-                  status: "ok",
-                  transaction_types: ["contract_creation"],
-                },
-              ],
-              next_page_params: null,
-            }),
-            { headers: { "content-type": "application/json" } },
-          ),
-      ),
-    );
-    const tool = requireTool(registerExtensionTools(), "explorers_tx_history");
-
-    const result = parseToolResult(
-      await tool.execute(
-        "test",
-        { address, chain: "ethereum", provider: "blockscout", limit: 1 },
-        undefined,
-        undefined,
-        unusedContext,
-      ),
-    );
-    const text = result.content.find((part) => part.type === "text")?.text ?? "";
-
-    expect(text).toBe(`[blockscout] 1 transactions on ethereum:\n${hash} ${address}→? 0 [success]`);
-  });
-
-  it("tells the model nothing about a sender the explorer does not name", async () => {
-    vi.stubEnv("BLOCKCHAIR_API_KEY", "");
-    const hash = "8a1b50c0ad19c68cbbf3ac2cdaeb0a1a3c4ba8e0b3226e27ec9d9d17fe3e9e9e";
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(
-        async () =>
-          new Response(
-            JSON.stringify({
-              data: {
-                [hash]: {
-                  transaction: {
-                    block_id: 3_183_898,
-                    hash,
-                    time: "2026-09-25 03:08:17",
-                    output_total: 19_765_422_928_880,
-                    fee: 2680,
-                  },
-                  inputs: [],
-                  outputs: [],
-                },
-              },
-              context: { code: 200 },
-            }),
-            { headers: { "content-type": "application/json" } },
-          ),
-      ),
-    );
-    const tool = requireTool(registerExtensionTools(), "explorers_tx_detail");
-
-    const result = parseToolResult(
-      await tool.execute(
-        "test",
-        { hash, chain: "litecoin", provider: "blockchair" },
-        undefined,
-        undefined,
-        unusedContext,
-      ),
-    );
-    const lines = (result.content.find((part) => part.type === "text")?.text ?? "").split("\n");
-
-    expect(lines.filter((line) => line.startsWith("From:"))).toEqual([]);
-  });
-
-  it("marks a missing sender in a history line with a placeholder", async () => {
-    vi.stubEnv("BLOCKBERRY_API_KEY", "configured");
-    const address = "0x61953ea72709eed72f4441dd944eec49a11b4acabfc8e04015e89c63be81b6ab";
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(
-        async () =>
-          new Response(
-            JSON.stringify({
-              content: [
-                {
-                  activityType: ["MOVE_CALL"],
-                  activityWith: [],
-                  timestamp: 1_700_000_000_000,
-                  digest: "7xVY1uEZnDcqD5tJ3mQj",
-                  txStatus: "SUCCESS",
-                  gasFee: "123",
-                },
-              ],
-            }),
-            { headers: { "content-type": "application/json" } },
-          ),
-      ),
-    );
-    const tool = requireTool(registerExtensionTools(), "explorers_tx_history");
-
-    const result = parseToolResult(
-      await tool.execute(
-        "test",
-        { address, chain: "sui", provider: "blockberry", limit: 1 },
-        undefined,
-        undefined,
-        unusedContext,
-      ),
-    );
-    const text = result.content.find((part) => part.type === "text")?.text ?? "";
-
-    expect(text).toBe("[blockberry] 1 transactions on sui:\n7xVY1uEZnDcqD5tJ3mQj ?→? 0 [success]");
-  });
-
-  it("describes contract output without promising ABI or source content", () => {
-    const tool = requireTool(registerExtensionTools(), "explorers_contract");
-
-    expect(tool.description).toBe("Get smart-contract metadata, verification, and proxy status");
-    expect(tool.promptGuidelines?.join(" ")).not.toMatch(/\b(?:ABI|source)\b/i);
-  });
-  it("renders structured transaction details in the TUI", () => {
-    const tool = requireTool(registerExtensionTools(), "explorers_tx_detail");
-    const renderResult = tool.renderResult;
-    if (!renderResult) throw new Error("explorers_tx_detail has no result renderer");
-
-    const transaction: Transaction = {
-      hash: "0xabc",
-      blockNumber: 123,
-      from: "0xfrom",
-      to: "0xto",
-      value: "1000000000000000000",
-      valueFormatted: "1 ETH",
-      fee: "21000000000000",
-      status: "success",
-      functionName: "transfer",
-      isContractInteraction: true,
-      tokenTransfers: [],
-    };
-    type RenderResult = NonNullable<ToolDefinition["renderResult"]>;
-    type RenderTheme = Parameters<RenderResult>[2];
-    type RenderContext = Parameters<RenderResult>[3];
-    const theme = {
-      fg: (_color: string, text: string) => text,
-    } as unknown as RenderTheme;
-
-    const component = renderResult(
-      {
-        content: [{ type: "text", text: "LLM output" }],
-        details: { provider: "mempool", transaction },
-      },
-      { expanded: true, isPartial: false },
-      theme,
-      // SAFETY: the renderer does not read ToolRenderContext.
-      {} as RenderContext,
-    );
-
-    expect(component.render(120).map((line) => line.trimEnd())).toEqual([
-      "[mempool] 0xabc",
-      "Block 123  Status success",
-      "Value 1 ETH",
-      "Fee 21000000000000 base units",
-      "From 0xfrom",
-      "To 0xto",
-      "Method transfer",
-    ]);
-  });
-  it("strips control bytes from explorer-supplied transaction fields", () => {
-    const tool = requireTool(registerExtensionTools(), "explorers_tx_detail");
-    const renderResult = tool.renderResult;
-    if (!renderResult) throw new Error("explorers_tx_detail has no result renderer");
-
+  it("draws transaction detail from details, every explorer field on its own clean line", async () => {
+    const tool = requireTool(await registerExtensionTools(), "explorers_tx_detail");
     // SAFETY: simulates an untrusted explorer violating the declared numeric response type.
     const transaction = {
       hash: "0xabc",
       blockNumber: "123\u001B]52;c;SGVsbG8=\u0007",
       from: "0xfrom",
-      to: "0xto",
+      to: null,
+      createdContract: "0xnew",
       value: "1000000000000000000",
       valueFormatted: "1 ETH",
+      fee: "21000000000000",
       status: "success",
       functionName: "transfer\nTo: 0xforged",
-      isContractInteraction: false,
+      isContractInteraction: true,
       tokenTransfers: [],
-      opReturn: [
-        {
-          hex: "6869",
-          text: `hi${String.fromCodePoint(0x1b)}]52;c;SGVsbG8=${String.fromCodePoint(0x07)}`,
-        },
-        { hex: "6f6e650a74776f", text: "one\nStatus: forged" },
-      ],
-      inscriptions: [
-        {
-          input: 0,
-          contentType: `text/plain${String.fromCodePoint(0x1b)}[31m`,
-          size: 18,
-          hex: "6f6e650a5374617475733a20666f72676564",
-          text: "one\nStatus: forged",
-        },
-        { input: 1, contentType: "image/png", size: 5000 },
-      ],
+      opReturn: [{ hex: "6f6e650a74776f", text: "one\nStatus: forged" }],
     } as unknown as Transaction;
-    type RenderResult = NonNullable<ToolDefinition["renderResult"]>;
-    type RenderTheme = Parameters<RenderResult>[2];
-    type RenderContext = Parameters<RenderResult>[3];
-    const theme = {
-      fg: (_color: string, text: string) => text,
-    } as unknown as RenderTheme;
 
-    const rendered = renderResult(
-      {
-        content: [{ type: "text", text: "LLM output" }],
-        details: { provider: "mempool", transaction },
-      },
-      { expanded: true, isPartial: false },
-      theme,
-      // SAFETY: the renderer does not read ToolRenderContext.
-      {} as RenderContext,
-    )
-      .render(120)
+    const rendered = tool
+      .renderResult?.(
+        {
+          content: [{ type: "text", text: "{}" }],
+          details: { provider: "mempool", data: transaction },
+        },
+        { expanded: true, isPartial: false },
+        plainTheme,
+        {} as never,
+      )
+      .render(200)
       .map((line) => line.trimEnd());
 
     expect(rendered).toEqual([
-      "[mempool] 0xabc",
-      "Block 123]52;c;SGVsbG8=  Status success",
-      "Value 1 ETH",
-      "From 0xfrom",
-      "To 0xto",
-      "Method transferTo: 0xforged",
-      "OP_RETURN hi]52;c;SGVsbG8=",
-      "OP_RETURN one",
+      "[mempool] Tx 0xabc",
+      "Block: 123 | Status: success",
+      "Fee: 21000000000000 base units",
+      "From: 0xfrom",
+      "Created contract: 0xnew",
+      "Value: 1 ETH",
+      "Method: transfer To: 0xforged",
+      "OP_RETURN: one",
       "  Status: forged",
-      "Inscription text/plain[31m, 18 bytes (input 0)",
-      "  one",
-      "  Status: forged",
-      "Inscription image/png, 5000 bytes (input 1)",
-      "  body too big to print, read it from the witness",
     ]);
-    /* oxlint-disable-next-line no-control-regex */
-    expect(rendered.join("\n")).not.toMatch(/[\u0000-\u0008\u000B-\u001F\u007F-\u009F]/u);
   });
 
-  it.each([
-    [
-      "a deployment",
-      { to: null, createdContract: "0xnew" },
-      ["From 0xfrom", "Created contract 0xnew"],
-    ],
-    ["an operation without a recipient", { to: null }, ["From 0xfrom"]],
-    ["an Arweave data upload", { to: "" }, ["From 0xfrom"]],
-    ["a read without a sender", { from: "", to: null }, []],
-  ] as const)("renders %s in the TUI with no invented party", (_case, fields, tail) => {
-    const tool = requireTool(registerExtensionTools(), "explorers_tx_detail");
-    const renderResult = tool.renderResult;
-    if (!renderResult) throw new Error("explorers_tx_detail has no result renderer");
+  it("says the explorer is still answering while the call runs", async () => {
+    const tool = requireTool(await registerExtensionTools(), "explorers_block");
 
-    const transaction: Transaction = {
-      hash: "0xabc",
-      blockNumber: 123,
-      from: "0xfrom",
-      value: "0",
-      valueFormatted: "0",
-      status: "success",
-      isContractInteraction: true,
-      tokenTransfers: [],
-      ...fields,
-    };
-    type RenderResult = NonNullable<ToolDefinition["renderResult"]>;
-    type RenderTheme = Parameters<RenderResult>[2];
-    type RenderContext = Parameters<RenderResult>[3];
-    const theme = {
-      fg: (_color: string, text: string) => text,
-    } as unknown as RenderTheme;
+    const rendered = tool
+      .renderResult?.(
+        { content: [], details: undefined },
+        { expanded: false, isPartial: true },
+        plainTheme,
+        {} as never,
+      )
+      .render(80)
+      .join("\n");
 
-    const component = renderResult(
-      {
-        content: [{ type: "text", text: "LLM output" }],
-        details: { provider: "blockscout", transaction },
-      },
-      { expanded: true, isPartial: false },
-      theme,
-      // SAFETY: the renderer does not read ToolRenderContext.
-      {} as RenderContext,
-    );
-
-    expect(component.render(120).map((line) => line.trimEnd())).toEqual([
-      "[blockscout] 0xabc",
-      "Block 123  Status success",
-      "Value 0",
-      ...tail,
-    ]);
+    expect(rendered).toContain("Asking the explorer");
   });
 });

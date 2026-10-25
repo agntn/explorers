@@ -1,5 +1,4 @@
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
+import { Client, InMemoryTransport } from "@modelcontextprotocol/client";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import { Provider } from "../../src/core/provider.ts";
 import type { ProviderConstructor } from "../../src/core/provider.ts";
@@ -323,6 +322,8 @@ describe("Explorers MCP server", () => {
     expect(JSON.parse(result.content[0]?.text ?? "null")).toEqual({
       provider: "mempool",
       total: 1,
+      confirmed: "9007199254740993",
+      pending: 0,
       data: [
         {
           txid: "a".repeat(64),
@@ -807,7 +808,10 @@ describe("Explorers MCP server", () => {
       data: MANY_HOLDINGS.slice(0, 2),
     });
     expect(await readTokens({ limit: 100 })).toMatchObject({ total: 60, data: MANY_HOLDINGS });
-    expect(await readTokens({ limit: 0 })).toMatch(/limit/);
+    expect(await readTokens({ limit: 0 })).toMatchObject({
+      total: 60,
+      data: MANY_HOLDINGS.slice(0, 50),
+    });
     expect(await readTokens({ limit: 101 })).toMatch(/limit/);
     expect(await readTokens({ limit: 1.5 })).toMatch(/limit/);
   });
@@ -1064,7 +1068,6 @@ describe("Explorers MCP server", () => {
           name: "explorers_balance",
           arguments: { address: "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh", chain: "bitcoin" },
         },
-        undefined,
         { signal: controller.signal },
       )
       .catch((error: unknown) => error);
@@ -1098,7 +1101,6 @@ describe("Explorers MCP server", () => {
           name: "explorers_tx_history",
           arguments: { address: "vitalik.eth", provider: "blockscout" },
         },
-        undefined,
         { signal: controller.signal },
       )
       .catch((error: unknown) => error);
@@ -1144,6 +1146,36 @@ describe("Explorers MCP server", () => {
       "0x0000000000000000000000000000000000000001",
       "0x0000000000000000000000000000000000000002",
     ]);
+  });
+
+  it("answers one balance per address for a list a host sent as a JSON string", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json({
+          chain_stats: { funded_txo_sum: 1000, spent_txo_sum: 0 },
+          mempool_stats: { funded_txo_sum: 0, spent_txo_sum: 0 },
+        }),
+      ),
+    );
+    const client = await connectTestClient();
+    const address = JSON.stringify([
+      "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
+      "bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq",
+    ]);
+
+    const result = parseToolResult(
+      await client.callTool({
+        name: "explorers_balance",
+        arguments: { address, chain: "bitcoin" },
+      }),
+    );
+
+    expect(result.isError).toBe(false);
+    expect(JSON.parse(result.content[0]?.text ?? "null")).toMatchObject({
+      provider: "mempool",
+      data: [{ balance: "1000" }, { balance: "1000" }],
+    });
   });
 
   it("rejects a whitespace-only address before any provider call", async () => {
@@ -1293,6 +1325,116 @@ describe("Explorers MCP server", () => {
         text: textContaining('Operation "getBlockInfo" not supported by blockscout'),
       },
     ]);
+  });
+
+  it("routes Arweave balance and block reads through gateway REST", async () => {
+    const address = "FPjbN_btYKzcf8QASjs30v5C0FPv7XpwKXENBW8dqVw";
+    const fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/balance")) return new Response("9007199254740993");
+      return Response.json({
+        height: 42,
+        indep_hash: "block-hash",
+        previous_block: "parent-hash",
+        timestamp: 1528491598,
+        reward_addr: "miner",
+        txs: ["a", "b"],
+      });
+    });
+    vi.stubGlobal("fetch", fetch);
+    const client = await connectTestClient();
+    const read = async (name: string, args: Readonly<Record<string, unknown>>) =>
+      JSON.parse(
+        parseToolResult(await client.callTool({ name, arguments: args })).content[0]?.text ?? "",
+      ) as unknown;
+
+    expect(await read("explorers_balance", { address, chain: "arweave" })).toMatchObject({
+      provider: "turbo",
+      data: {
+        balance: "9007199254740993",
+        balanceFormatted: "9007.199254740993",
+        blockNumber: null,
+      },
+    });
+    expect(await read("explorers_block", { blockNumber: 42, chain: "arweave" })).toMatchObject({
+      provider: "turbo",
+      data: { number: 42, hash: "block-hash", txCount: 2 },
+    });
+    expect(fetch.mock.calls.map(([url]) => String(url))).toEqual([
+      `https://turbo-gateway.com/wallet/${address}/balance`,
+      "https://turbo-gateway.com/block/height/42",
+    ]);
+  });
+
+  it("resolves ENS for history, contract, token and transfer reads", async () => {
+    const resolved = `0x${"a".repeat(40)}`;
+    const explorerUrls: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("ensideas")) return Response.json({ address: resolved });
+        explorerUrls.push(url);
+        if (url.endsWith("token-balances")) return Response.json([]);
+        return Response.json(
+          url.includes("/smart-contracts/") ? { is_verified: false } : { items: [] },
+        );
+      }),
+    );
+    const client = await connectTestClient();
+
+    for (const name of [
+      "explorers_tx_history",
+      "explorers_contract",
+      "explorers_tokens",
+      "explorers_token_transfers",
+    ]) {
+      const result = parseToolResult(
+        await client.callTool({
+          name,
+          arguments: { address: "vitalik.eth", chain: "ethereum", provider: "blockscout" },
+        }),
+      );
+      expect(result.isError).toBe(false);
+    }
+
+    expect(explorerUrls).toHaveLength(4);
+    for (const url of explorerUrls) expect(url).toContain(resolved);
+  });
+
+  it("escapes C1, bidi and line separator characters in the JSON the model reads", async () => {
+    const symbol = `T${String.fromCodePoint(0x9b)}2J${String.fromCodePoint(0x202e)}${String.fromCodePoint(0x2028)}x`;
+    register(TokenProvider, { chains: ["ethereum"] });
+    const holding = { ...LIVE_HOLDING, symbol };
+    vi.spyOn(TokenProvider.prototype, "getTokenBalances").mockResolvedValue([holding]);
+    const client = await connectTestClient();
+
+    const text =
+      parseToolResult(
+        await client.callTool({
+          name: "explorers_tokens",
+          arguments: {
+            address: "0x0000000000000000000000000000000000000001",
+            provider: "blockscout",
+          },
+        }),
+      ).content[0]?.text ?? "";
+
+    expect(text).toContain("\\u009b2J\\u202e\\u2028x");
+    for (const code of [0x9b, 0x202e, 0x2028])
+      expect(text).not.toContain(String.fromCodePoint(code));
+    expect(JSON.parse(text)).toMatchObject({ data: [{ symbol }] });
+  });
+
+  it("lists every tool with its title in the annotations Claude Code reads", async () => {
+    const client = await connectTestClient();
+    const { tools } = await client.listTools();
+
+    expect(tools).toHaveLength(11);
+    for (const tool of tools) {
+      expect(tool.annotations?.title).toBe(tool.title);
+      expect(tool.annotations?.readOnlyHint).toBe(true);
+    }
   });
 
   it("resolves ENS names before contract lookup", async () => {

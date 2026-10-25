@@ -41,32 +41,22 @@ npx @agntn/explorers vitalik.eth
 ```
 
 ```
-[blockscout] ethereum balance for 0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045
-  6.712597953701629485 ETH
-  Raw: 6712597953701629485 base units
-  Fetched: 2026-09-15T12:42:41.628Z
-  Block: unknown
+{"provider":"blockscout","data":{"address":"0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045","chain":"ethereum","balance":"5773499921329373953","balanceFormatted":"5.773499921329373953","symbol":"ETH","fetchedAt":"2026-10-24T21:32:05.322Z","blockNumber":null,"blockHash":null}}
 ```
+
+Yes, that's JSON. It's the exact line an agent reads over MCP, so what you see is what the model gets. Want one field? `jq` is right there.
 
 No key, no config, no subcommand. Give it something that looks like an address and it's a `balance`, give it nothing and you get `providers`, give it `vitalik.eth` and it resolves the name first. Without keys it goes to Blockscout. Drop an `ETHERSCAN_API_KEY` in your env and the exact same command goes to Etherscan, or `-p` if you'd rather pick yourself. How it decides: [Provider selection](https://explorers.agntn.dev/guide/selection).
 
 `balance` takes as many addresses as you throw at it. Vitalik and the zero address, where ETH goes to die:
 
 ```bash
-explorers balance vitalik.eth 0x0000000000000000000000000000000000000000
+explorers balance vitalik.eth 0x0000000000000000000000000000000000000000 | jq -c '.data[] | {address, balanceFormatted}'
 ```
 
 ```
-[blockscout] ethereum balance for 0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045
-  6.712597953701629485 ETH
-  Raw: 6712597953701629485 base units
-  Fetched: 2026-09-15T12:43:23.629Z
-  Block: unknown
-[blockscout] ethereum balance for 0x0000000000000000000000000000000000000000
-  14149.803103387147250366 ETH
-  Raw: 14149803103387147250366 base units
-  Fetched: 2026-09-15T12:43:23.494Z
-  Block: unknown
+{"address":"0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045","balanceFormatted":"5.773499921329373953"}
+{"address":"0x0000000000000000000000000000000000000000","balanceFormatted":"14156.620025700706010689"}
 ```
 
 The graveyard is doing better than most of us ;)
@@ -89,18 +79,16 @@ How does `tx` know if you gave it a hash or an address? It looks at the shape. W
 Anything from the Bitcoin family comes with its OP_RETURN decoded, hex always, text when it's actually text. The one every tutorial quotes:
 
 ```bash
-explorers tx 8bae12b5f4c088d940733dcd1455efc6a3a69cf9340e17a981286d3778615684 -c btc
+explorers tx 8bae12b5f4c088d940733dcd1455efc6a3a69cf9340e17a981286d3778615684 -c btc | jq .data.opReturn
 ```
 
 ```
-[mempool] Tx 8bae12b5f4c088d940733dcd1455efc6a3a69cf9340e17a981286d3778615684
-  Block: 308570
-  From: 1HnhWpkMHMjgt167kvgcPyurMmsCQ2WPgg
-  To: 1HnhWpkMHMjgt167kvgcPyurMmsCQ2WPgg
-  Value: 0.002
-  Status: success
-  Fee: 20000 base units
-  OP_RETURN: charley loves heidi
+[
+  {
+    "hex": "636861726c6579206c6f766573206865696469",
+    "text": "charley loves heidi"
+  }
+]
 ```
 
 Ordinals inscriptions show up too, on one transaction from Mempool or Blockstream. They're read straight from the witness. No indexer, no inscription numbers, just the bytes.
@@ -108,13 +96,18 @@ Ordinals inscriptions show up too, on one transaction from Mempool or Blockstrea
 And does an address still hide its public key? The one that paid 10,000 BTC for two pizzas doesn't:
 
 ```bash
-explorers pubkey 1XPTgDRhN8RFnzniWCddobD9iKZatrvH4
+explorers pubkey 1XPTgDRhN8RFnzniWCddobD9iKZatrvH4 | jq .data
 ```
 
 ```
-[mempool] 1XPTgDRhN8RFnzniWCddobD9iKZatrvH4 on bitcoin
-  Pubkey: 0434417dd8d89deaf0f6481c2c160d6de0921624ef7b956f38eef9ed4a64e36877be84b77cdee5a8d92b7d93694f89c3011bf1cbdf4fd7d8ca13b58a7bb4ab0804
-  Shown by spend: fefde2ee3cbaa812134c7b575ac06e372c839dc95622c3967e8142922dd3912b
+{
+  "address": "1XPTgDRhN8RFnzniWCddobD9iKZatrvH4",
+  "pubkey": "0434417dd8d89deaf0f6481c2c160d6de0921624ef7b956f38eef9ed4a64e36877be84b77cdee5a8d92b7d93694f89c3011bf1cbdf4fd7d8ca13b58a7bb4ab0804",
+  "source": "spend",
+  "txid": "fefde2ee3cbaa812134c7b575ac06e372c839dc95622c3967e8142922dd3912b",
+  "spent": true,
+  "chain": "bitcoin"
+}
 ```
 
 Every spend from a P2PKH or P2WPKH address leaves its key on chain, and a taproot address is its key. No key on chain, no Kangaroo. Worth knowing before the GPU fans spin up.
@@ -135,7 +128,7 @@ Every spend from a P2PKH or P2WPKH address leaves its key on chain, and a taproo
 | `providers` | Registered providers and their capabilities                                            | `explorers providers`             |
 | `mcp`       | The MCP server on stdio                                                                | `explorers mcp`                   |
 
-Every command takes `-c` for the chain and `-p` for the provider. `tx`, `transfers`, `tokens` and `utxos` take `-n`, `transfers` takes `-t` if you only care about one token. Everything else: [CLI guide](https://explorers.agntn.dev/guide/cli).
+Every command takes `-c` for the chain and `-p` for the provider. `tx`, `transfers`, `tokens` and `utxos` take `-n`, `transfers` takes `-t` if you only care about one token. `explorers <command> --help` lists the rest, straight from the tool schema. Everything else: [CLI guide](https://explorers.agntn.dev/guide/cli).
 
 ## 🧠 Library
 
@@ -208,7 +201,7 @@ omp install @agntn/explorers
 }
 ```
 
-Eleven read-only tools, `explorers_balance` through `explorers_providers`, the same eleven on all three. Got your own transport? `createMcpServer()` lives in `@agntn/explorers/mcp`. The heavy stuff, `raw` records and contract ABIs, stays out of the answer until a call asks for it. Your context window will thank you. [Agents guide](https://explorers.agntn.dev/guide/agents).
+Eleven read-only tools, each written once for MCP, Pi, OMP and the CLI. Three copies used to drift. One can't. Got your own transport? `createMcpServer()` lives in `@agntn/explorers/mcp`. The heavy stuff, `raw` records and contract ABIs, stays out of the answer until a call asks for it. Your context window will thank you. [Agents guide](https://explorers.agntn.dev/guide/agents).
 
 ## 🚫 What this does not do
 

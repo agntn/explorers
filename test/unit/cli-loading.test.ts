@@ -35,6 +35,8 @@ describe("CLI loading", () => {
     "",
     "balance",
     "tx",
+    "tx-history",
+    "tx-detail",
     "utxos",
     "pubkey",
     "contract",
@@ -54,7 +56,7 @@ const backends = [];
 registerHooks({ load(url, context, nextLoad) {
   if (url.includes("/src/core/") || url.includes("/src/providers/") ||
       url.includes("/@agntn/chains/") ||
-      url.includes("/@modelcontextprotocol/sdk/")) backends.push(url);
+      url.includes("/@modelcontextprotocol/")) backends.push(url);
   return nextLoad(url, context);
 }});
 process.once("exit", () => assert.deepEqual(backends, []));
@@ -69,6 +71,8 @@ ${offline}
   it.each([
     ["balance", "address"],
     ["tx", "address"],
+    ["tx-history", "address"],
+    ["tx-detail", "a".repeat(64)],
     ["utxos", "address"],
     ["pubkey", "address"],
     ["contract", "address"],
@@ -84,10 +88,12 @@ ${offline}
     expect(result.stderr).not.toContain("Unexpected network request");
   });
 
-  it("lists providers from registry metadata without loading a backend", () => {
-    const result = runCLI(
-      ["providers"],
-      `
+  it.each([[["providers"]], [[]]])(
+    "lists providers from registry metadata without loading a backend: %j",
+    (args) => {
+      const result = runCLI(
+        args,
+        `
 import assert from "node:assert/strict";
 import { registerHooks } from "node:module";
 const backends = [];
@@ -98,30 +104,31 @@ registerHooks({ load(url, context, nextLoad) {
 process.once("exit", () => assert.deepEqual(backends, []));
 ${offline}
 `,
-    );
-    expect(result.error).toBeUndefined();
-    expect(result.status, result.stderr).toBe(0);
-    expect(result.stdout).toContain("Registered providers (22)");
-    expect(result.stdout).toContain(
-      "mempool: balances, txHistory, txDetail, utxos, pubkeys, gasData, blockInfo; chains: bitcoin, litecoin, pepecoin",
-    );
-    expect(result.stdout).toContain("etherscan: balances, txHistory");
-    expect(result.stdout).not.toContain("requires API key");
-  });
+      );
+      expect(result.error).toBeUndefined();
+      expect(result.status, result.stderr).toBe(0);
+      const listed = JSON.parse(result.stdout) as Array<{
+        name: string;
+        chains: string[];
+        capabilities?: Record<string, boolean>;
+      }>;
+      expect(listed).toHaveLength(22);
+      expect(listed.find((listing) => listing.name === "mempool")).toMatchObject({
+        chains: ["bitcoin", "litecoin", "pepecoin"],
+        capabilities: { balances: true, utxos: true, pubkeys: true, contractInfo: false },
+      });
+    },
+  );
 
   it.each([
-    [["balance", "bc1qexample", "--provider", "mempool"], "0.00001 BTC"],
-    [["balance", "bc1qexample", "--provider", "mempool"], "Unconfirmed delta: -600 base units"],
-    [["tx", "bc1qexample", "--provider", "mempool", "--mode", "history"], "0 transactions"],
-    [["tx", "a".repeat(64), "--provider", "mempool"], "Value: 0.00001"],
-    [
-      ["utxos", "bc1qexample", "--provider", "mempool"],
-      "b".repeat(64) + ":0  0.00001  [block 1000]",
-    ],
-    [
-      ["pubkey", "bc1qexample", "--provider", "mempool"],
-      "No pubkey shown: the address never spent",
-    ],
+    [["balance", "bc1qexample", "--provider", "mempool"], '"balanceFormatted":"0.00001"'],
+    [["balance", "bc1qexample", "-p", "mempool"], '"unconfirmed":"-600"'],
+    [["bc1qexample", "--provider", "mempool"], '"balanceFormatted":"0.00001"'],
+    [["tx", "bc1qexample", "--provider", "mempool", "--mode", "history"], '"data":[]'],
+    [["tx", "a".repeat(64), "--provider", "mempool"], '"valueFormatted":"0.00001"'],
+    [["tx-detail", "a".repeat(64), "--provider", "mempool"], '"fee":"100"'],
+    [["utxos", "bc1qexample", "--provider", "mempool"], `"txid":"${"b".repeat(64)}","vout":0`],
+    [["pubkey", "bc1qexample", "--provider", "mempool"], '"pubkey":null'],
   ] as const)("executes reads after loading the backend: %j", (args, expected) => {
     const result = runCLI(
       args,

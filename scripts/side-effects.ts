@@ -20,6 +20,8 @@ const entries = [
   "index.mjs",
   "cli.mjs",
   "mcp.mjs",
+  "tools.mjs",
+  "tool-operations.mjs",
   ...readdirSync(join(dist, "providers"))
     .filter((file) => file.endsWith(".mjs"))
     .map((file) => `providers/${file}`),
@@ -46,9 +48,8 @@ try {
           external: [
             /^node:/u,
             /^@agntn\/chains/u,
+            /^@agntn\/tools/u,
             /^@modelcontextprotocol\//u,
-            /^citty/u,
-            /^consola/u,
             /^zod/u,
           ],
           treeshake: { moduleSideEffects: true },

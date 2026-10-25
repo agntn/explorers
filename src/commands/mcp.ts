@@ -1,19 +1,13 @@
-/** Run the Explorers MCP server over stdio */
-import { defineCommand } from "citty";
-
-export default defineCommand({
-  meta: {
-    name: "mcp",
-    description: "Run the Explorers MCP server over stdio",
-  },
-  async run() {
-    // The SDK and its zod schemas cost more than a megabyte to parse, so they wait until the
-    // server actually starts instead of loading for every `--help`.
-    const [{ StdioServerTransport }, { createMcpServer }] = await Promise.all([
-      import("@modelcontextprotocol/sdk/server/stdio.js"),
-      import("../mcp.ts"),
-    ]);
-    const server = createMcpServer();
-    await server.connect(new StdioServerTransport());
-  },
-});
+/**
+ * Serves the MCP server over stdio, which owns stdout: anything else printed there breaks the
+ * client. The SDK loads here, so `explorers --help` never pays for it.
+ *
+ * @returns {Promise<void>} Once the transport is connected.
+ */
+export async function serveMcp(): Promise<void> {
+  const [{ createMcpServer }, { StdioServerTransport }] = await Promise.all([
+    import("../mcp.ts"),
+    import("@modelcontextprotocol/server/stdio"),
+  ]);
+  await createMcpServer().connect(new StdioServerTransport());
+}
