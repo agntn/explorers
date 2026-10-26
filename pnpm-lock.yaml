@@ -14,8 +14,8 @@ catalogs:
       version: 1.0.0
   deps:
     '@agntn/chains':
-      specifier: 0.3.11
-      version: 0.3.11
+      specifier: 0.3.12
+      version: 0.3.12
     '@agntn/tools':
       specifier: 0.2.4
       version: 0.2.4
@@ -117,7 +117,7 @@ importers:
     dependencies:
       '@agntn/chains':
         specifier: catalog:deps
-        version: 0.3.11(@earendil-works/pi-coding-agent@1.4.0(@aws-sdk/credential-provider-node@3.972.83)(@modelcontextprotocol/sdk@1.30.1(supports-color@10.2.2)(zod@4.5.4))(@smithy/signature-v4@5.7.3)(supports-color@10.2.2)(ws@8.21.3)(zod@4.5.4))(supports-color@10.2.2)(typebox@1.3.27)(zod@4.5.4)
+        version: 0.3.12(@earendil-works/pi-coding-agent@1.4.0(@aws-sdk/credential-provider-node@3.972.83)(@modelcontextprotocol/sdk@1.30.1(supports-color@10.2.2)(zod@4.5.4))(@smithy/signature-v4@5.7.3)(supports-color@10.2.2)(ws@8.21.3)(zod@4.5.4))(supports-color@10.2.2)(typebox@1.3.27)(zod@4.5.4)
       '@agntn/tools':
         specifier: catalog:deps
         version: 0.2.4(@earendil-works/pi-coding-agent@1.4.0(@aws-sdk/credential-provider-node@3.972.83)(@modelcontextprotocol/sdk@1.30.1(supports-color@10.2.2)(zod@4.5.4))(@smithy/signature-v4@5.7.3)(supports-color@10.2.2)(ws@8.21.3)(zod@4.5.4))(@modelcontextprotocol/server@2.4.0)(@oh-my-pi/pi-coding-agent@18.12.6)(ai@7.0.92(zod@4.5.4))(zod@4.5.4)
@@ -172,7 +172,7 @@ importers:
     dependencies:
       '@agntn/chains':
         specifier: catalog:deps
-        version: 0.3.11(@earendil-works/pi-coding-agent@1.4.0(@aws-sdk/credential-provider-node@3.972.83)(@modelcontextprotocol/sdk@1.30.1(supports-color@10.2.2)(zod@4.5.4))(@smithy/signature-v4@5.7.3)(supports-color@10.2.2)(ws@8.21.3)(zod@4.5.4))(supports-color@10.2.2)(typebox@1.3.27)(zod@4.5.4)
+        version: 0.3.12(@earendil-works/pi-coding-agent@1.4.0(@aws-sdk/credential-provider-node@3.972.83)(@modelcontextprotocol/sdk@1.30.1(supports-color@10.2.2)(zod@4.5.4))(@smithy/signature-v4@5.7.3)(supports-color@10.2.2)(ws@8.21.3)(zod@4.5.4))(supports-color@10.2.2)(typebox@1.3.27)(zod@4.5.4)
       better-sqlite3:
         specifier: catalog:deps
         version: 12.11.1
@@ -231,8 +231,8 @@ importers:
 
 packages:
 
-  '@agntn/chains@0.3.11':
-    resolution: {integrity: sha512-1sKzM4QugGwUK1bPU9C9Hk61Mz02bSOdibJFYh9YMsFJUJsc6tzrDsW+QPB7i74U+L4foT0VSDjFBjL1CPhQWw==}
+  '@agntn/chains@0.3.12':
+    resolution: {integrity: sha512-hZJwJm8OIceTvtI7BkhFC2jqKcwD6DyLWGRqWQ3axtartgMOPWfs8+B71RNsgqsOT1coi1f9VCgJv4neTQ6VXA==}
     engines: {node: '>=24'}
     hasBin: true
     peerDependencies:
@@ -9480,7 +9480,7 @@ packages:
 
 snapshots:
 
-  '@agntn/chains@0.3.11(@earendil-works/pi-coding-agent@1.4.0(@aws-sdk/credential-provider-node@3.972.83)(@modelcontextprotocol/sdk@1.30.1(supports-color@10.2.2)(zod@4.5.4))(@smithy/signature-v4@5.7.3)(supports-color@10.2.2)(ws@8.21.3)(zod@4.5.4))(supports-color@10.2.2)(typebox@1.3.27)(zod@4.5.4)':
+  '@agntn/chains@0.3.12(@earendil-works/pi-coding-agent@1.4.0(@aws-sdk/credential-provider-node@3.972.83)(@modelcontextprotocol/sdk@1.30.1(supports-color@10.2.2)(zod@4.5.4))(@smithy/signature-v4@5.7.3)(supports-color@10.2.2)(ws@8.21.3)(zod@4.5.4))(supports-color@10.2.2)(typebox@1.3.27)(zod@4.5.4)':
     dependencies:
       '@modelcontextprotocol/sdk': 1.30.1(supports-color@10.2.2)(zod@4.5.4)
       citty: 0.2.2
