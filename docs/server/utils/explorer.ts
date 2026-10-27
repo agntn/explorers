@@ -1,4 +1,3 @@
-import type { H3Event } from "h3";
 import {
   has,
   normalizeChain,
@@ -8,6 +7,7 @@ import {
   type ProviderCapability,
   type ProviderContext,
 } from "@agntn/explorers";
+import { createError, type RequestEvent } from "nuxt/server";
 import type { ProviderStatus } from "#shared/wire";
 import { providerInfo } from "../../app/utils/providers";
 
@@ -22,7 +22,7 @@ export function readChain(query: Query): ChainKey | undefined {
   try {
     return normalizeChain(value);
   } catch {
-    throw createError({ statusCode: 400, statusMessage: `Unknown chain: ${value}` });
+    throw createError({ status: 400, statusText: `Unknown chain: ${value}` });
   }
 }
 
@@ -38,7 +38,7 @@ export function readProvider(query: Query): string | undefined {
     return undefined;
   }
   if (!has(value)) {
-    throw createError({ statusCode: 400, statusMessage: `Unknown provider: ${value}` });
+    throw createError({ status: 400, statusText: `Unknown provider: ${value}` });
   }
   return value;
 }
@@ -116,7 +116,7 @@ interface ReadOptions<T> {
  * to statuses. Every route is this plus its own query parsing.
  */
 export async function cachedRead<T extends object>(
-  event: H3Event,
+  event: RequestEvent,
   options: ReadOptions<T>,
 ): Promise<T & { provider: string; chain: string; fetchedAt: string }> {
   const { prefix, ttl, capability, chain, preferred, params, run } = options;

@@ -25,7 +25,7 @@ docs/
 ├── scripts/record-fixtures.mjs    # regenerates app/utils/landing-fixtures.ts through dist/
 ├── server/api/                    # balance, tx, tx-detail, utxos, contract, tokens, transfers, gas, block, providers over the library; tip and block-txs over the explorers' list endpoints
 ├── server/utils/                  # explorer.ts (chain and provider parsing, `cachedRead` envelope, key status), query.ts (caps, cache, rate limit, errors), slim.ts (raw dropped, source counted), tip.ts (the live feed, outside the library)
-├── server/routes/sitemap.xml.ts   # Docus sitemap plus the Vue pages it cannot see
+├── server/api/__sitemap__/       # pages.ts: the Vue pages the Docus sitemap cannot see
 ├── public/                        # fonts, favicon.svg and the icons and manifest cut from it
 ├── content/index.md               # landing
 ├── content/1.guide/               # getting started, cli, selection, balances, transactions, tokens, contracts, gas-and-blocks, errors, agents, custom, explorer
@@ -50,7 +50,7 @@ Explorer keys are Worker secrets, never vars: `wrangler secret put ETHERSCAN_API
 
 `@agntn/explorers` is an alias in `nuxt.config.ts` for `../src/index.ts`. Vite and Nitro bundle the checkout's sources into the worker, so `dist/` is never touched, and an earlier `file:..` dependency died exactly there: it copied the parent before anything had built `dist/`. Workers Builds runs with root directory `docs`, and its `pnpm install` there installs the whole workspace from the root lockfile, root `node_modules` included. So a bare import in `../src` resolves from the root, on the deploy as on your machine, and a new one needs nothing here. The CLI, MCP and tool entries stay out of the alias.
 
-`docs/` is a plain member of the root workspace, without hoisting, so it lists every package it imports, types included: `@nuxt/content`, `@nuxt/ui`, `@vueuse/core` and `shiki` sit in `devDependencies` for their imports in `app/`, `h3`, `ohash` and `ufo` in `dependencies`. `test/unit/docs-dependencies.test.ts` fails on any import the manifest forgets. Versions come from the `deps` and `dev` catalogs in the root `pnpm-workspace.yaml`, one entry for the library and the site alike, so `zod`, `@agntn/chains` and Vue stay one copy each. A second `zod@4.*` key under `packages:` in `pnpm-lock.yaml` means the two sides split again, and `pnpm dedupe` folds it back.
+`docs/` is a plain member of the root workspace, without hoisting, so it lists every package it imports, types included: `@nuxt/content`, `@nuxt/ui`, `@vueuse/core` and `shiki` sit in `devDependencies` for their imports in `app/`, `nitropack`, `ohash` and `ufo` in `dependencies`. `test/unit/docs-dependencies.test.ts` fails on any import the manifest forgets. Versions come from the `deps` and `dev` catalogs in the root `pnpm-workspace.yaml`, one entry for the library and the site alike, so `zod`, `@agntn/chains` and Vue stay one copy each. When `pnpm why zod` puts the library and `docs` on two `zod@4.*` copies, the two sides split again, and `pnpm dedupe` folds it back. Docus can still bring a copy of its own for the assistant.
 
 ## The snapshot
 
@@ -70,12 +70,13 @@ Explorer keys are Worker secrets, never vars: `wrangler secret put ETHERSCAN_API
 - Library errors are mapped in `toHttpError`: `NotFoundError` 404, `UnknownProviderError` and `AddressChainMismatchError` 400, `UnsupportedChainError` and `UnsupportedOperationError` 422, `AuthError`, `BlockedError` and `PlanRestrictedError` 503, `RateLimitError` 429, `HTTPError` and other `ExplorerError` 502, a `RangeError` from `normalizeChain` 400. The message never repeats an endpoint: an `HTTPError` quotes its `reason` after the status and a `TransportError` its own `reason`, an `AddressChainMismatchError` keeps its whole message, which holds nothing but the address and chain names, while anything else goes through `failureText`, which keeps only the part before the first `:` or `[`.
 - `app/utils/landing-fixtures.ts` holds answers recorded through the library so the landing and the hub paint before the worker answers. Regenerate it with `pnpm fixtures`. Never edit the recorded text by hand, it drifts and nobody notices.
 - In production the cache lives in the KV binding `CACHE` (`$production.nitro.storage.cache`). Locally it is in memory.
-- Entity pages read after mount and keep their state in the route: the address page's tab and page number in the query, everything else in the path. They are `noindex`, and `nitro.prerender.ignore` keeps them out of the build; the hub, gas and providers pages are prerendered as shells.
+- Entity pages read after mount and keep their state in the route: the address page's tab and page number in the query, everything else in the path. They are `noindex`, and `prerender.ignore` keeps them out of the build; the hub, gas and providers pages are prerendered as shells.
 
 ## SEO
 
 - `seo.schema` in `app/app.config.ts` emits the landing JSON-LD: `WebSite`, the agntn `Organization` as publisher, and a free `SoftwareApplication` with `sameAs` on GitHub and npm. Docs pages get `Article` plus `BreadcrumbList` from Docus on their own; the explorer pages call `useSeo` and `defineOgImage` themselves.
-- The Docus sitemap reads content collections only. `server/routes/sitemap.xml.ts` wraps it and appends the pages listed in `PAGES`; a new static page under `app/pages/` goes there too or it is invisible to crawlers. Entity pages stay out.
+- The Docus sitemap reads content collections only. `server/api/__sitemap__/pages.ts` hands `@nuxtjs/sitemap` the pages listed in `PAGES` through `sitemap.sources`; a new static page under `app/pages/` goes there too or it is invisible to crawlers. Entity pages stay out.
+- `useSeo` links every page to its markdown twin for agents. The explorer pages have none, so each calls `useNoMarkdownTwin()` after `useSeo`, and `agentDiscovery.excludePrefixes` keeps `/explorer` out of the markdown routes.
 - A page that moved keeps its old address as a `redirect` rule with `prerender: false` in `nuxt.config.ts`. Without the flag the crawler may pick the address up, Nitro writes a refresh page for it, and Workers serves that file as a 200 before the worker can send the 301. Curl, link checkers and agents then land on a blank page.
 - Docus links `/favicon.ico` without shipping one. `public/favicon.svg` is the source, the PNGs and the `.ico` are cut from it with ImageMagick, `app.head` in `nuxt.config.ts` links them with the manifest and theme colours.
 
@@ -83,10 +84,11 @@ Explorer keys are Worker secrets, never vars: `wrangler secret put ETHERSCAN_API
 
 - `app/components/OgImage/Docs.takumi.vue` and `Landing.takumi.vue` override the Docus templates of the same name and are rendered by Takumi at build time. Takumi has no CSS variables, so the theme colours from `app.css` are repeated there as literals.
 - nuxt-og-image does not see the faces `@nuxt/fonts` generates on this Nuxt version, but it parses `@font-face` rules from the files in `css`. That is why `app/assets/fonts.css` declares the four Figtree and Fira Code TTFs in `public/fonts` and `fonts.families` uses the `local` provider.
-- The landing OG file is named from the SEO description. Nitro refuses to write a prerender path containing `..`, so a description ending in a period is silently skipped and the landing ships with a dead `og:image`. Docus also cuts a description longer than 150 minus the title's length at the last period, which puts a period at the end. Keep the description in `content/index.md` under that budget and without a trailing period, and check the build log for `c_Landing` with `(skipped)`.
+- OG files are named by a hash, so a description may end in a period, and its commas reach the card.
 
 ## Constraints
 
+- Server files import `defineEventHandler`, `getQuery`, `createError`, `isNuxtError` and the request helpers from `nuxt/server`, and `useStorage` from `nitropack/runtime`. The auto-imported names of the same spelling are h3 v1's, and h3's handler passes an event the `nuxt/server` helpers don't read.
 - Token symbols, token names, contract names and decoded function names come from public chains and the explorers that index them; anyone can deploy a token called anything. Render them as text through interpolation, clip them, never `v-html`; nothing in `app/` uses it.
 - The look follows the agntn design system; `DESIGN.md` lists what this site owns and every departure. A new panel is an instrument on the `console-*` grammar, a list is `UTable` with the roster classes, a control is a Nuxt UI component (`UButton`, `UBadge`, `UTabs`, `UInput`, `USelectMenu`, `UAlert`) whose look comes from its variant in `app.config.ts`, a shortened value gets a `UTooltip`, never `title`.
 - Provider labels, icons, env vars, blurbs and chain icons live once in `app/utils/providers.ts`. The sidebar, the landing grid, the matrices, the explorer and `::provider-facts` read from it.

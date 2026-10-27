@@ -1,4 +1,5 @@
 import { formatWei, getJSON, type ChainKey } from "@agntn/explorers";
+import { createError } from "nuxt/server";
 import type {
   BlockTransaction,
   BlockTransactionsAnswer,
@@ -381,8 +382,8 @@ export async function readTip(chain: ChainKey): Promise<TipAnswer> {
   if (mempool) return mempoolTip(chain, mempool);
   if (chain === "arweave") return arweaveTip();
   throw createError({
-    statusCode: 404,
-    statusMessage: `No live feed for ${chain}: its providers serve one address, hash or block at a time`,
+    status: 404,
+    statusText: `No live feed for ${chain}: its providers serve one address, hash or block at a time`,
   });
 }
 
@@ -426,7 +427,7 @@ export async function readBlockTransactions(
       retry: 0,
     });
     if (!/^[0-9a-f]{64}$/u.test(hash)) {
-      throw createError({ statusCode: 404, statusMessage: `No block ${number} on ${chain}` });
+      throw createError({ status: 404, statusText: `No block ${number} on ${chain}` });
     }
     const [block, txs] = await Promise.all([
       getJSON<MempoolBlock>(`${mempool}/api/block/${hash}`, { provider: "mempool" }),
@@ -478,7 +479,7 @@ export async function readBlockTransactions(
     };
   }
   throw createError({
-    statusCode: 404,
-    statusMessage: `No block transaction list for ${chain}`,
+    status: 404,
+    statusText: `No block transaction list for ${chain}`,
   });
 }

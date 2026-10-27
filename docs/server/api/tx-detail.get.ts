@@ -1,4 +1,5 @@
 import { requireOperation } from "@agntn/explorers";
+import { defineEventHandler, getQuery } from "nuxt/server";
 import type { DetailAnswer } from "#shared/wire";
 
 /** One `Transaction` as `getTxDetail()` returns it, `raw` dropped. */

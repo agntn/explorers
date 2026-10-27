@@ -5,18 +5,18 @@
   "scripts": {
     "snapshot": "node scripts/snapshot.mjs",
     "fixtures": "node scripts/record-fixtures.mjs",
-    "dev": "nuxt dev --extends docus",
-    "build": "pnpm snapshot && NUXT_SITE_URL=https://explorers.agntn.dev nuxt build --extends docus",
-    "generate": "NUXT_SITE_URL=https://explorers.agntn.dev nuxt generate --extends docus",
-    "preview": "nuxt preview --extends docus",
+    "dev": "nuxt dev",
+    "build": "pnpm snapshot && nuxt build",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
     "deploy": "pnpm build && wrangler deploy"
   },
   "dependencies": {
     "@agntn/chains": "catalog:deps",
     "better-sqlite3": "catalog:deps",
     "docus": "catalog:deps",
-    "h3": "catalog:deps",
     "jiti": "catalog:deps",
+    "nitropack": "catalog:deps",
     "nuxt": "catalog:deps",
     "ohash": "catalog:deps",
     "ufo": "catalog:deps",

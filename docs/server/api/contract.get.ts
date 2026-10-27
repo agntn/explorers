@@ -1,4 +1,5 @@
 import { requireOperation, resolveAddresses } from "@agntn/explorers";
+import { defineEventHandler, getQuery } from "nuxt/server";
 import type { ContractAnswer } from "#shared/wire";
 
 /** `getContractInfo()` with the ABI and the source measured instead of shipped. */

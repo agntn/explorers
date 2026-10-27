@@ -14,6 +14,7 @@ useSeo({
     { title, path: "/explorer/providers" },
   ],
 });
+useNoMarkdownTwin();
 
 defineOgImage(
   "Docs",

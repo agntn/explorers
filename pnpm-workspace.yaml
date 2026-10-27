@@ -22,10 +22,10 @@ catalogs:
     "@agntn/tools": 0.2.4
     "@modelcontextprotocol/server": 2.4.0
     better-sqlite3: 12.11.1
-    docus: 5.13.0
-    h3: 1.15.11
+    docus: 5.15.0
     jiti: 2.7.0
-    nuxt: 4.5.2
+    nitropack: 2.13.4
+    nuxt: 4.6.2
     ohash: 2.0.12
     ufo: 1.6.4
     zod: 4.5.4
@@ -38,15 +38,15 @@ catalogs:
     "@iconify-json/token": 1.2.42
     "@iconify-json/vscode-icons": 1.2.84
     "@modelcontextprotocol/client": 2.4.0
-    "@nuxt/content": 3.16.0
-    "@nuxt/ui": 4.11.0
+    "@nuxt/content": 3.16.2
+    "@nuxt/ui": 4.12.0
     "@oh-my-pi/omptype": 18.12.6
     "@oh-my-pi/pi-coding-agent": 18.12.6
     "@types/node": latest
-    "@vueuse/core": 14.4.0
+    "@vueuse/core": 15.0.0
     changelogen: 0.6.2
     obuild: 0.4.43
-    shiki: 4.4.3
+    shiki: 4.5.0
     tsx: 4.22.5
     typescript: 6.0.3
     wrangler: 4.128.0
