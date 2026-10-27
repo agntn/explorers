@@ -4,7 +4,7 @@
  * whichever explorer served it.
  */
 
-import type { Inscription, OpReturnPayload } from "./types.ts";
+import type { Inscription, OpReturnPayload, OpReturnScript } from "./types.ts";
 
 /** A data carrier opens with OP_RETURN, or with OP_FALSE OP_RETURN as Bitcoin SV writes it. */
 const OP_RETURN_SCRIPT = /^(?:00)?6a/i;
@@ -98,8 +98,9 @@ function decodeText(payload: Uint8Array): string | undefined {
   }
 }
 
+/* An empty push, such as OP_0, has no bytes to read, so it gets no text reading either. */
 function toPayload(bytes: Uint8Array): OpReturnPayload {
-  return { hex: bytes.toHex(), text: decodeText(bytes) };
+  return bytes.length === 0 ? { hex: "" } : { hex: bytes.toHex(), text: decodeText(bytes) };
 }
 
 /* Read a little-endian push length. Callers check first that all `width` bytes are there. */
@@ -166,28 +167,44 @@ function instructions(script: Uint8Array, start: number): Instruction[] {
   return result;
 }
 
-/*
- * Read the data pushes of an OP_RETURN output.
- *
- * Any other output yields nothing, and is rejected on the hex so a busy address does not pay to
- * decode thousands of ordinary scripts. The walk covers what Bitcoin Core calls push-only: an
- * opcode below OP_PUSHDATA1 is its own byte count, the small constants push themselves, and
- * anything above OP_16 or a truncated push ends the walk with whatever came before it.
- */
-function parseOpReturn(scriptHex: string): OpReturnPayload[] {
-  const prefix = OP_RETURN_SCRIPT.exec(scriptHex);
-  if (!prefix) return [];
-
-  const script = hexToBytes(scriptHex);
-  if (!script) return [];
-
-  const payloads: OpReturnPayload[] = [];
-  for (const { opcode, data } of instructions(script, prefix[0].length / 2)) {
-    if (opcode === OP_RESERVED) continue;
-    if (!data) break;
-    payloads.push(toPayload(data));
+/* Push-only, as Bitcoin Core reads it: a non-push opcode or a cut push leaves it incomplete. */
+function readPushes(script: Uint8Array, start: number): OpReturnScript {
+  const pushes: OpReturnPayload[] = [];
+  let cursor = start;
+  while (cursor < script.length) {
+    const step = readInstruction(script, cursor);
+    if (!step) return { pushes, complete: false };
+    const { opcode, data } = step.instruction;
+    if (opcode !== OP_RESERVED) {
+      if (!data) return { pushes, complete: false };
+      pushes.push(toPayload(data));
+    }
+    cursor = step.next;
   }
-  return payloads;
+  return { pushes, complete: true };
+}
+
+/* Rejected on the hex first, so a busy address doesn't decode thousands of ordinary scripts. */
+function readOpReturn(scriptHex: string): OpReturnScript | undefined {
+  const prefix = OP_RETURN_SCRIPT.exec(scriptHex);
+  if (!prefix) return undefined;
+  const script = hexToBytes(scriptHex);
+  return script ? readPushes(script, prefix[0].length / 2) : undefined;
+}
+
+/**
+ * Read the data pushes of one OP_RETURN output script, without a provider in the way.
+ *
+ * @param scriptHex - Output script as hex, either case, such as a `scriptpubkey` from Esplora.
+ * @returns {OpReturnScript | undefined} The pushes and whether the read reached the end of the
+ * script, or `undefined` when the script opens with neither OP_RETURN nor OP_FALSE OP_RETURN.
+ * @throws {TypeError} When `scriptHex` is not a string of whole hex bytes.
+ */
+export function parseOpReturn(scriptHex: string): OpReturnScript | undefined {
+  const script = typeof scriptHex === "string" ? hexToBytes(scriptHex) : undefined;
+  if (!script) throw new TypeError("parseOpReturn expects an output script as a hex string");
+  const prefix = OP_RETURN_SCRIPT.exec(scriptHex);
+  return prefix ? readPushes(script, prefix[0].length / 2) : undefined;
 }
 
 /**
@@ -199,7 +216,9 @@ function parseOpReturn(scriptHex: string): OpReturnPayload[] {
 export function collectOpReturns(
   scripts: readonly (string | null | undefined)[],
 ): OpReturnPayload[] | undefined {
-  const payloads = scripts.flatMap((script) => (script ? parseOpReturn(script) : []));
+  const payloads = scripts.flatMap((script) =>
+    script ? (readOpReturn(script)?.pushes ?? []) : [],
+  );
   return payloads.length > 0 ? payloads : undefined;
 }
 
