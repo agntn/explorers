@@ -1,3 +1,4 @@
+import { defineEventHandler, getQuery } from "nuxt/server";
 import type { TipAnswer } from "#shared/wire";
 
 /** The tip of one chain: height, stats, latest blocks and transactions, from the chain's public explorer API. */

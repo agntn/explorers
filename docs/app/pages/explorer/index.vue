@@ -14,6 +14,7 @@ useSeo({
   type: "article",
   breadcrumbs: [{ title, path: "/explorer" }],
 });
+useNoMarkdownTwin();
 
 defineOgImage(
   "Docs",

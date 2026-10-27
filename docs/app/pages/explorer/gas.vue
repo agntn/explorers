@@ -14,6 +14,7 @@ useSeo({
     { title, path: "/explorer/gas" },
   ],
 });
+useNoMarkdownTwin();
 
 defineOgImage(
   "Docs",

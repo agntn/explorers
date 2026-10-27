@@ -1,4 +1,5 @@
 import { requireOperation } from "@agntn/explorers";
+import { defineEventHandler, getQuery } from "nuxt/server";
 import type { GasAnswer } from "#shared/wire";
 
 /** `getGasData()` in the provider's own unit. */

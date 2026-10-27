@@ -1,4 +1,5 @@
 import { resolveAddresses } from "@agntn/explorers";
+import { defineEventHandler, getQuery } from "nuxt/server";
 import type { HistoryAnswer } from "#shared/wire";
 
 /** A page of `getTxHistory()`, `raw` dropped, at most `LIMITS.limit` rows. */

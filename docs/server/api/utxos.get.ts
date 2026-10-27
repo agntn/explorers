@@ -1,4 +1,5 @@
 import { requireOperation, resolveAddresses } from "@agntn/explorers";
+import { defineEventHandler, getQuery } from "nuxt/server";
 import type { UtxosAnswer } from "#shared/wire";
 
 /** `getUtxos()` cut to `LIMITS.utxos` rows; `total` says how many the address holds. */

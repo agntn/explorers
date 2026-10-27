@@ -1,4 +1,5 @@
 import { version } from "@agntn/explorers";
+import { defineEventHandler } from "nuxt/server";
 import type { ProvidersAnswer } from "#shared/wire";
 
 /** The providers as the worker sees them; `configured` says whether a read through it can start, nothing more. */

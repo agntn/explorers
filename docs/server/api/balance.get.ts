@@ -1,4 +1,5 @@
 import { resolveAddresses } from "@agntn/explorers";
+import { defineEventHandler, getQuery } from "nuxt/server";
 import type { BalanceAnswer } from "#shared/wire";
 
 /** One `Balance` as `getBalance()` returns it, after ENS resolution, plus which provider answered. */

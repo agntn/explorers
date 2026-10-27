@@ -1,11 +1,11 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
+import { describe, expect, it, vi } from "vite-plus/test";
+
+/* Nitro storage needs Nitro's virtual modules, so it is mocked at the path docs/ resolves it from. */
+vi.mock("../../docs/node_modules/nitropack/dist/runtime/index.mjs", () => ({
+  useStorage: () => undefined,
+}));
 
 const { assertRateLimit } = await import("../../docs/server/utils/query.ts");
-
-interface FakeEvent {
-  readonly headers: Readonly<Record<string, string>>;
-  readonly context: Readonly<{ cloudflare: Readonly<{ env: Readonly<Record<string, unknown>> }> }>;
-}
 
 /** Keys the fake `EXPLORER_LIMIT` binding was asked about, emptied by every `keyFor`. */
 const keys: string[] = [];
@@ -19,8 +19,13 @@ function fakeEvent(address: string): never {
       return { success: true };
     },
   };
-  const event: FakeEvent = {
+  const req = new Request("https://explorers.agntn.dev/api/balance", {
     headers: { "cf-connecting-ip": address },
+  });
+  const event = {
+    req,
+    url: new URL(req.url),
+    res: { headers: new Headers() },
     context: { cloudflare: { env: { EXPLORER_LIMIT: binding } } },
   };
   return event as never;
@@ -32,18 +37,6 @@ async function keyFor(address: string): Promise<string | undefined> {
   await assertRateLimit(fakeEvent(address));
   return keys[0];
 }
-
-beforeEach(() => {
-  vi.stubGlobal(
-    "getRequestHeader",
-    (event: Readonly<FakeEvent>, name: string) => event.headers[name.toLowerCase()],
-  );
-  vi.stubGlobal("getRequestIP", () => undefined);
-});
-
-afterEach(() => {
-  vi.unstubAllGlobals();
-});
 
 describe("docs rate limit key", () => {
   it("counts every address of one IPv6 /64 as one client", async () => {

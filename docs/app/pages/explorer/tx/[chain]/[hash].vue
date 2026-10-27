@@ -27,6 +27,7 @@ useSeo({
     { title: chainLabel(chain.value), path: `/explorer/tx/${chain.value}/${hash.value}` },
   ],
 });
+useNoMarkdownTwin();
 
 useSeoMeta({ robots: "noindex, follow" });
 

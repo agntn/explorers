@@ -15,12 +15,30 @@ export default defineNuxtConfig({
     url: "https://explorers.agntn.dev",
     name: "@agntn/explorers",
   },
+  /** The explorer pages have no markdown twin, so agents get the page itself, not a `/raw` 404. */
+  agentDiscovery: {
+    excludePrefixes: { extend: ["/explorer"] },
+  },
+  /** Docus lists `content/` only and leaves app routes out, so the explorer pages come from here. */
+  sitemap: {
+    sources: ["/api/__sitemap__/pages"],
+  },
+  /** Spelled out, or agent discovery piles every page into one list and titles the landing `/`. */
   llms: {
-    domain: "https://explorers.agntn.dev",
     title: "@agntn/explorers",
     description:
       "Twenty-two block explorer APIs behind one TypeScript contract: balances, transactions, token transfers, contracts, tokens, gas and blocks on 31 chains. Library, CLI and agent tools.",
     sections: [
+      {
+        title: "Guide",
+        contentCollection: "docs",
+        contentFilters: [{ field: "path", operator: "LIKE", value: "/guide%" }],
+      },
+      {
+        title: "Providers",
+        contentCollection: "docs",
+        contentFilters: [{ field: "path", operator: "LIKE", value: "/providers%" }],
+      },
       {
         title: "Tools",
         description: "Pages that run the library through the docs worker rather than from Markdown.",
@@ -179,25 +197,26 @@ export default defineNuxtConfig({
   nitro: {
     preset: "cloudflare_module",
     compatibilityDate: "2026-09-03",
-    prerender: {
-      crawlLinks: true,
-      routes: [
-        "/",
-        "/explorer",
-        "/explorer/gas",
-        "/explorer/providers",
-        "/sitemap.xml",
-        "/robots.txt",
-        "/llms.txt",
-        "/llms-full.txt",
-      ],
-      /** Entity pages read live data after mount; prerendering their shells would only bake in a stale sample. */
-      ignore: ["/api", "/explorer/address", "/explorer/tx", "/explorer/block"],
-    },
     cloudflare: {
       deployConfig: true,
       nodeCompat: true,
     },
+  },
+  /** Nuxt's own prerender option; `nitro.prerender` is deprecated since 4.6. */
+  prerender: {
+    crawlLinks: true,
+    routes: [
+      "/",
+      "/explorer",
+      "/explorer/gas",
+      "/explorer/providers",
+      "/sitemap.xml",
+      "/robots.txt",
+      "/llms.txt",
+      "/llms-full.txt",
+    ],
+    /** Entity pages read live data after mount; prerendering their shells would only bake in a stale sample. */
+    ignore: ["/api", "/explorer/address", "/explorer/tx", "/explorer/block"],
   },
   compatibilityDate: "2026-09-03",
   /** In production the response cache lives in KV, so it survives isolates. */

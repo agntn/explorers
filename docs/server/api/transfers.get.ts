@@ -1,4 +1,5 @@
 import { requireOperation, resolveAddresses } from "@agntn/explorers";
+import { createError, defineEventHandler, getQuery } from "nuxt/server";
 import { isIdentifier } from "#shared/identifier";
 import type { TransfersAnswer } from "#shared/wire";
 
@@ -8,7 +9,7 @@ export default defineEventHandler((event): Promise<TransfersAnswer> => {
   const input = readIdentifier(query, "address");
   const token = readString(query, "token", LIMITS.address);
   if (token !== undefined && !isIdentifier(token)) {
-    throw createError({ statusCode: 400, statusMessage: "token must be a contract address" });
+    throw createError({ status: 400, statusText: "token must be a contract address" });
   }
   const limit = readInt(query, "limit", 1, LIMITS.limit) ?? LIMITS.limit;
   const page = readInt(query, "page", 1, LIMITS.page) ?? 1;

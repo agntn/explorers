@@ -35,6 +35,7 @@ useSeo({
     { title: chainLabel(chain.value), path: `/explorer/address/${chain.value}/${address.value}` },
   ],
 });
+useNoMarkdownTwin();
 
 /** Entity pages are live reads of somebody else's data; nothing here is worth indexing. */
 useSeoMeta({ robots: "noindex, follow" });

@@ -1,4 +1,11 @@
-import type { H3Event } from "h3";
+import { useStorage } from "nitropack/runtime";
+import {
+  createError,
+  getRequestHeader,
+  getRequestIP,
+  isNuxtError,
+  type RequestEvent,
+} from "nuxt/server";
 import { hash } from "ohash";
 import {
   AddressChainMismatchError,
@@ -65,8 +72,8 @@ export function readString(query: Query, key: string, max: number): string | und
   }
   if (value.length > max) {
     throw createError({
-      statusCode: 400,
-      statusMessage: `${key} must be at most ${max} characters`,
+      status: 400,
+      statusText: `${key} must be at most ${max} characters`,
     });
   }
   return value;
@@ -75,7 +82,7 @@ export function readString(query: Query, key: string, max: number): string | und
 export function requireString(query: Query, key: string, max: number): string {
   const value = readString(query, key, max);
   if (!value) {
-    throw createError({ statusCode: 400, statusMessage: `${key} is required` });
+    throw createError({ status: 400, statusText: `${key} is required` });
   }
   return value;
 }
@@ -88,8 +95,8 @@ export function readInt(query: Query, key: string, min: number, max: number): nu
   const parsed = Number(value);
   if (!Number.isInteger(parsed) || parsed < min || parsed > max) {
     throw createError({
-      statusCode: 400,
-      statusMessage: `${key} must be an integer between ${min} and ${max}`,
+      status: 400,
+      statusText: `${key} must be an integer between ${min} and ${max}`,
     });
   }
   return parsed;
@@ -100,8 +107,8 @@ export function readIdentifier(query: Query, key: string): string {
   const value = requireString(query, key, LIMITS.address);
   if (!isIdentifier(value)) {
     throw createError({
-      statusCode: 400,
-      statusMessage: `${key} must be an address, an ENS name or a transaction hash`,
+      status: 400,
+      statusText: `${key} must be an address, an ENS name or a transaction hash`,
     });
   }
   return value;
@@ -128,84 +135,78 @@ export function failureText(message: string): string {
 
 /** Turns a library error into the status the browser can show; the typed hierarchy decides the code. */
 export function toHttpError(error: unknown): never {
-  if (
-    error &&
-    typeof error === "object" &&
-    "statusCode" in error &&
-    !(error instanceof ExplorerError)
-  ) {
+  if (isNuxtError(error)) {
     throw error;
   }
   if (error instanceof NotFoundError) {
     throw createError({
-      statusCode: 404,
-      statusMessage: `${error.provider ?? "The explorer"} found nothing under that address, hash or number`,
+      status: 404,
+      statusText: `${error.provider ?? "The explorer"} found nothing under that address, hash or number`,
     });
   }
   if (error instanceof UnknownProviderError) {
-    throw createError({ statusCode: 400, statusMessage: "No provider with that name" });
+    throw createError({ status: 400, statusText: "No provider with that name" });
   }
   if (error instanceof AddressChainMismatchError) {
     /** Built from the address, the chain and the matches alone, so no endpoint to cut, and a CashAddr prefix keeps its colon. */
-    throw createError({ statusCode: 400, statusMessage: clip(error.message) });
+    throw createError({ status: 400, statusText: clip(error.message) });
   }
   if (error instanceof UnsupportedChainError || error instanceof UnsupportedOperationError) {
-    throw createError({ statusCode: 422, statusMessage: failureText(error.message) });
+    throw createError({ status: 422, statusText: failureText(error.message) });
   }
   if (error instanceof AuthError) {
     throw createError({
-      statusCode: 503,
-      statusMessage: `${error.provider} wants an API key for this read and the docs worker has none`,
+      status: 503,
+      statusText: `${error.provider} wants an API key for this read and the docs worker has none`,
     });
   }
   if (error instanceof BlockedError) {
     throw createError({
-      statusCode: 503,
-      statusMessage: `${error.provider} turned the docs worker away at its bot check`,
+      status: 503,
+      statusText: `${error.provider} turned the docs worker away at its bot check`,
     });
   }
   if (error instanceof PlanRestrictedError) {
     throw createError({
-      statusCode: 503,
-      statusMessage: `${error.provider} keeps this read behind a paid plan the docs worker does not have`,
+      status: 503,
+      statusText: `${error.provider} keeps this read behind a paid plan the docs worker does not have`,
     });
   }
   if (error instanceof RateLimitError) {
     const retry = error.retryAfter ? ` Retry after ${error.retryAfter}s.` : "";
     throw createError({
-      statusCode: 429,
-      statusMessage: `${error.provider} is rate limiting the docs worker.${retry}`,
+      status: 429,
+      statusText: `${error.provider} is rate limiting the docs worker.${retry}`,
     });
   }
   if (error instanceof HTTPError) {
     const reason = error.reason === undefined ? "" : `: ${clip(error.reason)}`;
     throw createError({
-      statusCode: 502,
-      statusMessage: `${error.provider ?? "The explorer"} answered HTTP ${error.statusCode}${reason}`,
+      status: 502,
+      statusText: `${error.provider ?? "The explorer"} answered HTTP ${error.statusCode}${reason}`,
     });
   }
   if (error instanceof TransportError) {
     throw createError({
-      statusCode: 502,
-      statusMessage: `${error.provider ?? "The explorer"} sent no response: ${clip(error.reason)}`,
+      status: 502,
+      statusText: `${error.provider ?? "The explorer"} sent no response: ${clip(error.reason)}`,
     });
   }
   if (error instanceof ExplorerError) {
     throw createError({
-      statusCode: 502,
-      statusMessage: `${error.provider ?? "The explorer"} failed: ${failureText(error.message)}`,
+      status: 502,
+      statusText: `${error.provider ?? "The explorer"} failed: ${failureText(error.message)}`,
     });
   }
   if (error instanceof RangeError) {
-    throw createError({ statusCode: 400, statusMessage: failureText(error.message) });
+    throw createError({ status: 400, statusText: failureText(error.message) });
   }
   const message = error instanceof Error ? error.message : String(error);
-  throw createError({ statusCode: 502, statusMessage: failureText(message) });
+  throw createError({ status: 502, statusText: failureText(message) });
 }
 
-export function markPublic(event: H3Event, seconds: number): void {
-  setResponseHeader(
-    event,
+export function markPublic(event: RequestEvent, seconds: number): void {
+  event.res.headers.set(
     "Cache-Control",
     `public, max-age=${seconds}, stale-while-revalidate=${seconds * 4}`,
   );
@@ -223,7 +224,7 @@ interface RateLimiter {
 const localCounts = new Map<string, number>();
 
 /** The address Cloudflare saw. X-Forwarded-For stays out: its first entry is whatever the client sent. */
-function clientAddress(event: H3Event): string {
+function clientAddress(event: RequestEvent): string {
   return getRequestHeader(event, "cf-connecting-ip") ?? getRequestIP(event) ?? "unknown";
 }
 
@@ -258,10 +259,12 @@ function rateLimitSubject(address: string): string {
 }
 
 /** Counts uncached requests per client and minute; cache hits are free, so a warm demo never trips it. */
-export async function assertRateLimit(event: H3Event): Promise<void> {
+export async function assertRateLimit(event: RequestEvent): Promise<void> {
   const key = hash(rateLimitSubject(clientAddress(event)));
-  const limiter = (event.context.cloudflare?.env as { EXPLORER_LIMIT?: RateLimiter } | undefined)
-    ?.EXPLORER_LIMIT;
+  const cloudflare = event.context.cloudflare as
+    | { env?: { EXPLORER_LIMIT?: RateLimiter } }
+    | undefined;
+  const limiter = cloudflare?.env?.EXPLORER_LIMIT;
   let allowed: boolean;
   if (limiter) {
     allowed = (await limiter.limit({ key })).success;
@@ -276,10 +279,10 @@ export async function assertRateLimit(event: H3Event): Promise<void> {
     allowed = count <= RATE_LIMIT;
   }
   if (!allowed) {
-    setResponseHeader(event, "Retry-After", 60);
+    event.res.headers.set("Retry-After", "60");
     throw createError({
-      statusCode: 429,
-      statusMessage: `More than ${RATE_LIMIT} new explorer requests in a minute from one address, or one /64 on IPv6; cached answers are not counted. Wait a moment.`,
+      status: 429,
+      statusText: `More than ${RATE_LIMIT} new explorer requests in a minute from one address, or one /64 on IPv6; cached answers are not counted. Wait a moment.`,
     });
   }
 }
@@ -294,7 +297,7 @@ const inFlight = new Map<string, Promise<unknown>>();
 
 /** Serves from the cache or produces and stores; a thrown failure is never stored. */
 export async function cachedAnswer<T>(
-  event: H3Event,
+  event: RequestEvent,
   prefix: string,
   params: Readonly<Record<string, unknown>>,
   ttl: number,
