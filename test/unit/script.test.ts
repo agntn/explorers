@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vite-plus/test";
-import { collectInscriptions, collectOpReturns } from "../../src/core/script.ts";
+import { collectInscriptions, collectOpReturns, parseOpReturn } from "../../src/core/script.ts";
+import * as entry from "../../src/index.ts";
 import { FIRST_INSCRIPTION, HTML_INSCRIPTION } from "./inscription-witnesses.ts";
 
 /* Taproot key path spend: one signature and nothing else. */
@@ -45,6 +46,70 @@ describe("collectOpReturns", () => {
 
   it("reads capital hex digits and skips a script that is not hex", () => {
     expect(collectOpReturns(["6A014A", "6a01zz", "6a014"])).toEqual([{ hex: "4a", text: "J" }]);
+  });
+});
+
+describe("parseOpReturn", () => {
+  it("reads one script to its end", () => {
+    expect(parseOpReturn("6a0548656c6c6f0162")).toStrictEqual({
+      pushes: [
+        { hex: "48656c6c6f", text: "Hello" },
+        { hex: "62", text: "b" },
+      ],
+      complete: true,
+    });
+  });
+
+  it("reads the OP_FALSE OP_RETURN Bitcoin SV writes and a bare OP_RETURN", () => {
+    expect(parseOpReturn("006a0161")).toStrictEqual({
+      pushes: [{ hex: "61", text: "a" }],
+      complete: true,
+    });
+    expect(parseOpReturn("6a")).toStrictEqual({ pushes: [], complete: true });
+  });
+
+  it("flags a script that a non-push opcode cuts short", () => {
+    expect(parseOpReturn("6a0548656c6c6f760548656c6c6f")).toStrictEqual({
+      pushes: [{ hex: "48656c6c6f", text: "Hello" }],
+      complete: false,
+    });
+  });
+
+  it("flags a push that runs past the end of the script", () => {
+    expect(parseOpReturn("6a0161054865")).toStrictEqual({
+      pushes: [{ hex: "61", text: "a" }],
+      complete: false,
+    });
+    expect(parseOpReturn("6a4d01")).toStrictEqual({ pushes: [], complete: false });
+  });
+
+  it("steps over OP_RESERVED and still reaches the end", () => {
+    expect(parseOpReturn("6a500161")).toStrictEqual({
+      pushes: [{ hex: "61", text: "a" }],
+      complete: true,
+    });
+  });
+
+  it("gives an empty push no text reading", () => {
+    expect(parseOpReturn("6a00")).toStrictEqual({ pushes: [{ hex: "" }], complete: true });
+  });
+
+  it("answers undefined for a script that is no data carrier", () => {
+    expect(parseOpReturn("0014" + "33".repeat(20))).toBeUndefined();
+    expect(parseOpReturn("")).toBeUndefined();
+  });
+
+  it.each([null, undefined, 42, ["6a"], Uint8Array.of(0x6a), "6a0", "6a01zz", "6a 01"])(
+    "refuses %o as a hex script",
+    (input) => {
+      expect(() => {
+        Reflect.apply(parseOpReturn, undefined, [input]);
+      }).toThrow(TypeError);
+    },
+  );
+
+  it("is exported from the package entry", () => {
+    expect(entry.parseOpReturn).toBe(parseOpReturn);
   });
 });
 

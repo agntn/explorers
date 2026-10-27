@@ -4,6 +4,7 @@ export type {
   TxStatus,
   TokenTransfer,
   OpReturnPayload,
+  OpReturnScript,
   Inscription,
   Transaction,
   Balance,
@@ -31,6 +32,7 @@ export type {
 } from "./core/provider.ts";
 export { builtins } from "./providers/index.ts";
 export { clampMaxResults, formatWei, hexToWei, normalizeChain } from "./core/types.ts";
+export { parseOpReturn } from "./core/script.ts";
 export {
   ExplorerError,
   HTTPError,

@@ -43,6 +43,14 @@ export interface OpReturnPayload {
   text?: string;
 }
 
+/** The data pushes of one OP_RETURN output script */
+export interface OpReturnScript {
+  /** Pushed payloads in script order */
+  pushes: OpReturnPayload[];
+  /** False when a non-push opcode or a truncated push stopped the read before the script ended */
+  complete: boolean;
+}
+
 /** One Ordinals inscription revealed in an input witness */
 export interface Inscription {
   /** Index of the input whose witness carries the envelope */

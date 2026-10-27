@@ -572,7 +572,7 @@ describe("mempool provider", () => {
     const tx = await provider.getTxDetail!("a".repeat(64), "bitcoin");
 
     expect(tx.opReturn).toEqual([
-      { hex: "", text: "" },
+      { hex: "" },
       { hex: "48656c6c6f", text: "Hello" },
       { hex: "81" },
       { hex: "01" },
