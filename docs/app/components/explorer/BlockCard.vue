@@ -10,23 +10,46 @@ const block = computed(() => props.answer.block);
 const external = computed(() =>
   externalUrl("block", props.answer.chain, String(block.value.number)),
 );
-const hasGas = computed(() => block.value.gasLimit !== "0");
+const hasGas = computed(
+  () => block.value.gasLimit !== undefined && block.value.gasLimit !== "0",
+);
 
-/** On the Bitcoin family the two gas fields carry size and weight, as `src/providers/mempool.ts` and `src/providers/blockstream.ts` map them. */
-const evm = computed(() => isEvm(props.answer.chain));
+/** Bitcoin and Litecoin bring size and weight and no gas at all, see `src/core/esplora.ts`. */
+const weighed = computed(() => block.value.weight !== undefined);
+
+/** The BIP 141 ceiling, four million weight units, which Litecoin kept too. */
+const MAX_BLOCK_WEIGHT = 4_000_000;
 
 /** Gas used as a share of the limit, from the two strings without a float on the raw values. */
+function gasShare(used: string | undefined, limit: string | undefined): number | null {
+  if (!used || !limit || !/^\d+$/u.test(used) || !/^\d+$/u.test(limit)) return null;
+  const cap = BigInt(limit);
+  return cap > 0n ? Number((BigInt(used) * 10000n) / cap) / 100 : null;
+}
+
+/** How full the block is: weight against the cap, or gas against the limit. */
 const utilization = computed(() => {
-  if (
-    !hasGas.value ||
-    !/^\d+$/u.test(block.value.gasUsed) ||
-    !/^\d+$/u.test(block.value.gasLimit)
-  ) {
-    return null;
-  }
-  const used = BigInt(block.value.gasUsed);
-  const limit = BigInt(block.value.gasLimit);
-  return limit > 0n ? Number((used * 10000n) / limit) / 100 : null;
+  const { weight } = block.value;
+  if (weight !== undefined) return Math.round((weight / MAX_BLOCK_WEIGHT) * 10000) / 100;
+  return hasGas.value ? gasShare(block.value.gasUsed, block.value.gasLimit) : null;
+});
+
+/** A header word in the hex block explorers print it in. */
+function hexWord(word: number): string {
+  return `0x${word.toString(16).padStart(8, "0")}`;
+}
+
+const header = computed(() => {
+  const { version, merkleRoot, bits, nonce, difficulty, medianTime } = block.value;
+  if (merkleRoot === undefined) return null;
+  return [
+    ["Version", version === undefined ? null : hexWord(version)],
+    ["Merkle root", merkleRoot],
+    ["Bits", bits === undefined ? null : hexWord(bits)],
+    ["Nonce", nonce === undefined ? null : groupDigits(String(nonce))],
+    ["Difficulty", difficulty === undefined ? null : groupDigits(String(difficulty))],
+    ["Median time", medianTime ?? null],
+  ].filter((field): field is [string, string] => field[1] !== null);
 });
 
 /** Twenty ticks for the share: the used ones hatched, the headroom in the accent, like every gauge. */
@@ -88,13 +111,21 @@ const baseFeeText = computed(() => {
             <dt>Transactions</dt>
             <dd class="console-accent">{{ block.txCount }}</dd>
           </div>
-          <div>
-            <dt>{{ evm ? "Gas used" : "Size" }}</dt>
-            <dd>{{ hasGas ? groupDigits(block.gasUsed) : "n/a" }}</dd>
+          <div v-if="weighed">
+            <dt>Size</dt>
+            <dd>{{ block.size === undefined ? "n/a" : `${groupDigits(String(block.size))} B` }}</dd>
           </div>
-          <div>
-            <dt>{{ evm ? "Gas limit" : "Weight" }}</dt>
-            <dd>{{ hasGas ? groupDigits(block.gasLimit) : "n/a" }}</dd>
+          <div v-if="weighed">
+            <dt>Weight</dt>
+            <dd>{{ groupDigits(String(block.weight)) }} WU</dd>
+          </div>
+          <div v-if="!weighed">
+            <dt>Gas used</dt>
+            <dd>{{ hasGas && block.gasUsed ? groupDigits(block.gasUsed) : "n/a" }}</dd>
+          </div>
+          <div v-if="!weighed">
+            <dt>Gas limit</dt>
+            <dd>{{ hasGas && block.gasLimit ? groupDigits(block.gasLimit) : "n/a" }}</dd>
           </div>
           <div>
             <dt>Base fee</dt>
@@ -104,7 +135,7 @@ const baseFeeText = computed(() => {
         <div
           v-if="utilization !== null"
           class="console-gauge"
-          :aria-label="`${utilization}% of the ${evm ? 'gas limit' : 'weight cap'} used`"
+          :aria-label="`${utilization}% of the ${weighed ? 'weight cap' : 'gas limit'} used`"
         >
           <span class="console-ticks" aria-hidden="true">
             <span
@@ -115,7 +146,7 @@ const baseFeeText = computed(() => {
             />
           </span>
           <span class="console-gauge-read"
-            >used {{ utilization }}% of the {{ evm ? "limit" : "cap" }}</span
+            >used {{ utilization }}% of the {{ weighed ? "cap" : "limit" }}</span
           >
         </div>
       </div>
@@ -152,6 +183,19 @@ const baseFeeText = computed(() => {
             }}</NuxtLink>
             <span v-else class="explorers-dim">empty · the explorer names no producer</span>
           </dd>
+        </div>
+      </dl>
+    </div>
+
+    <div v-if="header" class="explorers-band">
+      <p class="console-label console-rule-title">
+        <span>Header <span aria-hidden="true">[ the 80 bytes a miner grinds ]</span></span>
+        <span class="console-mark" aria-hidden="true" />
+      </p>
+      <dl class="explorers-facts">
+        <div v-for="[label, value] in header" :key="label">
+          <dt>{{ label }}</dt>
+          <dd>{{ value }}</dd>
         </div>
       </dl>
     </div>

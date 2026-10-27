@@ -1,6 +1,7 @@
+import { NotFoundError } from "./errors.ts";
 import { assertSafePathSegment } from "./path-safety.ts";
 import { formatWei, toTimestamp } from "./types.ts";
-import type { PubkeyReveal, Utxo } from "./types.ts";
+import type { BlockInfo, PubkeyReveal, Utxo } from "./types.ts";
 
 const CHAIN_PAGE_SIZE = 25;
 
@@ -62,6 +63,70 @@ export async function getEsploraUtxos(
   assertSafePathSegment(address, "address");
   const outputs = await fetchUtxos(`/api/address/${encodeURIComponent(address)}/utxo`);
   return outputs.map(mapEsploraUtxo);
+}
+
+/** A row of `/api/blocks/:height`. Genesis has no parent, Liquid has no `bits` or `nonce`. */
+export interface EsploraBlock {
+  readonly id: string;
+  readonly height: number;
+  readonly version: number;
+  readonly timestamp: number;
+  readonly mediantime?: number;
+  readonly bits?: number;
+  readonly nonce?: number;
+  readonly difficulty?: number | string;
+  readonly merkle_root: string;
+  readonly tx_count: number;
+  readonly size: number;
+  readonly weight: number;
+  readonly previousblockhash: string | null;
+}
+
+/* A field the backend left out stays out instead of taking the whole block down. */
+function headerTime(seconds: number | undefined): string | undefined {
+  const date = new Date((seconds ?? Number.NaN) * 1000);
+  return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
+}
+
+function mapEsploraBlock(block: Readonly<EsploraBlock>): BlockInfo {
+  return {
+    number: block.height,
+    hash: block.id,
+    parentHash: block.previousblockhash ?? "0".repeat(64),
+    timestamp: toTimestamp(block.timestamp),
+    miner: "",
+    txCount: block.tx_count,
+    version: block.version,
+    merkleRoot: block.merkle_root,
+    bits: block.bits,
+    nonce: block.nonce,
+    difficulty: block.difficulty === undefined ? undefined : Number(block.difficulty),
+    medianTime: headerTime(block.mediantime),
+    size: block.size,
+    weight: block.weight,
+  };
+}
+
+/**
+ * Pick one block with its header out of the ten blocks `/api/blocks/:height` answers.
+ *
+ * @param {number} height - The block height.
+ * @param {string} provider - The provider name a `NotFoundError` carries.
+ * @param {(path: string) => Promise<readonly EsploraBlock[]>} fetchBlocks - Read one provider
+ *   path.
+ * @returns {Promise<BlockInfo>} The block.
+ * @throws {NotFoundError} When the page holds no block at that height.
+ */
+export async function getEsploraBlock(
+  height: number,
+  provider: string,
+  fetchBlocks: (path: string) => Promise<readonly EsploraBlock[]>,
+): Promise<BlockInfo> {
+  assertSafePathSegment(String(height), "block number");
+  const blocks = await fetchBlocks(`/api/blocks/${encodeURIComponent(String(height))}`);
+  const block = blocks.find((candidate) => candidate.height === height);
+  if (!block) throw new NotFoundError(`Block ${height}`, provider);
+  return mapEsploraBlock(block);
 }
 
 function confirmedHistoryPath(encodedAddress: string, encodedCursor: string): string {

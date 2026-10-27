@@ -140,15 +140,40 @@ function describeGas(name: string, gas: Readonly<GasData>): string[] {
   ];
 }
 
+/* A header word in decimal and in the hex every block explorer prints next to it. */
+function headerWord(word: number | undefined): string | undefined {
+  return word === undefined ? undefined : `${word} (0x${word.toString(16).padStart(8, "0")})`;
+}
+
+/* The Bitcoin-style header, one line per field the provider filled. */
+function describeHeader(block: Readonly<BlockInfo>): string[] {
+  const fields: [string, number | string | undefined][] = [
+    ["Version", headerWord(block.version)],
+    ["Merkle root", block.merkleRoot],
+    ["Bits", headerWord(block.bits)],
+    ["Nonce", block.nonce],
+    ["Difficulty", block.difficulty],
+    ["Median time", block.medianTime],
+    ["Size", block.size === undefined ? undefined : `${block.size} bytes`],
+    ["Weight", block.weight === undefined ? undefined : `${block.weight} WU`],
+  ];
+  return fields.flatMap(([label, value]) => (value === undefined ? [] : [`${label}: ${value}`]));
+}
+
 function describeBlock(name: string, block: Readonly<BlockInfo>): string[] {
+  const gas =
+    block.gasUsed === undefined || block.gasLimit === undefined
+      ? []
+      : [`Gas used/limit: ${block.gasUsed} / ${block.gasLimit}`];
   return [
     `[${name}] Block #${block.number}`,
     `Hash: ${block.hash}`,
     `Timestamp: ${block.timestamp}`,
     `Miner: ${block.miner}`,
-    `Gas used/limit: ${block.gasUsed} / ${block.gasLimit}`,
+    ...gas,
     `Transactions: ${block.txCount}`,
     ...(block.baseFee ? [`Base fee per gas: ${block.baseFee}`] : []),
+    ...describeHeader(block),
   ];
 }
 
