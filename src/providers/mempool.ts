@@ -24,7 +24,7 @@ import type {
 } from "../core/types.ts";
 import { Provider } from "../core/provider.ts";
 import { normalizeBaseUrl } from "../core/client.ts";
-import { NotFoundError, UnsupportedChainError, UnsupportedOperationError } from "../core/errors.ts";
+import { UnsupportedChainError, UnsupportedOperationError } from "../core/errors.ts";
 import { create as createChain } from "@agntn/chains";
 import { formatWei, historyPage } from "../core/types.ts";
 import { assertSafePathSegment } from "../core/path-safety.ts";
@@ -33,12 +33,14 @@ import {
   ESPLORA_HISTORY_ROWS,
   esploraFeedAddress,
   getEsploraAddressHistory,
+  getEsploraBlock,
   getEsploraPubkey,
   getEsploraUtxos,
   selectEsploraRecipientOutput,
 } from "../core/esplora.ts";
 import type {
   EsploraAddressStats,
+  EsploraBlock,
   EsploraKeyTransaction,
   EsploraUnspentOutput,
 } from "../core/esplora.ts";
@@ -150,22 +152,6 @@ interface MempoolFees {
   readonly hourFee: number;
   readonly economyFee: number;
   readonly minimumFee: number;
-}
-
-interface MempoolBlock {
-  readonly id: string;
-  readonly height: number;
-  readonly version: number;
-  readonly timestamp: number;
-  readonly bits: number;
-  readonly nonce: number;
-  readonly difficulty: number;
-  readonly merkle_root: string;
-  readonly tx_count: number;
-  readonly size: number;
-  readonly weight: number;
-  readonly previousblockhash: string;
-  readonly mediantime: number;
 }
 
 /* Convert the smallest unit to a coin string without floating-point arithmetic. */
@@ -388,23 +374,8 @@ export class Mempool extends Provider {
     const c = chain ?? this.defaultChain;
     if (c === "pepecoin") throw new UnsupportedOperationError("getBlockInfo", this.name);
 
-    assertSafePathSegment(String(blockNumber), "block number");
-    const blocks = await this.api<MempoolBlock[]>(
-      c,
-      `/api/blocks/${encodeURIComponent(String(blockNumber))}`,
+    return getEsploraBlock(blockNumber, this.name, async (path) =>
+      this.api<EsploraBlock[]>(c, path),
     );
-    const block = blocks.find((candidate) => candidate.height === blockNumber);
-    if (!block) throw new NotFoundError(`Block ${blockNumber}`, "mempool");
-
-    return {
-      number: block.height,
-      hash: block.id,
-      parentHash: block.previousblockhash,
-      timestamp: new Date(block.timestamp * 1000).toISOString(),
-      miner: "",
-      gasUsed: block.size.toString(),
-      gasLimit: block.weight.toString(),
-      txCount: block.tx_count,
-    };
   }
 }

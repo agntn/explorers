@@ -131,6 +131,71 @@ describe("terminal lines of an explorer answer", () => {
     ]);
   });
 
+  it("prints the Bitcoin header in place of gas the chain never had", () => {
+    const details = {
+      provider: "mempool",
+      data: {
+        number: 0,
+        hash: "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f",
+        parentHash: "0".repeat(64),
+        timestamp: "2009-01-03T18:15:05.000Z",
+        miner: "",
+        txCount: 1,
+        version: 1,
+        merkleRoot: "4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b",
+        bits: 486_604_799,
+        nonce: 2_083_236_893,
+        difficulty: 1,
+        medianTime: "2009-01-03T18:15:05.000Z",
+        size: 285,
+        weight: 1_140,
+      },
+    };
+
+    expect(describeResult("explorers_block", details)).toEqual([
+      "[mempool] Block #0",
+      "Hash: 000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f",
+      "Timestamp: 2009-01-03T18:15:05.000Z",
+      "Miner: ",
+      "Transactions: 1",
+      "Version: 1 (0x00000001)",
+      "Merkle root: 4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b",
+      "Bits: 486604799 (0x1d00ffff)",
+      "Nonce: 2083236893",
+      "Difficulty: 1",
+      "Median time: 2009-01-03T18:15:05.000Z",
+      "Size: 285 bytes",
+      "Weight: 1140 WU",
+    ]);
+  });
+
+  it("keeps the gas line of an EVM block and adds nothing to it", () => {
+    const details = {
+      provider: "etherscan",
+      data: {
+        number: 16,
+        hash: "0xabc",
+        parentHash: "0xdef",
+        timestamp: "2015-07-30T15:28:30.000Z",
+        miner: "0xminer",
+        gasUsed: "128",
+        gasLimit: "256",
+        txCount: 2,
+        baseFee: "7",
+      },
+    };
+
+    expect(describeResult("explorers_block", details)).toEqual([
+      "[etherscan] Block #16",
+      "Hash: 0xabc",
+      "Timestamp: 2015-07-30T15:28:30.000Z",
+      "Miner: 0xminer",
+      "Gas used/limit: 128 / 256",
+      "Transactions: 2",
+      "Base fee per gas: 7",
+    ]);
+  });
+
   it("collapses a long answer to a few lines with a count of the rest", () => {
     const details = {
       provider: "mempool",

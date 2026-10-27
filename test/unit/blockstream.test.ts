@@ -287,11 +287,17 @@ describe("blockstream provider", () => {
         {
           id: BLOCK_HASH,
           height: 900_000,
+          version: 548_118_528,
           timestamp: 1_749_188_499,
           tx_count: 1_562,
           size: 1_920_777,
           weight: 3_130_335,
+          merkle_root: "0cfb54e522b07bd1a381adc774ec1851590ef4c3add83958135106534569f970",
           previousblockhash: "d".repeat(64),
+          mediantime: 1_749_187_351,
+          nonce: 2_455_752_826,
+          bits: 386_021_236,
+          difficulty: 126_982_285_146_989.3,
         },
         {
           id: "e".repeat(64),
@@ -315,12 +321,49 @@ describe("blockstream provider", () => {
       parentHash: "d".repeat(64),
       timestamp: "2025-06-06T05:41:39.000Z",
       miner: "",
-      gasUsed: "1920777",
-      gasLimit: "3130335",
       txCount: 1_562,
+      version: 548_118_528,
+      merkleRoot: "0cfb54e522b07bd1a381adc774ec1851590ef4c3add83958135106534569f970",
+      bits: 386_021_236,
+      nonce: 2_455_752_826,
+      difficulty: 126_982_285_146_989.3,
+      medianTime: "2025-06-06T05:22:31.000Z",
+      size: 1_920_777,
+      weight: 3_130_335,
     });
     expect(fetch.mock.calls.map(([input]) => String(input))).toEqual([
       "https://blockstream.info/api/blocks/900000",
+    ]);
+  });
+
+  it("reads a block whose backend leaves header fields out", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        jsonResponse([
+          {
+            id: BLOCK_HASH,
+            height: 900_000,
+            version: 548_118_528,
+            timestamp: 1_749_188_499,
+            tx_count: 1_562,
+            size: 1_920_777,
+            weight: 3_130_335,
+            merkle_root: "0cfb54e522b07bd1a381adc774ec1851590ef4c3add83958135106534569f970",
+            previousblockhash: "d".repeat(64),
+          },
+        ]),
+      ),
+    );
+
+    const block = await (await create("blockstream")).getBlockInfo!(900_000, "bitcoin");
+
+    expect(block).toMatchObject({ number: 900_000, txCount: 1_562, weight: 3_130_335 });
+    expect([block.medianTime, block.bits, block.nonce, block.difficulty]).toEqual([
+      undefined,
+      undefined,
+      undefined,
+      undefined,
     ]);
   });
 

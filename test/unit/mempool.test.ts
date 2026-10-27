@@ -717,11 +717,17 @@ describe("mempool provider", () => {
     const block = {
       id: "0".repeat(64),
       height,
+      version: 548_118_528,
       timestamp: 1_749_188_499,
       tx_count: 1_562,
       size: 1_920_777,
       weight: 3_130_335,
+      merkle_root: "2".repeat(64),
       previousblockhash: "1".repeat(64),
+      mediantime: 1_749_187_351,
+      nonce: 2_455_752_826,
+      bits: 386_021_236,
+      difficulty: 126_982_285_146_989.3,
     };
     const fetch = vi.fn(async (input: string | URL | Request) => {
       const url = String(input);
@@ -742,9 +748,50 @@ describe("mempool provider", () => {
       hash: block.id,
       timestamp: new Date(block.timestamp * 1_000).toISOString(),
       txCount: block.tx_count,
+      merkleRoot: block.merkle_root,
+      size: block.size,
+      weight: block.weight,
     });
+    expect(result).not.toHaveProperty("gasUsed");
     expect(fetch).toHaveBeenCalledOnce();
     expect(String(fetch.mock.calls[0]?.[0])).toBe(`${host}/api/blocks/${height}`);
+  });
+
+  it("keeps the genesis header and gives it the all-zero parent", async () => {
+    stubJSON([
+      {
+        id: "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f",
+        height: 0,
+        version: 1,
+        timestamp: 1_231_006_505,
+        tx_count: 1,
+        size: 285,
+        weight: 1_140,
+        merkle_root: "4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b",
+        previousblockhash: null,
+        mediantime: 1_231_006_505,
+        nonce: 2_083_236_893,
+        bits: 486_604_799,
+        difficulty: 1,
+      },
+    ]);
+
+    await expect(provider.getBlockInfo!(0, "bitcoin")).resolves.toEqual({
+      number: 0,
+      hash: "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f",
+      parentHash: "0".repeat(64),
+      timestamp: "2009-01-03T18:15:05.000Z",
+      miner: "",
+      txCount: 1,
+      version: 1,
+      merkleRoot: "4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b",
+      bits: 486_604_799,
+      nonce: 2_083_236_893,
+      difficulty: 1,
+      medianTime: "2009-01-03T18:15:05.000Z",
+      size: 285,
+      weight: 1_140,
+    });
   });
 
   it("rejects a block page that does not contain the requested height", async () => {

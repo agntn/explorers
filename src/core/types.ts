@@ -252,14 +252,30 @@ export interface BlockInfo {
   timestamp: string;
   /** Miner/validator address */
   miner: string;
-  /** Gas used */
-  gasUsed: string;
-  /** Gas limit */
-  gasLimit: string;
+  /** Gas used, absent where the explorer reports no gas at all, as on the Bitcoin family */
+  gasUsed?: string;
+  /** Gas limit, absent together with `gasUsed` */
+  gasLimit?: string;
   /** Number of transactions */
   txCount: number;
   /** Base fee per gas (EIP-1559) */
   baseFee?: string;
+  /** Header version, on chains with a Bitcoin-style header */
+  version?: number;
+  /** Merkle root of the block's transactions, as the explorer prints it */
+  merkleRoot?: string;
+  /** Compact difficulty target (`nBits`) */
+  bits?: number;
+  /** Header nonce */
+  nonce?: number;
+  /** Difficulty relative to the minimum target */
+  difficulty?: number;
+  /** Median time past over the last eleven blocks, this one included (ISO) */
+  medianTime?: string;
+  /** Serialized size in bytes */
+  size?: number;
+  /** Block weight in weight units (BIP 141) */
+  weight?: number;
 }
 
 /** Feature flags for operations available on a provider at runtime. */

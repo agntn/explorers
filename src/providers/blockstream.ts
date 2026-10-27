@@ -8,7 +8,7 @@
  */
 
 import { create as createChain } from "@agntn/chains";
-import { NotFoundError, UnsupportedChainError } from "../core/errors.ts";
+import { UnsupportedChainError } from "../core/errors.ts";
 import { assertSafePathSegment } from "../core/path-safety.ts";
 import { Provider } from "../core/provider.ts";
 import { collectInscriptions, collectOpReturns } from "../core/script.ts";
@@ -18,12 +18,14 @@ import {
   ESPLORA_HISTORY_ROWS,
   esploraFeedAddress,
   getEsploraAddressHistory,
+  getEsploraBlock,
   getEsploraPubkey,
   getEsploraUtxos,
   selectEsploraRecipientOutput,
 } from "../core/esplora.ts";
 import type {
   EsploraAddressStats,
+  EsploraBlock,
   EsploraKeyTransaction,
   EsploraUnspentOutput,
 } from "../core/esplora.ts";
@@ -75,16 +77,6 @@ interface EsploraAddressTx {
     readonly block_height?: number;
     readonly block_time?: number;
   };
-}
-
-interface EsploraBlock {
-  readonly id: string;
-  readonly height: number;
-  readonly timestamp: number;
-  readonly tx_count: number;
-  readonly size: number;
-  readonly weight: number;
-  readonly previousblockhash: string;
 }
 
 /* Convert satoshis to BTC without crossing the floating-point boundary. */
@@ -276,23 +268,8 @@ export class Blockstream extends Provider {
 
   override async getBlockInfo(blockNumber: number, chain?: ChainKey): Promise<BlockInfo> {
     const selectedChain = chain ?? this.defaultChain;
-    assertSafePathSegment(String(blockNumber), "block number");
-    const blocks = await this.api<EsploraBlock[]>(
-      selectedChain,
-      `/api/blocks/${encodeURIComponent(String(blockNumber))}`,
+    return getEsploraBlock(blockNumber, this.name, async (path) =>
+      this.api<EsploraBlock[]>(selectedChain, path),
     );
-    const block = blocks.find((candidate) => candidate.height === blockNumber);
-    if (!block) throw new NotFoundError(`Block ${blockNumber}`, "blockstream");
-
-    return {
-      number: block.height,
-      hash: block.id,
-      parentHash: block.previousblockhash,
-      timestamp: new Date(block.timestamp * 1000).toISOString(),
-      miner: "",
-      gasUsed: block.size.toString(),
-      gasLimit: block.weight.toString(),
-      txCount: block.tx_count,
-    };
   }
 }
