@@ -24,8 +24,8 @@ catalogs:
     better-sqlite3: 12.11.1
     docus: 5.15.0
     jiti: 2.7.0
-    nitropack: 2.13.4
-    nuxt: 4.6.2
+    nitropack: 2.13.5
+    nuxt: 4.6.3
     ohash: 2.0.12
     ufo: 1.6.4
     zod: 4.5.4
@@ -45,7 +45,7 @@ catalogs:
     "@types/node": latest
     "@vueuse/core": 15.0.0
     changelogen: 0.6.2
-    obuild: 0.4.43
+    obuild: 0.4.45
     shiki: 4.5.0
     tsx: 4.22.5
     typescript: 6.0.3
