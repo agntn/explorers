@@ -20,7 +20,7 @@ Docs and a live explorer: [explorers.agntn.dev](https://explorers.agntn.dev).
 - 🧩 **Twenty-two backends, one contract.** Etherscan, Blockscout, Blockchair, Mempool, Blockstream, Solscan, Helius, TONAPI, TRONSCAN, Aptos, Blockberry, Koios, Turbo, ar.io, arweave.net, dcrdata, Horizon, WhatsOnChain, Blockbook, Haskoin, eCash Explorer and XRPSCAN, and from your side they all look the same.
 - ⛓️ **31 chains.** Ethereum, Base, Arbitrum, Optimism, Polygon, BSC, Avalanche, Gnosis, Linea, Berachain, zkSync, Scroll, Bitcoin, Bitcoin Cash, Bitcoin SV, Bitcoin Gold, Litecoin, Dogecoin, Pepecoin, eCash, Zcash, Solana, TON, TRON, Aptos, Sui, Cardano, Arweave, Decred, Stellar and the XRP Ledger.
 - 🔢 **Amounts stay exact.** Strings in the smallest unit. Your 0.1 ETH is `100000000000000000` and it stays that way.
-- 🖥️ **CLI, library, MCP, Pi and OMP.** Whatever you're holding, same commands, same objects.
+- 🖥️ **CLI, library, MCP, Pi, OMP and AI SDK.** Whatever you're holding, same commands, same objects.
 - 🏷️ **ENS just works.** `vitalik.eth` wherever an Ethereum address would go, no extra dependency.
 - 🎯 **Picks a provider for you and tells you which.** Keys first, keyless next, Blockscout when nobody else wants the chain. `-p` if you know better.
 - 📦 **Loads only what you use.** One bundle per provider, `create()` pulls in exactly one.
@@ -201,7 +201,30 @@ omp install @agntn/explorers
 }
 ```
 
-Eleven read-only tools, each written once for MCP, Pi, OMP and the CLI. Three copies used to drift. One can't. Got your own transport? `createMcpServer()` lives in `@agntn/explorers/mcp`. The heavy stuff, `raw` records and contract ABIs, stays out of the answer until a call asks for it. Your context window will thank you. [Agents guide](https://explorers.agntn.dev/guide/agents).
+Eleven read-only tools, each written once for MCP, Pi, OMP, the CLI and the AI SDK. Copies used to drift. One can't. Got your own transport? `createMcpServer()` lives in `@agntn/explorers/mcp`. The heavy stuff, `raw` records and contract ABIs, stays out of the answer until a call asks for it. Your context window will thank you. [Agents guide](https://explorers.agntn.dev/guide/agents).
+
+### AI SDK
+
+Install the optional AI SDK peer, version 7:
+
+```bash
+pnpm add @agntn/explorers ai @ai-sdk/anthropic
+```
+
+```ts
+import { anthropic } from "@ai-sdk/anthropic";
+import { explorersAiTools } from "@agntn/explorers/ai";
+import { generateText, isStepCount } from "ai";
+
+const { text } = await generateText({
+  model: anthropic("claude-sonnet-5-5"),
+  tools: explorersAiTools(),
+  stopWhen: isStepCount(5),
+  prompt: "How much BTC sits on bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh?",
+});
+```
+
+One import gives your app the same eleven MCP tools. That's eleven wrappers you don't have to write.
 
 ## 🚫 What this does not do
 

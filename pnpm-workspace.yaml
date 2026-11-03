@@ -44,6 +44,7 @@ catalogs:
     "@oh-my-pi/pi-coding-agent": 18.12.6
     "@types/node": latest
     "@vueuse/core": 15.0.0
+    ai: 7.0.153
     changelogen: 0.6.2
     obuild: 0.4.45
     shiki: 4.5.0

@@ -7,11 +7,12 @@ src/
   index.ts          — Library entry: re-exports types, utilities, registry
   cli.ts            - CLI entry: `mcp` from live source in a checkout, everything else through cli-run.ts
   cli-run.ts        - runCli from @agntn/tools/cli over the tool list
-  tools.ts          - One defineTool per tool, shared by MCP, Pi, OMP and the CLI
+  tools.ts          - One defineTool per tool, shared by MCP, Pi, OMP, the CLI and the AI SDK
   tool-operations.ts - Executors, loaded on the first call
   tool-lines.ts     - Lines the Pi and OMP renderers draw from details
   tool-limits.ts    - Bounds the schemas and executors share, no imports
   mcp.ts            - MCP server: createMcpServer(), the @agntn/explorers/mcp entry
+  ai.ts             - AI SDK tools: explorersAiTools(), the @agntn/explorers/ai entry
   version.ts        — Single version string
   core/             — Domain layer (types, registry, errors, HTTP, ENS, input)
   providers/        — Provider implementations (one file per provider)
