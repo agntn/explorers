@@ -20,6 +20,7 @@ const entries = [
   "index.mjs",
   "cli.mjs",
   "mcp.mjs",
+  "ai.mjs",
   "tools.mjs",
   "tool-operations.mjs",
   ...readdirSync(join(dist, "providers"))

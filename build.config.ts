@@ -15,6 +15,7 @@ export default defineBuildConfig({
         "./src/index.ts",
         "./src/cli.ts",
         "./src/mcp.ts",
+        "./src/ai.ts",
         "./src/tools.ts",
         "./src/tool-operations.ts",
         ...providerInputs,
