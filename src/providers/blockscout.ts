@@ -26,7 +26,7 @@ import type {
 } from "../core/types.ts";
 import { Provider } from "../core/provider.ts";
 import { buildQuery, normalizeBaseUrl } from "../core/client.ts";
-import { NotFoundError, UnsupportedChainError } from "../core/errors.ts";
+import { ExplorerError, NotFoundError, UnsupportedChainError } from "../core/errors.ts";
 import { assertSafePathSegment } from "../core/path-safety.ts";
 import { create as createChain } from "@agntn/chains";
 import { formatWei, historyPage, multiplyIntegerStrings } from "../core/types.ts";
@@ -36,6 +36,19 @@ const TOKEN_BALANCE_DEFAULT_TIMEOUT = 60_000;
 
 /** A history or transfer read walks at most this many rows to reach its page. */
 const HISTORY_ROWS = 1000;
+
+/* The v2 address lists page by keyset cursor only, so a block bound has nowhere to go. */
+function refuseBlockBounds(options: Readonly<TxHistoryOptions> | undefined, message: string): void {
+  if (options?.startBlock !== undefined || options?.endBlock !== undefined)
+    throw new ExplorerError(message, "blockscout");
+}
+
+/* `/token-transfers` lists newest first with no block filter either, so both are refused. */
+function refuseTransferOrder(options: Readonly<TokenTransferOptions> | undefined): void {
+  if (options?.sort === "asc")
+    throw new ExplorerError("Blockscout lists token transfers newest first only", "blockscout");
+  refuseBlockBounds(options, "Blockscout token transfers take no block bounds");
+}
 
 const CHAIN_BASES: Partial<Record<ChainKey, string>> = {
   ethereum: DEFAULT_BASE,
@@ -304,6 +317,9 @@ export class Blockscout extends Provider {
   /**
    * Follow Blockscout's 50-item keyset pages past the rows before `page`, up to 1000 rows in all.
    *
+   * `sort: "asc"` goes out as `sort=block_number&order=asc`. Block bounds throw, since the
+   * endpoint has no filter for them.
+   *
    * @param {string} address - The `address` value.
    * @param {ChainKey} chain - The `chain` value.
    * @param {Readonly<TxHistoryOptions>} options - `limit` up to 100, `page * limit` up to 1000.
@@ -317,13 +333,16 @@ export class Blockscout extends Provider {
     const c = chain ?? this.defaultChain;
     assertSafePathSegment(address, "address");
     const { limit, offset } = historyPage(options, HISTORY_ROWS, this.name);
+    refuseBlockBounds(options, "Blockscout transaction history takes no block bounds");
     const rows = offset + limit;
     const baseUrl = `${this.base(c)}/api/v2/addresses/${encodeURIComponent(address)}/transactions`;
+    const order = options?.sort === "asc" ? { sort: "block_number", order: "asc" } : {};
 
     const items: BlockscoutTx[] = [];
     let cursor: Record<string, string | number> = {};
     for (let fetches = 0; fetches < Math.ceil(rows / 50) && items.length < rows; fetches++) {
-      const data = await this.getJSON<BlockscoutTransactionPage>(`${baseUrl}${buildQuery(cursor)}`);
+      const query = buildQuery({ ...order, ...cursor });
+      const data = await this.getJSON<BlockscoutTransactionPage>(`${baseUrl}${query}`);
       if (!data.items.length) break;
       items.push(...data.items);
       if (!data.next_page_params) break;
@@ -401,9 +420,10 @@ export class Blockscout extends Provider {
   /**
    * Walk the keyset-paginated ERC-20 transfer list past the rows before `page`, up to 1000 rows.
    *
-   * The endpoint accepts only a token filter and a `next_page_params` cursor. Block range and sort
-   * have no server-side equivalent and are ignored. A transfer without a value never becomes a row,
-   * so the walk allows twice the pages of 50 the window needs, and never fewer than four.
+   * The endpoint accepts only a token filter and a `next_page_params` cursor, newest first, so
+   * `sort: "asc"` and block bounds throw instead of quietly reading the newest page. A transfer
+   * without a value never becomes a row, so the walk allows twice the pages of 50 the window needs,
+   * and never fewer than four.
    *
    * @param {string} address - The `address` value.
    * @param {ChainKey} chain - The `chain` value.
@@ -418,6 +438,7 @@ export class Blockscout extends Provider {
     const c = chain ?? this.defaultChain;
     assertSafePathSegment(address, "address");
     const { limit, offset } = historyPage(options, HISTORY_ROWS, this.name);
+    refuseTransferOrder(options);
     const rows = offset + limit;
     const baseUrl = `${this.base(c)}/api/v2/addresses/${encodeURIComponent(address)}/token-transfers`;
 
