@@ -1,7 +1,7 @@
-import { NotFoundError } from "./errors.ts";
+import { ExplorerError, NotFoundError, UnsupportedOperationError } from "./errors.ts";
 import { assertSafePathSegment } from "./path-safety.ts";
-import { formatWei, toTimestamp } from "./types.ts";
-import type { BlockInfo, PubkeyReveal, Utxo } from "./types.ts";
+import { formatWei, historyPage, toTimestamp } from "./types.ts";
+import type { BlockInfo, PubkeyReveal, TxHistoryOptions, Utxo } from "./types.ts";
 
 const CHAIN_PAGE_SIZE = 25;
 
@@ -13,7 +13,18 @@ const ESPLORA_DECIMALS = 8;
 
 interface EsploraAddressTransaction {
   txid: string;
-  status: { confirmed: boolean };
+  status: { confirmed: boolean; block_height?: number };
+}
+
+/** The caller's history options and the provider whose name a refusal carries. */
+export interface EsploraHistoryRequest {
+  readonly options?: Readonly<TxHistoryOptions>;
+  readonly provider: string;
+}
+
+interface BlockRange {
+  readonly min: number;
+  readonly max: number;
 }
 
 interface EsploraOutput {
@@ -186,31 +197,86 @@ async function* esploraHistoryPages<T extends EsploraAddressTransaction>(
   }
 }
 
+/* Block bounds as a closed range, or none when the caller set neither. */
+function blockRange(options: Readonly<TxHistoryOptions>, provider: string): BlockRange | undefined {
+  const { startBlock, endBlock } = options;
+  if (startBlock === undefined && endBlock === undefined) return undefined;
+  const min = startBlock ?? 0;
+  const max = endBlock ?? Number.MAX_SAFE_INTEGER;
+  if (!Number.isSafeInteger(min) || !Number.isSafeInteger(max) || min < 0 || min > max) {
+    throw new ExplorerError(
+      `${provider} history needs whole block heights from 0 and startBlock <= endBlock`,
+      provider,
+    );
+  }
+  return { min, max };
+}
+
+/* A mempool row has no height, so a block range never holds it. */
+function inRange(height: number | undefined, range?: BlockRange): boolean {
+  if (range === undefined) return true;
+  return height !== undefined && height >= range.min && height <= range.max;
+}
+
+/* Confirmed rows come highest block first, so one below the range ends it. */
+function belowRange(height: number | undefined, range?: BlockRange): boolean {
+  return range !== undefined && height !== undefined && height < range.min;
+}
+
+/* Collect rows in range until there are enough, the range ends, or the walk outgrows its cap. */
+async function walkHistory<T extends EsploraAddressTransaction>(
+  address: string,
+  scope: Readonly<{ range?: BlockRange; wanted: number }>,
+  fetchPage: (path: string) => Promise<T[]>,
+  nextPagePath: (encodedAddress: string, encodedCursor: string) => string,
+): Promise<{ rows: T[]; complete: boolean }> {
+  const rows: T[] = [];
+  let walked = 0;
+  for await (const page of esploraHistoryPages(address, fetchPage, nextPagePath)) {
+    if (walked >= ESPLORA_HISTORY_ROWS) return { rows, complete: false };
+    for (const transaction of page) {
+      const height = transaction.status.block_height;
+      if (belowRange(height, scope.range)) return { rows, complete: true };
+      if (inRange(height, scope.range)) rows.push(transaction);
+      if (rows.length >= scope.wanted) return { rows, complete: true };
+    }
+    walked += page.length;
+  }
+  return { rows, complete: true };
+}
+
 /**
- * Fetch one page of an Esplora address feed, walking the confirmed-chain cursor past earlier rows.
+ * Fetch one page of an Esplora address feed in the order and block range the caller asked for.
  *
  * @param {string} address - The `address` value.
- * @param {Readonly<{ limit: number; offset: number }>} window - Rows to return and to skip first.
+ * @param {Readonly<EsploraHistoryRequest>} request - The history options and the provider key.
  * @param {(path: string) => Promise<T[]>} fetchPage - The `fetchPage` value.
  * @param {(encodedAddress: string, encodedCursor: string) => string} nextPagePath - Build the
  *   provider-specific confirmed-history cursor path.
  * @returns {Promise<T[]>} The resulting value.
+ * @throws {UnsupportedOperationError} When the order or range reaches past the rows walked.
  */
 export async function getEsploraAddressHistory<T extends EsploraAddressTransaction>(
   address: string,
-  window: Readonly<{ limit: number; offset: number }>,
+  request: Readonly<EsploraHistoryRequest>,
   fetchPage: (path: string) => Promise<T[]>,
   nextPagePath: (encodedAddress: string, encodedCursor: string) => string = confirmedHistoryPath,
 ): Promise<T[]> {
-  const limit = window.offset + window.limit;
-  const transactions: T[] = [];
-
-  for await (const page of esploraHistoryPages(address, fetchPage, nextPagePath)) {
-    transactions.push(...page.slice(0, limit - transactions.length));
-    if (transactions.length >= limit) break;
+  const options = request.options ?? {};
+  const { limit, offset } = historyPage(options, ESPLORA_HISTORY_ROWS, request.provider);
+  const range = blockRange(options, request.provider);
+  const ascending = options.sort === "asc";
+  const wanted = ascending ? Number.POSITIVE_INFINITY : offset + limit;
+  const walk = await walkHistory(address, { range, wanted }, fetchPage, nextPagePath);
+  if (!walk.complete) {
+    const option = ascending ? "sort asc" : "block range";
+    throw new UnsupportedOperationError(
+      `${option} beyond the newest ${ESPLORA_HISTORY_ROWS} transactions`,
+      request.provider,
+    );
   }
-
-  return transactions.slice(window.offset);
+  const rows = ascending ? walk.rows.toReversed() : walk.rows;
+  return rows.slice(offset, offset + limit);
 }
 
 /** A compressed or uncompressed secp256k1 key as hex. */

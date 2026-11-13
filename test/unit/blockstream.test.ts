@@ -178,6 +178,21 @@ describe("blockstream provider", () => {
     );
   });
 
+  it("answers oldest first when asked to, instead of the feed order", async () => {
+    const page = Array.from({ length: 3 }, (_, index) => historyTransaction(index));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => jsonResponse(page)),
+    );
+
+    const provider = await create("blockstream");
+    const transactions = await provider.getTxHistory(ADDRESS, "bitcoin", { sort: "asc" });
+
+    expect(transactions.map((transaction) => transaction.blockNumber)).toEqual([
+      899_998, 899_999, 900_000,
+    ]);
+  });
+
   it("lists the unspent outputs Blockstream reports for an address", async () => {
     const fetch = vi.fn(async () =>
       jsonResponse([
