@@ -85,6 +85,20 @@ function mapAccountTransaction(raw: Readonly<SolscanAccountTransaction>): Transa
   };
 }
 
+/**
+ * Account transactions only page back from the newest through `before`, with no order or slot filter.
+ *
+ * @param {Readonly<TxHistoryOptions>} options - The caller's history options.
+ * @returns {{ limit: number; offset: number }} The page to walk to.
+ */
+function historyWindow(options: Readonly<TxHistoryOptions> = {}) {
+  if (options.sort === "asc")
+    throw new ExplorerError("Solscan lists account history newest first only", Solscan.key);
+  if (options.startBlock !== undefined || options.endBlock !== undefined)
+    throw new ExplorerError("Solscan account history takes no block bounds", Solscan.key);
+  return historyPage(options, HISTORY_ROWS, Solscan.key);
+}
+
 async function collectAccountTransactions(
   limit: number,
   readPage: (before: string | undefined) => Promise<SolscanAccountTransaction[]>,
@@ -196,7 +210,7 @@ export class Solscan extends Provider {
     if (c !== "solana") throw new UnsupportedChainError(c, this.name);
     assertSafePathSegment(address, "address");
 
-    const { limit, offset } = historyPage(options, HISTORY_ROWS, this.name);
+    const { limit, offset } = historyWindow(options);
     const transactions = await collectAccountTransactions(offset + limit, (before) =>
       this.api<SolscanAccountTransaction[]>("/account/transactions", {
         address,

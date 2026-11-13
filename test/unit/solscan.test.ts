@@ -165,6 +165,27 @@ describe("solscan provider", () => {
     ).rejects.toThrow("solscan history requires a whole page from 1 and page * limit <= 1000");
   });
 
+  it("refuses ascending history and block bounds before any request", async () => {
+    const fetch = stubJSON({ success: true, data: [accountTransaction(0)] });
+
+    await expect(provider.getTxHistory(ADDRESS, "solana", { sort: "asc" })).rejects.toMatchObject({
+      message: "Solscan lists account history newest first only",
+      provider: "solscan",
+    });
+    for (const bounds of [{ startBlock: 1 }, { endBlock: 2 }, { startBlock: 1, endBlock: 2 }]) {
+      await expect(provider.getTxHistory(ADDRESS, "solana", bounds)).rejects.toMatchObject({
+        message: "Solscan account history takes no block bounds",
+        provider: "solscan",
+      });
+    }
+    expect(fetch).not.toHaveBeenCalled();
+
+    await provider.getTxHistory(ADDRESS, "solana", { sort: "desc", limit: 5 });
+    expect(fetch.mock.calls.map(([input]) => String(input))).toEqual([
+      `https://example.test/account/transactions?address=${ADDRESS}&limit=40`,
+    ]);
+  });
+
   it("stops when Solscan repeats a transaction page", async () => {
     const page = Array.from({ length: 40 }, (_, index) => accountTransaction(index));
     const fetch = vi.fn(
