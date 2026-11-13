@@ -19,6 +19,7 @@ import { Provider } from "../core/provider.ts";
 import { collectOpReturns } from "../core/script.ts";
 import {
   AuthError,
+  ExplorerError,
   HTTPError,
   NotFoundError,
   RateLimitError,
@@ -145,6 +146,14 @@ function toIsoTimestamp(timestamp: string): string {
 function firstRecord<T>(data: Readonly<Record<string, T>>): T | undefined {
   const key = Object.keys(data)[0];
   return key === undefined ? undefined : data[key];
+}
+
+/* The address dashboard knows only `limit` and `offset` over its latest hashes, newest first. */
+function refuseHistoryOrder(options: Readonly<TxHistoryOptions> | undefined): void {
+  if (options?.sort === "asc")
+    throw new ExplorerError("Blockchair lists history newest first only", Blockchair.key);
+  if (options?.startBlock !== undefined || options?.endBlock !== undefined)
+    throw new ExplorerError("Blockchair history takes no block bounds", Blockchair.key);
 }
 
 async function fetchTransactionDetails(
@@ -320,6 +329,7 @@ export class Blockchair extends Provider {
   ): Promise<Transaction[]> {
     const c = chain ?? this.defaultChain;
     assertSafePathSegment(address, "address");
+    refuseHistoryOrder(options);
     const { limit, offset } = historyPage(
       options,
       MAX_OFFSET + clampMaxResults(options?.limit),

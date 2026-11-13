@@ -248,6 +248,31 @@ describe("blockchair provider", () => {
     );
   });
 
+  it("refuses ascending history and block bounds before any request", async () => {
+    const fetch = stubJSON({
+      data: { [BTC_ADDRESS]: { transactions: [] } },
+      context: { code: 200 },
+    });
+    const provider = await create("blockchair");
+
+    await expect(
+      provider.getTxHistory(BTC_ADDRESS, "bitcoin", { sort: "asc" }),
+    ).rejects.toMatchObject({
+      message: "Blockchair lists history newest first only",
+      provider: "blockchair",
+    });
+    for (const bounds of [{ startBlock: 1 }, { endBlock: 2 }]) {
+      await expect(provider.getTxHistory(BTC_ADDRESS, "bitcoin", bounds)).rejects.toMatchObject({
+        message: "Blockchair history takes no block bounds",
+        provider: "blockchair",
+      });
+    }
+    expect(fetch).not.toHaveBeenCalled();
+
+    await provider.getTxHistory(BTC_ADDRESS, "bitcoin", { sort: "desc" });
+    expect(new URL(String(fetch.mock.calls[0]?.[0])).search).toBe("?limit=100");
+  });
+
   it("maps eCash transactions through the UTXO shape", async () => {
     stubJSON({
       data: {
