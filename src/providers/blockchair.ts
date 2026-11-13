@@ -93,7 +93,7 @@ interface BlockchairAddressData {
   };
   readonly transactions?: readonly string[];
   /** Ethereum lists calls instead of hashes, and the genesis allocation has none. */
-  readonly calls?: ReadonlyArray<{ readonly transaction_hash: string | null }>;
+  readonly calls?: ReadonlyArray<{ readonly transaction_hash?: string | null }>;
   readonly utxo?: ReadonlyArray<{
     readonly block_id: number;
     readonly transaction_hash: string;
@@ -167,7 +167,7 @@ function refuseHistoryOrder(options: Readonly<TxHistoryOptions> | undefined): vo
 function historyHashes(data: Readonly<BlockchairAddressData> | undefined): string[] {
   if (data?.calls === undefined) return [...(data?.transactions ?? [])];
   const hashes = data.calls.map((call) => call.transaction_hash);
-  return [...new Set(hashes.filter((hash): hash is string => hash !== null))];
+  return [...new Set(hashes.filter((hash) => typeof hash === "string"))];
 }
 
 async function fetchTransactionDetails(

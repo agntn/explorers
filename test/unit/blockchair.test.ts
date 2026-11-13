@@ -296,11 +296,14 @@ describe("blockchair provider", () => {
     expect(fetch).toHaveBeenCalledTimes(3);
   });
 
-  it("skips the genesis call that carries no transaction hash", async () => {
+  it("skips calls that carry no transaction hash", async () => {
     const fetch = stubJSON({
       data: {
         [ETH_ADDRESS]: {
-          calls: [{ block_id: 0, transaction_hash: null, index: "0", time: "2015-07-30 00:00:00" }],
+          calls: [
+            { block_id: 0, transaction_hash: null, index: "0", time: "2015-07-30 00:00:00" },
+            { block_id: 0, index: "0", time: "2015-07-30 00:00:00" },
+          ],
         },
       },
       context: { code: 200 },
