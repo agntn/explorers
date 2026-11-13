@@ -248,6 +248,69 @@ describe("blockchair provider", () => {
     );
   });
 
+  it("reads Ethereum history from the calls of the address dashboard", async () => {
+    const sent = "0x0357352473d64df14fb987f33bbc9c3cd317fafe7c9498139c6a0529b551a017";
+    const internal = "0x9b1c6f0b2a8b0ad3a2c3e2f1f6e0b8d5c4a3b2a1f0e9d8c7b6a5f4e3d2c1b0a9";
+    const call = (hash: string | null, blockId: number) => ({
+      block_id: blockId,
+      transaction_hash: hash,
+      index: "0",
+      time: "2018-11-16 00:52:45",
+      transferred: true,
+    });
+    const fetch = vi.fn<typeof globalThis.fetch>(async (input) => {
+      const path = new URL(String(input)).pathname;
+      const body = path.includes("/dashboards/address/")
+        ? {
+            data: {
+              [ETH_ADDRESS]: {
+                calls: [call(sent, 6712155), call(internal, 6712100), call(internal, 6712100)],
+              },
+            },
+            context: { code: 200 },
+          }
+        : {
+            data: {
+              [path.split("/").at(-1) ?? ""]: {
+                transaction: {
+                  hash: path.split("/").at(-1),
+                  block_id: 1,
+                  time: "2018-11-16 00:52:45",
+                  fee: "0",
+                  value: "0",
+                },
+              },
+            },
+            context: { code: 200 },
+          };
+      return new Response(JSON.stringify(body), {
+        headers: { "Content-Type": "application/json" },
+      });
+    });
+    vi.stubGlobal("fetch", fetch);
+    const provider = await create("blockchair");
+
+    const history = await provider.getTxHistory(ETH_ADDRESS, "ethereum");
+
+    expect(history.map((transaction) => transaction.hash)).toEqual([sent, internal]);
+    expect(fetch).toHaveBeenCalledTimes(3);
+  });
+
+  it("skips the genesis call that carries no transaction hash", async () => {
+    const fetch = stubJSON({
+      data: {
+        [ETH_ADDRESS]: {
+          calls: [{ block_id: 0, transaction_hash: null, index: "0", time: "2015-07-30 00:00:00" }],
+        },
+      },
+      context: { code: 200 },
+    });
+    const provider = await create("blockchair");
+
+    expect(await provider.getTxHistory(ETH_ADDRESS, "ethereum")).toEqual([]);
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
   it("refuses ascending history and block bounds before any request", async () => {
     const fetch = stubJSON({
       data: { [BTC_ADDRESS]: { transactions: [] } },

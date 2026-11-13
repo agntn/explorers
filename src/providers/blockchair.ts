@@ -92,6 +92,8 @@ interface BlockchairAddressData {
     readonly type_is_contract?: boolean;
   };
   readonly transactions?: readonly string[];
+  /** Ethereum lists calls instead of hashes, and the genesis allocation has none. */
+  readonly calls?: ReadonlyArray<{ readonly transaction_hash: string | null }>;
   readonly utxo?: ReadonlyArray<{
     readonly block_id: number;
     readonly transaction_hash: string;
@@ -154,6 +156,18 @@ function refuseHistoryOrder(options: Readonly<TxHistoryOptions> | undefined): vo
     throw new ExplorerError("Blockchair lists history newest first only", Blockchair.key);
   if (options?.startBlock !== undefined || options?.endBlock !== undefined)
     throw new ExplorerError("Blockchair history takes no block bounds", Blockchair.key);
+}
+
+/**
+ * UTXO dashboards list hashes; Ethereum lists calls, sometimes several per transaction.
+ *
+ * @param {Readonly<BlockchairAddressData> | undefined} data - One address dashboard entry.
+ * @returns {string[]} Its transaction hashes, newest first, each once.
+ */
+function historyHashes(data: Readonly<BlockchairAddressData> | undefined): string[] {
+  if (data?.calls === undefined) return [...(data?.transactions ?? [])];
+  const hashes = data.calls.map((call) => call.transaction_hash);
+  return [...new Set(hashes.filter((hash): hash is string => hash !== null))];
 }
 
 async function fetchTransactionDetails(
@@ -341,12 +355,10 @@ export class Blockchair extends Provider {
     });
     const res = await this.read<BlockchairResponse<Record<string, BlockchairAddressData>>>(url);
 
-    const transactions = firstRecord(res.data)?.transactions;
-    if (!transactions?.length) return [];
+    const hashes = historyHashes(firstRecord(res.data));
+    if (hashes.length === 0) return [];
 
-    return fetchTransactionDetails(transactions.slice(0, limit), (hash) =>
-      this.getTxDetail(hash, c),
-    );
+    return fetchTransactionDetails(hashes.slice(0, limit), (hash) => this.getTxDetail(hash, c));
   }
 
   override async getTxDetail(hash: string, chain?: ChainKey): Promise<Transaction> {
