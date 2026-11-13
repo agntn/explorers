@@ -303,6 +303,88 @@ describe("blockscout provider", () => {
     ).rejects.toThrow("blockscout history requires a whole page from 1 and page * limit <= 1000");
   });
 
+  it("asks Blockscout for the oldest transactions first and keeps that order across pages", async () => {
+    const transaction = (block: number) => ({
+      hash: `0x${block.toString(16).padStart(64, "0")}`,
+      block_number: block,
+      timestamp: "2026-08-22T18:24:59.000000Z",
+      from: { hash: "0x1111111111111111111111111111111111111111" },
+      to: { hash: VITALIK },
+      value: "0",
+      gas_used: "21000",
+      gas_price: "1",
+      status: "ok",
+      transaction_types: [],
+    });
+    const page = (start: number, next: Readonly<Record<string, number>> | null): Response =>
+      new Response(
+        JSON.stringify({
+          items: Array.from({ length: 50 }, (_, index) => transaction(start + index)),
+          next_page_params: next,
+        }),
+        { headers: { "Content-Type": "application/json" } },
+      );
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(page(1, { block_number: 50, index: 0 }))
+      .mockResolvedValueOnce(page(51, null));
+    vi.stubGlobal("fetch", fetch);
+
+    const transactions = await provider.getTxHistory(VITALIK, "ethereum", {
+      limit: 60,
+      sort: "asc",
+    });
+
+    expect(transactions.map((transaction) => transaction.blockNumber)).toEqual(
+      Array.from({ length: 60 }, (_, index) => index + 1),
+    );
+    const [first, second] = fetch.mock.calls.map((call) => new URL(String(call[0])).searchParams);
+    expect(Object.fromEntries(first ?? [])).toEqual({ sort: "block_number", order: "asc" });
+    expect(Object.fromEntries(second ?? [])).toEqual({
+      sort: "block_number",
+      order: "asc",
+      block_number: "50",
+      index: "0",
+    });
+  });
+
+  it("sends no order for descending history, the endpoint's default", async () => {
+    const fetch = stubJSON({ items: [], next_page_params: null });
+
+    await provider.getTxHistory(VITALIK, "ethereum", { sort: "desc" });
+
+    expect(new URL(String(fetch.mock.calls[0]?.[0])).search).toBe("");
+  });
+
+  it("refuses block bounds before any request", async () => {
+    const fetch = stubJSON({ items: [], next_page_params: null });
+
+    for (const bounds of [{ startBlock: 1 }, { endBlock: 2 }]) {
+      await expect(provider.getTxHistory(VITALIK, "ethereum", bounds)).rejects.toMatchObject({
+        message: "Blockscout transaction history takes no block bounds",
+        provider: "blockscout",
+      });
+      await expect(provider.getTokenTransfers!(VITALIK, "ethereum", bounds)).rejects.toMatchObject({
+        message: "Blockscout token transfers take no block bounds",
+        provider: "blockscout",
+      });
+    }
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("refuses ascending token transfers before any request", async () => {
+    const fetch = stubJSON({ items: [], next_page_params: null });
+
+    await expect(
+      provider.getTokenTransfers!(VITALIK, "ethereum", { sort: "asc" }),
+    ).rejects.toMatchObject({
+      message: "Blockscout lists token transfers newest first only",
+      provider: "blockscout",
+    });
+    await provider.getTokenTransfers!(VITALIK, "ethereum", { sort: "desc" });
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
   it("maps verified contract information", async () => {
     stubJSON({
       is_verified: true,
