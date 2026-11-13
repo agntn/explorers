@@ -74,6 +74,41 @@ interface HeliusAsset {
   };
 }
 
+/** The history query parameters for one order and slot range, and the cursor that pages it. */
+interface HistoryQuery {
+  readonly filters: Readonly<Record<string, string | number | undefined>>;
+  readonly cursor: "before-signature" | "after-signature";
+}
+
+function isSlot(value: number | undefined): boolean {
+  return value === undefined || (Number.isSafeInteger(value) && value >= 0);
+}
+
+/**
+ * Solana block numbers here are slots, so block bounds map onto Helius's inclusive slot filters.
+ *
+ * @param {Readonly<TxHistoryOptions>} options - The caller's order and block bounds.
+ * @returns {HistoryQuery} The query parameters and the cursor that pages them.
+ */
+function historyQuery(options: Readonly<TxHistoryOptions> = {}): HistoryQuery {
+  const { startBlock, endBlock } = options;
+  if (!isSlot(startBlock) || !isSlot(endBlock) || (startBlock ?? 0) > (endBlock ?? Infinity)) {
+    throw new ExplorerError(
+      "Helius block bounds must be whole slots from 0 with startBlock <= endBlock",
+      Helius.key,
+    );
+  }
+  const ascending = options.sort === "asc";
+  return {
+    filters: {
+      "sort-order": ascending ? "asc" : undefined,
+      "gte-slot": startBlock,
+      "lte-slot": endBlock,
+    },
+    cursor: ascending ? "after-signature" : "before-signature",
+  };
+}
+
 const isNonSystemProgram = (instruction: Readonly<{ programId: string }>): boolean =>
   !SYSTEM_PROGRAMS.has(instruction.programId);
 
@@ -208,20 +243,22 @@ export class Helius extends Provider {
     assertSafePathSegment(address, "address");
 
     const { limit, offset } = historyPage(options, HISTORY_ROWS, this.name);
+    const { filters, cursor } = historyQuery(options);
     const rows = offset + limit;
     const path = `/v0/addresses/${encodeURIComponent(address)}/transactions`;
     const transactions: HeliusTransaction[] = [];
-    let before: string | undefined;
+    let last: string | undefined;
     while (transactions.length < rows) {
       const size = Math.min(HISTORY_PAGE_SIZE, rows - transactions.length);
       const page = await this.api<HeliusTransaction[]>(path, {
         limit: size,
-        "before-signature": before,
+        ...filters,
+        [cursor]: last,
       });
       transactions.push(...page);
-      const cursor = page.at(-1)?.signature;
-      if (page.length < size || cursor === undefined || cursor === before) break;
-      before = cursor;
+      const next = page.at(-1)?.signature;
+      if (page.length < size || next === undefined || next === last) break;
+      last = next;
     }
     return transactions.slice(offset, rows).map(mapTransaction);
   }
