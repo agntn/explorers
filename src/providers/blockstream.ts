@@ -13,9 +13,8 @@ import { assertSafePathSegment } from "../core/path-safety.ts";
 import { Provider } from "../core/provider.ts";
 import { collectInscriptions, collectOpReturns } from "../core/script.ts";
 import { normalizeBaseUrl } from "../core/client.ts";
-import { formatWei, historyPage } from "../core/types.ts";
+import { formatWei } from "../core/types.ts";
 import {
-  ESPLORA_HISTORY_ROWS,
   esploraFeedAddress,
   getEsploraAddressHistory,
   getEsploraBlock,
@@ -214,7 +213,7 @@ export class Blockstream extends Provider {
     const selectedChain = chain ?? this.defaultChain;
     const transactions = await getEsploraAddressHistory(
       address,
-      historyPage(options, ESPLORA_HISTORY_ROWS, this.name),
+      { options, provider: this.name },
       async (path) => this.api<EsploraAddressTx[]>(selectedChain, path),
     );
 

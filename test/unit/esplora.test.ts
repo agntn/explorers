@@ -6,15 +6,35 @@ import {
   selectEsploraRecipientOutput,
 } from "../../src/core/esplora.ts";
 import type { EsploraKeyTransaction } from "../../src/core/esplora.ts";
+import { ExplorerError, UnsupportedOperationError } from "../../src/core/errors.ts";
+import type { TxHistoryOptions } from "../../src/core/types.ts";
 
 const ADDRESS = "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa";
 
-function historyTransaction(index: number) {
+function historyTransaction(index: number, height?: number) {
   return {
     txid: index.toString(16).padStart(64, "0"),
-    status: { confirmed: true },
+    status: { confirmed: true, block_height: height },
   };
 }
+
+/* A feed of `count` confirmed rows, newest first, one block each counting down from `top`. */
+function historyFeed(count: number, top = count) {
+  const rows = Array.from({ length: count }, (_, index) => historyTransaction(index, top - index));
+  const pages = Array.from({ length: Math.ceil(count / 25) }, (_, page) =>
+    rows.slice(page * 25, page * 25 + 25),
+  );
+  const fetchPage = vi.fn(async (path: string) => {
+    if (path.endsWith("/txs")) return pages[0] ?? [];
+    const cursor = path.split("/").at(-1);
+    const index = pages.findIndex((page) => page.at(-1)?.txid === cursor);
+    return pages[index + 1] ?? [];
+  });
+  return { rows, fetchPage };
+}
+
+const heights = (rows: readonly { readonly status: { readonly block_height?: number } }[]) =>
+  rows.map((row) => row.status.block_height);
 
 describe("Esplora recipient selection", () => {
   it("skips OP_RETURN and the excluded address", () => {
@@ -109,7 +129,7 @@ describe("Esplora address history", () => {
     const fetchPage = vi.fn(async () => [historyTransaction(0)]);
 
     await expect(
-      getEsploraAddressHistory("../admin", { limit: 30, offset: 0 }, fetchPage),
+      getEsploraAddressHistory("../admin", { options: { limit: 30 }, provider: "test" }, fetchPage),
     ).rejects.toThrow(/separator|traversal/);
     expect(fetchPage).not.toHaveBeenCalled();
   });
@@ -121,7 +141,7 @@ describe("Esplora address history", () => {
 
     const transactions = await getEsploraAddressHistory(
       ADDRESS,
-      { limit: 30, offset: 0 },
+      { options: { limit: 30 }, provider: "test" },
       fetchPage,
     );
 
@@ -130,6 +150,108 @@ describe("Esplora address history", () => {
       `/api/address/${ADDRESS}/txs`,
       `/api/address/${ADDRESS}/txs/chain/${cursor}`,
     ]);
+  });
+});
+
+describe("Esplora history order and block range", () => {
+  const request = (options: Readonly<TxHistoryOptions>) => ({ options, provider: "test" });
+
+  it("answers oldest first when the whole feed fits the walk", async () => {
+    const { fetchPage } = historyFeed(60);
+
+    const rows = await getEsploraAddressHistory(
+      ADDRESS,
+      request({ sort: "asc", limit: 3 }),
+      fetchPage,
+    );
+
+    expect(heights(rows)).toEqual([1, 2, 3]);
+  });
+
+  it("pages oldest first from the bottom of the feed", async () => {
+    const { fetchPage } = historyFeed(60);
+
+    const rows = await getEsploraAddressHistory(
+      ADDRESS,
+      request({ sort: "asc", limit: 10, page: 6 }),
+      fetchPage,
+    );
+
+    expect(heights(rows)).toEqual([51, 52, 53, 54, 55, 56, 57, 58, 59, 60]);
+  });
+
+  it("refuses oldest first past the newest 1000 transactions", async () => {
+    const { fetchPage } = historyFeed(1001);
+
+    await expect(
+      getEsploraAddressHistory(ADDRESS, request({ sort: "asc" }), fetchPage),
+    ).rejects.toThrow(
+      new UnsupportedOperationError("sort asc beyond the newest 1000 transactions", "test"),
+    );
+    expect(fetchPage).toHaveBeenCalledTimes(41);
+  });
+
+  it("keeps only rows inside the block range and stops below it", async () => {
+    const { fetchPage } = historyFeed(100);
+
+    const rows = await getEsploraAddressHistory(
+      ADDRESS,
+      request({ startBlock: 70, endBlock: 80 }),
+      fetchPage,
+    );
+
+    expect(heights(rows)).toEqual([80, 79, 78, 77, 76, 75, 74, 73, 72, 71, 70]);
+    expect(fetchPage).toHaveBeenCalledTimes(2);
+  });
+
+  it("leaves mempool rows out of a block range", async () => {
+    const pending = { txid: "f".repeat(64), status: { confirmed: false } };
+    const fetchPage = vi.fn(async () => [pending, historyTransaction(1, 10)]);
+
+    const rows = await getEsploraAddressHistory(ADDRESS, request({ endBlock: 10 }), fetchPage);
+
+    expect(rows.map((row) => row.txid)).toEqual([historyTransaction(1).txid]);
+  });
+
+  it("refuses a block range that reaches past the newest 1000 transactions", async () => {
+    const { fetchPage } = historyFeed(1100);
+
+    await expect(
+      getEsploraAddressHistory(ADDRESS, request({ startBlock: 50, endBlock: 60 }), fetchPage),
+    ).rejects.toThrow("block range beyond the newest 1000 transactions");
+  });
+
+  it("answers a range deep in the feed once it has enough rows", async () => {
+    const { fetchPage } = historyFeed(1100);
+
+    const rows = await getEsploraAddressHistory(
+      ADDRESS,
+      request({ startBlock: 50, endBlock: 1000, limit: 2 }),
+      fetchPage,
+    );
+
+    expect(heights(rows)).toEqual([1000, 999]);
+  });
+
+  it("rejects a backwards or negative block range before any request", async () => {
+    const { fetchPage } = historyFeed(10);
+
+    await expect(
+      getEsploraAddressHistory(ADDRESS, request({ startBlock: 9, endBlock: 3 }), fetchPage),
+    ).rejects.toThrow("startBlock <= endBlock");
+    await expect(
+      getEsploraAddressHistory(ADDRESS, request({ startBlock: -1 }), fetchPage),
+    ).rejects.toThrow(ExplorerError);
+    expect(fetchPage).not.toHaveBeenCalled();
+  });
+
+  it("reads newest first exactly as before without these options", async () => {
+    const { fetchPage } = historyFeed(60);
+
+    const rows = await getEsploraAddressHistory(ADDRESS, request({ limit: 3 }), fetchPage);
+
+    expect(heights(rows)).toEqual([60, 59, 58]);
+    expect(fetchPage).toHaveBeenCalledTimes(1);
   });
 });
 
