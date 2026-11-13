@@ -156,6 +156,70 @@ describe("helius provider", () => {
     expect(fetch).toHaveBeenCalledTimes(1);
   });
 
+  it("walks oldest first through after-signature on request", async () => {
+    const page = (start: number, length: number) =>
+      Array.from({ length }, (_, index) => ({
+        ...SYSTEM_TRANSFER,
+        signature: `signature-${start + index}`,
+        slot: 1000 + start + index,
+      }));
+    const fetch = stubJSONPages([page(0, 100), page(100, 20)]);
+
+    const transactions = await provider.getTxHistory(ADDRESS, "solana", {
+      sort: "asc",
+      limit: 60,
+      page: 2,
+    });
+
+    expect(transactions.map(({ blockNumber }) => blockNumber)).toEqual(
+      Array.from({ length: 60 }, (_, index) => 1060 + index),
+    );
+    expect(fetch.mock.calls.map(([input]) => new URL(String(input)).search)).toEqual([
+      "?api-key=secret&limit=100&sort-order=asc",
+      "?api-key=secret&limit=20&sort-order=asc&after-signature=signature-99",
+    ]);
+  });
+
+  it("sends block bounds as inclusive slot filters on every page", async () => {
+    const page = (start: number, length: number) =>
+      Array.from({ length }, (_, index) => ({
+        ...SYSTEM_TRANSFER,
+        signature: `signature-${start + index}`,
+      }));
+    const fetch = stubJSONPages([page(0, 100), page(100, 50)]);
+
+    await provider.getTxHistory(ADDRESS, "solana", {
+      startBlock: 250_000_000,
+      endBlock: 250_100_000,
+      limit: 100,
+      page: 2,
+    });
+
+    expect(fetch.mock.calls.map(([input]) => new URL(String(input)).search)).toEqual([
+      "?api-key=secret&limit=100&gte-slot=250000000&lte-slot=250100000",
+      "?api-key=secret&limit=100&gte-slot=250000000&lte-slot=250100000&before-signature=signature-99",
+    ]);
+  });
+
+  it("refuses block bounds Helius cannot read before any request", async () => {
+    const fetch = stubJSON([SYSTEM_TRANSFER]);
+
+    for (const bounds of [
+      { startBlock: -1 },
+      { endBlock: 1.5 },
+      { startBlock: 20, endBlock: 10 },
+    ]) {
+      await expect(provider.getTxHistory(ADDRESS, "solana", bounds)).rejects.toMatchObject({
+        message: "Helius block bounds must be whole slots from 0 with startBlock <= endBlock",
+        provider: "helius",
+      });
+    }
+    expect(fetch).not.toHaveBeenCalled();
+
+    await provider.getTxHistory(ADDRESS, "solana", { sort: "desc", limit: 5 });
+    expect(new URL(String(fetch.mock.calls[0]?.[0])).search).toBe("?api-key=secret&limit=5");
+  });
+
   it("marks non-system programs as contract interactions and errors as failed", async () => {
     stubJSON([
       {
