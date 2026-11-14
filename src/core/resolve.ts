@@ -41,6 +41,7 @@ const ENV_MAP: Record<string, string[]> = {
   haskoin: [],
   ecash: [],
   xrpscan: [],
+  blockcypher: [],
 };
 
 const OPTIONAL_CREDENTIAL_PROVIDERS: readonly string[] = ["blockchair", "whatsonchain"];
@@ -66,6 +67,7 @@ export const PROVIDER_DEFAULT_CHAIN: Partial<Record<string, ChainKey>> = {
   haskoin: "bitcoincash",
   ecash: "ecash",
   xrpscan: "xrpl",
+  blockcypher: "bitcoin",
 };
 
 function hasConfiguredCredentials(envKeys: readonly string[]): boolean {

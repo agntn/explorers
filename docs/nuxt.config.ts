@@ -27,7 +27,7 @@ export default defineNuxtConfig({
   llms: {
     title: "@agntn/explorers",
     description:
-      "Twenty-two block explorer APIs behind one TypeScript contract: balances, transactions, token transfers, contracts, tokens, gas and blocks on 31 chains. Library, CLI and agent tools.",
+      "Twenty-three block explorer APIs behind one TypeScript contract: balances, transactions, token transfers, contracts, tokens, gas and blocks on 31 chains. Library, CLI and agent tools.",
     sections: [
       {
         title: "Guide",
@@ -69,7 +69,7 @@ export default defineNuxtConfig({
   /** Docus pages define their own OG images; the alt text is the one thing they leave unset. */
   ogImage: {
     defaults: {
-      alt: "@agntn/explorers: twenty-two block explorer APIs, one shape",
+      alt: "@agntn/explorers: twenty-three block explorer APIs, one shape",
     },
   },
   icon: {

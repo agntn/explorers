@@ -87,6 +87,7 @@ const PAGED_HISTORY = new Set([
   "haskoin",
   "ecash",
   "xrpscan",
+  "blockcypher",
 ]);
 
 /** Same for `getTokenTransfers`. */

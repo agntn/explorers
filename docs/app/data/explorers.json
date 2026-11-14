@@ -1,6 +1,6 @@
 {
   "version": "0.6.1",
-  "generatedAt": "2026-11-14T14:17:36.092Z",
+  "generatedAt": "2026-11-14T15:30:26.715Z",
   "providers": [
     {
       "key": "etherscan",
@@ -345,6 +345,23 @@
       ],
       "defaultURL": "https://api.xrpscan.com/api/v1",
       "defaultChain": "xrpl"
+    },
+    {
+      "key": "blockcypher",
+      "chains": [
+        "bitcoin",
+        "litecoin",
+        "dogecoin"
+      ],
+      "capabilities": [
+        "balances",
+        "txHistory",
+        "txDetail",
+        "utxos",
+        "blockInfo"
+      ],
+      "defaultURL": "https://api.blockcypher.com/v1",
+      "defaultChain": "bitcoin"
     }
   ],
   "chains": [
@@ -486,7 +503,8 @@
       "providers": [
         "blockchair",
         "mempool",
-        "blockstream"
+        "blockstream",
+        "blockcypher"
       ]
     },
     {
@@ -508,7 +526,8 @@
       "explorer": "https://litecoinspace.org",
       "providers": [
         "blockchair",
-        "mempool"
+        "mempool",
+        "blockcypher"
       ]
     },
     {
@@ -518,7 +537,8 @@
       "type": "utxo",
       "explorer": "https://blockchair.com/dogecoin",
       "providers": [
-        "blockchair"
+        "blockchair",
+        "blockcypher"
       ]
     },
     {
