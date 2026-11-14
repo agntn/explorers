@@ -114,6 +114,29 @@ describe("tronscan provider", () => {
     );
   });
 
+  it("sends ascending order as timestamp", async () => {
+    const fetch = stubJSON({ data: [] });
+
+    await provider.getTxHistory(ADDRESS, "tron", { sort: "asc" });
+
+    expect(new URL(String(fetch.mock.calls[0]?.[0])).searchParams.get("sort")).toBe("timestamp");
+  });
+
+  it.each([{ startBlock: 0 }, { endBlock: 42 }, { startBlock: 10, endBlock: 20 }])(
+    "refuses block bounds %o before any request",
+    async (bounds) => {
+      const fetch = stubJSON({ data: [] });
+
+      await expect(provider.getTxHistory(ADDRESS, "tron", bounds)).rejects.toMatchObject({
+        name: "ExplorerError",
+        provider: "tronscan",
+        message:
+          "TRONSCAN filters the transaction list by time, not by block, so startBlock and endBlock are refused",
+      });
+      expect(fetch).not.toHaveBeenCalled();
+    },
+  );
+
   it("keeps unconfirmed transactions pending", async () => {
     stubJSON({
       data: [
