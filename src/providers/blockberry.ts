@@ -15,7 +15,7 @@ import type {
 } from "../core/types.ts";
 import { Provider } from "../core/provider.ts";
 import { normalizeBaseUrl, buildQuery } from "../core/client.ts";
-import { AuthError, UnsupportedChainError } from "../core/errors.ts";
+import { AuthError, ExplorerError, UnsupportedChainError } from "../core/errors.ts";
 import { assertSafePathSegment } from "../core/path-safety.ts";
 import { clampMaxResults, formatWei, historyPage } from "../core/types.ts";
 
@@ -66,6 +66,22 @@ function mapActivity(raw: Readonly<BlockberryActivity>): Transaction {
     tokenTransfers: [],
     raw: raw as unknown as Record<string, unknown>,
   };
+}
+
+/**
+ * Blockberry sorts account activity both ways, but an activity row names no checkpoint to bound.
+ *
+ * @param {Readonly<TxHistoryOptions>} options - The caller's order and block bounds.
+ * @returns {"ASC" | "DESC"} The `orderBy` value for every activity page.
+ */
+function activityOrder(options: Readonly<TxHistoryOptions> = {}): "ASC" | "DESC" {
+  if (options.startBlock !== undefined || options.endBlock !== undefined) {
+    throw new ExplorerError(
+      "Blockberry account activity carries no checkpoint, so startBlock and endBlock are refused",
+      Blockberry.key,
+    );
+  }
+  return options.sort === "asc" ? "ASC" : "DESC";
 }
 
 async function collectActivities(
@@ -153,6 +169,7 @@ export class Blockberry extends Provider {
     const c = chain ?? "sui";
     if (c !== "sui") throw new UnsupportedChainError(c, this.name);
     assertSafePathSegment(address, "address");
+    const orderBy = activityOrder(options);
 
     const { limit, offset } = historyPage(
       { ...options, limit: options?.limit ? clampMaxResults(options.limit) : ACTIVITY_PAGE_SIZE },
@@ -164,7 +181,7 @@ export class Blockberry extends Provider {
         actionType: "ALL",
         nextCursor,
         size,
-        orderBy: options?.sort === "asc" ? "ASC" : "DESC",
+        orderBy,
       });
       return this.api<BlockberryActivityPage>(
         `/v1/accounts/${encodeURIComponent(address)}/activity${query}`,
