@@ -18,7 +18,7 @@ import type {
 } from "../core/types.ts";
 import { Provider } from "../core/provider.ts";
 import { buildQuery, normalizeBaseUrl } from "../core/client.ts";
-import { UnsupportedChainError } from "../core/errors.ts";
+import { ExplorerError, UnsupportedChainError } from "../core/errors.ts";
 import { formatWei, historyPage } from "../core/types.ts";
 
 import { assertSafePathSegment } from "../core/path-safety.ts";
@@ -85,6 +85,30 @@ interface TonEventPage {
 function nextFrom(page: Readonly<TonEventPage>): string | undefined {
   const cursor = String(page.next_from ?? 0);
   return cursor === "0" ? undefined : cursor;
+}
+
+/** The events query for one order, and the `lt` cursor that pages it. */
+interface HistoryQuery {
+  readonly sortOrder: "asc" | undefined;
+  readonly cursor: "before_lt" | "after_lt";
+}
+
+/**
+ * Oldest first pages forward through `after_lt`, since `before_lt` would hand back the first page.
+ *
+ * @param {Readonly<TxHistoryOptions>} options - The caller's order and block bounds.
+ * @returns {HistoryQuery} The order parameter and the cursor that pages it.
+ */
+function historyQuery(options: Readonly<TxHistoryOptions> = {}): HistoryQuery {
+  if (options.startBlock !== undefined || options.endBlock !== undefined) {
+    throw new ExplorerError(
+      "TONAPI account events carry no block, so startBlock and endBlock are refused",
+      Ton.key,
+    );
+  }
+  return options.sort === "asc"
+    ? { sortOrder: "asc", cursor: "after_lt" }
+    : { sortOrder: undefined, cursor: "before_lt" };
 }
 
 function eventStatus(event: Readonly<TonEvent>): TxStatus {
@@ -192,22 +216,23 @@ export class Ton extends Provider {
     const c = chain ?? "ton";
     if (c !== "ton") throw new UnsupportedChainError(c, "ton");
     const { limit, offset } = historyPage(options, HISTORY_ROWS, this.name);
+    const { sortOrder, cursor } = historyQuery(options);
     const rows = offset + limit;
 
     assertSafePathSegment(address, "address");
     const url = `${this.baseUrl}/v2/accounts/${encodeURIComponent(address)}/events`;
     const events: TonEvent[] = [];
-    let beforeLt: string | undefined;
+    let lastLt: string | undefined;
     while (events.length < rows) {
       const size = Math.min(HISTORY_PAGE_SIZE, rows - events.length);
       const data = await this.getJSON<TonEventPage>(
-        `${url}${buildQuery({ limit: size, before_lt: beforeLt })}`,
+        `${url}${buildQuery({ limit: size, sort_order: sortOrder, [cursor]: lastLt })}`,
       );
       const page = data.events ?? [];
       events.push(...page);
-      const cursor = nextFrom(data);
-      if (page.length < size || cursor === undefined || cursor === beforeLt) break;
-      beforeLt = cursor;
+      const next = nextFrom(data);
+      if (page.length < size || next === undefined || next === lastLt) break;
+      lastLt = next;
     }
 
     return events.slice(offset, rows).map(mapEventToTx);

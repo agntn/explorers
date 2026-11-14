@@ -144,6 +144,67 @@ describe("ton provider", () => {
     );
   });
 
+  it("walks after_lt oldest first on request", async () => {
+    const event = (index: number) => ({
+      event_id: `event-${index}`,
+      timestamp: 1_600_000_000 + index,
+      in_progress: false,
+      actions: [],
+      involved: {},
+    });
+    const page = (start: number, length: number, nextFrom: number) =>
+      new Response(
+        JSON.stringify({
+          events: Array.from({ length }, (_, index) => event(start + index)),
+          next_from: nextFrom,
+        }),
+        { headers: { "Content-Type": "application/json" } },
+      );
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(page(0, 100, 16_813_557_000_001))
+      .mockResolvedValueOnce(page(100, 50, 16_813_691_000_001));
+    vi.stubGlobal("fetch", fetch);
+
+    const transactions = await provider.getTxHistory(KNOWN_TON, "ton", {
+      sort: "asc",
+      limit: 75,
+      page: 2,
+    });
+
+    expect(transactions.map(({ hash }) => hash)).toEqual(
+      Array.from({ length: 75 }, (_, index) => `event-${index + 75}`),
+    );
+    expect(fetch.mock.calls.map(([input]) => String(input))).toEqual([
+      `https://tonapi.io/v2/accounts/${KNOWN_TON}/events?limit=100&sort_order=asc`,
+      `https://tonapi.io/v2/accounts/${KNOWN_TON}/events?limit=50&sort_order=asc&after_lt=16813557000001`,
+    ]);
+  });
+
+  it("refuses block bounds before any request", async () => {
+    const fetch = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ events: [], next_from: 0 }), {
+          headers: { "Content-Type": "application/json" },
+        }),
+    );
+    vi.stubGlobal("fetch", fetch);
+
+    for (const bounds of [{ startBlock: 40_000_000 }, { endBlock: 40_000_000 }]) {
+      await expect(provider.getTxHistory(KNOWN_TON, "ton", bounds)).rejects.toMatchObject({
+        name: "ExplorerError",
+        message: "TONAPI account events carry no block, so startBlock and endBlock are refused",
+        provider: "ton",
+      });
+    }
+    expect(fetch).not.toHaveBeenCalled();
+
+    await provider.getTxHistory(KNOWN_TON, "ton", { sort: "desc", limit: 5 });
+    expect(String(fetch.mock.calls[0]?.[0])).toBe(
+      `https://tonapi.io/v2/accounts/${KNOWN_TON}/events?limit=5`,
+    );
+  });
+
   it("stops where tonapi.io says the history ends", async () => {
     const fetch = vi.fn(
       async () =>
