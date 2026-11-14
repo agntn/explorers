@@ -16,7 +16,7 @@ import type {
 } from "../core/types.ts";
 import { Provider } from "../core/provider.ts";
 import { normalizeBaseUrl, buildQuery } from "../core/client.ts";
-import { AuthError, NotFoundError, UnsupportedChainError } from "../core/errors.ts";
+import { AuthError, ExplorerError, NotFoundError, UnsupportedChainError } from "../core/errors.ts";
 import { assertSafePathSegment } from "../core/path-safety.ts";
 import { formatWei, historyPage } from "../core/types.ts";
 
@@ -147,6 +147,12 @@ export class Tronscan extends Provider {
     const c = chain ?? "tron";
     if (c !== "tron") throw new UnsupportedChainError(c, this.name);
     assertSafePathSegment(address, "address");
+    if (options?.startBlock !== undefined || options?.endBlock !== undefined) {
+      throw new ExplorerError(
+        "TRONSCAN filters the transaction list by time, not by block, so startBlock and endBlock are refused",
+        this.name,
+      );
+    }
 
     const { limit, offset } = historyPage(options, HISTORY_ROWS, this.name, 50);
     const response = await this.api<{ data: TronscanTransaction[] }>("/api/transaction", {
