@@ -131,6 +131,29 @@ describe("terminal lines of an explorer answer", () => {
     ]);
   });
 
+  it("follows each output to its spend, or says it has none yet", () => {
+    const output = { address: null, value: "1", valueFormatted: "0.00000001" };
+    const details = {
+      provider: "mempool",
+      total: 5,
+      spent: 2,
+      data: [
+        { ...output, vout: 0, spent: true, txid: "c".repeat(64), vin: 1, blockNumber: 181 },
+        { ...output, vout: 1, spent: true, txid: "d".repeat(64), vin: 0, blockNumber: null },
+        { ...output, vout: 2, spent: false, txid: null, vin: null, blockNumber: null },
+        { ...output, vout: 3, spent: null, txid: null, vin: null, blockNumber: null },
+      ],
+    };
+
+    expect(describeResult("explorers_tx_outspends", details)).toEqual([
+      "[mempool] 5 outputs, 2 spent, 4 listed:",
+      `  #0 no address  0.00000001 (1 base units)  [spent in ${"c".repeat(64)}:1, block 181]`,
+      `  #1 no address  0.00000001 (1 base units)  [spent in ${"d".repeat(64)}:0, pending]`,
+      "  #2 no address  0.00000001 (1 base units)  [unspent]",
+      "  #3 no address  0.00000001 (1 base units)  [no answer]",
+    ]);
+  });
+
   it("prints the Bitcoin header in place of gas the chain never had", () => {
     const details = {
       provider: "mempool",

@@ -4,6 +4,7 @@ import type {
   ChainKey,
   ContractInfo,
   GasData,
+  Outspend,
   ProviderCapabilities,
   PubkeyReveal,
   TokenBalance,
@@ -216,6 +217,7 @@ export type ProviderOperation =
   | "getBalance"
   | "getTxHistory"
   | "getTxDetail"
+  | "getOutspends"
   | "getUtxos"
   | "getPubkey"
   | "getContractInfo"
@@ -229,6 +231,7 @@ export const OPERATION_CAPABILITIES = {
   getBalance: "balances",
   getTxHistory: "txHistory",
   getTxDetail: "txDetail",
+  getOutspends: "outspends",
   getUtxos: "utxos",
   getPubkey: "pubkeys",
   getContractInfo: "contractInfo",
@@ -290,6 +293,9 @@ export interface ProviderEntry extends ProviderMeta {
 export interface Provider {
   /** Fetch one transaction by its hash. */
   getTxDetail?(hash: string, chain?: ChainKey): Promise<Transaction>;
+
+  /** Tell where each output of a transaction went, in output order. */
+  getOutspends?(hash: string, chain?: ChainKey): Promise<Outspend[]>;
 
   /** List the unspent outputs an address still controls, on chains that track them. */
   getUtxos?(address: string, chain?: ChainKey): Promise<Utxo[]>;

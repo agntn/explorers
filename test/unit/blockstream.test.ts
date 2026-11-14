@@ -34,6 +34,7 @@ describe("blockstream provider", () => {
       balances: true,
       txHistory: true,
       txDetail: true,
+      outspends: true,
       utxos: true,
       pubkeys: true,
       contractInfo: false,
@@ -229,6 +230,69 @@ describe("blockstream provider", () => {
     expect(fetch.mock.calls.map(([input]) => String(input))).toEqual([
       `https://blockstream.info/api/address/${ADDRESS}/utxo`,
     ]);
+  });
+
+  it("tells where each output of the first payment between two people went", async () => {
+    /* Trimmed from blockstream.info, 2026-11-14: both P2PK outputs, spent in 92240 and 181. */
+    const fetch = vi.fn(async (input: string | URL | Request) =>
+      String(input).endsWith("/outspends")
+        ? jsonResponse([
+            {
+              spent: true,
+              txid: "ea44e97271691990157559d0bdd9959e02790c34db6c006d779e82fa5aee708e",
+              vin: 0,
+              status: { confirmed: true, block_height: 92_240 },
+            },
+            {
+              spent: true,
+              txid: "a16f3ce4dd5deb92d98ef5cf8afeaf0775ebca408f708b2146c4fb42b41e14be",
+              vin: 0,
+              status: { confirmed: true, block_height: 181 },
+            },
+          ])
+        : jsonResponse({
+            vout: [
+              { scriptpubkey_type: "p2pk", value: 1_000_000_000 },
+              { scriptpubkey_type: "p2pk", value: 4_000_000_000 },
+            ],
+          }),
+    );
+    vi.stubGlobal("fetch", fetch);
+    const provider = await create("blockstream");
+
+    await expect(
+      provider.getOutspends!(
+        "f4184fc596403b9d638783cf57adfe4c75c605f6356fbc91338530e9831e9e16",
+        "bitcoin",
+      ),
+    ).resolves.toEqual([
+      {
+        vout: 0,
+        address: null,
+        value: "1000000000",
+        valueFormatted: "10",
+        spent: true,
+        txid: "ea44e97271691990157559d0bdd9959e02790c34db6c006d779e82fa5aee708e",
+        vin: 0,
+        blockNumber: 92_240,
+      },
+      {
+        vout: 1,
+        address: null,
+        value: "4000000000",
+        valueFormatted: "40",
+        spent: true,
+        txid: "a16f3ce4dd5deb92d98ef5cf8afeaf0775ebca408f708b2146c4fb42b41e14be",
+        vin: 0,
+        blockNumber: 181,
+      },
+    ]);
+    expect(new Set(fetch.mock.calls.map(([input]) => String(input)))).toEqual(
+      new Set([
+        "https://blockstream.info/api/tx/f4184fc596403b9d638783cf57adfe4c75c605f6356fbc91338530e9831e9e16",
+        "https://blockstream.info/api/tx/f4184fc596403b9d638783cf57adfe4c75c605f6356fbc91338530e9831e9e16/outspends",
+      ]),
+    );
   });
 
   it("reads one transaction by hash", async () => {

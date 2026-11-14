@@ -12,6 +12,7 @@ import type {
   GasData,
   Inscription,
   OpReturnPayload,
+  Outspend,
   PubkeyReveal,
   TokenBalance,
   TokenTransfer,
@@ -20,6 +21,7 @@ import type {
 } from "./core/types.ts";
 import type {
   ListedDetails,
+  OutspendDetails,
   ProviderDetails,
   ProvidersDetails,
   UtxoDetails,
@@ -92,6 +94,15 @@ function describeHistoryRow(tx: Readonly<Transaction>): string {
 function describeUtxo(utxo: Readonly<Utxo>): string {
   const position = utxo.confirmed ? `block ${utxo.blockNumber ?? "unknown"}` : "pending";
   return `  ${utxo.txid}:${utxo.vout}  ${utxo.valueFormatted} (${utxo.value} base units)  [${position}]`;
+}
+
+/* One output and its fate: unspent, unknown, or the spend that took it and where that sits. */
+function describeOutspend(output: Readonly<Outspend>): string {
+  const head = `  #${output.vout} ${output.address ?? "no address"}  ${output.valueFormatted} (${output.value} base units)`;
+  if (output.spent === null) return `${head}  [no answer]`;
+  if (!output.spent) return `${head}  [unspent]`;
+  const position = output.blockNumber === null ? "pending" : `block ${output.blockNumber}`;
+  return `${head}  [spent in ${output.txid ?? "unknown"}:${output.vin ?? "?"}, ${position}]`;
 }
 
 /* A null key is two different answers, so the line says which one. */
@@ -197,6 +208,7 @@ interface DetailsByTool {
   explorers_balance: ProviderDetails<Balance | Balance[]>;
   explorers_tx_history: ProviderDetails<Transaction[]>;
   explorers_tx_detail: ProviderDetails<Transaction>;
+  explorers_tx_outspends: OutspendDetails;
   explorers_utxos: UtxoDetails;
   explorers_pubkey: ProviderDetails<PubkeyReveal>;
   explorers_contract: ProviderDetails<ContractInfo>;
@@ -222,6 +234,10 @@ const describers: Describers = {
     ...data.map(describeHistoryRow),
   ],
   explorers_tx_detail: ({ provider, data }) => describeTransaction(provider, data),
+  explorers_tx_outspends: ({ provider, data, total, spent }) => [
+    `[${provider}] ${total} outputs, ${spent} spent${listedCount(data.length, total)}:`,
+    ...data.map(describeOutspend),
+  ],
   explorers_utxos: ({ provider, data, total, confirmed, pending }) => [
     `[${provider}] ${total} unspent outputs, ${confirmed} base units confirmed${pending > 0 ? `, ${pending} pending` : ""}${listedCount(data.length, total)}:`,
     ...data.map(describeUtxo),

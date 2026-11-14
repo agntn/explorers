@@ -8,6 +8,7 @@ import {
   HISTORY_LIMIT,
   MAX_ADDRESS_BATCH,
   MAX_LIMIT,
+  OUTSPENDS_LIMIT,
   TOKEN_HOLDINGS_LIMIT,
   UNSPENT_OUTPUTS_LIMIT,
 } from "./tool-limits.ts";
@@ -37,7 +38,7 @@ let commands: readonly ToolDefinition[] | undefined;
 /**
  * The explorer tools every surface gets, built on the first call so an import builds no schema.
  *
- * @returns {readonly ToolDefinition[]} The eleven tools, providers first.
+ * @returns {readonly ToolDefinition[]} The twelve tools, providers first.
  */
 export function explorersTools(): readonly ToolDefinition[] {
   tools ??= defineTools();
@@ -256,6 +257,38 @@ function defineTools(): ToolDefinition[] {
         short: shortFlags(),
       },
       execute: async (args, { signal }) => (await loadOperations()).txDetail(args, signal),
+    }),
+    defineTool({
+      name: "explorers_tx_outspends",
+      title: "Trace Transaction Outputs",
+      description: `Tell where each output of a Bitcoin or Litecoin transaction went: its address and value, then spent true with the spending txid, its input index vin and the block, null while that spend waits in the mempool. spent false means nobody has spent the output yet, spent null that the explorer gave no answer for it. Left out, chain is bitcoin. Lists ${OUTSPENDS_LIMIT} outputs in vout order unless limit says otherwise, page reaches the rest; total counts every output and spent the spent ones.`,
+      snippet: "Use to follow coins forward from a transaction, output by output.",
+      guidelines: [
+        "Use explorers_tx_outspends with a Bitcoin or Litecoin transaction hash to see which outputs were spent and by which transaction.",
+        "explorers_tx_outspends returns each output with its address, value, spent flag and, once spent, the spending txid, input index vin and block.",
+        `explorers_tx_outspends lists ${OUTSPENDS_LIMIT} outputs unless limit says otherwise; page reaches the rest, total counts every output and spent the spent ones.`,
+      ],
+      ...reading,
+      input: Type.Object(
+        {
+          hash: text("Transaction hash"),
+          ...route,
+          limit: count(
+            `Outputs to list, at most ${MAX_LIMIT}; total still counts every output. Defaults to ${OUTSPENDS_LIMIT}.`,
+            MAX_LIMIT,
+          ),
+          page: count("Page from 1, each limit outputs long."),
+        },
+        { additionalProperties: false },
+      ),
+      cli: {
+        description: "Show where each output of a transaction went",
+        command: "tx-outspends",
+        positional: ["hash"],
+        plain: ["hash"],
+        short: shortFlags("limit"),
+      },
+      execute: async (args, { signal }) => (await loadOperations()).txOutspends(args, signal),
     }),
     defineTool({
       name: "explorers_utxos",

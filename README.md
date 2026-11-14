@@ -24,7 +24,7 @@ Docs and a live explorer: [explorers.agntn.dev](https://explorers.agntn.dev).
 - 🏷️ **ENS just works.** `vitalik.eth` wherever an Ethereum address would go, no extra dependency.
 - 🎯 **Picks a provider for you and tells you which.** Keys first, keyless next, Blockscout when nobody else wants the chain. `-p` if you know better.
 - 📦 **Loads only what you use.** One bundle per provider, `create()` pulls in exactly one.
-- 💸 **Bitcoin gets treated like Bitcoin.** Pending activity in `unconfirmed`, the spendable set from `getUtxos()`, OP_RETURN and inscriptions decoded when they're text. And `getPubkey()` finds the key a spend already gave away.
+- 💸 **Bitcoin gets treated like Bitcoin.** Pending activity in `unconfirmed`, the spendable set from `getUtxos()`, OP_RETURN and inscriptions decoded when they're text. And `getPubkey()` finds the key a spend already gave away. `getOutspends()` follows each output to its spend.
 
 ## 📦 Install
 
@@ -114,21 +114,22 @@ Every spend from a P2PKH or P2WPKH address leaves its key on chain, and a taproo
 
 ### Commands
 
-| Command     | What it does                                                                           | Example                           |
-| ----------- | -------------------------------------------------------------------------------------- | --------------------------------- |
-| `balance`   | Native balance, several addresses at once                                              | `explorers balance vitalik.eth`   |
-| `tx`        | Transaction history or one transaction                                                 | `explorers tx vitalik.eth -n 5`   |
-| `utxos`     | Unspent outputs on Bitcoin, Bitcoin Cash, Bitcoin SV, Bitcoin Gold, Litecoin, Pepecoin | `explorers utxos bc1q... -c btc`  |
-| `pubkey`    | Whether an address has shown its public key, on Bitcoin, Litecoin, Pepecoin            | `explorers pubkey 1XPTgDRhN8...`  |
-| `contract`  | ABI, source and verification status                                                    | `explorers contract 0x1f984...`   |
-| `tokens`    | ERC-20, SPL and Cardano native holdings                                                | `explorers tokens vitalik.eth`    |
-| `transfers` | ERC-20 transfer history for an address                                                 | `explorers transfers vitalik.eth` |
-| `gas`       | Current gas prices                                                                     | `explorers gas -c base`           |
-| `block`     | Block data by number                                                                   | `explorers block 18000000`        |
-| `providers` | Registered providers and their capabilities                                            | `explorers providers`             |
-| `mcp`       | The MCP server on stdio                                                                | `explorers mcp`                   |
+| Command        | What it does                                                                           | Example                              |
+| -------------- | -------------------------------------------------------------------------------------- | ------------------------------------ |
+| `balance`      | Native balance, several addresses at once                                              | `explorers balance vitalik.eth`      |
+| `tx`           | Transaction history or one transaction                                                 | `explorers tx vitalik.eth -n 5`      |
+| `tx-outspends` | Follow a transaction's outputs to their spends                                         | `explorers tx-outspends f4184fc5...` |
+| `utxos`        | Unspent outputs on Bitcoin, Bitcoin Cash, Bitcoin SV, Bitcoin Gold, Litecoin, Pepecoin | `explorers utxos bc1q... -c btc`     |
+| `pubkey`       | Whether an address has shown its public key, on Bitcoin, Litecoin, Pepecoin            | `explorers pubkey 1XPTgDRhN8...`     |
+| `contract`     | ABI, source and verification status                                                    | `explorers contract 0x1f984...`      |
+| `tokens`       | ERC-20, SPL and Cardano native holdings                                                | `explorers tokens vitalik.eth`       |
+| `transfers`    | ERC-20 transfer history for an address                                                 | `explorers transfers vitalik.eth`    |
+| `gas`          | Current gas prices                                                                     | `explorers gas -c base`              |
+| `block`        | Block data by number                                                                   | `explorers block 18000000`           |
+| `providers`    | Registered providers and their capabilities                                            | `explorers providers`                |
+| `mcp`          | The MCP server on stdio                                                                | `explorers mcp`                      |
 
-Every command takes `-c` for the chain and `-p` for the provider. `tx`, `transfers`, `tokens` and `utxos` take `-n`, `transfers` takes `-t` if you only care about one token. `explorers <command> --help` lists the rest, straight from the tool schema. Everything else: [CLI guide](https://explorers.agntn.dev/guide/cli).
+Every command takes `-c` for the chain and `-p` for the provider. `tx`, `tx-outspends`, `transfers`, `tokens` and `utxos` take `-n`, `transfers` takes `-t` if you only care about one token. `explorers <command> --help` lists the rest, straight from the tool schema. Everything else: [CLI guide](https://explorers.agntn.dev/guide/cli).
 
 ## 🧠 Library
 
@@ -150,30 +151,30 @@ That's most of it, really. `create()` loads one provider and nothing else. `with
 
 ## 🗺️ Providers
 
-| Provider         | Auth                            | Chains                                                                                | Capabilities                                                             |
-| ---------------- | ------------------------------- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| **etherscan**    | `ETHERSCAN_API_KEY`             | ethereum, base, arbitrum, optimism, polygon, bsc, avalanche, gnosis, linea, berachain | balances, tx, transfers, contract, tokens, gas, block                    |
-| **blockscout**   | None                            | ethereum, base, arbitrum, optimism, polygon, gnosis, linea, scroll, zksync, avalanche | balances, tx, transfers, contract, tokens, gas, block                    |
-| **blockchair**   | Optional `BLOCKCHAIR_API_KEY`   | bitcoin, bitcoincash, litecoin, dogecoin, ethereum, ecash, zcash                      | balances, tx, block                                                      |
-| **mempool**      | None                            | bitcoin, litecoin, pepecoin                                                           | balances, tx, utxos, pubkey, gas and block, the last two not on Pepecoin |
-| **blockstream**  | None                            | bitcoin                                                                               | balances, tx detail/history, utxos, pubkey, block                        |
-| **solscan**      | `SOLSCAN_API_KEY`               | solana                                                                                | balances, tx detail/history, block                                       |
-| **helius**       | `HELIUS_API_KEY`                | solana                                                                                | tx detail/history, tokens                                                |
-| **ton**          | None                            | ton                                                                                   | balances, tx                                                             |
-| **tronscan**     | `TRONSCAN_API_KEY`              | tron                                                                                  | balances, tx detail/history, block                                       |
-| **aptos**        | None                            | aptos                                                                                 | no supported explorer operations                                         |
-| **blockberry**   | `BLOCKBERRY_API_KEY`            | sui                                                                                   | balances, tx history                                                     |
-| **koios**        | None                            | cardano                                                                               | balances, tx detail/history, tokens                                      |
-| **turbo**        | None                            | arweave                                                                               | balances, tx detail/history, block                                       |
-| **ario**         | None                            | arweave                                                                               | balances, tx detail/history, block                                       |
-| **arweave**      | None                            | arweave                                                                               | balances, tx detail/history, block                                       |
-| **dcrdata**      | None                            | decred                                                                                | balances, tx detail/history, block                                       |
-| **horizon**      | None                            | stellar                                                                               | balances, tx detail/history, transfers, tokens, gas, block               |
-| **whatsonchain** | Optional `WHATSONCHAIN_API_KEY` | bitcoinsv                                                                             | balances, tx detail/history, utxos, block                                |
-| **blockbook**    | None                            | bitcoingold                                                                           | balances, tx detail/history, utxos, block                                |
-| **haskoin**      | None                            | bitcoincash                                                                           | balances, tx detail/history, utxos, block                                |
-| **ecash**        | None                            | ecash                                                                                 | tx history, block                                                        |
-| **xrpscan**      | None                            | xrpl                                                                                  | balances, tx detail/history, tokens, block                               |
+| Provider         | Auth                            | Chains                                                                                | Capabilities                                                                          |
+| ---------------- | ------------------------------- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| **etherscan**    | `ETHERSCAN_API_KEY`             | ethereum, base, arbitrum, optimism, polygon, bsc, avalanche, gnosis, linea, berachain | balances, tx, transfers, contract, tokens, gas, block                                 |
+| **blockscout**   | None                            | ethereum, base, arbitrum, optimism, polygon, gnosis, linea, scroll, zksync, avalanche | balances, tx, transfers, contract, tokens, gas, block                                 |
+| **blockchair**   | Optional `BLOCKCHAIR_API_KEY`   | bitcoin, bitcoincash, litecoin, dogecoin, ethereum, ecash, zcash                      | balances, tx, block                                                                   |
+| **mempool**      | None                            | bitcoin, litecoin, pepecoin                                                           | balances, tx, utxos, pubkey, outspends, gas and block, the last three not on Pepecoin |
+| **blockstream**  | None                            | bitcoin                                                                               | balances, tx detail/history, outspends, utxos, pubkey, block                          |
+| **solscan**      | `SOLSCAN_API_KEY`               | solana                                                                                | balances, tx detail/history, block                                                    |
+| **helius**       | `HELIUS_API_KEY`                | solana                                                                                | tx detail/history, tokens                                                             |
+| **ton**          | None                            | ton                                                                                   | balances, tx                                                                          |
+| **tronscan**     | `TRONSCAN_API_KEY`              | tron                                                                                  | balances, tx detail/history, block                                                    |
+| **aptos**        | None                            | aptos                                                                                 | no supported explorer operations                                                      |
+| **blockberry**   | `BLOCKBERRY_API_KEY`            | sui                                                                                   | balances, tx history                                                                  |
+| **koios**        | None                            | cardano                                                                               | balances, tx detail/history, tokens                                                   |
+| **turbo**        | None                            | arweave                                                                               | balances, tx detail/history, block                                                    |
+| **ario**         | None                            | arweave                                                                               | balances, tx detail/history, block                                                    |
+| **arweave**      | None                            | arweave                                                                               | balances, tx detail/history, block                                                    |
+| **dcrdata**      | None                            | decred                                                                                | balances, tx detail/history, block                                                    |
+| **horizon**      | None                            | stellar                                                                               | balances, tx detail/history, transfers, tokens, gas, block                            |
+| **whatsonchain** | Optional `WHATSONCHAIN_API_KEY` | bitcoinsv                                                                             | balances, tx detail/history, utxos, block                                             |
+| **blockbook**    | None                            | bitcoingold                                                                           | balances, tx detail/history, utxos, block                                             |
+| **haskoin**      | None                            | bitcoincash                                                                           | balances, tx detail/history, utxos, block                                             |
+| **ecash**        | None                            | ecash                                                                                 | tx history, block                                                                     |
+| **xrpscan**      | None                            | xrpl                                                                                  | balances, tx detail/history, tokens, block                                            |
 
 Aptos is in the table so you don't ask why it's not in the table. Aptos Explorer has no documented account or history API. So it's registered, does nothing and throws `UnsupportedOperationError` if you insist.
 
@@ -201,7 +202,7 @@ omp install @agntn/explorers
 }
 ```
 
-Eleven read-only tools, each written once for MCP, Pi, OMP, the CLI and the AI SDK. Copies used to drift. One can't. Got your own transport? `createMcpServer()` lives in `@agntn/explorers/mcp`. The heavy stuff, `raw` records and contract ABIs, stays out of the answer until a call asks for it. Your context window will thank you. [Agents guide](https://explorers.agntn.dev/guide/agents).
+Twelve read-only tools, each written once for MCP, Pi, OMP, the CLI and the AI SDK. Copies used to drift. One can't. Got your own transport? `createMcpServer()` lives in `@agntn/explorers/mcp`. The heavy stuff, `raw` records and contract ABIs, stays out of the answer until a call asks for it. Your context window will thank you. [Agents guide](https://explorers.agntn.dev/guide/agents).
 
 ### AI SDK
 
@@ -224,7 +225,7 @@ const { text } = await generateText({
 });
 ```
 
-One import gives your app the same eleven MCP tools. That's eleven wrappers you don't have to write.
+One import gives your app the same twelve MCP tools. That's twelve wrappers you don't have to write.
 
 ## 🚫 What this does not do
 

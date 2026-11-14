@@ -1,7 +1,7 @@
 import { ExplorerError, NotFoundError, UnsupportedOperationError } from "./errors.ts";
 import { assertSafePathSegment } from "./path-safety.ts";
 import { formatWei, historyPage, toTimestamp } from "./types.ts";
-import type { BlockInfo, PubkeyReveal, TxHistoryOptions, Utxo } from "./types.ts";
+import type { BlockInfo, Outspend, PubkeyReveal, TxHistoryOptions, Utxo } from "./types.ts";
 
 const CHAIN_PAGE_SIZE = 25;
 
@@ -74,6 +74,71 @@ export async function getEsploraUtxos(
   assertSafePathSegment(address, "address");
   const outputs = await fetchUtxos(`/api/address/${encodeURIComponent(address)}/utxo`);
   return outputs.map(mapEsploraUtxo);
+}
+
+/** The outputs of `/api/tx/:txid`, as far as an outspends read needs them. */
+export interface EsploraOutspendTransaction {
+  readonly vout: ReadonlyArray<{
+    readonly scriptpubkey_address?: string;
+    readonly value: number | string;
+  }>;
+}
+
+/** A row of `/api/tx/:txid/outspends`; an unspent output carries `spent` alone. */
+export interface EsploraOutspend {
+  readonly spent: boolean;
+  readonly txid?: string;
+  readonly vin?: number;
+  readonly status?: { readonly confirmed: boolean; readonly block_height?: number | null };
+}
+
+/** The two reads behind one outspends answer, each on one provider path. */
+export interface EsploraOutspendReads {
+  readonly transaction: (path: string) => Promise<EsploraOutspendTransaction>;
+  readonly outspends: (path: string) => Promise<readonly EsploraOutspend[]>;
+}
+
+/* What spent an output: txid, input and block, or nulls for an unspent or unanswered one. */
+function spendOf(
+  spend: Readonly<EsploraOutspend> | undefined,
+): Pick<Outspend, "txid" | "vin" | "blockNumber"> {
+  if (spend?.spent !== true) return { txid: null, vin: null, blockNumber: null };
+  return {
+    txid: spend.txid ?? null,
+    vin: spend.vin ?? null,
+    blockNumber: spend.status?.block_height ?? null,
+  };
+}
+
+/**
+ * Where each output of an Esplora transaction went; one the route leaves out reads `spent: null`.
+ *
+ * @param {string} hash - Transaction id.
+ * @param {EsploraOutspendReads} reads - Read the transaction and its outspends.
+ * @returns {Promise<Outspend[]>} One row per output.
+ */
+export async function getEsploraOutspends(
+  hash: string,
+  reads: Readonly<EsploraOutspendReads>,
+): Promise<Outspend[]> {
+  assertSafePathSegment(hash, "tx hash");
+  const path = `/api/tx/${encodeURIComponent(hash)}`;
+  const [transaction, spends] = await Promise.all([
+    reads.transaction(path),
+    reads.outspends(`${path}/outspends`),
+  ]);
+  return transaction.vout.map((output, vout) => {
+    const value = String(output.value);
+    const spend = spends[vout];
+    return {
+      vout,
+      address: output.scriptpubkey_address ?? null,
+      value,
+      valueFormatted: formatWei(value, ESPLORA_DECIMALS),
+      spent: spend?.spent ?? null,
+      ...spendOf(spend),
+    };
+  });
 }
 
 /** A row of `/api/blocks/:height`. Genesis has no parent, Liquid has no `bits` or `nonce`. */

@@ -384,6 +384,95 @@ describe("Explorers MCP server", () => {
     expect(await readUtxos({ limit: 101 })).toMatch(/limit/);
   });
 
+  it("pages the outputs of a transaction, on Bitcoin when no chain is named", async () => {
+    const vout = Array.from({ length: 60 }, (_, index) => ({
+      scriptpubkey_type: "p2pk",
+      value: 1000 + index,
+    }));
+    const outspends = vout.map((_, index) =>
+      index < 3
+        ? {
+            spent: true,
+            txid: "c".repeat(64),
+            vin: index,
+            status: { confirmed: true, block_height: 9 },
+          }
+        : { spent: false },
+    );
+    const fetch = vi.fn(async (input: string | URL | Request) =>
+      Response.json(String(input).endsWith("/outspends") ? outspends : { vout }),
+    );
+    vi.stubGlobal("fetch", fetch);
+    const client = await connectTestClient();
+    const read = async (args: Readonly<Record<string, unknown>>) => {
+      const result = parseToolResult(
+        await client.callTool({
+          name: "explorers_tx_outspends",
+          arguments: { hash: "a".repeat(64), ...args },
+        }),
+      );
+      if (result.isError) return result.content[0]?.text;
+      return JSON.parse(result.content[0]?.text ?? "null") as {
+        provider: string;
+        total: number;
+        spent: number;
+        data: { vout: number }[];
+      };
+    };
+
+    const first = await read({});
+    expect(first).toMatchObject({ provider: "mempool", total: 60, spent: 3 });
+    expect(typeof first === "object" && first.data.map(({ vout }) => vout)).toEqual(
+      Array.from({ length: 50 }, (_, index) => index),
+    );
+    expect(String(fetch.mock.calls[0]?.[0])).toMatch(/^https:\/\/mempool\.space\/api\/tx\//);
+    expect(await read({ limit: 2, page: 3 })).toMatchObject({
+      total: 60,
+      spent: 3,
+      data: [{ vout: 4 }, { vout: 5 }],
+    });
+    expect(await read({ limit: 101 })).toMatch(/limit/);
+  });
+
+  it("refuses outspends on a provider without them, and names the ones that have them", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new Error("no request expected");
+      }),
+    );
+    const client = await connectTestClient();
+    const result = parseToolResult(
+      await client.callTool({
+        name: "explorers_tx_outspends",
+        arguments: { hash: "a".repeat(64), provider: "blockchair", chain: "bitcoin" },
+      }),
+    );
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0]?.text).toMatch(/getOutspends.*try mempool, blockstream/);
+  });
+
+  it("refuses outspends on a chain no provider follows", async () => {
+    const fetch = vi.fn(async () => {
+      throw new Error("no request expected");
+    });
+    vi.stubGlobal("fetch", fetch);
+    const client = await connectTestClient();
+    const result = parseToolResult(
+      await client.callTool({
+        name: "explorers_tx_outspends",
+        arguments: { hash: "a".repeat(64), chain: "ethereum" },
+      }),
+    );
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0]?.text).toMatch(
+      /getOutspends.*no provider serves this read on ethereum/,
+    );
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
   it("answers with compact JSON that parses to the same result", async () => {
     const client = await connectTestClient();
     const result = parseToolResult(
@@ -825,6 +914,7 @@ describe("Explorers MCP server", () => {
       "explorers_balance",
       "explorers_tx_history",
       "explorers_tx_detail",
+      "explorers_tx_outspends",
       "explorers_utxos",
       "explorers_pubkey",
       "explorers_contract",
@@ -1430,7 +1520,7 @@ describe("Explorers MCP server", () => {
     const client = await connectTestClient();
     const { tools } = await client.listTools();
 
-    expect(tools).toHaveLength(11);
+    expect(tools).toHaveLength(12);
     for (const tool of tools) {
       expect(tool.annotations?.title).toBe(tool.title);
       expect(tool.annotations?.readOnlyHint).toBe(true);

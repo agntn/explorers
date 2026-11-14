@@ -18,6 +18,7 @@ import {
   esploraFeedAddress,
   getEsploraAddressHistory,
   getEsploraBlock,
+  getEsploraOutspends,
   getEsploraPubkey,
   getEsploraUtxos,
   selectEsploraRecipientOutput,
@@ -26,12 +27,15 @@ import type {
   EsploraAddressStats,
   EsploraBlock,
   EsploraKeyTransaction,
+  EsploraOutspend,
+  EsploraOutspendTransaction,
   EsploraUnspentOutput,
 } from "../core/esplora.ts";
 import type {
   Balance,
   BlockInfo,
   ChainKey,
+  Outspend,
   ProviderCapabilities,
   ProviderConfig,
   PubkeyReveal,
@@ -163,6 +167,7 @@ export class Blockstream extends Provider {
       balances: true,
       txHistory: true,
       txDetail: true,
+      outspends: true,
       utxos: true,
       pubkeys: true,
       contractInfo: false,
@@ -263,6 +268,14 @@ export class Blockstream extends Provider {
       inscriptions: collectInscriptions(transaction.vin.map((input) => input.witness)),
       raw: transaction as unknown as Record<string, unknown>,
     };
+  }
+
+  override async getOutspends(hash: string, chain?: ChainKey): Promise<Outspend[]> {
+    const selectedChain = chain ?? this.defaultChain;
+    return getEsploraOutspends(hash, {
+      transaction: async (path) => this.api<EsploraOutspendTransaction>(selectedChain, path),
+      outspends: async (path) => this.api<EsploraOutspend[]>(selectedChain, path),
+    });
   }
 
   override async getBlockInfo(blockNumber: number, chain?: ChainKey): Promise<BlockInfo> {

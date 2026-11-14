@@ -7,6 +7,7 @@ export type {
   OpReturnScript,
   Inscription,
   Transaction,
+  Outspend,
   Balance,
   Utxo,
   PubkeyReveal,

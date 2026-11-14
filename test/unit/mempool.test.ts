@@ -76,6 +76,7 @@ describe("mempool provider", () => {
     expect(caps.balances).toBe(true);
     expect(caps.txHistory).toBe(true);
     expect(caps.txDetail).toBe(true);
+    expect(caps.outspends).toBe(true);
     expect(caps.utxos).toBe(true);
     expect(caps.gasData).toBe(true);
     expect(caps.blockInfo).toBe(true);
@@ -856,5 +857,115 @@ describe("mempool provider", () => {
     const tx = await provider.getTxDetail!("a".repeat(64), "bitcoin");
 
     expect(tx.inscriptions).toBeUndefined();
+  });
+});
+
+/* Route a stub by path: the transaction itself, or its outspends. */
+function stubOutspends(vout: readonly unknown[], outspends: readonly unknown[]) {
+  const fetch = vi.fn(async (input: string | URL | Request) =>
+    Response.json(String(input).endsWith("/outspends") ? outspends : { vout }),
+  );
+  vi.stubGlobal("fetch", fetch);
+  return fetch;
+}
+
+describe("mempool outspends", () => {
+  it("keeps a spend still in the mempool apart from one in a block", async () => {
+    /* Trimmed from mempool.space, 2026-11-14: output 0 spent by a transaction still waiting. */
+    stubOutspends(
+      [
+        {
+          scriptpubkey_address: "bc1qgy5v08m6emknlj852tklgm2vcrg3j9nt5xtaef",
+          scriptpubkey_type: "v0_p2wpkh",
+          value: 16_687,
+        },
+        { scriptpubkey_type: "op_return", value: 0 },
+      ],
+      [
+        {
+          spent: true,
+          txid: "14092d0cd342c9df342a1cd50daba40c06fd833f6a49ddebce38a2e468fe0904",
+          vin: 0,
+          status: { confirmed: false },
+        },
+        { spent: false },
+      ],
+    );
+    const provider = await create("mempool");
+
+    await expect(
+      provider.getOutspends!(
+        "158c5c6cb2b1919316714a9ae0a487826f2ccdaefc2ac3c3370e581c7bd868f7",
+        "bitcoin",
+      ),
+    ).resolves.toEqual([
+      {
+        vout: 0,
+        address: "bc1qgy5v08m6emknlj852tklgm2vcrg3j9nt5xtaef",
+        value: "16687",
+        valueFormatted: "0.00016687",
+        spent: true,
+        txid: "14092d0cd342c9df342a1cd50daba40c06fd833f6a49ddebce38a2e468fe0904",
+        vin: 0,
+        blockNumber: null,
+      },
+      {
+        vout: 1,
+        address: null,
+        value: "0",
+        valueFormatted: "0",
+        spent: false,
+        txid: null,
+        vin: null,
+        blockNumber: null,
+      },
+    ]);
+  });
+
+  it("says nothing about an output the explorer left out of its answer", async () => {
+    stubOutspends(
+      [
+        { scriptpubkey_type: "p2pk", value: 1 },
+        { scriptpubkey_type: "p2pk", value: 2 },
+      ],
+      [{ spent: false }],
+    );
+    const provider = await create("mempool");
+
+    const outputs = await provider.getOutspends!("a".repeat(64), "bitcoin");
+
+    expect(outputs.map(({ spent }) => spent)).toEqual([false, null]);
+  });
+
+  it("refuses a hash that would climb out of the transaction path", async () => {
+    const fetch = stubOutspends([], []);
+    const provider = await create("mempool");
+
+    await expect(provider.getOutspends!("..", "bitcoin")).rejects.toThrow(/path traversal/);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("asks litecoinspace on Litecoin", async () => {
+    const fetch = stubOutspends([{ scriptpubkey_type: "p2pk", value: 1 }], [{ spent: false }]);
+    const provider = await create("mempool");
+
+    await provider.getOutspends!("a".repeat(64), "litecoin");
+
+    expect(new Set(fetch.mock.calls.map(([input]) => String(input)))).toEqual(
+      new Set([
+        `https://litecoinspace.org/api/tx/${"a".repeat(64)}`,
+        `https://litecoinspace.org/api/tx/${"a".repeat(64)}/outspends`,
+      ]),
+    );
+  });
+
+  it("refuses Pepecoin before a request, since Peppool has no outspends route", async () => {
+    const fetch = stubOutspends([], []);
+    const provider = await create("mempool");
+
+    await expect(provider.getOutspends!("a".repeat(64), "pepecoin")).rejects.toThrow(
+      /getOutspends/,
+    );
+    expect(fetch).not.toHaveBeenCalled();
   });
 });
