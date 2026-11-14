@@ -8,7 +8,7 @@ const live = process.env.EXPLORERS_LIVE === "1";
 export default defineConfig({
   fmt: {
     ...oxfmt,
-    ignorePatterns: ["dist", "coverage", "docs", "CHANGELOG.md"],
+    ignorePatterns: ["dist", "coverage", "docs"],
   },
   lint: {
     ...oxlint,
