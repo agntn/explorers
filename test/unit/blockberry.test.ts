@@ -184,6 +184,53 @@ describe("blockberry provider", () => {
     );
   });
 
+  it("refuses checkpoint bounds before asking for activity", async () => {
+    const fetch = stubJSON({ content: [] });
+
+    for (const bounds of [
+      { startBlock: 0 },
+      { endBlock: 250_000_000 },
+      { sort: "asc" as const, startBlock: 1 },
+    ]) {
+      await expect(provider.getTxHistory(ADDRESS, "sui", bounds)).rejects.toMatchObject({
+        name: "ExplorerError",
+        message:
+          "Blockberry account activity carries no checkpoint, so startBlock and endBlock are refused",
+        provider: "blockberry",
+      });
+    }
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("keeps the oldest first order on every activity page", async () => {
+    const page = (start: number, length: number, nextCursor?: string) =>
+      new Response(
+        JSON.stringify({
+          content: Array.from({ length }, (_, index) => ({
+            activityType: ["TRANSFER"],
+            timestamp: 1_600_000_000_000 + start + index,
+            digest: `digest-${start + index}`,
+            txStatus: "SUCCESS",
+            gasFee: "1",
+          })),
+          nextCursor,
+        }),
+        { headers: { "Content-Type": "application/json" } },
+      );
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(page(0, 50, "next-50"))
+      .mockResolvedValueOnce(page(50, 10));
+    vi.stubGlobal("fetch", fetch);
+
+    await expect(
+      provider.getTxHistory(ADDRESS, "sui", { sort: "asc", limit: 60 }),
+    ).resolves.toHaveLength(60);
+    expect(
+      fetch.mock.calls.map(([url]) => new URL(String(url)).searchParams.get("orderBy")),
+    ).toEqual(["ASC", "ASC"]);
+  });
+
   it("returns zero when the explorer has no native SUI row", async () => {
     stubJSON([]);
     await expect(provider.getBalance(ADDRESS, "sui")).resolves.toMatchObject({
