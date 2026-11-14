@@ -239,4 +239,11 @@ export const builtins: readonly ProviderEntry[] = [
     defaultURL: "https://api.xrpscan.com/api/v1",
     load: () => import("./xrpscan.ts").then((m) => m.XRPScan),
   },
+  {
+    key: "blockcypher",
+    chains: ["bitcoin", "litecoin", "dogecoin"],
+    capabilities: ["balances", "txHistory", "txDetail", "utxos", "blockInfo"],
+    defaultURL: "https://api.blockcypher.com/v1",
+    load: () => import("./blockcypher.ts").then((m) => m.BlockCypher),
+  },
 ] satisfies readonly BuiltinProviderEntry[];

@@ -632,6 +632,33 @@ describe("Explorers MCP server", () => {
     );
   });
 
+  it("reads a Dogecoin balance through keyless BlockCypher from the address alone", async () => {
+    vi.stubEnv("BLOCKCHAIR_API_KEY", "");
+    const address = "DR7EKP5k7x29XWPwSPFtyJNVzuBRHhqcZh";
+    const fetch = vi.fn<typeof globalThis.fetch>(async () =>
+      Response.json({
+        address,
+        total_received: 950_419_229_744,
+        total_sent: 932_743_300_000,
+        balance: 17_675_929_744,
+        unconfirmed_balance: 0,
+      }),
+    );
+    vi.stubGlobal("fetch", fetch);
+    const client = await connectTestClient();
+    const balance = parseToolResult(
+      await client.callTool({ name: "explorers_balance", arguments: { address } }),
+    );
+    expect(balance.isError).toBe(false);
+    expect(JSON.parse(balance.content[0]?.text ?? "null")).toMatchObject({
+      provider: "blockcypher",
+      data: { chain: "dogecoin", balance: "17675929744", balanceFormatted: "176.75929744" },
+    });
+    expect(String(fetch.mock.calls[0]?.[0])).toBe(
+      `https://api.blockcypher.com/v1/doge/main/addrs/${address}/balance`,
+    );
+  });
+
   it("reads eCash history through explorer.e.cash without a Blockchair key", async () => {
     vi.stubEnv("BLOCKCHAIR_API_KEY", "");
     const address = "ecash:qq5r308v2mkh6x5mkqpr6wytszz6f9r7qcnfttev0z";

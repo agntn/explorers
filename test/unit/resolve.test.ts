@@ -133,7 +133,7 @@ describe("resolveProvider", () => {
     expect(resolveProvider(undefined, "ecash", "balances")).toBe("blockchair");
     expect(resolveProvider(undefined, "bitcoincash")).toBe("haskoin");
     expect(resolveProvider(undefined, "zcash")).toBe("blockchair");
-    expect(resolveProvider(undefined, "dogecoin")).toBe("blockchair");
+    expect(resolveProvider(undefined, "dogecoin")).toBe("blockcypher");
     expect(resolveProvider(undefined, "pepecoin")).toBe("mempool");
   });
 
@@ -214,7 +214,7 @@ describe("withProvider", () => {
         "balances",
         "DH5yaieqoZN36fDVciNyRueRGvGLR3mr7L",
       ),
-    ).resolves.toEqual({ chain: "dogecoin", name: "blockchair" });
+    ).resolves.toEqual({ chain: "dogecoin", name: "blockcypher" });
   });
 
   it("reads a legacy address as Bitcoin SV only when the chain or the provider says so", async () => {
@@ -434,7 +434,7 @@ describe("withProvider", () => {
     expect(fallbackError.cause).toBe(primaryError);
   });
 
-  it("retries Litecoin on Blockchair when litecoinspace.org fails", async () => {
+  it("retries Litecoin on keyless BlockCypher when litecoinspace.org fails", async () => {
     useNoProviderCredentials();
     const tried: string[] = [];
 
@@ -445,7 +445,21 @@ describe("withProvider", () => {
       return name;
     });
 
-    expect(tried).toEqual(["mempool", "blockchair"]);
+    expect(tried).toEqual(["mempool", "blockcypher"]);
+    expect(name).toBe("blockcypher");
+  });
+
+  it("retries Dogecoin on Blockchair once BlockCypher spends its keyless hour", async () => {
+    useNoProviderCredentials();
+    const tried: string[] = [];
+
+    const name = await withProvider(undefined, "dogecoin", async ({ name }) => {
+      tried.push(name);
+      if (name === "blockcypher") throw new RateLimitError(name);
+      return name;
+    });
+
+    expect(tried).toEqual(["blockcypher", "blockchair"]);
     expect(name).toBe("blockchair");
   });
 

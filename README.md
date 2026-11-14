@@ -5,7 +5,7 @@
 [![license](https://npmx.dev/api/registry/badge/license/@agntn/explorers)](https://npmx.dev/package/@agntn/explorers)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/agntn/explorers)
 
-🔭 Twenty-two block explorers, 31 chains, one shape. You ask for a balance, you get a balance. Same object on Ethereum, Bitcoin, Solana, Cardano or Stellar, from your terminal, your TypeScript or your agent, and nobody has to know what Insight is.
+🔭 Twenty-three block explorers, 31 chains, one shape. You ask for a balance, you get a balance. Same object on Ethereum, Bitcoin, Solana, Cardano or Stellar, from your terminal, your TypeScript or your agent, and nobody has to know what Insight is.
 
 ## Why?
 
@@ -17,7 +17,7 @@ Docs and a live explorer: [explorers.agntn.dev](https://explorers.agntn.dev).
 
 ## ✨ Features
 
-- 🧩 **Twenty-two backends, one contract.** Etherscan, Blockscout, Blockchair, Mempool, Blockstream, Solscan, Helius, TONAPI, TRONSCAN, Aptos, Blockberry, Koios, Turbo, ar.io, arweave.net, dcrdata, Horizon, WhatsOnChain, Blockbook, Haskoin, eCash Explorer and XRPSCAN, and from your side they all look the same.
+- 🧩 **Twenty-three backends, one contract.** Etherscan, Blockscout, Blockchair, Mempool, Blockstream, Solscan, Helius, TONAPI, TRONSCAN, Aptos, Blockberry, Koios, Turbo, ar.io, arweave.net, dcrdata, Horizon, WhatsOnChain, Blockbook, Haskoin, eCash Explorer, XRPSCAN and BlockCypher, and from your side they all look the same.
 - ⛓️ **31 chains.** Ethereum, Base, Arbitrum, Optimism, Polygon, BSC, Avalanche, Gnosis, Linea, Berachain, zkSync, Scroll, Bitcoin, Bitcoin Cash, Bitcoin SV, Bitcoin Gold, Litecoin, Dogecoin, Pepecoin, eCash, Zcash, Solana, TON, TRON, Aptos, Sui, Cardano, Arweave, Decred, Stellar and the XRP Ledger.
 - 🔢 **Amounts stay exact.** Strings in the smallest unit. Your 0.1 ETH is `100000000000000000` and it stays that way.
 - 🖥️ **CLI, library, MCP, Pi, OMP and AI SDK.** Whatever you're holding, same commands, same objects.
@@ -175,6 +175,7 @@ That's most of it, really. `create()` loads one provider and nothing else. `with
 | **haskoin**      | None                            | bitcoincash                                                                           | balances, tx detail/history, utxos, block                                             |
 | **ecash**        | None                            | ecash                                                                                 | tx history, block                                                                     |
 | **xrpscan**      | None                            | xrpl                                                                                  | balances, tx detail/history, tokens, block                                            |
+| **blockcypher**  | None                            | bitcoin, litecoin, dogecoin                                                           | balances, tx detail/history, utxos, block                                             |
 
 Aptos is in the table so you don't ask why it's not in the table. Aptos Explorer has no documented account or history API. So it's registered, does nothing and throws `UnsupportedOperationError` if you insist.
 

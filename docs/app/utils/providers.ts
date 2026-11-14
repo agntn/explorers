@@ -231,6 +231,12 @@ const PRESENTATION: Record<string, ProviderPresentation> = {
     envVars: [],
     blurb: "The XRP Ledger from XRPSCAN, keyless. Drops, trust line tokens and ledgers as blocks, and a partial payment counts what actually arrived.",
   },
+  blockcypher: {
+    label: "BlockCypher",
+    icon: "i-lucide-boxes",
+    envVars: [],
+    blurb: "Bitcoin, Litecoin and Dogecoin from BlockCypher, keyless. A hundred requests an hour, which is plenty to keep a Litecoin read alive when litecoinspace.org stalls.",
+  },
   ecash: {
     label: "eCash Explorer",
     icon: "i-lucide-receipt-text",
