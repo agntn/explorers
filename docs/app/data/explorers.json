@@ -1,6 +1,6 @@
 {
   "version": "0.6.1",
-  "generatedAt": "2026-10-24T15:52:33.708Z",
+  "generatedAt": "2026-11-14T14:17:36.092Z",
   "providers": [
     {
       "key": "etherscan",
@@ -87,6 +87,7 @@
         "balances",
         "txHistory",
         "txDetail",
+        "outspends",
         "utxos",
         "pubkeys",
         "gasData",
@@ -104,6 +105,7 @@
         "balances",
         "txHistory",
         "txDetail",
+        "outspends",
         "utxos",
         "pubkeys",
         "blockInfo"

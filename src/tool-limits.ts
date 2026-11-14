@@ -6,6 +6,9 @@ export const TOKEN_HOLDINGS_LIMIT = 50;
 /** Outputs one utxos call lists unless asked for more; a dusted address holds thousands. */
 export const UNSPENT_OUTPUTS_LIMIT = 50;
 
+/** Outputs one outspends call lists unless asked for more; a payout transaction pays thousands. */
+export const OUTSPENDS_LIMIT = 50;
+
 /** Transactions or transfers one history call lists unless asked for more. */
 export const HISTORY_LIMIT = 10;
 

@@ -95,7 +95,7 @@ const { samples, paused, current, step } = useLandingExplorer();
 
     <LandingFeature
 
-      title="Eleven tools, three hosts"
+      title="Twelve tools, three hosts"
       to="/guide/agents"
       link="MCP, Pi and OMP"
       :checks="[

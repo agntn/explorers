@@ -19,6 +19,7 @@ import type {
   BlockInfo,
   TxStatus,
   TokenTransfer,
+  Outspend,
   PubkeyReveal,
   Utxo,
 } from "../core/types.ts";
@@ -33,6 +34,7 @@ import {
   esploraFeedAddress,
   getEsploraAddressHistory,
   getEsploraBlock,
+  getEsploraOutspends,
   getEsploraPubkey,
   getEsploraUtxos,
   selectEsploraRecipientOutput,
@@ -41,6 +43,8 @@ import type {
   EsploraAddressStats,
   EsploraBlock,
   EsploraKeyTransaction,
+  EsploraOutspend,
+  EsploraOutspendTransaction,
   EsploraUnspentOutput,
 } from "../core/esplora.ts";
 
@@ -243,6 +247,7 @@ export class Mempool extends Provider {
       balances: true,
       txHistory: true,
       txDetail: true,
+      outspends: true,
       utxos: true,
       pubkeys: true,
       contractInfo: false,
@@ -351,6 +356,16 @@ export class Mempool extends Provider {
       inscriptions: collectInscriptions(data.vin.map((input) => input.witness)),
       raw: data as unknown as Record<string, unknown>,
     };
+  }
+
+  override async getOutspends(hash: string, chain?: ChainKey): Promise<Outspend[]> {
+    const c = chain ?? this.defaultChain;
+    if (c === "pepecoin") throw new UnsupportedOperationError("getOutspends", this.name);
+
+    return getEsploraOutspends(hash, {
+      transaction: async (path) => this.api<EsploraOutspendTransaction>(c, path),
+      outspends: async (path) => this.api<EsploraOutspend[]>(c, path),
+    });
   }
 
   override async getGasData(chain?: ChainKey): Promise<GasData> {

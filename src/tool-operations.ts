@@ -18,6 +18,7 @@ import type {
   ChainKey,
   ContractInfo,
   GasData,
+  Outspend,
   PubkeyReveal,
   TagFilter,
   TokenBalance,
@@ -25,7 +26,12 @@ import type {
   Transaction,
   Utxo,
 } from "./core/types.ts";
-import { HISTORY_LIMIT, TOKEN_HOLDINGS_LIMIT, UNSPENT_OUTPUTS_LIMIT } from "./tool-limits.ts";
+import {
+  HISTORY_LIMIT,
+  OUTSPENDS_LIMIT,
+  TOKEN_HOLDINGS_LIMIT,
+  UNSPENT_OUTPUTS_LIMIT,
+} from "./tool-limits.ts";
 
 /** Where a read goes: a chain and a provider, either one left out for automatic selection. */
 export interface RouteArgs {
@@ -54,6 +60,12 @@ export interface HistoryArgs extends AddressArgs {
 export interface TxDetailArgs extends RouteArgs {
   readonly hash: string;
   readonly raw?: boolean;
+}
+
+export interface OutspendsArgs extends RouteArgs {
+  readonly hash: string;
+  readonly limit?: number;
+  readonly page?: number;
 }
 
 export interface ListArgs extends AddressArgs {
@@ -104,6 +116,11 @@ export interface ListedDetails<T> extends ProviderDetails<T[]> {
 export interface UtxoDetails extends ListedDetails<Utxo> {
   readonly confirmed: string;
   readonly pending: number;
+}
+
+/** Where the outputs of a transaction went, one page of them, with every spent one counted. */
+export interface OutspendDetails extends ListedDetails<Outspend> {
+  readonly spent: number;
 }
 
 export interface ProvidersDetails {
@@ -297,6 +314,33 @@ export function txDetail(
     const getTxDetail = requireOperation(selected.provider, "getTxDetail");
     const transaction = await getTxDetail(args.hash, selected.chain);
     return answer({ provider: selected.name, data: trimTransaction(transaction, args.raw) });
+  });
+}
+
+/**
+ * Where each output of a transaction went, a page at a time; no chain or provider means Bitcoin.
+ *
+ * @param args - Hash, route, limit and page.
+ * @param signal - Stops the read.
+ * @returns {Promise<ToolResult<OutspendDetails>>} The page of outputs with the totals.
+ */
+export function txOutspends(
+  args: Readonly<OutspendsArgs>,
+  signal?: AbortSignal,
+): Promise<ToolResult<OutspendDetails>> {
+  const route =
+    args.chain === undefined && args.provider === undefined ? { chain: "bitcoin" } : args;
+  return select({ route, capability: "outspends", signal }, async (selected) => {
+    const getOutspends = requireOperation(selected.provider, "getOutspends");
+    const outputs = await getOutspends(args.hash.trim(), selected.chain);
+    const limit = clampMaxResults(counted(args.limit) ?? OUTSPENDS_LIMIT);
+    const start = ((counted(args.page) ?? 1) - 1) * limit;
+    return answer({
+      provider: selected.name,
+      total: outputs.length,
+      spent: outputs.filter((output) => output.spent === true).length,
+      data: outputs.slice(start, start + limit),
+    });
   });
 }
 

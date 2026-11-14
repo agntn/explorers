@@ -145,6 +145,26 @@ export interface Utxo {
   timestamp?: string;
 }
 
+/** Where one output of a transaction went, if anywhere yet */
+export interface Outspend {
+  /** Output index inside the transaction */
+  vout: number;
+  /** Address the output pays; null for a script without one, such as P2PK or OP_RETURN */
+  address: string | null;
+  /** Value in the chain's smallest native unit */
+  value: string;
+  /** Human-readable value in native token */
+  valueFormatted: string;
+  /** Whether a later transaction spent it; null when the explorer gave no answer for this output */
+  spent: boolean | null;
+  /** The transaction that spent it, or null while nothing has */
+  txid: string | null;
+  /** Input index of that spend inside its transaction */
+  vin: number | null;
+  /** Block of the spend, or null while it waits in the mempool or nothing has spent the output */
+  blockNumber: number | null;
+}
+
 /** Normalized address balance */
 export interface Balance {
   /** Address */
@@ -290,6 +310,8 @@ export interface ProviderCapabilities {
   utxos: boolean;
   /** Can tell whether an address has shown its public key */
   pubkeys: boolean;
+  /** Can tell where each output of a transaction went. Optional, so old providers compile */
+  outspends?: boolean;
   /** Can get contract info (ABI, source) */
   contractInfo: boolean;
   /** Can get token holdings for address */

@@ -66,6 +66,7 @@ const TOOL_NAMES = [
   "explorers_balance",
   "explorers_tx_history",
   "explorers_tx_detail",
+  "explorers_tx_outspends",
   "explorers_utxos",
   "explorers_pubkey",
   "explorers_contract",
