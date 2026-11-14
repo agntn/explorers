@@ -88,6 +88,8 @@ function transactionSchema() {
     fees: amount(),
     confirmed: z.string().optional(),
     double_spend: z.boolean().optional(),
+    next_inputs: z.string().optional(),
+    next_outputs: z.string().optional(),
     inputs: z.array(z.looseObject({ addresses: owners, witness: z.array(z.string()).optional() })),
     outputs: z.array(
       z.looseObject({ addresses: owners, script: z.string().optional(), value: amount() }),
@@ -114,6 +116,8 @@ interface BlockCypherTransaction {
   readonly fees: bigint;
   readonly confirmed?: string;
   readonly double_spend?: boolean;
+  readonly next_inputs?: string;
+  readonly next_outputs?: string;
   readonly inputs: readonly BlockCypherInput[];
   readonly outputs: readonly BlockCypherOutput[];
 }
@@ -170,6 +174,15 @@ function transfer(tx: BlockCypherTransaction, address: string | undefined): Tran
   return { from: senderOf(tx), to: address, value: sum(tx.outputs.filter(touches)) };
 }
 
+/* A `next_inputs` or `next_outputs` link means the lists stop early, and half a list miscounts. */
+function assertWhole(tx: BlockCypherTransaction): void {
+  if (tx.next_inputs !== undefined || tx.next_outputs !== undefined)
+    throw new ExplorerError(
+      `BlockCypher cut transaction ${tx.hash} short at ${IO_LIMIT} inputs or outputs`,
+      BlockCypher.key,
+    );
+}
+
 /* A mempool row sits at height -1, and one that lost a double spend never confirms. */
 function statusOf(tx: BlockCypherTransaction): Transaction["status"] {
   if (tx.block_height >= 0) return "success";
@@ -179,6 +192,7 @@ function statusOf(tx: BlockCypherTransaction): Transaction["status"] {
 /* `raw` is the record as BlockCypher sent it, since the parsed one holds bigints JSON refuses. */
 function mapTransaction(record: HistoryRow, address?: string): Transaction {
   const { tx } = record;
+  assertWhole(tx);
   const { from, to, value } = transfer(tx, address);
   const confirmed = tx.block_height >= 0;
   return {

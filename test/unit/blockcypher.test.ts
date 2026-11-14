@@ -654,6 +654,26 @@ describe("blockcypher provider", () => {
     expect(tx).toMatchObject({ blockNumber: 2_500_000, value: "18552002", status: "success" });
   });
 
+  it("refuses a transaction BlockCypher cut short instead of miscounting it", async () => {
+    const cut = {
+      ...TX,
+      next_inputs: `${BASE}/ltc/main/txs/${TX.hash}?instart=1000&outstart=0&limit=1000`,
+    };
+    stubApi(() => cut);
+    const provider = new BlockCypher();
+
+    await expect(provider.getTxDetail(TX.hash, "litecoin")).rejects.toThrow(
+      new ExplorerError(
+        `BlockCypher cut transaction ${TX.hash} short at 1000 inputs or outputs`,
+        "blockcypher",
+      ),
+    );
+    stubApi(() => ({ ...HISTORY, txs: [{ ...HISTORY.txs[0], next_outputs: "more" }] }));
+    await expect(
+      provider.getTxHistory(HISTORY.address, "litecoin", { limit: 1 }),
+    ).rejects.toBeInstanceOf(ExplorerError);
+  });
+
   it("names a missing transaction instead of the URL", async () => {
     stubApi(() => jsonResponse(MISSING_TX, 404));
     const hash = "0".repeat(64);
