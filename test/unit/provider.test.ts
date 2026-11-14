@@ -95,7 +95,7 @@ describe("abstract provider registry", () => {
     expect(provider).toBeInstanceOf(Provider);
     expect(provider).toBeInstanceOf(Custom);
     if (!(provider instanceof Custom)) {
-      throw new Error("registry returned the wrong provider class");
+      throw new TypeError("registry returned the wrong provider class");
     }
     expect(provider.name).toBe("abstract-provider-test");
     expect(provider.config).toEqual(config);
