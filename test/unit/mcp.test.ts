@@ -434,7 +434,7 @@ describe("Explorers MCP server", () => {
     expect(await read({ limit: 101 })).toMatch(/limit/);
   });
 
-  it("refuses outspends on a chain no provider follows, and names who would", async () => {
+  it("refuses outspends on a provider without them, and names the ones that have them", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async () => {
@@ -451,6 +451,26 @@ describe("Explorers MCP server", () => {
 
     expect(result.isError).toBe(true);
     expect(result.content[0]?.text).toMatch(/getOutspends.*try mempool, blockstream/);
+  });
+
+  it("refuses outspends on a chain no provider follows", async () => {
+    const fetch = vi.fn(async () => {
+      throw new Error("no request expected");
+    });
+    vi.stubGlobal("fetch", fetch);
+    const client = await connectTestClient();
+    const result = parseToolResult(
+      await client.callTool({
+        name: "explorers_tx_outspends",
+        arguments: { hash: "a".repeat(64), chain: "ethereum" },
+      }),
+    );
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0]?.text).toMatch(
+      /getOutspends.*no provider serves this read on ethereum/,
+    );
+    expect(fetch).not.toHaveBeenCalled();
   });
 
   it("answers with compact JSON that parses to the same result", async () => {
