@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
+import { UnsupportedChainError } from "../../src/core/errors.ts";
 import { create } from "../../src/core/registry.ts";
 import { FIRST_INSCRIPTION } from "./inscription-witnesses.ts";
+import { HAL_HEX, HAL_TXID, hexResponse } from "./tx-hex.ts";
 
 const ADDRESS = "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh";
 const TXID = "a".repeat(64);
@@ -35,6 +37,7 @@ describe("blockstream provider", () => {
       txHistory: true,
       txDetail: true,
       outspends: true,
+      txHex: true,
       utxos: true,
       pubkeys: true,
       contractInfo: false,
@@ -517,5 +520,29 @@ describe("blockstream provider", () => {
 
     expect(transaction?.opReturn).toEqual([{ hex: "48656c6c6f", text: "Hello" }]);
     expect(transaction?.inscriptions).toBeUndefined();
+  });
+});
+
+describe("blockstream transaction hex", () => {
+  it("reads the serialized transaction off the hex route", async () => {
+    const fetch = vi.fn(async () => hexResponse(`${HAL_HEX}\n`));
+    vi.stubGlobal("fetch", fetch);
+    const provider = await create("blockstream");
+
+    await expect(provider.getTxHex!(HAL_TXID)).resolves.toBe(HAL_HEX);
+    expect(String(fetch.mock.calls[0]?.[0])).toBe(
+      `https://blockstream.info/api/tx/${HAL_TXID}/hex`,
+    );
+  });
+
+  it("refuses a chain other than Bitcoin before a request", async () => {
+    const fetch = vi.fn(async () => hexResponse(HAL_HEX));
+    vi.stubGlobal("fetch", fetch);
+    const provider = await create("blockstream");
+
+    await expect(provider.getTxHex!(HAL_TXID, "litecoin")).rejects.toBeInstanceOf(
+      UnsupportedChainError,
+    );
+    expect(fetch).not.toHaveBeenCalled();
   });
 });

@@ -20,6 +20,7 @@ import {
   getEsploraBlock,
   getEsploraOutspends,
   getEsploraPubkey,
+  getEsploraTxHex,
   getEsploraUtxos,
   selectEsploraRecipientOutput,
 } from "../core/esplora.ts";
@@ -168,6 +169,7 @@ export class Blockstream extends Provider {
       txHistory: true,
       txDetail: true,
       outspends: true,
+      txHex: true,
       utxos: true,
       pubkeys: true,
       contractInfo: false,
@@ -276,6 +278,12 @@ export class Blockstream extends Provider {
       transaction: async (path) => this.api<EsploraOutspendTransaction>(selectedChain, path),
       outspends: async (path) => this.api<EsploraOutspend[]>(selectedChain, path),
     });
+  }
+
+  override async getTxHex(hash: string, chain?: ChainKey): Promise<string> {
+    const selectedChain = chain ?? this.defaultChain;
+    if (selectedChain !== "bitcoin") throw new UnsupportedChainError(selectedChain, "blockstream");
+    return getEsploraTxHex(hash, async (path) => this.getText(`${this.baseUrl}${path}`), this.name);
   }
 
   override async getBlockInfo(blockNumber: number, chain?: ChainKey): Promise<BlockInfo> {

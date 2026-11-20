@@ -60,6 +60,7 @@ export interface HistoryArgs extends AddressArgs {
 export interface TxDetailArgs extends RouteArgs {
   readonly hash: string;
   readonly raw?: boolean;
+  readonly hex?: boolean;
 }
 
 export interface OutspendsArgs extends RouteArgs {
@@ -111,6 +112,9 @@ export interface ProviderDetails<T> {
 export interface ListedDetails<T> extends ProviderDetails<T[]> {
   readonly total: number;
 }
+
+/** One transaction, with its serialized bytes when the call asked for them. */
+export type DetailedTransaction = Transaction & { readonly hex?: string };
 
 /** Unspent outputs, with the confirmed value of every output and the count still pending. */
 export interface UtxoDetails extends ListedDetails<Utxo> {
@@ -300,20 +304,38 @@ export function txHistory(
 }
 
 /**
- * Reads one transaction by hash.
+ * Reads one transaction by hash, and its serialized hex too when `hex` asks for it.
  *
- * @param args - Hash, route and whether to keep the raw record.
+ * Only UTXO explorers serve the hex, so a hex read without chain or provider starts on Bitcoin.
+ *
+ * @param args - Hash, route, whether to keep the raw record and whether to add the hex.
  * @param signal - Stops the read.
- * @returns {Promise<ToolResult<ProviderDetails<Transaction>>>} The normalized transaction.
+ * @returns {Promise<ToolResult<ProviderDetails<DetailedTransaction>>>} The normalized transaction.
  */
 export function txDetail(
   args: Readonly<TxDetailArgs>,
   signal?: AbortSignal,
-): Promise<ToolResult<ProviderDetails<Transaction>>> {
-  return select({ route: args, capability: "txDetail", signal }, async (selected) => {
+): Promise<ToolResult<ProviderDetails<DetailedTransaction>>> {
+  if (args.hex !== true) {
+    return select({ route: args, capability: "txDetail", signal }, async (selected) => {
+      const getTxDetail = requireOperation(selected.provider, "getTxDetail");
+      const transaction = await getTxDetail(args.hash, selected.chain);
+      return answer({ provider: selected.name, data: trimTransaction(transaction, args.raw) });
+    });
+  }
+  const route =
+    args.chain === undefined && args.provider === undefined ? { chain: "bitcoin" } : args;
+  return select({ route, capability: "txHex", signal }, async (selected) => {
     const getTxDetail = requireOperation(selected.provider, "getTxDetail");
-    const transaction = await getTxDetail(args.hash, selected.chain);
-    return answer({ provider: selected.name, data: trimTransaction(transaction, args.raw) });
+    const getTxHex = requireOperation(selected.provider, "getTxHex");
+    const [transaction, hex] = await Promise.all([
+      getTxDetail(args.hash, selected.chain),
+      getTxHex(args.hash, selected.chain),
+    ]);
+    return answer({
+      provider: selected.name,
+      data: { ...trimTransaction(transaction, args.raw), hex },
+    });
   });
 }
 

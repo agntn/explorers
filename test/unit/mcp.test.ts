@@ -11,6 +11,7 @@ import type {
   TokenBalanceOptions,
 } from "../../src/core/types.ts";
 import { createMcpServer } from "../../src/mcp.ts";
+import { HAL_HEX, HAL_TXID, hexResponse } from "./tx-hex.ts";
 
 const openConnections: Array<{ close(): Promise<void> }> = [];
 
@@ -432,6 +433,66 @@ describe("Explorers MCP server", () => {
       data: [{ vout: 4 }, { vout: 5 }],
     });
     expect(await read({ limit: 101 })).toMatch(/limit/);
+  });
+
+  it("adds the serialized hex only when the call asks for it, on Bitcoin when no chain is named", async () => {
+    const tx = {
+      txid: HAL_TXID,
+      vin: [{ prevout: null, scriptsig: "", sequence: 0 }],
+      vout: [{ scriptpubkey: "", scriptpubkey_type: "p2pk", value: 1_000_000_000 }],
+      fee: 0,
+      status: { confirmed: true, block_height: 170 },
+    };
+    const fetch = vi.fn(async (input: string | URL | Request) =>
+      String(input).endsWith("/hex") ? hexResponse(HAL_HEX) : Response.json(tx),
+    );
+    vi.stubGlobal("fetch", fetch);
+    const client = await connectTestClient();
+    const read = async (args: Readonly<Record<string, unknown>>) => {
+      const result = parseToolResult(
+        await client.callTool({
+          name: "explorers_tx_detail",
+          arguments: { hash: HAL_TXID, ...args },
+        }),
+      );
+      expect(result.isError).toBe(false);
+      return JSON.parse(result.content[0]?.text ?? "null") as {
+        provider: string;
+        data: { hash: string; hex?: string; raw?: unknown };
+      };
+    };
+
+    const plain = await read({ chain: "bitcoin", provider: "mempool" });
+    expect(plain.data).not.toHaveProperty("hex");
+    expect(fetch.mock.calls.map(([input]) => String(input))).not.toContainEqual(
+      expect.stringMatching(/\/hex$/),
+    );
+
+    const withHex = await read({ hex: true });
+    expect(withHex).toMatchObject({ provider: "mempool", data: { hash: HAL_TXID, hex: HAL_HEX } });
+    expect(withHex.data).not.toHaveProperty("raw");
+    expect(fetch.mock.calls.map(([input]) => String(input))).toContain(
+      `https://mempool.space/api/tx/${HAL_TXID}/hex`,
+    );
+  });
+
+  it("refuses hex on a provider without it, and names the ones that have it", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new Error("no request expected");
+      }),
+    );
+    const client = await connectTestClient();
+    const result = parseToolResult(
+      await client.callTool({
+        name: "explorers_tx_detail",
+        arguments: { hash: HAL_TXID, provider: "blockchair", chain: "bitcoin", hex: true },
+      }),
+    );
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0]?.text).toMatch(/getTxHex.*try mempool, blockstream/);
   });
 
   it("refuses outspends on a provider without them, and names the ones that have them", async () => {

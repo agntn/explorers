@@ -141,6 +141,31 @@ export async function getEsploraOutspends(
   });
 }
 
+/** Whole bytes of hex and nothing else, which a serialized transaction always is. */
+const SERIALIZED_HEX = /^(?:[\da-f]{2})+$/iu;
+
+/**
+ * The serialized bytes of an Esplora transaction, from `/api/tx/:txid/hex`.
+ *
+ * @param {string} hash - Transaction id.
+ * @param {(path: string) => Promise<string>} readText - Read one provider path as text.
+ * @param {string} provider - The provider a malformed answer is blamed on.
+ * @returns {Promise<string>} The transaction in lowercase hex.
+ * @throws {ExplorerError} When the answer is not whole bytes of hex.
+ */
+export async function getEsploraTxHex(
+  hash: string,
+  readText: (path: string) => Promise<string>,
+  provider: string,
+): Promise<string> {
+  assertSafePathSegment(hash, "tx hash");
+  const hex = (await readText(`/api/tx/${encodeURIComponent(hash)}/hex`)).trim();
+  if (!SERIALIZED_HEX.test(hex)) {
+    throw new ExplorerError("Transaction hex came back as something other than hex", provider);
+  }
+  return hex.toLowerCase();
+}
+
 /** A row of `/api/blocks/:height`. Genesis has no parent, Liquid has no `bits` or `nonce`. */
 export interface EsploraBlock {
   readonly id: string;

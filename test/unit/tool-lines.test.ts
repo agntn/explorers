@@ -42,6 +42,13 @@ describe("terminal lines of an explorer answer", () => {
     expect(detailLines({ to }).some((line) => line.startsWith("To:"))).toBe(false);
   });
 
+  it("counts the bytes of the hex a call asked for instead of printing them", () => {
+    const details = { provider: "mempool", data: { ...transaction(), hex: "0100ff" } };
+
+    expect(describeResult("explorers_tx_detail", details).at(-1)).toBe("Hex: 3 bytes");
+    expect(detailLines({}).some((line) => line.startsWith("Hex:"))).toBe(false);
+  });
+
   it("prints no sender line for a transaction the explorer names no sender for", () => {
     expect(detailLines({ from: "" }).some((line) => line.startsWith("From:"))).toBe(false);
   });

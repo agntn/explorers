@@ -20,6 +20,7 @@ import type {
   Utxo,
 } from "./core/types.ts";
 import type {
+  DetailedTransaction,
   ListedDetails,
   OutspendDetails,
   ProviderDetails,
@@ -207,7 +208,7 @@ interface DetailsByTool {
   explorers_providers: ProvidersDetails;
   explorers_balance: ProviderDetails<Balance | Balance[]>;
   explorers_tx_history: ProviderDetails<Transaction[]>;
-  explorers_tx_detail: ProviderDetails<Transaction>;
+  explorers_tx_detail: ProviderDetails<DetailedTransaction>;
   explorers_tx_outspends: OutspendDetails;
   explorers_utxos: UtxoDetails;
   explorers_pubkey: ProviderDetails<PubkeyReveal>;
@@ -233,7 +234,10 @@ const describers: Describers = {
     `[${provider}] ${data.length} transactions:`,
     ...data.map(describeHistoryRow),
   ],
-  explorers_tx_detail: ({ provider, data }) => describeTransaction(provider, data),
+  explorers_tx_detail: ({ provider, data }) => [
+    ...describeTransaction(provider, data),
+    ...(data.hex === undefined ? [] : [`Hex: ${data.hex.length / 2} bytes`]),
+  ],
   explorers_tx_outspends: ({ provider, data, total, spent }) => [
     `[${provider}] ${total} outputs, ${spent} spent${listedCount(data.length, total)}:`,
     ...data.map(describeOutspend),

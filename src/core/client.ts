@@ -55,11 +55,13 @@ function parseJSON<T>(text: string | undefined): T {
   }) as T;
 }
 
-/* The JSON body stays a value until `request` serializes it inside its error boundary. */
-interface Outgoing {
+/* The JSON body stays a value until `request` serializes it inside its error boundary, and so does
+   the answer until `read` turns it into one. */
+interface Outgoing<T> {
   readonly method: "GET" | "POST";
   readonly headers: Readonly<Record<string, string>>;
   readonly json?: unknown;
+  readonly read: (text: string | undefined) => T;
 }
 
 interface Received {
@@ -114,24 +116,24 @@ async function receive(url: string, init: RequestInit): Promise<Received> {
  * Send one request and read the body as text, which `parseJSON` needs for its integer source.
  *
  * @param {string} url - The `url` value.
- * @param {Outgoing} outgoing - Method, headers and the value to send as JSON.
+ * @param {Outgoing<T>} outgoing - Method, headers, the value to send as JSON and the body reader.
  * @param {ClientRequestOptions} options - Request metadata and cancellation.
  * @returns {Promise<T>} The parsed body, `undefined` for a status without one.
  */
 async function request<T>(
   url: string,
-  outgoing: Outgoing,
+  outgoing: Outgoing<T>,
   options?: ClientRequestOptions,
 ): Promise<T> {
   const { signal, clear } = deadline(options);
   try {
-    const { method, headers, json } = outgoing;
+    const { method, headers, json, read } = outgoing;
     const body = json === undefined ? undefined : JSON.stringify(json);
     const { response, text } = await receive(url, { method, headers, body, signal });
     if (response.status >= 400 && response.status < 600) {
       throw new ResponseFailure(response, text ?? "");
     }
-    return parseJSON<T>(text);
+    return read(text);
   } catch (error) {
     throw normalizeError(error, options?.provider, url);
   } finally {
@@ -154,6 +156,26 @@ export async function getJSON<T>(url: string, options?: ClientRequestOptions): P
     {
       method: "GET",
       headers: { Accept: "application/json", "User-Agent": agent(), ...options?.headers },
+      read: parseJSON<T>,
+    },
+    options,
+  );
+}
+
+/**
+ * Fetch a plain text body, timed out and failed like {@link getJSON}.
+ *
+ * @param {string} url - The `url` value.
+ * @param {ClientRequestOptions} options - Request metadata and cancellation.
+ * @returns {Promise<string>} The body, empty for a status without one.
+ */
+export async function getText(url: string, options?: ClientRequestOptions): Promise<string> {
+  return request(
+    url,
+    {
+      method: "GET",
+      headers: { Accept: "text/plain", "User-Agent": agent(), ...options?.headers },
+      read: (text) => text ?? "",
     },
     options,
   );
@@ -175,6 +197,7 @@ export async function postJSON<T>(
         ...options?.headers,
       },
       json: body,
+      read: parseJSON<T>,
     },
     options,
   );

@@ -312,6 +312,8 @@ export interface ProviderCapabilities {
   pubkeys: boolean;
   /** Can tell where each output of a transaction went. Optional, so old providers compile */
   outspends?: boolean;
+  /** Can return a transaction as serialized hex. Optional, so old providers compile */
+  txHex?: boolean;
   /** Can get contract info (ABI, source) */
   contractInfo: boolean;
   /** Can get token holdings for address */

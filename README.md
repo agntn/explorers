@@ -24,7 +24,7 @@ Docs and a live explorer: [explorers.agntn.dev](https://explorers.agntn.dev).
 - 🏷️ **ENS just works.** `vitalik.eth` wherever an Ethereum address would go, no extra dependency.
 - 🎯 **Picks a provider for you and tells you which.** Keys first, keyless next, Blockscout when nobody else wants the chain. `-p` if you know better.
 - 📦 **Loads only what you use.** One bundle per provider, `create()` pulls in exactly one.
-- 💸 **Bitcoin gets treated like Bitcoin.** Pending activity in `unconfirmed`, the spendable set from `getUtxos()`, OP_RETURN and inscriptions decoded when they're text. And `getPubkey()` finds the key a spend already gave away. `getOutspends()` follows each output to its spend.
+- 💸 **Bitcoin gets treated like Bitcoin.** Pending activity in `unconfirmed`, the spendable set from `getUtxos()`, OP_RETURN and inscriptions decoded when they're text. And `getPubkey()` finds the key a spend already gave away. `getOutspends()` follows each output to its spend. `getTxHex()` hands over the signed bytes, no curl needed.
 
 ## 📦 Install
 

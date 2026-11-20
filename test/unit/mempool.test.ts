@@ -1,7 +1,9 @@
 /** Mempool provider tests with stubbed responses for Bitcoin, Litecoin and Pepecoin. */
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite-plus/test";
+import { NotFoundError } from "../../src/core/errors.ts";
 import { create } from "../../src/core/registry.ts";
 import { HTML_INSCRIPTION } from "./inscription-witnesses.ts";
+import { HAL_HEX, HAL_TXID, hexResponse } from "./tx-hex.ts";
 
 // A known Bitcoin address with history
 const KNOWN_BTC = "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh";
@@ -966,6 +968,59 @@ describe("mempool outspends", () => {
     await expect(provider.getOutspends!("a".repeat(64), "pepecoin")).rejects.toThrow(
       /getOutspends/,
     );
+    expect(fetch).not.toHaveBeenCalled();
+  });
+});
+
+describe("mempool transaction hex", () => {
+  it("reads the serialized transaction off the hex route on each chain", async () => {
+    const fetch = vi.fn(async (_input: string | URL | Request, _init?: RequestInit) =>
+      hexResponse(HAL_HEX.toUpperCase()),
+    );
+    vi.stubGlobal("fetch", fetch);
+    const provider = await create("mempool");
+
+    await expect(provider.getTxHex!(HAL_TXID, "bitcoin")).resolves.toBe(HAL_HEX);
+    await provider.getTxHex!(HAL_TXID, "litecoin");
+    await provider.getTxHex!(HAL_TXID, "pepecoin");
+
+    expect(fetch.mock.calls.map(([input]) => String(input))).toEqual([
+      `https://mempool.space/api/tx/${HAL_TXID}/hex`,
+      `https://litecoinspace.org/api/tx/${HAL_TXID}/hex`,
+      `https://peppool.space/api/tx/${HAL_TXID}/hex`,
+    ]);
+    expect(new Headers(fetch.mock.calls[0]?.[1]?.headers).get("Accept")).toBe("text/plain");
+  });
+
+  it("names a transaction the explorer has never seen as not found", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => hexResponse("Transaction not found", 404)),
+    );
+    const provider = await create("mempool");
+
+    await expect(provider.getTxHex!("0".repeat(64), "bitcoin")).rejects.toBeInstanceOf(
+      NotFoundError,
+    );
+  });
+
+  it("refuses an answer that is not whole bytes of hex", async () => {
+    const provider = await create("mempool");
+    for (const body of ["<!doctype html><title>Down</title>", "abc", ""]) {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () => hexResponse(body)),
+      );
+      await expect(provider.getTxHex!(HAL_TXID, "bitcoin")).rejects.toThrow(/other than hex/);
+    }
+  });
+
+  it("refuses a hash that would climb out of the transaction path", async () => {
+    const fetch = vi.fn(async () => hexResponse(HAL_HEX));
+    vi.stubGlobal("fetch", fetch);
+    const provider = await create("mempool");
+
+    await expect(provider.getTxHex!("..", "bitcoin")).rejects.toThrow(/path traversal/);
     expect(fetch).not.toHaveBeenCalled();
   });
 });

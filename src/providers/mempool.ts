@@ -36,6 +36,7 @@ import {
   getEsploraBlock,
   getEsploraOutspends,
   getEsploraPubkey,
+  getEsploraTxHex,
   getEsploraUtxos,
   selectEsploraRecipientOutput,
 } from "../core/esplora.ts";
@@ -248,6 +249,7 @@ export class Mempool extends Provider {
       txHistory: true,
       txDetail: true,
       outspends: true,
+      txHex: true,
       utxos: true,
       pubkeys: true,
       contractInfo: false,
@@ -366,6 +368,11 @@ export class Mempool extends Provider {
       transaction: async (path) => this.api<EsploraOutspendTransaction>(c, path),
       outspends: async (path) => this.api<EsploraOutspend[]>(c, path),
     });
+  }
+
+  override async getTxHex(hash: string, chain?: ChainKey): Promise<string> {
+    const c = chain ?? this.defaultChain;
+    return getEsploraTxHex(hash, async (path) => this.getText(`${this.base(c)}${path}`), this.name);
   }
 
   override async getGasData(chain?: ChainKey): Promise<GasData> {
