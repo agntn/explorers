@@ -237,16 +237,27 @@ function defineTools(): ToolDefinition[] {
       name: "explorers_tx_detail",
       title: "Get Transaction",
       description:
-        "Get one normalized transaction by hash, with OP_RETURN messages on the Bitcoin family and Ordinals inscriptions from mempool and blockstream",
+        "Get one normalized transaction by hash, with OP_RETURN messages on the Bitcoin family and Ordinals inscriptions from mempool and blockstream. hex: true adds the signed transaction as serialized hex, from mempool on Bitcoin, Litecoin and Pepecoin and from blockstream. With hex and no chain or provider, the read starts on bitcoin",
       snippet: "Use to inspect a single transaction by hash.",
       guidelines: [
         "Use explorers_tx_detail with a chain-native transaction hash and optionally a chain.",
         "explorers_tx_detail returns fees, status, method, and token transfers.",
         "explorers_tx_detail reads OP_RETURN messages on the whole Bitcoin family, and Ordinals inscriptions from mempool and blockstream.",
+        "explorers_tx_detail with hex: true adds the serialized transaction as hex, the input a signature or sighash reader takes.",
       ],
       ...reading,
       input: Type.Object(
-        { hash: text("Transaction hash"), ...route, raw },
+        {
+          hash: text("Transaction hash"),
+          ...route,
+          raw,
+          hex: Type.Optional(
+            Type.Boolean({
+              description:
+                "Add the signed transaction as serialized hex, witness included. Mempool and Blockstream only. Defaults to false.",
+            }),
+          ),
+        },
         { additionalProperties: false },
       ),
       cli: {

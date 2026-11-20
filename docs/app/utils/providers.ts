@@ -6,6 +6,7 @@ export type Capability =
   | "txHistory"
   | "txDetail"
   | "outspends"
+  | "txHex"
   | "utxos"
   | "pubkeys"
   | "contractInfo"
@@ -19,6 +20,7 @@ export const CAPABILITIES: readonly Capability[] = [
   "txHistory",
   "txDetail",
   "outspends",
+  "txHex",
   "utxos",
   "pubkeys",
   "contractInfo",
@@ -34,6 +36,7 @@ export const CAPABILITY_LABELS: Record<Capability, string> = {
   txHistory: "history",
   txDetail: "tx detail",
   outspends: "outspends",
+  txHex: "tx hex",
   utxos: "utxos",
   pubkeys: "pubkey",
   contractInfo: "contract",
@@ -49,6 +52,7 @@ export const CAPABILITY_SHORT: Record<Capability, string> = {
   txHistory: "his",
   txDetail: "tx",
   outspends: "out",
+  txHex: "hex",
   utxos: "utx",
   pubkeys: "key",
   contractInfo: "con",
@@ -64,6 +68,7 @@ export const CAPABILITY_METHODS: Record<Capability, string> = {
   txHistory: "getTxHistory",
   txDetail: "getTxDetail",
   outspends: "getOutspends",
+  txHex: "getTxHex",
   utxos: "getUtxos",
   pubkeys: "getPubkey",
   contractInfo: "getContractInfo",

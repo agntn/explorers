@@ -15,7 +15,7 @@ import type {
   TxHistoryOptions,
   Utxo,
 } from "./types.ts";
-import { getJSON, postJSON } from "./client.ts";
+import { getJSON, getText, postJSON } from "./client.ts";
 import type { ClientRequestOptions } from "./client.ts";
 import type { ProviderConfig } from "./types.ts";
 import { RateLimitError, UnsupportedOperationError } from "./errors.ts";
@@ -154,6 +154,30 @@ export abstract class Provider {
   }
 
   /**
+   * GET a plain text body under this provider's name, retried like {@link getJSON}.
+   *
+   * @param {string} url - Request URL.
+   * @param {Omit<ClientRequestOptions, "provider">} options - Per-request headers, cancellation, and timeout override.
+   * @returns {Promise<string>} The body as text.
+   */
+  protected getText(
+    url: string,
+    options?: Omit<ClientRequestOptions, "provider">,
+  ): Promise<string> {
+    const signal = this.requestSignal(options?.signal);
+    return withRateLimitRetry(
+      async () =>
+        getText(url, {
+          ...options,
+          signal,
+          timeout: options?.timeout ?? this.timeout,
+          provider: this.name,
+        }),
+      signal,
+    );
+  }
+
+  /**
    * Execute a provider-attributed JSON POST request using the configured timeout.
    *
    * Retries HTTP 429 and JSON bodies that mention a rate limit, with backoff, before the error
@@ -218,6 +242,7 @@ export type ProviderOperation =
   | "getTxHistory"
   | "getTxDetail"
   | "getOutspends"
+  | "getTxHex"
   | "getUtxos"
   | "getPubkey"
   | "getContractInfo"
@@ -232,6 +257,7 @@ export const OPERATION_CAPABILITIES = {
   getTxHistory: "txHistory",
   getTxDetail: "txDetail",
   getOutspends: "outspends",
+  getTxHex: "txHex",
   getUtxos: "utxos",
   getPubkey: "pubkeys",
   getContractInfo: "contractInfo",
@@ -296,6 +322,9 @@ export interface Provider {
 
   /** Tell where each output of a transaction went, in output order. */
   getOutspends?(hash: string, chain?: ChainKey): Promise<Outspend[]>;
+
+  /** Fetch a signed transaction as serialized lowercase hex. */
+  getTxHex?(hash: string, chain?: ChainKey): Promise<string>;
 
   /** List the unspent outputs an address still controls, on chains that track them. */
   getUtxos?(address: string, chain?: ChainKey): Promise<Utxo[]>;
