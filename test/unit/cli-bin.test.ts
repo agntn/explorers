@@ -16,6 +16,8 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
+import { Client } from "@modelcontextprotocol/client";
+import { getDefaultEnvironment, StdioClientTransport } from "@modelcontextprotocol/client/stdio";
 import { beforeAll, describe, expect, it } from "vite-plus/test";
 
 const execFileAsync = promisify(execFile);
@@ -116,6 +118,70 @@ describe("explorers mcp from the built bin", () => {
       expect(loaded.filter((url) => url.endsWith(".ts"))).toEqual([]);
     } finally {
       rmSync(copy, { recursive: true, force: true });
+    }
+  });
+});
+
+/* Unpinned, the SDK client only ever meets 2025. */
+type Era = "legacy" | Readonly<{ pin: string }>;
+
+/* One client of one era against `mcp` from the built bin. */
+async function connectBin(mode: Era, environment: Readonly<Record<string, string>>) {
+  const client = new Client(
+    { name: "explorers-test", version: "1.0.0" },
+    { versionNegotiation: { mode } },
+  );
+  await client.connect(
+    new StdioClientTransport({
+      command: process.execPath,
+      args: [bin, "mcp"],
+      cwd: root,
+      env: { ...getDefaultEnvironment(), ...environment },
+      stderr: "ignore",
+    }),
+  );
+  return client;
+}
+
+const builds = [
+  { from: "source", env: {} },
+  { from: "bundle", env: { EXPLORERS_DIST: "1" } },
+] as const;
+const toolNames = [
+  "explorers_providers",
+  "explorers_balance",
+  "explorers_tx_history",
+  "explorers_tx_detail",
+  "explorers_tx_outspends",
+  "explorers_utxos",
+  "explorers_pubkey",
+  "explorers_contract",
+  "explorers_tokens",
+  "explorers_token_transfers",
+  "explorers_gas",
+  "explorers_block",
+];
+
+describe("explorers mcp to clients of both protocol eras", () => {
+  it.each(builds)("lets a client pinned to 2026 listen, from the $from", async (build) => {
+    const client = await connectBin({ pin: "2026-07-28" }, build.env);
+    try {
+      expect(client.getNegotiatedProtocolVersion()).toBe("2026-07-28");
+      const subscription = await client.listen({ toolsListChanged: true });
+      expect((await client.listTools()).tools.map((tool) => tool.name)).toEqual(toolNames);
+      await subscription.close();
+    } finally {
+      await client.close();
+    }
+  });
+
+  it.each(builds)("still opens a 2025 client with initialize, from the $from", async (build) => {
+    const client = await connectBin("legacy", build.env);
+    try {
+      expect(client.getNegotiatedProtocolVersion()).toMatch(/^2025-/u);
+      expect((await client.listTools()).tools.map((tool) => tool.name)).toEqual(toolNames);
+    } finally {
+      await client.close();
     }
   });
 });
