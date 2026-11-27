@@ -18,8 +18,8 @@ catalog:
 # One version per name for the library and docs/, which bundles the library from ../src.
 catalogs:
   deps:
-    "@agntn/chains": 0.3.12
-    "@agntn/tools": 0.2.4
+    "@agntn/chains": 0.6.0
+    "@agntn/tools": 0.3.3
     "@modelcontextprotocol/server": 2.4.0
     better-sqlite3: 12.11.1
     docus: 5.15.0
